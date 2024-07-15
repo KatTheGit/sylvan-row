@@ -5,6 +5,17 @@ use std::net::UdpSocket;
 use std::time::*;
 use bincode;
 
+/// stores all game objects. Recieved from server, rendered by client.
+static mut GAME_STATE: Vec<GameObject> = Vec::new();
+static mut PLAYERS: Vec<ClientPlayer> = Vec::new();
+static mut SELF: ClientPlayer = ClientPlayer {
+  health: 100,
+  position: Vec2 { x: 0.0, y: 0.0 },
+  aim_direction: Vec2 { x: 0.0, y: 0.0 },
+  character: Character::SniperGirl,
+  secondary_charge: 0,
+};
+
 #[macroquad::main("Game")]
 async fn main() {
   game().await;
@@ -19,17 +30,13 @@ async fn game() {
   let movement_speed: f32 = 100.0;
 
   // temporary
-  let server_ip: &str = "0.0.0.0:25567";
-  let socket = UdpSocket::bind("0.0.0.0:0").expect("CLIENT: could not bind socket idk");
+  let server_ip = "0.0.0.0";
+  let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
+  let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
+  let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
+  let socket = UdpSocket::bind(sending_ip).expect("Could not bind client socket");
+  let listening_socket = UdpSocket::bind(listening_ip).expect("Could not bind server socket");
 
-  // all temporary
-  let mut player: ClientPlayer = ClientPlayer {
-    health: 100,
-    position: Vec2 { x: 0.0, y: 0.0 },
-    aim_direction: Vec2 { x: 0.0, y: 0.0 },
-    textures: vec![Texture2D::from_file_with_format(include_bytes!("../../assets/player/player1.png"), None)],
-    secondary_charge: 0,
-  };
 
   let mut gilrs = Gilrs::new().unwrap();
   let mut active_gamepad = None;
@@ -39,9 +46,37 @@ async fn game() {
     println!("GAME: {} is {:?}", gamepad.name(), gamepad.power_info());
   }
 
+  // MARK: Network thread
+  // listens to server packets
+  std::thread::spawn(move || {
+    let mut buffer = [0; 1024];
+    loop {
+      // recieve packet
+      let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
+      let data = &buffer[..amt];
+      let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("awwww");
+      println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+
+      unsafe {
+        GAME_STATE = recieved_server_info.game_objects;
+        PLAYERS = Vec::new();
+        for player in recieved_server_info.players {
+          PLAYERS.push(ClientPlayer {
+            health: player.health,
+            position: player.position.as_vec2(),
+            aim_direction: player.aim_direction.as_vec2(),
+            character: Character::SniperGirl, // temporary
+            secondary_charge: 255, // temporary
+          });
+        }
+      }
+    }
+  });
+
   // used to only send information every once in a while instead of each frame
   let mut networking_counter = Instant::now();
 
+  // MARK: Game Loop
   loop {
     unsafe {
       if screen_height() * (16.0/9.0) > screen_width() {
@@ -59,35 +94,34 @@ async fn game() {
       active_gamepad = Some(id);
     }
     // You can also use cached gamepad state
+    unsafe {
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
       match gamepad.axis_data(Axis::RightStickX)  {
         Some(axis_data) => {
-          if axis_data.value().abs() > controller_deadzone {
-            player.aim_direction.x = axis_data.value();
-          } else {
-            player.aim_direction.x = 0.0;
-          }
+          SELF.aim_direction.x = axis_data.value();
         } _ => {}
       }
       match gamepad.axis_data(Axis::RightStickY)  {
         Some(axis_data) => {
-          if axis_data.value().abs() > controller_deadzone {
-            player.aim_direction.y = -axis_data.value();
-          } else {
-            player.aim_direction.y = 0.0;
-          }
+          SELF.aim_direction.y = -axis_data.value();
         } _ => {}
       }
       match gamepad.axis_data(Axis::LeftStickX)  {
         Some(axis_data) => {
-          player.position.x += (((axis_data.value() * 5.0) as i32) as f32 / 5.0) * movement_speed * get_frame_time();
+          SELF.position.x += (((axis_data.value() * 5.0) as i32) as f32 / 5.0) * movement_speed * get_frame_time();
         } _ => {}
       }
       match gamepad.axis_data(Axis::LeftStickY)  {
         Some(axis_data) => {
           // crazy rounding shenanigans to round to closest multiple of 0.2
-          player.position.y += (((-axis_data.value() * 5.0) as i32) as f32 / 5.0) * movement_speed * get_frame_time();
+          SELF.position.y += (((-axis_data.value() * 5.0) as i32) as f32 / 5.0) * movement_speed * get_frame_time();
         } _ => {}
+      }
+    }}
+
+    unsafe {
+      if SELF.aim_direction.length() < controller_deadzone {
+        SELF.aim_direction = Vec2 {x: 0.0, y: 0.0};
       }
     }
 
@@ -97,42 +131,39 @@ async fn game() {
       draw_rectangle(0.0, 0.0, 100.0 * VW, 100.0 * VH, WHITE)          
     }
 
-    player.draw();
-    player.draw_crosshair();
+    unsafe {
+      SELF.draw();
+      SELF.draw_crosshair();
 
-    // everything under if block only happens 10 times per second
-    if networking_counter.elapsed().as_millis() > 100 {
-      // reset
+      for player in PLAYERS.clone() {
+        player.draw();
+      }
+    }
+
+    // unsafe {println!("{:?}", GAME_STATE);}
+
+    // everything under this block only happens at 20Hz
+    if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
+      // reset counter
       networking_counter = Instant::now();
 
       // do all networking logic
-      let client_packet: ClientPacket = ClientPacket {
-        position: Vector2 {x: player.position.x, y: player.position.y },
-        aim_direction: Vector2 { x: player.aim_direction.x, y: player.aim_direction.y },
-        shooting: false,
-        shooting_secondary: false,
-      };
-  
-      let serialized = bincode::serialize(&client_packet).expect("Failed to serialize message");
-      socket.send_to(&serialized, server_ip).expect("idc");
+      unsafe {
+        let client_packet: ClientPacket = ClientPacket {
+          position:      Vector2 {x: SELF.position.x, y: SELF.position.y },
+          aim_direction: Vector2 { x: SELF.aim_direction.x, y: SELF.aim_direction.y },
+          shooting: false,
+          shooting_secondary: false,
+        };
+        
+        let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message (this should never happen)");
+        socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
+      }
     }
 
 
     // show fps and await next frame
     draw_text(format!("{} fps", 1.0/get_frame_time()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     next_frame().await;
-  }
-}
-
-fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32) {
-  unsafe {
-    draw_texture_ex(texture, x * VH, y * VH, WHITE, DrawTextureParams {
-      dest_size: Some(Vec2 { x: w * VH, y: h * VH}),
-      source: None,
-      rotation: 0.0,
-      flip_x: false,
-      flip_y: false,
-      pivot: Some(Vec2 { x: 0.0, y: 0.0 })
-    });
   }
 }

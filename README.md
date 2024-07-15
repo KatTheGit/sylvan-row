@@ -1,6 +1,6 @@
 run both:
 ```
-cargo run --bin game server
+cargo run --release --bin game server
 ```
 
 # Server-Client model:
@@ -47,3 +47,11 @@ Packet (sent back to client):
     - player_movDir: Vec2,
     - player_health: usize,
     - player_ult_cooldown: usize }>
+
+# Game design and balance rules
+Goal: balance logically/mathematically, and organically later only if needed
+- All characters of the same type must take the exact same amount of time to take down a full-health character when continuously shooting.
+- Secondaries are never direct attacks, and usually will not synergise (directly) with the primary attack.
+- Healers can heal 0-100% at half the kill speed of all other characters.
+- Healers can have offensive secondaries, charged by healing teammates or passively.
+- Healers' secondaries must be roughly as strong as attacker's primaries.
