@@ -35,7 +35,7 @@ fn main() {
       let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
       let recieved_player_info: ClientPacket = bincode::deserialize(data).expect("awwww");
-      println!("SERVER: Received from {}: {:?}", src, recieved_player_info);
+      // println!("SERVER: Received from {}: {:?}", src, recieved_player_info);
       
       // update PLAYERS Vector with recieved information.
       unsafe {
@@ -47,7 +47,7 @@ fn main() {
           // use IP as identifier, check if packet from srent player correlates to our player
           if PLAYERS[index].ip == src.ip().to_string() {
 
-            if PLAYERS[index].time_since_last_packet < MAX_PACKET_INTERVAL /* + PACKET_INTERVAL_ERROR_MARGIN */ {
+            if PLAYERS[index].last_update_time.elapsed().as_secs_f64() < MAX_PACKET_INTERVAL /* + PACKET_INTERVAL_ERROR_MARGIN */ {
               // ignore this packet since it's coming in too fast
               player_found = true;
               break;
@@ -58,22 +58,23 @@ fn main() {
             PLAYERS[index].shooting_secondary = recieved_player_info.shooting_secondary;
 
             // check if movement is legal
-            let movement_error_margin: f32 = 1.0; // later find a way to make this equal to the server's deltatime
+            let movement_error_margin: f32 = 3.0; // later find a way to make this equal to the server's deltatime
             let previous_position: Vector2 = PLAYERS[index].position;
             let current_position: Vector2 = recieved_player_info.position;
-            let highest_legal_distance: f64 = (player_movement_speed + movement_error_margin) as f64 * PLAYERS[index].time_since_last_packet;
+            let highest_legal_distance: f64 = (player_movement_speed + movement_error_margin) as f64 * PLAYERS[index].last_update_time.elapsed().as_secs_f64();
+            println!("✅ {} | {}", highest_legal_distance, vector_distance(previous_position, current_position));
+            // println!("{}", PLAYERS[index].time_since_last_packet);
             // check if traveled distance is higher than theoretically maximal traveled distance
             if vector_distance(previous_position, current_position) <= highest_legal_distance as f32 {
               // if it is, apply movement
-              if true /* apply extra logic here later */{
-                PLAYERS[index].position = recieved_player_info.position;
-              }
             } else {
               // movement is illegal
+              println!("❌ {} | {}", highest_legal_distance, vector_distance(previous_position, current_position));
               PLAYERS[index].had_illegal_position = true;
             }
-
-            PLAYERS[index].time_since_last_packet = 0.0;
+            PLAYERS[index].position = recieved_player_info.position;
+            
+            PLAYERS[index].last_update_time = Instant::now();
             // exit loop, and inform rest of program not to proceed with appending a new player.
             player_found = true;
             break
@@ -91,7 +92,7 @@ fn main() {
           // this data is pretty irrelevant, we're just initialising the player.
           PLAYERS.push(ServerPlayer {
             ip: src.ip().to_string(),
-            time_since_last_packet: 0.0,
+            last_update_time: Instant::now(),
             team,
             health: 255,
             position: match team {
@@ -120,11 +121,11 @@ fn main() {
   loop {
     server_counter = Instant::now();
 
-    unsafe {
-      for (index, _player) in PLAYERS.iter().enumerate() {
-        PLAYERS[index].time_since_last_packet += delta_time;
-      }
-    }
+    // unsafe {
+    //   for (index, _player) in PLAYERS.iter().enumerate() {
+    //     PLAYERS[index].time_since_last_packet += delta_time;
+    //   }
+    // }
 
 
     // unsafe {
@@ -169,7 +170,7 @@ fn main() {
           let split_player_ip: Vec<&str> = player_ip.split(":").collect();
           player_ip = split_player_ip[0].to_string();
           player_ip = format!("{}:{}", player_ip, CLIENT_LISTEN_PORT);
-          println!("PLAYER IP: {}", player_ip);
+          // println!("PLAYER IP: {}", player_ip);
           let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
           sending_socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
         }

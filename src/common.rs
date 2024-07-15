@@ -3,6 +3,8 @@
 
 use macroquad::prelude::*;
 
+use std::time::Instant;
+
 pub static mut VH: f32 = 10.0;
 pub static mut VW: f32 = 10.0;
 
@@ -56,7 +58,7 @@ pub struct ClientPacket {
 }
 
 /// information held by server
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ServerPlayer{
   pub ip:                     String,
   pub team:                   Team,
@@ -65,10 +67,10 @@ pub struct ServerPlayer{
   pub shooting:               bool,
   pub aim_direction:          Vector2,
   pub move_direction:         Vector2,
+  pub last_update_time:       Instant,
   pub secondary_charge:       u8,
   pub shooting_secondary:     bool,
   pub had_illegal_position:   bool,
-  pub time_since_last_packet: f64,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub enum Team {
@@ -149,7 +151,7 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32) {
 }
 
 pub fn vector_distance(vec1: Vector2, vec2: Vector2) -> f32 {
-  return f32::sqrt(f32::powi(vec1.x - vec2.x, 2) + f32::powi(vec1.y - vec2.y, 2))
+  return f32::sqrt(f32::powi((vec1.x - vec2.x), 2) + f32::powi((vec1.y - vec2.y), 2))
 }
 
 pub fn vector_difference(vec1: Vector2, vec2: Vector2) -> Vector2 {

@@ -55,7 +55,7 @@ async fn game() {
       let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
       let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("awwww");
-      println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+      // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
 
       unsafe {
         GAME_STATE = recieved_server_info.game_objects;
@@ -115,6 +115,7 @@ async fn game() {
         Some(axis_data) => {
           // crazy rounding shenanigans to round to closest multiple of 0.2
           SELF.position.y += (((-axis_data.value() * 5.0) as i32) as f32 / 5.0) * movement_speed * get_frame_time();
+          println!("{}", axis_data.value());
         } _ => {}
       }
     }}
