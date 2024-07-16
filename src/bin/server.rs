@@ -58,21 +58,23 @@ fn main() {
             PLAYERS[index].shooting_secondary = recieved_player_info.shooting_secondary;
 
             // check if movement is legal
-            let movement_error_margin: f32 = 3.0; // later find a way to make this equal to the server's deltatime
+            let movement_error_margin: f32 = 5.0; // later find a way to make this equal to the server's deltatime
             let previous_position: Vector2 = PLAYERS[index].position;
             let current_position: Vector2 = recieved_player_info.position;
             let highest_legal_distance: f64 = (player_movement_speed + movement_error_margin) as f64 * PLAYERS[index].last_update_time.elapsed().as_secs_f64();
             println!("✅ {} | {}", highest_legal_distance, vector_distance(previous_position, current_position));
             // println!("{}", PLAYERS[index].time_since_last_packet);
-            // check if traveled distance is higher than theoretically maximal traveled distance
-            if vector_distance(previous_position, current_position) <= highest_legal_distance as f32 {
+            // check if traveled distance is higher than theoretically maximal traveled distance,
+            // or if position is already illegal.
+            if vector_distance(previous_position, current_position) <= highest_legal_distance as f32
+            && PLAYERS[index].had_illegal_position == false {
               // if it is, apply movement
+              PLAYERS[index].position = recieved_player_info.position;
             } else {
               // movement is illegal
               println!("❌ {} | {}", highest_legal_distance, vector_distance(previous_position, current_position));
               PLAYERS[index].had_illegal_position = true;
             }
-            PLAYERS[index].position = recieved_player_info.position;
             
             PLAYERS[index].last_update_time = Instant::now();
             // exit loop, and inform rest of program not to proceed with appending a new player.
@@ -137,7 +139,7 @@ fn main() {
     //   println!("");
     // }
 
-    // Only do networking logic at 20Hz
+    // Only do networking logic at 100Hz
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
       // reset the counter
       networking_counter = Instant::now();
@@ -161,11 +163,14 @@ fn main() {
           let server_packet: ServerPacket = ServerPacket {
             player_packet_is_sent_to: ServerRecievingPlayerPacket {
               health: PLAYERS[index].health,
-              override_position: false,
-              position_override: Vector2 { x: 0.0, y: 0.0 } },
+              override_position: PLAYERS[index].had_illegal_position,
+              position_override: PLAYERS[index].position,
+            },
             players: other_players,
             game_objects: game_objects.clone(),
           };
+          PLAYERS[index].had_illegal_position = false; // reset since we corrected the error.
+
           let mut player_ip = PLAYERS[index].ip.clone();
           let split_player_ip: Vec<&str> = player_ip.split(":").collect();
           player_ip = split_player_ip[0].to_string();

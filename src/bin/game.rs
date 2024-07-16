@@ -52,10 +52,18 @@ async fn game() {
     let mut buffer = [0; 1024];
     loop {
       // recieve packet
-      let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
+      let (amt, _src) = listening_socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
       let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("awwww");
       // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+
+      // if we sent an illegal position, and server does a position override:
+      if recieved_server_info.player_packet_is_sent_to.override_position {
+        // then correct our position
+        unsafe {
+          SELF.position = recieved_server_info.player_packet_is_sent_to.position_override.as_vec2();
+        }
+      }
 
       unsafe {
         GAME_STATE = recieved_server_info.game_objects;
@@ -89,11 +97,13 @@ async fn game() {
     }
 
     // Examine new events
-    while let Some(Event { id, event, time }) = gilrs.next_event() {
+    while let Some(Event { id, event: _, time: _ }) = gilrs.next_event() {
       // println!("CLIENT: {:?} New event from {}: {:?}", time, id, event);
       active_gamepad = Some(id);
     }
-    // You can also use cached gamepad state
+    
+    let mut movement_vector: Vec2 = Vec2::new(0.0, 0.0);
+
     unsafe {
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
       match gamepad.axis_data(Axis::RightStickX)  {
@@ -108,19 +118,28 @@ async fn game() {
       }
       match gamepad.axis_data(Axis::LeftStickX)  {
         Some(axis_data) => {
-          SELF.position.x += (((axis_data.value() * 5.0) as i32) as f32 / 5.0) * movement_speed * get_frame_time();
+          movement_vector.x = (((axis_data.value() * 5.0) as i32) as f32 / 5.0);
         } _ => {}
       }
       match gamepad.axis_data(Axis::LeftStickY)  {
         Some(axis_data) => {
           // crazy rounding shenanigans to round to closest multiple of 0.2
-          SELF.position.y += (((-axis_data.value() * 5.0) as i32) as f32 / 5.0) * movement_speed * get_frame_time();
+          movement_vector.y = (((-axis_data.value() * 5.0) as i32) as f32 / 5.0);
           println!("{}", axis_data.value());
         } _ => {}
       }
     }}
-
+    println!("raw: {}", movement_vector);
+    if movement_vector.length() > 0.0 {
+      movement_vector = movement_vector.normalize();
+    }
+    println!("normal: {}", movement_vector);
+    movement_vector *= movement_speed * get_frame_time();
+    println!("multiplied: {}", movement_vector);
+    
     unsafe {
+      SELF.position.x += movement_vector.x;
+      SELF.position.y += movement_vector.y;
       if SELF.aim_direction.length() < controller_deadzone {
         SELF.aim_direction = Vec2 {x: 0.0, y: 0.0};
       }
@@ -139,11 +158,24 @@ async fn game() {
       for player in PLAYERS.clone() {
         player.draw();
       }
+      // for game_object in GAME_STATE.clone() {
+      //   match game_object.object_type {
+      //     GameObjectType::SniperGirlBullet => {
+      // 
+      //     }
+      //     GameObjectType::UnbreakableWall => {
+      // 
+      //     }
+      //     GameObjectType::Wall => {
+      // 
+      //     }
+      //   }
+      // }
     }
 
     // unsafe {println!("{:?}", GAME_STATE);}
 
-    // everything under this block only happens at 20Hz
+    // everything under this block only happens at 100Hz
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
       // reset counter
       networking_counter = Instant::now();
@@ -157,7 +189,7 @@ async fn game() {
           shooting_secondary: false,
         };
         
-        let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message (this should never happen)");
+        let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
         socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
       }
     }

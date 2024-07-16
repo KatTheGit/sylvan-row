@@ -8,7 +8,7 @@ use std::time::Instant;
 pub static mut VH: f32 = 10.0;
 pub static mut VW: f32 = 10.0;
 
-pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 20.0; // 20Hz, T=0.05s
+pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 45.0; // 100Hz, T=0.01s
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 // TODO: do this dynamically for client at least
@@ -48,7 +48,7 @@ pub enum Character {
   SniperGirl,
 }
 
-/// information send by client to server
+/// information sent by client to server
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub struct ClientPacket {
   pub position:           Vector2,
@@ -151,7 +151,7 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32) {
 }
 
 pub fn vector_distance(vec1: Vector2, vec2: Vector2) -> f32 {
-  return f32::sqrt(f32::powi((vec1.x - vec2.x), 2) + f32::powi((vec1.y - vec2.y), 2))
+  return f32::sqrt(f32::powi(vec1.x - vec2.x, 2) + f32::powi(vec1.y - vec2.y, 2))
 }
 
 pub fn vector_difference(vec1: Vector2, vec2: Vector2) -> Vector2 {
