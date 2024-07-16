@@ -118,22 +118,22 @@ async fn game() {
       }
       match gamepad.axis_data(Axis::LeftStickX)  {
         Some(axis_data) => {
-          movement_vector.x = (((axis_data.value() * 5.0) as i32) as f32 / 5.0);
+          movement_vector.x = ((axis_data.value() * 5.0).round() as i32) as f32 / 5.0;
         } _ => {}
       }
       match gamepad.axis_data(Axis::LeftStickY)  {
         Some(axis_data) => {
           // crazy rounding shenanigans to round to closest multiple of 0.2
-          movement_vector.y = (((-axis_data.value() * 5.0) as i32) as f32 / 5.0);
+          movement_vector.y = ((-axis_data.value() * 5.0).round() as i32) as f32 / 5.0;
           println!("{}", axis_data.value());
         } _ => {}
       }
     }}
     println!("raw: {}", movement_vector);
-    if movement_vector.length() > 0.0 {
+    if movement_vector.length() > 1.0 {
       movement_vector = movement_vector.normalize();
     }
-    println!("normal: {}", movement_vector);
+    println!("normalised: {}", movement_vector);
     movement_vector *= movement_speed * get_frame_time();
     println!("multiplied: {}", movement_vector);
     
