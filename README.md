@@ -3,6 +3,15 @@ run both:
 cargo run --release --bin game server
 ```
 
+# TODO:
+
+- [x] Fix packet inconsistency with average.
+- [x] Fix red/blue team issue
+- [x] Load objects from file (maps) (server)
+    - Sort object list (server)
+- [x] Render object list (client)
+- [ ] Remove all unsafe behaviour (this code can segfault!)
+
 # Server-Client model:
 
 ## Game basis
@@ -50,8 +59,12 @@ Packet (sent back to client):
 
 # Game design and balance rules
 Goal: balance logically/mathematically, and organically later only if needed
-- All characters of the same type must take the exact same amount of time to take down a full-health character when continuously shooting.
+- All characters of the same class must take the exact same amount of time to take down a full-health same-class character when continuously shooting.
 - Secondaries are never direct attacks, and usually will not synergise (directly) with the primary attack.
 - Healers can heal 0-100% at half the kill speed of all other characters.
-- Healers can have offensive secondaries, charged by healing teammates or passively.
-- Healers' secondaries must be roughly as strong as attacker's primaries.
+- Only healers can have offensive secondaries, charged by healing teammates or passively.
+- Healers' secondaries must be roughly half as strong as attacker's primaries.
+
+# Rendering:
+
+for rendering layers correctly, the client will be sent a pre-sorted list (by the server) of gameobjects to render in that order.

@@ -8,10 +8,16 @@ use std::time::Instant;
 pub static mut VH: f32 = 10.0;
 pub static mut VW: f32 = 10.0;
 
-pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 45.0; // 100Hz, T=0.01s
+/// Any client sending packets faster than this will be ignored.
+pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 100.0;
+/// A client sending packets slower than this will be penalised, as this could be a cheating attempt.
+pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 15.0;
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
-// TODO: do this dynamically for client at least
+/// how many packets are averaged when calculating legality of player position.
+pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
+
+// TODO: later do this dynamically for client at least
 pub const CLIENT_SEND_PORT:   u32 = 25566;
 pub const CLIENT_LISTEN_PORT: u32 = 25567;
 pub const SERVER_SEND_PORT:   u32 = 25568;
@@ -25,6 +31,7 @@ pub struct ClientPlayer {
   pub aim_direction: Vec2,
   pub character: Character,
   pub secondary_charge: u8,
+  pub movement_direction: Vector2,
 }
 impl ClientPlayer {
   pub fn draw(&self) {
@@ -57,20 +64,24 @@ pub struct ClientPacket {
   pub shooting_secondary: bool,
 }
 
-/// information held by server
+/// information held by server.
 #[derive(Debug, Clone)]
-pub struct ServerPlayer{
-  pub ip:                     String,
-  pub team:                   Team,
-  pub health:                 u8,
-  pub position:               Vector2,
-  pub shooting:               bool,
-  pub aim_direction:          Vector2,
-  pub move_direction:         Vector2,
-  pub last_update_time:       Instant,
-  pub secondary_charge:       u8,
-  pub shooting_secondary:     bool,
-  pub had_illegal_position:   bool,
+pub struct ServerPlayer {
+  pub ip:                            String,
+  pub team:                          Team,
+  pub health:                        u8,
+  pub position:                      Vector2,
+  pub shooting:                      bool,
+  pub aim_direction:                 Vector2,
+  pub move_direction:                Vector2,
+  pub last_update_time:              Instant,
+  pub secondary_charge:              u8,
+  pub shooting_secondary:            bool,
+  pub had_illegal_position:          bool,
+  pub traveled_distance:             f32,
+  pub packet_average_counter:        u8,
+  pub position_before_checks:        Vector2,
+  pub time_at_beginning_of_average:  Instant,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub enum Team {
@@ -83,6 +94,9 @@ pub enum Team {
 pub struct ServerPlayerPacket {
   pub health: u8,
   pub position: Vector2,
+  pub shooting: bool,
+  pub shooting_secondary: bool,
+  pub movement_direction: Vector2,
   pub secondary_charge: u8,
   pub aim_direction: Vector2,
 }

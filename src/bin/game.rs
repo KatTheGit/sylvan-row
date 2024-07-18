@@ -14,6 +14,7 @@ static mut SELF: ClientPlayer = ClientPlayer {
   aim_direction: Vec2 { x: 0.0, y: 0.0 },
   character: Character::SniperGirl,
   secondary_charge: 0,
+  movement_direction: Vector2 { x: 0.0, y: 0.0 },
 };
 
 #[macroquad::main("Game")]
@@ -34,8 +35,8 @@ async fn game() {
   let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
   let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
   let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
-  let socket = UdpSocket::bind(sending_ip).expect("Could not bind client socket");
-  let listening_socket = UdpSocket::bind(listening_ip).expect("Could not bind server socket");
+  let sending_socket = UdpSocket::bind(sending_ip).expect("Could not bind client sender socket");
+  let listening_socket = UdpSocket::bind(listening_ip).expect("Could not bind client listener socket");
 
 
   let mut gilrs = Gilrs::new().unwrap();
@@ -49,7 +50,7 @@ async fn game() {
   // MARK: Network thread
   // listens to server packets
   std::thread::spawn(move || {
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; 2048];
     loop {
       // recieve packet
       let (amt, _src) = listening_socket.recv_from(&mut buffer).expect(":(");
@@ -75,6 +76,7 @@ async fn game() {
             aim_direction: player.aim_direction.as_vec2(),
             character: Character::SniperGirl, // temporary
             secondary_charge: 255, // temporary
+            movement_direction: player.movement_direction,
           });
         }
       }
@@ -103,8 +105,11 @@ async fn game() {
     }
     
     let mut movement_vector: Vec2 = Vec2::new(0.0, 0.0);
+    let mut shooting_primary: bool = false;
+    let mut shooting_secondary: bool = false;
 
     unsafe {
+    // MARK: Input
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
       match gamepad.axis_data(Axis::RightStickX)  {
         Some(axis_data) => {
@@ -125,17 +130,37 @@ async fn game() {
         Some(axis_data) => {
           // crazy rounding shenanigans to round to closest multiple of 0.2
           movement_vector.y = ((-axis_data.value() * 5.0).round() as i32) as f32 / 5.0;
-          println!("{}", axis_data.value());
+          // println!("{}", axis_data.value());
+        } _ => {}
+      }
+      match gamepad.button_data(Button::RightTrigger2) {
+        Some(button_data) => {
+          if button_data.value() > 0.2 {
+            shooting_primary = true;
+          } else {
+            shooting_primary = false;
+          }
+        } _ => {}
+      }
+      match gamepad.button_data(Button::LeftTrigger2) {
+        Some(button_data) => {
+          if button_data.value() > 0.2 {
+            shooting_secondary = true;
+          } else {
+            shooting_secondary = false;
+          }
         } _ => {}
       }
     }}
-    println!("raw: {}", movement_vector);
+    // println!("raw: {}", movement_vector);
     if movement_vector.length() > 1.0 {
       movement_vector = movement_vector.normalize();
     }
-    println!("normalised: {}", movement_vector);
+    // println!("normalised: {}", movement_vector);
     movement_vector *= movement_speed * get_frame_time();
-    println!("multiplied: {}", movement_vector);
+    // println!("multiplied: {}", movement_vector);
+
+    println!("{:?} {:?}", shooting_primary, shooting_secondary);
     
     unsafe {
       SELF.position.x += movement_vector.x;
@@ -158,23 +183,35 @@ async fn game() {
       for player in PLAYERS.clone() {
         player.draw();
       }
-      // for game_object in GAME_STATE.clone() {
-      //   match game_object.object_type {
-      //     GameObjectType::SniperGirlBullet => {
-      // 
-      //     }
-      //     GameObjectType::UnbreakableWall => {
-      // 
-      //     }
-      //     GameObjectType::Wall => {
-      // 
-      //     }
-      //   }
-      // }
+      for game_object in GAME_STATE.clone() {
+        match game_object.object_type {
+          GameObjectType::Wall => {
+            let texture = Texture2D::from_file_with_format(
+              include_bytes!("../../assets/gameobjects/wall.png"), None
+            );
+            draw_image(&texture, game_object.position.x, game_object.position.y, 10.0, 10.0)
+          }
+          GameObjectType::UnbreakableWall => {
+            
+          }
+          GameObjectType::SniperGirlBullet => {
+            
+          }
+        }
+      }
     }
 
+    unsafe {
+      for (index, player) in PLAYERS.clone().iter().enumerate() {
+        PLAYERS[index].position += Vec2 {
+          x: player.movement_direction.x * movement_speed * get_frame_time(),
+          y: player.movement_direction.y * movement_speed * get_frame_time(),
+        };
+      }
+    }
+    
     // unsafe {println!("{:?}", GAME_STATE);}
-
+    
     // everything under this block only happens at 100Hz
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
       // reset counter
@@ -185,12 +222,12 @@ async fn game() {
         let client_packet: ClientPacket = ClientPacket {
           position:      Vector2 {x: SELF.position.x, y: SELF.position.y },
           aim_direction: Vector2 { x: SELF.aim_direction.x, y: SELF.aim_direction.y },
-          shooting: false,
-          shooting_secondary: false,
+          shooting: shooting_primary,
+          shooting_secondary,
         };
         
         let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
-        socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
+        sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
       }
     }
 
