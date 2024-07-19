@@ -91,7 +91,7 @@ fn main() {
               PLAYERS[index].move_direction = movement_direction;
             }
 
-            if movement_legal && !PLAYERS[index].had_illegal_position {
+            if movement_legal /* && !PLAYERS[index].had_illegal_position */ {
               // do movement
               PLAYERS[index].position = recieved_player_info.position;
             } else {
@@ -203,7 +203,7 @@ fn main() {
 
           let mut other_players: Vec<ServerPlayerPacket> = Vec::new();
           for (other_player_index, _player) in PLAYERS.clone().iter().enumerate() {
-            if  other_player_index != index {
+            if other_player_index != index {
               other_players.push(ServerPlayerPacket {
                 health: PLAYERS[other_player_index].health,
                 position: PLAYERS[other_player_index].position,
@@ -226,15 +226,16 @@ fn main() {
             players: other_players,
             game_objects: game_objects.clone(),
           };
-          PLAYERS[index].had_illegal_position = false; // reset since we corrected the error.
-
+          
           let mut player_ip = PLAYERS[index].ip.clone();
           let split_player_ip: Vec<&str> = player_ip.split(":").collect();
           player_ip = split_player_ip[0].to_string();
           player_ip = format!("{}:{}", player_ip, CLIENT_LISTEN_PORT);
           // println!("PLAYER IP: {}", player_ip);
+          // println!("PACKET: {:?}", server_packet);
           let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
           sending_socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
+          PLAYERS[index].had_illegal_position = false; // reset since we corrected the error.
         }
       }
     }
