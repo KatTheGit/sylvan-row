@@ -47,40 +47,9 @@ async fn game() {
     println!("GAME: {} is {:?}", gamepad.name(), gamepad.power_info());
   }
 
-  // MARK: Network thread
-  // listens to server packets
+  // start the network listener thread
   std::thread::spawn(move || {
-    let mut buffer = [0; 2048];
-    loop {
-      // recieve packet
-      let (amt, _src) = listening_socket.recv_from(&mut buffer).expect(":(");
-      let data = &buffer[..amt];
-      let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("awwww");
-      // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
-
-      // if we sent an illegal position, and server does a position override:
-      if recieved_server_info.player_packet_is_sent_to.override_position {
-        // then correct our position
-        unsafe {
-          SELF.position = recieved_server_info.player_packet_is_sent_to.position_override.as_vec2();
-        }
-      }
-
-      unsafe {
-        GAME_STATE = recieved_server_info.game_objects;
-        PLAYERS = Vec::new();
-        for player in recieved_server_info.players {
-          PLAYERS.push(ClientPlayer {
-            health: player.health,
-            position: player.position.as_vec2(),
-            aim_direction: player.aim_direction.as_vec2(),
-            character: Character::SniperGirl, // temporary
-            secondary_charge: 255, // temporary
-            movement_direction: player.movement_direction,
-          });
-        }
-      }
-    }
+    network_listener(listening_socket);
   });
 
   // used to only send information every once in a while instead of each frame
@@ -235,5 +204,39 @@ async fn game() {
     // show fps and await next frame
     draw_text(format!("{} fps", 1.0/get_frame_time()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     next_frame().await;
+  }
+}
+
+fn network_listener(listening_socket: UdpSocket) -> ! {
+  let mut buffer = [0; 2048];
+  loop {
+    // recieve packet
+    let (amt, _src) = listening_socket.recv_from(&mut buffer).expect(":(");
+    let data = &buffer[..amt];
+    let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("awwww");
+    // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+
+    // if we sent an illegal position, and server does a position override:
+    if recieved_server_info.player_packet_is_sent_to.override_position {
+      // then correct our position
+      unsafe {
+        SELF.position = recieved_server_info.player_packet_is_sent_to.position_override.as_vec2();
+      }
+    }
+
+    unsafe {
+      GAME_STATE = recieved_server_info.game_objects;
+      PLAYERS = Vec::new();
+      for player in recieved_server_info.players {
+        PLAYERS.push(ClientPlayer {
+          health: player.health,
+          position: player.position.as_vec2(),
+          aim_direction: player.aim_direction.as_vec2(),
+          character: Character::SniperGirl, // temporary
+          secondary_charge: 255, // temporary
+          movement_direction: player.movement_direction,
+        });
+      }
+    }
   }
 }

@@ -11,7 +11,7 @@ pub static mut VW: f32 = 10.0;
 /// Any client sending packets faster than this will be ignored.
 pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 100.0;
 /// A client sending packets slower than this will be penalised, as this could be a cheating attempt.
-pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 15.0;
+pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 20.0;
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// how many packets are averaged when calculating legality of player position.

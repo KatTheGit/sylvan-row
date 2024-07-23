@@ -193,7 +193,7 @@ fn main() {
     //   println!("");
     // }
 
-    // Only do networking logic at 100Hz
+    // Only do networking logic at some frequency
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
       // reset the counter
       networking_counter = Instant::now();
@@ -245,6 +245,20 @@ fn main() {
   }
 }
 
+/// Loads any map from a properly formatted string: `<object> [posX] [posY]`
+/// 
+/// example:
+/// ```rust
+/// let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
+/// ```
+/// map1.map:
+/// ```
+/// wall 10.0 10.0
+/// wall 20.0 10.0
+/// wall 30.0 10.0
+/// wall 40.0 10.0
+/// wall 50.0 10.0
+/// ```
 fn load_map_from_file(map: &str) -> Vec<GameObject> {
   let mut map_to_return: Vec<GameObject> = Vec::new();
   for line in map.lines() {
