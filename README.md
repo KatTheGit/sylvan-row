@@ -1,16 +1,42 @@
+# Unnamed MOBA
+
+A Multiplayer Online Battle Arena game, focusing on the following values:
+- Being FOSS
+- Being balanced
+- Having brute-force anticheat
+- The client not being very requiring.
+- Having relatively simple but unique characters
+- Having snappy movement (WASD and not click-to-move)
+- Controller compatible
+- Top-down shooter style
+- Hand-drawn but 3D-looking graphics
+
+## README is incomplete ignore everything below this title. Also not accepting contributions as of now, but will gladly in the future.
+
 run both:
 ```
 cargo run --release --bin game server
 ```
 
+# Threads - client
+
+## Thread 1: game
+- handles pretty much only rendering, audio and whatnot.
+
+## Thread 2: network sender and input listener
+- Sends data to server at ludicrous frequency
+- Updates player info with controller inputs, again at ludicrous frequency
+- Runs like at least at 300Hz
+
+## Thread 3: network listener
+- Listens to data recieved from server
+    - Updates player info, game info
+    - handles overrides
+
 # TODO:
 
-- [x] Fix packet inconsistency with average.
-- [x] Fix red/blue team issue
-- [x] Load objects from file (maps) (server)
-    - Sort object list (server)
-- [x] Render object list (client)
-- [ ] Remove all unsafe behaviour (this code can segfault!)
+- [ ] Split into 3 threads
+- [ ] Find safe way for interthread info sharing.
 
 # Server-Client model:
 
