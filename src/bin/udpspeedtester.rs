@@ -9,16 +9,15 @@ fn main() {
   let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
   let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
   let sending_socket = UdpSocket::bind(sending_ip).expect("Could not bind client sender socket");
+  let mut counter: Instant = Instant::now();
   loop {
-
-    let mut counter: Instant = Instant::now();
-
     let client_packet: ClientPacket = ClientPacket {
       position:    Vector2 {x: 0.0, y: 0.0 },
+      movement: Vector2::new(),
       aim_direction: Vector2 { x: 0.0, y: 0.0 },
-      shooting: false,
+      shooting_primary: false,
       shooting_secondary: false,
-      };
+    };
       
     let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
     sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
