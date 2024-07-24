@@ -1,107 +1,194 @@
 use top_down_shooter::common::*;
 use macroquad::prelude::*;
 use gilrs::*;
-use std::net::UdpSocket;
+use std::collections::HashMap;
+use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::*;
 use bincode;
-
-/// stores all game objects. Recieved from server, rendered by client.
-static mut GAME_STATE: Vec<GameObject> = Vec::new();
-static mut PLAYERS: Vec<ClientPlayer> = Vec::new();
-static mut SELF: ClientPlayer = ClientPlayer {
-  health: 100,
-  position: Vec2 { x: 0.0, y: 0.0 },
-  aim_direction: Vec2 { x: 0.0, y: 0.0 },
-  character: Character::SniperGirl,
-  secondary_charge: 0,
-  movement_direction: Vector2 { x: 0.0, y: 0.0 },
-};
+use std::sync::{Arc, Mutex};
+use device_query::{DeviceQuery, DeviceState, Keycode};
+use strum::IntoEnumIterator;
 
 #[macroquad::main("Game")]
 async fn main() {
   game().await;
 }
 
-async fn game() {
+/// In the future this function will be called by main once the user starts the game
+/// through the menu.
+async fn game(/* server_ip: &str */) {
 
-  //temporary
-  let controller_deadzone: f32 = 0.2;
-
-  // temporary
-  let movement_speed: f32 = 100.0;
-
-  // temporary
-  let server_ip = "0.0.0.0";
-  let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
-  let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
-  let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
-  let sending_socket = UdpSocket::bind(sending_ip).expect("Could not bind client sender socket");
-  let listening_socket = UdpSocket::bind(listening_ip).expect("Could not bind client listener socket");
-
-
-  let mut gilrs = Gilrs::new().unwrap();
-  let mut active_gamepad = None;
-
-  // Iterate over all connected gamepads
-  for (_id, gamepad) in gilrs.gamepads() {
-    println!("GAME: {} is {:?}", gamepad.name(), gamepad.power_info());
+  // hashmap (dictionary) that holds the texture for each game object.
+  // later (when doing animations) find way to do this with rust_embed
+  let mut game_object_tetures: HashMap<GameObjectType, Texture2D> = HashMap::new();
+  for game_object_type in GameObjectType::iter() {
+    game_object_tetures.insert(
+      game_object_type,
+      match game_object_type {
+        GameObjectType::Wall             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::UnbreakableWall  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperGirlBullet => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+      }
+    );
   }
 
-  // start the network listener thread
+  // player in a mutex because many threads need to access and modify this information safely.
+  let player: ClientPlayer = ClientPlayer::new();
+  let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
+
+  let player_texture: Texture2D = Texture2D::from_file_with_format(include_bytes!("../../assets/player/player1.png"), None);
+
+  // modified by network listener thread, accessed by input handler and game thread
+  let game_objects: Vec<GameObject> = Vec::new();
+  let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::new(Mutex::new(game_objects));
+  // accessed by game thread, modified by network listener thread.
+  let other_players: Vec<ClientPlayer> = Vec::new();
+  let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::new(Mutex::new(other_players));
+
+  let mut vw: f32 = 10.0;
+  let mut vh: f32 = 10.0;
+
+  // start the input listener and network sender thread.
+  // with a shared mutex of player.
+  let input_listener_network_sender_player = Arc::clone(&player);
   std::thread::spawn(move || {
-    network_listener(listening_socket);
+    input_listener_network_sender(input_listener_network_sender_player);
   });
 
-  // used to only send information every once in a while instead of each frame
-  let mut networking_counter = Instant::now();
+  // start the network listener thread.
+  // give it all necessary references to shared mutexes
+  let network_listener_player = Arc::clone(&player);
+  let network_listener_game_objects = Arc::clone(&game_objects);
+  let network_listener_other_players = Arc::clone(&other_players);
+  std::thread::spawn(move || {
+    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players);
+  });
 
-  // MARK: Game Loop
+  // Main thread
   loop {
-    unsafe {
-      if screen_height() * (16.0/9.0) > screen_width() {
-        VW = screen_width() / 100.0;
-        VH = VW / (16.0/9.0);
-      } else {
-        VH = screen_height() / 100.0;
-        VW = VH * (16.0/9.0);
-      }
+
+    // update vw and vh, used to correctly draw things scale to the screen.
+    // one vh for ecample is 1% of screen height.
+    // it's the same as in css.
+    if screen_height() * (16.0/9.0) > screen_width() {
+      vw = screen_width() / 100.0;
+      vh = vw / (16.0/9.0);
+    } else {
+      vh = screen_height() / 100.0;
+      vw = vh * (16.0/9.0);
     }
 
-    // Examine new events
+    // access and lock all necessary mutexes
+    let player: Arc<Mutex<ClientPlayer>> = Arc::clone(&player);
+    let player: MutexGuard<ClientPlayer> = player.lock().unwrap();
+    let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::clone(&game_objects);
+    let game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
+
+    let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::clone(&other_players);
+    let other_players: MutexGuard<Vec<ClientPlayer>> = other_players.lock().unwrap();
+    
+    let player_copy = player.clone();
+    drop(player);
+
+    let game_objects_copy = game_objects.clone();
+    drop(game_objects);
+
+    let other_players = other_players.clone();
+    drop(other_players);
+
+    clear_background(BLACK);
+    draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, WHITE);
+
+    player_copy.draw(&player_texture, vh);
+    player_copy.draw_crosshair(vh);
+
+    for game_object in game_objects_copy {
+
+      let texture = &game_object_tetures[&game_object.object_type];
+
+      draw_image(texture, game_object.position.x, game_object.position.y, 10.0, 10.0, vh)
+
+    }
+
+    draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
+    next_frame().await;
+  }
+}
+
+/// This thread:
+/// - handles input and updates player info
+/// - handles sending player info to the server
+/// 
+/// The goal is to have a non-fps limited way of giving the server as precise
+/// as possible player info, recieveing inputs independently of potentially
+/// slow monitors.
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>) -> ! {
+
+  // temporary
+  let server_ip: &str = "0.0.0.0";
+  let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
+  // create the socket for sending info.
+  let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
+  let sending_socket: UdpSocket = UdpSocket::bind(sending_ip)
+    .expect("Could not bind client sender socket");
+
+  // initiate gamepad stuff
+  let mut gilrs = Gilrs::new().expect("Gilrs failed");
+  let mut active_gamepad: Option<GamepadId> = None;
+  // temporary
+  let controller_deadzone: f32 = 0.3;
+
+  let mut delta_time_counter: Instant = Instant::now();
+  let mut delta_time: f32 = delta_time_counter.elapsed().as_secs_f32();
+  let desired_delta_time: f32 = 1.0 / 300.0; // run this thread at 300Hz
+
+  loop {
+    // println!("network sender Hz: {}", 1.0 / delta_time);
+
+    // update active gamepad info
     while let Some(Event { id, event: _, time: _ }) = gilrs.next_event() {
-      // println!("CLIENT: {:?} New event from {}: {:?}", time, id, event);
       active_gamepad = Some(id);
     }
-    
-    let mut movement_vector: Vec2 = Vec2::new(0.0, 0.0);
+
+    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
+
+    let mut movement_vector: Vector2 = Vector2::new();
     let mut shooting_primary: bool = false;
     let mut shooting_secondary: bool = false;
 
-    unsafe {
-    // MARK: Input
+    // maybe? temporary
+    let movement_speed: f32 = 100.0;
+
+    // gamepad input handleingVec2 { x: 0.0, y: 0.0 }
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
+
+      // Right stick (aim)
       match gamepad.axis_data(Axis::RightStickX)  {
         Some(axis_data) => {
-          SELF.aim_direction.x = axis_data.value();
+          player.aim_direction.x = axis_data.value();
         } _ => {}
       }
       match gamepad.axis_data(Axis::RightStickY)  {
         Some(axis_data) => {
-          SELF.aim_direction.y = -axis_data.value();
+          player.aim_direction.y = -axis_data.value();
         } _ => {}
       }
+
+      // left stick (movement)
       match gamepad.axis_data(Axis::LeftStickX)  {
         Some(axis_data) => {
+          // crazy rounding shenanigans to round to closest multiple of 0.2
           movement_vector.x = ((axis_data.value() * 5.0).round() as i32) as f32 / 5.0;
         } _ => {}
       }
       match gamepad.axis_data(Axis::LeftStickY)  {
         Some(axis_data) => {
-          // crazy rounding shenanigans to round to closest multiple of 0.2
           movement_vector.y = ((-axis_data.value() * 5.0).round() as i32) as f32 / 5.0;
           // println!("{}", axis_data.value());
         } _ => {}
       }
+
+      // triggers (shooting)
       match gamepad.button_data(Button::RightTrigger2) {
         Some(button_data) => {
           if button_data.value() > 0.2 {
@@ -120,123 +207,108 @@ async fn game() {
           }
         } _ => {}
       }
-    }}
-    // println!("raw: {}", movement_vector);
-    if movement_vector.length() > 1.0 {
+    }
+  
+    let device_state: DeviceState = DeviceState::new();
+
+    let keys: Vec<Keycode> = device_state.get_keys();
+    // println!("Is A pressed? {}", keys.contains(&Keycode::A));
+
+    for key in keys {
+      match key {
+        Keycode::W => movement_vector.y = -1.0,
+        Keycode::A => movement_vector.x = -1.0,
+        Keycode::S => movement_vector.y =  1.0,
+        Keycode::D => movement_vector.x =  1.0,
+        _ => {}
+      }
+    }
+
+    // println!("brefore {}", movement_vector.magnitude());
+
+    // janky but good enough to correct controllers that give weird inputs.
+    // should not happen on normal controllers anyways.
+    // also corrects keyboard input.
+    if movement_vector.magnitude() > 1.0 {
+      // println!("normalizing");
       movement_vector = movement_vector.normalize();
     }
-    // println!("normalised: {}", movement_vector);
-    movement_vector *= movement_speed * get_frame_time();
-    // println!("multiplied: {}", movement_vector);
 
-    println!("{:?} {:?}", shooting_primary, shooting_secondary);
+    // println!("after   {}", movement_vector.magnitude());
+
+    movement_vector.x *= movement_speed * delta_time;
+    movement_vector.y *= movement_speed * delta_time;
+
+    player.position.x += movement_vector.x;
+    player.position.y += movement_vector.y;
+    if player.aim_direction.magnitude() < controller_deadzone {
+      player.aim_direction = Vector2::new();
+    }
+
+    // create the packet to be sent to server.
+    let client_packet: ClientPacket = ClientPacket {
+      position:      Vector2 {x: player.position.x, y: player.position.y },
+      movement:      movement_vector,
+      aim_direction: Vector2 { x: player.aim_direction.x, y: player.aim_direction.y },
+      shooting_primary,
+      shooting_secondary,
+    };
+
+    // drop mutexguard ASAP so other threads can use player ASAP.
+    drop(player);
     
-    unsafe {
-      SELF.position.x += movement_vector.x;
-      SELF.position.y += movement_vector.y;
-      if SELF.aim_direction.length() < controller_deadzone {
-        SELF.aim_direction = Vec2 {x: 0.0, y: 0.0};
-      }
-    }
+    // send data to server
+    let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
+    sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
 
-    clear_background(BLACK);
-    unsafe {
-      // the real background
-      draw_rectangle(0.0, 0.0, 100.0 * VW, 100.0 * VH, WHITE)          
-    }
-
-    unsafe {
-      SELF.draw();
-      SELF.draw_crosshair();
-
-      for player in PLAYERS.clone() {
-        player.draw();
-      }
-      for game_object in GAME_STATE.clone() {
-        match game_object.object_type {
-          GameObjectType::Wall => {
-            let texture = Texture2D::from_file_with_format(
-              include_bytes!("../../assets/gameobjects/wall.png"), None
-            );
-            draw_image(&texture, game_object.position.x, game_object.position.y, 10.0, 10.0)
-          }
-          GameObjectType::UnbreakableWall => {
-            
-          }
-          GameObjectType::SniperGirlBullet => {
-            
-          }
-        }
-      }
-    }
-
-    unsafe {
-      for (index, player) in PLAYERS.clone().iter().enumerate() {
-        PLAYERS[index].position += Vec2 {
-          x: player.movement_direction.x * movement_speed * get_frame_time(),
-          y: player.movement_direction.y * movement_speed * get_frame_time(),
-        };
-      }
-    }
     
-    // unsafe {println!("{:?}", GAME_STATE);}
-    
-    // everything under this block only happens at 100Hz
-    if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
-      // reset counter
-      networking_counter = Instant::now();
-
-      // do all networking logic
-      unsafe {
-        let client_packet: ClientPacket = ClientPacket {
-          position:      Vector2 {x: SELF.position.x, y: SELF.position.y },
-          aim_direction: Vector2 { x: SELF.aim_direction.x, y: SELF.aim_direction.y },
-          shooting: shooting_primary,
-          shooting_secondary,
-        };
-        
-        let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
-        sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
-      }
+    // update delta_time and reset counter.
+    let delta_time_difference: f32 = desired_delta_time - delta_time_counter.elapsed().as_secs_f32();
+    if delta_time_difference > 0.0 {
+      std::thread::sleep(Duration::from_secs_f32(delta_time_difference));
     }
 
-
-    // show fps and await next frame
-    draw_text(format!("{} fps", 1.0/get_frame_time()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
-    next_frame().await;
+    delta_time = delta_time_counter.elapsed().as_secs_f32();
+    delta_time_counter = Instant::now();
   }
 }
 
-fn network_listener(listening_socket: UdpSocket) -> ! {
-  let mut buffer = [0; 2048];
+fn network_listener(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, other_players: Arc<Mutex<Vec<ClientPlayer>>>) -> ! {
+
+  let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
+  let listening_socket: UdpSocket = UdpSocket::bind(listening_ip)
+    .expect("Could not bind client listener socket");
+  let mut buffer: [u8; 2048] = [0; 2048];
   loop {
     // recieve packet
-    let (amt, _src) = listening_socket.recv_from(&mut buffer).expect(":(");
-    let data = &buffer[..amt];
-    let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("awwww");
+    let (amt, _src): (usize, std::net::SocketAddr) = listening_socket.recv_from(&mut buffer)
+      .expect("Listening socket failed to recieve.");
+    let data: &[u8] = &buffer[..amt];
+    let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("Could not deserialise server packet.");
     // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+
+    println!("doing shit");
 
     // if we sent an illegal position, and server does a position override:
     if recieved_server_info.player_packet_is_sent_to.override_position {
-      // then correct our position
-      unsafe {
-        SELF.position = recieved_server_info.player_packet_is_sent_to.position_override.as_vec2();
-      }
+      // gain access to the player mutex
+      let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
+      println!("overriding!");
+      player.position = recieved_server_info.player_packet_is_sent_to.position_override;
+      drop(player); // free mutex guard ASAP for others to access player.
     }
+    
+    let mut game_objects = game_objects.lock().unwrap();
+    // this is dumb but Rust won't let me do otherwise.
+    for game_object in recieved_server_info.game_objects {
+      game_objects.push(game_object);
+    }
+    drop(game_objects);
 
-    unsafe {
-      GAME_STATE = recieved_server_info.game_objects;
-      PLAYERS = Vec::new();
-      for player in recieved_server_info.players {
-        PLAYERS.push(ClientPlayer {
-          health: player.health,
-          position: player.position.as_vec2(),
-          aim_direction: player.aim_direction.as_vec2(),
-          character: Character::SniperGirl, // temporary
-          secondary_charge: 255, // temporary
-          movement_direction: player.movement_direction,
-        });
-      }
+    let mut other_players = other_players.lock().unwrap();
+    for player in recieved_server_info.players {
+      other_players.push(player);
     }
+    drop(other_players);
   }
 }
