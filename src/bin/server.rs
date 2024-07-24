@@ -53,7 +53,7 @@ fn main() {
             }
 
             // if yes, update player info
-            PLAYERS[index].shooting = recieved_player_info.shooting;
+            PLAYERS[index].shooting = recieved_player_info.shooting_primary;
             PLAYERS[index].shooting_secondary = recieved_player_info.shooting_secondary;
 
             // check if movement is legal
@@ -98,7 +98,6 @@ fn main() {
               // reset position
               PLAYERS[index].had_illegal_position = true;
               PLAYERS[index].position = PLAYERS[index].position_before_checks;
-
             }
 
             //     // OLD LOGIC (fails with inconsistent packet times)
@@ -201,17 +200,19 @@ fn main() {
       unsafe {
         for (index, _player) in PLAYERS.clone().iter().enumerate() {
 
-          let mut other_players: Vec<ServerPlayerPacket> = Vec::new();
+          let mut other_players: Vec<ClientPlayer> = Vec::new();
           for (other_player_index, _player) in PLAYERS.clone().iter().enumerate() {
             if other_player_index != index {
-              other_players.push(ServerPlayerPacket {
+              other_players.push(ClientPlayer {
                 health: PLAYERS[other_player_index].health,
                 position: PLAYERS[other_player_index].position,
                 secondary_charge: PLAYERS[other_player_index].secondary_charge,
                 aim_direction: PLAYERS[other_player_index].aim_direction,
                 movement_direction: PLAYERS[other_player_index].move_direction,
-                shooting: PLAYERS[index].shooting,
+                shooting_primary: PLAYERS[index].shooting,
                 shooting_secondary: PLAYERS[index].shooting_secondary,
+                team: PLAYERS[index].team,
+                character: Character::SniperGirl,
               })
             }
           }
@@ -221,11 +222,14 @@ fn main() {
             player_packet_is_sent_to: ServerRecievingPlayerPacket {
               health: PLAYERS[index].health,
               override_position: PLAYERS[index].had_illegal_position,
-              position_override: PLAYERS[index].position,
+              position_override: PLAYERS[index].position_before_checks,
+              shooting_primary: PLAYERS[index].shooting,
+              shooting_secondary: PLAYERS[index].shooting_secondary,
             },
             players: other_players,
             game_objects: game_objects.clone(),
           };
+          PLAYERS[index].had_illegal_position = false;
           
           let mut player_ip = PLAYERS[index].ip.clone();
           let split_player_ip: Vec<&str> = player_ip.split(":").collect();
@@ -235,7 +239,7 @@ fn main() {
           // println!("PACKET: {:?}", server_packet);
           let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
           sending_socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
-          PLAYERS[index].had_illegal_position = false; // reset since we corrected the error.
+          // PLAYERS[index].had_illegal_position = false; // reset since we corrected the error.
         }
       }
     }
