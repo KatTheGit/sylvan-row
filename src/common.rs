@@ -185,11 +185,11 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32) 
 
 /// same as draw_image but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.
-pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, position: Vector2) -> () {
+pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, center_position: Vector2) -> () {
 
   // draw relative to position and centered.
-  let relative_position_x = position.x - x + w / 2.0;
-  let relative_position_y = position.y - y + h / 2.0;
+  let relative_position_x = center_position.x - x + w / 2.0;
+  let relative_position_y = center_position.y - y + h / 2.0;
 
   draw_image(texture, relative_position_x, relative_position_y, w, h, vh);
 }
