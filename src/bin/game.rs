@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use gilrs::*;
 use std::collections::HashMap;
 use std::{net::UdpSocket, sync::MutexGuard};
-use std::time::*;
+use std::time::{Instant, Duration};
 use bincode;
 use std::sync::{Arc, Mutex};
 use device_query::{DeviceQuery, DeviceState, Keycode};
@@ -93,7 +93,7 @@ async fn game(/* server_ip: &str */) {
     let game_objects_copy = game_objects.clone();
     drop(game_objects);
 
-    let other_players = other_players.clone();
+    let other_players_copy = other_players.clone();
     drop(other_players);
 
     clear_background(BLACK);
@@ -299,7 +299,12 @@ fn network_listener(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Ve
     }
     
     let mut game_objects = game_objects.lock().unwrap();
-    // this is dumb but Rust won't let me do otherwise.
+    // these for loops are so dumb but Rust won't let me do otherwise.
+    // empty game_objects
+    for _ in 0..game_objects.len() {
+      game_objects.remove(0);
+    }
+    // repopulate it with new info
     for game_object in recieved_server_info.game_objects {
       game_objects.push(game_object);
     }
