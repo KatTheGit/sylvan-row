@@ -4,7 +4,7 @@ A Multiplayer Online Battle Arena game, focusing on the following values:
 - Being FOSS
 - Being balanced
 - Having brute-force anticheat
-- The client not being very requiring.
+- The client not being very demanding.
 - Having relatively simple but unique characters
 - Having snappy movement (WASD and not click-to-move)
 - Controller compatible
