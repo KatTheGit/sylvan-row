@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use strum::IntoEnumIterator;
 
+/// In the future this function will host the game menu. As of now it just starts the game unconditoinally.
 #[macroquad::main("Game")]
 async fn main() {
   game().await;
@@ -32,10 +33,16 @@ async fn game(/* server_ip: &str */) {
     );
   }
 
+  // since only the main thread is allowed to read mouse position using macroquad,
+  // main thread will have to modify it, and input thread will read it.
+  let mouse_position: Vec2 = Vec2::new(0.0, 0.0);
+  let mouse_position: Arc<Mutex<Vec2>> = Arc::new(Mutex::new(mouse_position));
+
   // player in a mutex because many threads need to access and modify this information safely.
   let player: ClientPlayer = ClientPlayer::new();
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
+  // temporary
   let player_texture: Texture2D = Texture2D::from_file_with_format(include_bytes!("../../assets/player/player1.png"), None);
 
   // modified by network listener thread, accessed by input handler and game thread
@@ -45,14 +52,16 @@ async fn game(/* server_ip: &str */) {
   let other_players: Vec<ClientPlayer> = Vec::new();
   let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::new(Mutex::new(other_players));
 
-  let mut vw: f32 = 10.0;
+  // express 1% of cropped screen width and height respectively.
+  let mut vw: f32 = 10.0; // init with random value
   let mut vh: f32 = 10.0;
 
   // start the input listener and network sender thread.
-  // with a shared mutex of player.
-  let input_listener_network_sender_player = Arc::clone(&player);
+  // give it all necessary references to shared mutexes
+  let input_thread_player = Arc::clone(&player);
+  let input_thread_mouse_position = Arc::clone(&mouse_position);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_listener_network_sender_player);
+    input_listener_network_sender(input_thread_player, input_thread_mouse_position);
   });
 
   // start the network listener thread.
@@ -68,7 +77,7 @@ async fn game(/* server_ip: &str */) {
   loop {
 
     // update vw and vh, used to correctly draw things scale to the screen.
-    // one vh for ecample is 1% of screen height.
+    // one vh for example is 1% of screen height.
     // it's the same as in css.
     if screen_height() * (16.0/9.0) > screen_width() {
       vw = screen_width() / 100.0;
@@ -78,15 +87,28 @@ async fn game(/* server_ip: &str */) {
       vw = vh * (16.0/9.0);
     }
 
+    // update mouse position
+    let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
+    let mut mouse_position: MutexGuard<Vec2> = mouse_position.lock().unwrap();
+    // update mouse position for the input thread to handle.
+    // and translate it from screen coordinates to the same coordinates the player uses (world coordinates)
+    // with the below calculation:
+    //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related
+    //                        conversion.                           coords     ratio       to cropping.
+    //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.
+    mouse_position.x = ((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width();
+    mouse_position.y = ((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height();
+    println!("{:?}", mouse_position);
+    drop(mouse_position);
+
     // access and lock all necessary mutexes
     let player: Arc<Mutex<ClientPlayer>> = Arc::clone(&player);
     let player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::clone(&game_objects);
     let game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
-
     let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::clone(&other_players);
     let other_players: MutexGuard<Vec<ClientPlayer>> = other_players.lock().unwrap();
-    
+
     let player_copy = player.clone();
     drop(player);
 
@@ -99,15 +121,14 @@ async fn game(/* server_ip: &str */) {
     clear_background(BLACK);
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, WHITE);
 
+    // draw player and crosshair (aim laser)
     player_copy.draw(&player_texture, vh);
     player_copy.draw_crosshair(vh);
 
+    // draw all gameobjects
     for game_object in game_objects_copy {
-
       let texture = &game_object_tetures[&game_object.object_type];
-
       draw_image(texture, game_object.position.x, game_object.position.y, 10.0, 10.0, vh)
-
     }
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
@@ -122,7 +143,7 @@ async fn game(/* server_ip: &str */) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>) -> ! {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>) -> ! {
 
   // temporary
   let server_ip: &str = "0.0.0.0";
@@ -142,6 +163,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>) -> ! {
   let mut delta_time: f32 = delta_time_counter.elapsed().as_secs_f32();
   let desired_delta_time: f32 = 1.0 / 300.0; // run this thread at 300Hz
 
+  // Whether in keyboard or controller mode.
+  // Ignore mouse pos in controller mode for example.
+  let mut keyboard_mode: bool = true;
+
   loop {
     // println!("network sender Hz: {}", 1.0 / delta_time);
 
@@ -159,8 +184,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>) -> ! {
     // maybe? temporary
     let movement_speed: f32 = 100.0;
 
-    // gamepad input handleingVec2 { x: 0.0, y: 0.0 }
+    // gamepad input handling
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
+
+      keyboard_mode = false;
 
       // Right stick (aim)
       match gamepad.axis_data(Axis::RightStickX)  {
@@ -208,23 +235,37 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>) -> ! {
         } _ => {}
       }
     }
-  
+
+    // This solution is vile because it will take input even if the window
+    // is not active. If you ask me that's funny as shit. It also allows
+    // for input precision beyond framerate.
     let device_state: DeviceState = DeviceState::new();
-
     let keys: Vec<Keycode> = device_state.get_keys();
-    // println!("Is A pressed? {}", keys.contains(&Keycode::A));
-
+    if !keys.is_empty() {
+      movement_vector = Vector2::new();
+      keyboard_mode = true; // since we used the keyboard
+    }
     for key in keys {
       match key {
-        Keycode::W => movement_vector.y = -1.0,
-        Keycode::A => movement_vector.x = -1.0,
-        Keycode::S => movement_vector.y =  1.0,
-        Keycode::D => movement_vector.x =  1.0,
+        Keycode::W => movement_vector.y += -1.0,
+        Keycode::A => movement_vector.x += -1.0,
+        Keycode::S => movement_vector.y +=  1.0,
+        Keycode::D => movement_vector.x +=  1.0,
         _ => {}
       }
     }
 
-    // println!("brefore {}", movement_vector.magnitude());
+    if keyboard_mode { 
+      let mouse_position = Arc::clone(&mouse_position);
+      let mouse_position = mouse_position.lock().unwrap();
+      let player_position = player.position;
+      let mut aim_direction = Vector2::new();
+      aim_direction.x = mouse_position.x - player_position.x;
+      aim_direction.y = mouse_position.y - player_position.y;
+      drop(mouse_position);
+      aim_direction = aim_direction.normalize();
+      player.aim_direction = aim_direction;
+    }
 
     // janky but good enough to correct controllers that give weird inputs.
     // should not happen on normal controllers anyways.
@@ -233,8 +274,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>) -> ! {
       // println!("normalizing");
       movement_vector = movement_vector.normalize();
     }
-
-    // println!("after   {}", movement_vector.magnitude());
 
     movement_vector.x *= movement_speed * delta_time;
     movement_vector.y *= movement_speed * delta_time;
@@ -273,7 +312,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>) -> ! {
   }
 }
 
-fn network_listener(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, other_players: Arc<Mutex<Vec<ClientPlayer>>>) -> ! {
+fn network_listener(
+  player: Arc<Mutex<ClientPlayer>>,
+  game_objects: Arc<Mutex<Vec<GameObject>>>,
+  other_players: Arc<Mutex<Vec<ClientPlayer>>>) -> ! {
 
   let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
   let listening_socket: UdpSocket = UdpSocket::bind(listening_ip)
@@ -287,27 +329,16 @@ fn network_listener(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Ve
     let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("Could not deserialise server packet.");
     // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
 
-    println!("doing shit");
-
     // if we sent an illegal position, and server does a position override:
     if recieved_server_info.player_packet_is_sent_to.override_position {
       // gain access to the player mutex
       let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
-      println!("overriding!");
       player.position = recieved_server_info.player_packet_is_sent_to.position_override;
       drop(player); // free mutex guard ASAP for others to access player.
     }
     
     let mut game_objects = game_objects.lock().unwrap();
-    // these for loops are so dumb but Rust won't let me do otherwise.
-    // empty game_objects
-    for _ in 0..game_objects.len() {
-      game_objects.remove(0);
-    }
-    // repopulate it with new info
-    for game_object in recieved_server_info.game_objects {
-      game_objects.push(game_object);
-    }
+    *game_objects = recieved_server_info.game_objects;
     drop(game_objects);
 
     let mut other_players = other_players.lock().unwrap();
