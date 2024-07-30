@@ -1,0 +1,14 @@
+
+health = 255
+
+speed = 100.0
+
+primary_damage = 12
+primary_heal = 0
+primary_cooldown = 0.5
+
+secondary_damage = 0
+secondary_heal = 0
+secondary_hit_charge = 10
+secondary_heal_charge = 0 
+secondary_passive_charge = 0
