@@ -9,6 +9,7 @@ device_query = "2.1.0"
 gilrs = "0.10.7"
 macroquad = "0.4.8"
 rust-embed = "8.5.0"
+rusty-pkl = "0.1.2"
 serde = { version = "1.0.204", features = ["derive"] }
 strum = "0.26.3"
 strum_macros = "0.26.4"
