@@ -2,8 +2,10 @@
 /// Utility functions too.
 
 use macroquad::prelude::*;
-use std::time::Instant;
+use rusty_pkl::*;
+use std::collections::HashMap;
 use strum_macros::EnumIter;
+use strum::IntoEnumIterator;
 
 /// Any client sending packets faster than this will be ignored.
 pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 1000000.0;
@@ -20,9 +22,77 @@ pub const CLIENT_LISTEN_PORT: u32 = 25567;
 pub const SERVER_SEND_PORT:   u32 = 25568;
 pub const SERVER_LISTEN_PORT: u32 = 25569;
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Character {
   SniperGirl,
+}
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+pub struct CharacterProperties {
+  pub health: u8,
+
+  pub speed: f32,
+
+  pub primary_damage:   u8,
+  pub primary_heal:     u8,
+  pub primary_cooldown: f32,
+
+  pub secondary_damage:         u8,
+  pub secondary_heal:           u8,
+  pub secondary_hit_charge:     u8,
+  pub secondary_heal_charge:    u8,
+  pub secondary_passive_charge: u8,
+}
+
+pub fn load_characters() -> HashMap<Character, CharacterProperties> {
+  let mut characters: HashMap<Character, CharacterProperties> = HashMap::new();
+  for character in Character::iter() {
+    let character_properties: CharacterProperties = match character {
+      Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl"))
+    };
+
+    characters.insert(character, character_properties);
+  }
+  return characters;
+}
+impl CharacterProperties {
+  /// Create a character properties struct from a given pkl string.
+  pub fn from_pkl(pkl_data: &str) -> CharacterProperties {
+    let pkl: PklValue = parse_pkl_string(pkl_data).expect("could not parse pkl");
+    return CharacterProperties {
+      health:                   pkl_u8( find_parameter(&pkl, "health").unwrap()),
+      speed:                    pkl_f32(find_parameter(&pkl, "speed").unwrap()),
+      primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage").unwrap()),
+      primary_heal:             pkl_u8( find_parameter(&pkl, "primary_heal").unwrap()),
+      primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown").unwrap()),
+      secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage").unwrap()),
+      secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal").unwrap()),
+      secondary_hit_charge:     pkl_u8( find_parameter(&pkl, "secondary_hit_charge").unwrap()),
+      secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge").unwrap()),
+      secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge").unwrap()),
+    }
+  }
+}
+
+pub fn pkl_u8(pkl_value: PklValue) -> u8 {
+  return match pkl_value {
+    PklValue::Integer(value) => value as u8,
+    _ => panic!("Pkl value parser could not parse that")
+  }
+}
+pub fn pkl_f32(pkl_value: PklValue) -> f32 {
+  return match pkl_value {
+    PklValue::Float(value) => value as f32,
+    _ => panic!("Pkl value parser could not parse that")
+  }
+}
+
+pub fn parse_pkl_string(pkl_string: &str) -> Result<PklValue, String> {
+  let content = pkl_string;
+  let mut lines = content.lines();
+
+  let root_object = parse_object(&mut lines)?;
+
+  Ok(root_object)
 }
 
 /// Information held by client about self and other players.
@@ -77,26 +147,6 @@ pub struct ClientPacket {
   pub shooting_primary:   bool,
   pub shooting_secondary: bool,
 }
-
-/// information held by server.
-#[derive(Debug, Clone)]
-pub struct ServerPlayer {
-  pub ip:                            String,
-  pub team:                          Team,
-  pub health:                        u8,
-  pub position:                      Vector2,
-  pub shooting:                      bool,
-  pub aim_direction:                 Vector2,
-  pub move_direction:                Vector2,
-  pub last_update_time:              Instant,
-  pub secondary_charge:              u8,
-  pub shooting_secondary:            bool,
-  pub had_illegal_position:          bool,
-  pub traveled_distance:             f32,
-  pub packet_average_counter:        u8,
-  pub position_before_checks:        Vector2,
-  pub time_at_beginning_of_average:  Instant,
-}
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub enum Team {
   Red = 0,
@@ -125,6 +175,7 @@ pub struct ServerPacket {
 pub struct GameObject {
   pub object_type: GameObjectType,
   pub position: Vector2,
+  pub direction: Vector2,
 }
 /// enumerates all possible gameobjects. Their effects are then handled by the server.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Hash, Eq)]
@@ -135,7 +186,6 @@ pub enum GameObjectType {
 }
 
 // utility
-
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 pub struct Vector2 {
   pub x: f32,

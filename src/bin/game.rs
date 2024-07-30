@@ -98,7 +98,6 @@ async fn game(/* server_ip: &str */) {
     //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.
     mouse_position.x = ((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width();
     mouse_position.y = ((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height();
-    println!("{:?}", mouse_position);
     drop(mouse_position);
 
     // access and lock all necessary mutexes
