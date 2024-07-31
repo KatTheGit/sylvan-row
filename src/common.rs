@@ -6,11 +6,12 @@ use rusty_pkl::*;
 use std::collections::HashMap;
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
+use std::time::Instant;
 
 /// Any client sending packets faster than this will be ignored.
-pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 1000000.0;
+pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 300.0;
 /// A client sending packets slower than this will be penalised, as this could be a cheating attempt.
-pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 20.0;
+pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 250.0;
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// how many packets are averaged when calculating legality of player position.
@@ -146,6 +147,7 @@ pub struct ClientPacket {
   pub aim_direction:      Vector2,
   pub shooting_primary:   bool,
   pub shooting_secondary: bool,
+  pub packet_interval:    f32,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub enum Team {

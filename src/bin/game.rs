@@ -124,6 +124,10 @@ async fn game(/* server_ip: &str */) {
     player_copy.draw(&player_texture, vh);
     player_copy.draw_crosshair(vh);
 
+    for player in other_players_copy {
+      player.draw(&player_texture /* <-- temporary */, vh);
+    }
+
     // draw all gameobjects
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
@@ -181,7 +185,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mut shooting_secondary: bool = false;
 
     // maybe? temporary
-    let movement_speed: f32 = 100.0;
+    let movement_speed: f32 = 120.0;
+
+    println!("sender Hz: {}", 1.0 / delta_time);
+
 
     // gamepad input handling
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
@@ -274,6 +281,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       movement_vector = movement_vector.normalize();
     }
 
+    // expresses the player's movement without the multiplication
+    // by delta time and speed. Sent to the server.
+    let movement_vector_raw: Vector2 = movement_vector;
+
     movement_vector.x *= movement_speed * delta_time;
     movement_vector.y *= movement_speed * delta_time;
 
@@ -286,10 +297,11 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {
       position:      Vector2 {x: player.position.x, y: player.position.y },
-      movement:      movement_vector,
+      movement:      movement_vector_raw,
       aim_direction: Vector2 { x: player.aim_direction.x, y: player.aim_direction.y },
       shooting_primary,
       shooting_secondary,
+      packet_interval: delta_time,
     };
 
     // drop mutexguard ASAP so other threads can use player ASAP.
