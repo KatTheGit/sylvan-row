@@ -121,17 +121,17 @@ async fn game(/* server_ip: &str */) {
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, WHITE);
 
     // draw player and crosshair (aim laser)
-    player_copy.draw(&player_texture, vh);
+    player_copy.draw(&player_texture, vh, player_copy.position);
     player_copy.draw_crosshair(vh);
 
     for player in other_players_copy {
-      player.draw(&player_texture /* <-- temporary */, vh);
+      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position);
     }
 
     // draw all gameobjects
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
-      draw_image(texture, game_object.position.x, game_object.position.y, 10.0, 10.0, vh)
+      draw_image_relative(texture, game_object.position.x, game_object.position.y, 10.0, 10.0, vh, player_copy.position);
     }
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
@@ -185,9 +185,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mut shooting_secondary: bool = false;
 
     // maybe? temporary
-    let movement_speed: f32 = 120.0;
+    let movement_speed: f32 = 100.0;
 
-    println!("sender Hz: {}", 1.0 / delta_time);
+    // println!("sender Hz: {}", 1.0 / delta_time);
 
 
     // gamepad input handling
@@ -353,9 +353,7 @@ fn network_listener(
     drop(game_objects);
 
     let mut other_players = other_players.lock().unwrap();
-    for player in recieved_server_info.players {
-      other_players.push(player);
-    }
+    *other_players = recieved_server_info.players;
     drop(other_players);
   }
 }

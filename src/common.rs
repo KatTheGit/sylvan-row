@@ -8,10 +8,10 @@ use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
 use std::time::Instant;
 
-/// Any client sending packets faster than this will be ignored.
+/// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
 pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 300.0;
-/// A client sending packets slower than this will be penalised, as this could be a cheating attempt.
-pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 250.0;
+/// A client sending packets slower than this will be ignored, as this could be a cheating attempt.
+pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 275.0;
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// how many packets are averaged when calculating legality of player position.
@@ -60,6 +60,7 @@ impl CharacterProperties {
   pub fn from_pkl(pkl_data: &str) -> CharacterProperties {
     let pkl: PklValue = parse_pkl_string(pkl_data).expect("could not parse pkl");
     return CharacterProperties {
+                                  // clean this up
       health:                   pkl_u8( find_parameter(&pkl, "health").unwrap()),
       speed:                    pkl_f32(find_parameter(&pkl, "speed").unwrap()),
       primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage").unwrap()),
@@ -112,9 +113,9 @@ pub struct ClientPlayer {
 }
 
 impl ClientPlayer {
-  pub fn draw(&self, texture: &Texture2D, vh: f32) {
+  pub fn draw(&self, texture: &Texture2D, vh: f32, position: Vector2) {
     // TODO: animations
-    draw_image(&texture, self.position.x -7.5, self.position.y - (7.5 * (8.0/5.0)), 15.0, 15.0 * (8.0/5.0), vh);
+    draw_image_relative(&texture, self.position.x -7.5, self.position.y - (7.5 * (8.0/5.0)), 15.0, 15.0 * (8.0/5.0), vh, position);
   }
   pub fn draw_crosshair(&self, vh: f32) {
     draw_line(
@@ -240,8 +241,8 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32) 
 pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, center_position: Vector2) -> () {
 
   // draw relative to position and centered.
-  let relative_position_x = center_position.x - x + w / 2.0;
-  let relative_position_y = center_position.y - y + h / 2.0;
+  let relative_position_x = x - center_position.x + w / 2.0 + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+  let relative_position_y = y - center_position.y + h / 2.0 + 50.0; //+ (vh * 100.0) / 2.0;
 
   draw_image(texture, relative_position_x, relative_position_y, w, h, vh);
 }

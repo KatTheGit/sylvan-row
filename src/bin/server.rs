@@ -54,7 +54,7 @@ fn main() {
         
         // use IP as identifier, check if packet from srent player correlates to our player
         if player.ip == src.ip().to_string() {
-          let time_since_last_packet = 1.0 / recieved_player_info.packet_interval as f64; /* player.last_update_time.elapsed().as_secs_f64(); */
+          let time_since_last_packet = recieved_player_info.packet_interval as f64; /* player.last_update_time.elapsed().as_secs_f64(); */
           if time_since_last_packet < MAX_PACKET_INTERVAL &&
           time_since_last_packet > MIN_PACKET_INTERVAL  {
             // ignore this packet since it's coming in too fast
@@ -84,20 +84,14 @@ fn main() {
             movement_legal = false;
           }
 
-          println!("{}", 1.0 / time_since_last_packet);
-
-
           if movement_legal {
             // do movement.
             player.position = new_position;
             println!("✅");
           } else {
             player.had_illegal_position = true;
-            player.position = new_position;
             println!("❌, {}", vector_distance(new_position, recieved_position));
           }
-          
-          player.last_update_time = Instant::now();
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
           listener_players[player_index] = player;
@@ -106,6 +100,8 @@ fn main() {
       }
 
       // otherwise, add the player
+      // NOTE: In the future this entire lump of code will be gone, the matchmaker will populate
+      // the list of players beforehand.
       if !player_found && (blue_team_player_count + red_team_player_count < max_players) {
         // decide the player's team
         let mut team: Team = Team::Blue;
@@ -119,7 +115,6 @@ fn main() {
         // this data is pretty irrelevant, we're just initialising the player.
         listener_players.push(ServerPlayer {
           ip: src.ip().to_string(),
-          last_update_time: Instant::now(),
           team,
           health: 255,
           position: match team {
@@ -132,14 +127,8 @@ fn main() {
           shooting_secondary: false,
           secondary_charge: 0,
           had_illegal_position: false,
-          packet_average_counter: 0,
-          traveled_distance: 0.0,
-          time_at_beginning_of_average: Instant::now(),
-          position_before_checks: match team {
-            Team::Blue => Vector2 { x: 10.0, y: 10.0 },
-            Team::Red  => Vector2 { x: 90.0, y: 90.0 },
-          },
           character: Character::SniperGirl,
+          last_shot_time: Instant::now(),
         });
       }
       drop(listener_players);
@@ -163,6 +152,9 @@ fn main() {
     let mut main_loop_players = main_loop_players.lock().unwrap();
 
     // do all logic related to players
+    for player_index in 0..main_loop_players.len() {
+
+    }
 
     // Only do networking logic at some frequency
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
@@ -264,18 +256,14 @@ fn load_map_from_file(map: &str) -> Vec<GameObject> {
 pub struct ServerPlayer {
   pub ip:                            String,
   pub team:                          Team,
+  pub character:                     Character,
   pub health:                        u8,
   pub position:                      Vector2,
   pub shooting:                      bool,
+  pub last_shot_time:                Instant,
+  pub shooting_secondary:            bool,
+  pub secondary_charge:              u8,
   pub aim_direction:                 Vector2,
   pub move_direction:                Vector2,
-  pub last_update_time:              Instant,
-  pub secondary_charge:              u8,
-  pub shooting_secondary:            bool,
   pub had_illegal_position:          bool,
-  pub traveled_distance:             f32,
-  pub packet_average_counter:        u8,
-  pub position_before_checks:        Vector2,
-  pub time_at_beginning_of_average:  Instant,
-  pub character:                     Character,
 }
