@@ -6,7 +6,6 @@ use rusty_pkl::*;
 use std::collections::HashMap;
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
-use std::time::Instant;
 
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
 pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 300.0;
@@ -186,19 +185,17 @@ pub struct GameObject {
   pub position: Vector2,
   pub direction: Vector2,
   pub to_be_deleted: bool,
+  pub owner_index: usize,
+  pub hitpoints: u8,
 }
 /// enumerates all possible gameobjects. Their effects are then handled by the server.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Hash, Eq)]
 pub enum GameObjectType {
-  /// u8 = hitpoints
-  Wall(u8),
+  Wall,
   UnbreakableWall,
-  /// usize = index of owner of projectile.
-  SniperGirlBullet(usize),
-  /// usize = index of owner of projectile.
-  HealerGirlPunch(usize),
-  /// usize = index of owner of projectile.
-  ThrowerGuyProjectile(usize),
+  SniperGirlBullet,
+  HealerGirlPunch,
+  ThrowerGuyProjectile,
 }
 
 // utility

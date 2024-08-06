@@ -86,10 +86,10 @@ fn main() {
           if movement_legal {
             // do movement.
             player.position = new_position;
-            println!("✅");
+            // println!("✅");
           } else {
             player.had_illegal_position = true;
-            println!("❌, {}", Vector2::distance(new_position, recieved_position));
+            // println!("❌, {}", Vector2::distance(new_position, recieved_position));
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
@@ -172,10 +172,12 @@ fn main() {
         match main_loop_players[player_index].character {
           Character::SniperGirl => {
             game_objects.push(GameObject {
-              object_type: GameObjectType::SniperGirlBullet(player_index),
+              object_type: GameObjectType::SniperGirlBullet,
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
+              hitpoints: 0,
+              owner_index: player_index,
             }); 
           }
           Character::HealerGirl => {
@@ -189,31 +191,37 @@ fn main() {
     }
 
     // println!("{:?}", game_objects);
-    println!("{}", 1.0 / delta_time);
+    // println!("{}", 1.0 / delta_time);
 
     // Do all logic related to game objects
+
     for game_object_index in 0..game_objects.len() {
       let game_object = game_objects[game_object_index];
       let game_object_type = game_objects[game_object_index].object_type;
       match game_object_type {
-        GameObjectType::SniperGirlBullet(owner_index) => {
+        GameObjectType::SniperGirlBullet => {
+          let owner_index = game_object.owner_index;
           let hit_radius: f32 = 2.0;
           let bullet_speed: f32 = 100.0;
           for player_index in 0..main_loop_players.len() {
             if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
-               owner_index != player_index 
-            {
+            owner_index != player_index {
               if main_loop_players[player_index].health > characters[&Character::SniperGirl].primary_damage {
                 main_loop_players[player_index].health -= characters[&Character::SniperGirl].primary_damage;
               } else {
                 main_loop_players[player_index].health = 0;
               }
+              game_objects[game_object_index].to_be_deleted = true;
+              if main_loop_players[owner_index].secondary_charge < 255 - characters[&Character::SniperGirl].secondary_hit_charge {
+                main_loop_players[owner_index].secondary_charge += characters[&Character::SniperGirl].secondary_hit_charge;
+              } else {
+                main_loop_players[owner_index].secondary_charge = 255;
+              }
             }
           }
           game_objects[game_object_index].position.x += game_object.direction.x * true_delta_time as f32 * bullet_speed;
           game_objects[game_object_index].position.y += game_object.direction.y * true_delta_time as f32 * bullet_speed;
-
-          main_loop_players[owner_index].secondary_charge += characters[&Character::SniperGirl].secondary_hit_charge;
+          println!("{}", main_loop_players[owner_index].secondary_charge);
         }
         _ => {}
       }
@@ -302,13 +310,15 @@ fn load_map_from_file(map: &str) -> Vec<GameObject> {
 
     map_to_return.push(GameObject {
       object_type: match gameobject_type {
-        "wall"            => {GameObjectType::Wall(255)},
+        "wall"            => {GameObjectType::Wall},
         "unbreakablewall" => {GameObjectType::UnbreakableWall},
         _                 => {panic!("Unexpected ojbect in map file.")},
       },
       position: Vector2 { x: pos_x, y: pos_y },
       direction: Vector2::new(),
       to_be_deleted: false,
+      owner_index: 200,
+      hitpoints: 255,
     });
   }
   return map_to_return;

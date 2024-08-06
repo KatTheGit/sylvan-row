@@ -26,11 +26,11 @@ async fn game(/* server_ip: &str */) {
     game_object_tetures.insert(
       game_object_type,
       match game_object_type {
-        GameObjectType::Wall(_)                 => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::UnbreakableWall         => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::SniperGirlBullet(_)     => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HealerGirlPunch(_)      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::ThrowerGuyProjectile(_) => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::Wall                 => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::UnbreakableWall      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperGirlBullet     => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HealerGirlPunch      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::ThrowerGuyProjectile => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
       }
     );
   }
@@ -131,6 +131,8 @@ async fn game(/* server_ip: &str */) {
     for player in other_players_copy {
       player.draw(&player_texture /* <-- temporary */, vh, player_copy.position);
     }
+
+    println!("{}", player_copy.secondary_charge);
 
     // draw all gameobjects
     for game_object in game_objects_copy {
@@ -274,7 +276,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       shooting_secondary = true;
     }
 
-    println!("{} {}", shooting_primary, shooting_secondary);
+    // println!("{} {}", shooting_primary, shooting_secondary);
 
     if keyboard_mode { 
       let mouse_position = Arc::clone(&mouse_position);
