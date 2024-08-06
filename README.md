@@ -30,3 +30,6 @@ Of course all of this will be kept or trashed depending on playtester opinions.
 ## Rendering:
 
 for rendering layers correctly, the client will be sent a pre-sorted list (by the server) of gameobjects to render in that order.
+
+## TODO
+- [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.

@@ -26,6 +26,8 @@ pub const SERVER_LISTEN_PORT: u32 = 25569;
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Character {
   SniperGirl,
+  HealerGirl,
+  ThrowerGuy,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
@@ -48,7 +50,9 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
   let mut characters: HashMap<Character, CharacterProperties> = HashMap::new();
   for character in Character::iter() {
     let character_properties: CharacterProperties = match character {
-      Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl"))
+      Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
+      Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
+      Character::ThrowerGuy => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
     };
 
     characters.insert(character, character_properties);
@@ -117,11 +121,13 @@ impl ClientPlayer {
     // TODO: animations
     draw_image_relative(&texture, self.position.x -7.5, self.position.y - (7.5 * (8.0/5.0)), 15.0, 15.0 * (8.0/5.0), vh, position);
   }
-  pub fn draw_crosshair(&self, vh: f32) {
+  pub fn draw_crosshair(&self, vh: f32, center_position: Vector2) {
+    let relative_position_x = self.position.x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+    let relative_position_y = self.position.y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
     draw_line(
-      self.position.x * vh, self.position.y * vh,
-      (self.aim_direction.normalize().x * 50.0 * vh) + (self.position.x * vh),
-      (self.aim_direction.normalize().y * 50.0 * vh) + (self.position.y * vh),
+      relative_position_x * vh, relative_position_y * vh,
+      (self.aim_direction.normalize().x * 50.0 * vh) + (relative_position_x * vh),
+      (self.aim_direction.normalize().y * 50.0 * vh) + (relative_position_y * vh),
       2.0, Color { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }
     );
   }
@@ -179,13 +185,20 @@ pub struct GameObject {
   pub object_type: GameObjectType,
   pub position: Vector2,
   pub direction: Vector2,
+  pub to_be_deleted: bool,
 }
 /// enumerates all possible gameobjects. Their effects are then handled by the server.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Hash, Eq)]
 pub enum GameObjectType {
-  Wall,
+  /// u8 = hitpoints
+  Wall(u8),
   UnbreakableWall,
-  SniperGirlBullet,
+  /// usize = index of owner of projectile.
+  SniperGirlBullet(usize),
+  /// usize = index of owner of projectile.
+  HealerGirlPunch(usize),
+  /// usize = index of owner of projectile.
+  ThrowerGuyProjectile(usize),
 }
 
 // utility
@@ -203,7 +216,7 @@ impl Vector2 {
     };
   }
   pub fn magnitude(&self) -> f32 {
-    return vector_distance(Vector2 { x: 0.0, y: 0.0 }, *self);
+    return Vector2::distance(Vector2 { x: 0.0, y: 0.0 }, *self);
   }
   pub fn as_vec2(&self) -> Vec2 {
     return Vec2 { x: self.x, y: self.y };
@@ -211,17 +224,20 @@ impl Vector2 {
   pub fn new() -> Vector2 {
     return Vector2 {x: 0.0, y: 0.0};
   }
-}
+  pub fn distance(vec1: Vector2, vec2: Vector2) -> f32 {
+    return f32::sqrt(f32::powi(vec1.x - vec2.x, 2) + f32::powi(vec1.y - vec2.y, 2))
+  }
+  
+  pub fn difference(vec1: Vector2, vec2: Vector2) -> Vector2 {
+    return Vector2 {
+      x: vec2.x - vec1.x,
+      y: vec2.y - vec1.y,
+    };
+  }
 
-pub fn vector_distance(vec1: Vector2, vec2: Vector2) -> f32 {
-  return f32::sqrt(f32::powi(vec1.x - vec2.x, 2) + f32::powi(vec1.y - vec2.y, 2))
-}
-
-pub fn vector_difference(vec1: Vector2, vec2: Vector2) -> Vector2 {
-  return Vector2 {
-    x: vec2.x - vec1.x,
-    y: vec2.y - vec1.y,
-  };
+  pub fn from(vec2: Vec2) -> Vector2 {
+    return Vector2 { x: vec2.x, y: vec2.y };
+  }
 }
 
 /// wrapper function for `draw_texture_ex`, simplifies it.
@@ -241,8 +257,8 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32) 
 pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, center_position: Vector2) -> () {
 
   // draw relative to position and centered.
-  let relative_position_x = x - center_position.x + w / 2.0 + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-  let relative_position_y = y - center_position.y + h / 2.0 + 50.0; //+ (vh * 100.0) / 2.0;
+  let relative_position_x = x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+  let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
 
   draw_image(texture, relative_position_x, relative_position_y, w, h, vh);
 }

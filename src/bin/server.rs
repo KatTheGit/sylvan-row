@@ -8,9 +8,7 @@ use std::{thread, time::*};
 fn main() {
 
   let characters = load_characters();
-  for character in characters.clone() {
-    println!("Loaded Character {:?} with data:\n{:?}\n", character.0, character.1);
-  }
+
 
   let players: Vec<ServerPlayer> = Vec::new();
   let players = Arc::new(Mutex::new(players));
@@ -33,7 +31,6 @@ fn main() {
   // networking thread
   let listener_players = Arc::clone(&players);
   std::thread::spawn(move || {
-    
     loop {
       // recieve packet
       let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
@@ -54,13 +51,15 @@ fn main() {
         
         // use IP as identifier, check if packet from srent player correlates to our player
         if player.ip == src.ip().to_string() {
-          let time_since_last_packet = recieved_player_info.packet_interval as f64; /* player.last_update_time.elapsed().as_secs_f64(); */
+          let time_since_last_packet = recieved_player_info.packet_interval as f64;
           if time_since_last_packet < MAX_PACKET_INTERVAL &&
           time_since_last_packet > MIN_PACKET_INTERVAL  {
             // ignore this packet since it's coming in too fast
             player_found = true;
             break;
           }
+
+          player.aim_direction = recieved_player_info.aim_direction.normalize();
           
           let player_movement_speed: f32 = characters[&player.character].speed;
           // if yes, update player info
@@ -68,7 +67,7 @@ fn main() {
           player.shooting_secondary = recieved_player_info.shooting_secondary;
 
           // check if movement is legal
-          let movement_error_margin = 10.0;
+          let movement_error_margin = 5.0;
           let mut movement_legal = true;
 
           let recieved_position = recieved_player_info.position;
@@ -80,7 +79,7 @@ fn main() {
           new_position.x = previous_position.x + movement.x * player_movement_speed * time_since_last_packet as f32;
           new_position.y = previous_position.y + movement.y * player_movement_speed * time_since_last_packet as f32;
 
-          if vector_distance(new_position, recieved_position) > movement_error_margin {
+          if Vector2::distance(new_position, recieved_position) > movement_error_margin {
             movement_legal = false;
           }
 
@@ -90,7 +89,7 @@ fn main() {
             println!("✅");
           } else {
             player.had_illegal_position = true;
-            println!("❌, {}", vector_distance(new_position, recieved_position));
+            println!("❌, {}", Vector2::distance(new_position, recieved_position));
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
@@ -140,22 +139,85 @@ fn main() {
   let desired_delta_time: f64 = 1.0 / 2000.0; // Hz
   let mut networking_counter: Instant = Instant::now();
   
-  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
+  let mut game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
   println!("Loaded game objects.");
   
 
   // server loop.
+  let characters = load_characters();
   let main_loop_players = Arc::clone(&players);
   loop {
     server_counter = Instant::now();
+
+    let mut true_delta_time: f64 = 0.0;
+    if delta_time > desired_delta_time {
+      true_delta_time = delta_time;
+    } else {
+      true_delta_time = desired_delta_time;
+    }
 
     let mut main_loop_players = main_loop_players.lock().unwrap();
 
     // do all logic related to players
     for player_index in 0..main_loop_players.len() {
+      let shooting = main_loop_players[player_index].shooting;
+      let shooting_secondary = main_loop_players[player_index].shooting_secondary;
+      let last_shot_time = main_loop_players[player_index].last_shot_time;
 
+      let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
+
+      if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
+        main_loop_players[player_index].last_shot_time = Instant::now();
+        // Do primary shooting logic
+        match main_loop_players[player_index].character {
+          Character::SniperGirl => {
+            game_objects.push(GameObject {
+              object_type: GameObjectType::SniperGirlBullet(player_index),
+              position: main_loop_players[player_index].position,
+              direction: main_loop_players[player_index].aim_direction,
+              to_be_deleted: false,
+            }); 
+          }
+          Character::HealerGirl => {
+            
+          }
+          Character::ThrowerGuy => {
+
+          }
+        }
+      }
     }
 
+    // println!("{:?}", game_objects);
+    println!("{}", 1.0 / delta_time);
+
+    // Do all logic related to game objects
+    for game_object_index in 0..game_objects.len() {
+      let game_object = game_objects[game_object_index];
+      let game_object_type = game_objects[game_object_index].object_type;
+      match game_object_type {
+        GameObjectType::SniperGirlBullet(owner_index) => {
+          let hit_radius: f32 = 2.0;
+          let bullet_speed: f32 = 100.0;
+          for player_index in 0..main_loop_players.len() {
+            if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
+               owner_index != player_index 
+            {
+              if main_loop_players[player_index].health > characters[&Character::SniperGirl].primary_damage {
+                main_loop_players[player_index].health -= characters[&Character::SniperGirl].primary_damage;
+              } else {
+                main_loop_players[player_index].health = 0;
+              }
+            }
+          }
+          game_objects[game_object_index].position.x += game_object.direction.x * true_delta_time as f32 * bullet_speed;
+          game_objects[game_object_index].position.y += game_object.direction.y * true_delta_time as f32 * bullet_speed;
+
+          main_loop_players[owner_index].secondary_charge += characters[&Character::SniperGirl].secondary_hit_charge;
+        }
+        _ => {}
+      }
+    }
     // Only do networking logic at some frequency
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
       // reset the counter
@@ -240,12 +302,13 @@ fn load_map_from_file(map: &str) -> Vec<GameObject> {
 
     map_to_return.push(GameObject {
       object_type: match gameobject_type {
-        "wall"            => {GameObjectType::Wall},
+        "wall"            => {GameObjectType::Wall(255)},
         "unbreakablewall" => {GameObjectType::UnbreakableWall},
         _                 => {panic!("Unexpected ojbect in map file.")},
       },
       position: Vector2 { x: pos_x, y: pos_y },
       direction: Vector2::new(),
+      to_be_deleted: false,
     });
   }
   return map_to_return;
