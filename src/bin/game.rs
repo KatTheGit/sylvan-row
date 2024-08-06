@@ -6,7 +6,7 @@ use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration};
 use bincode;
 use std::sync::{Arc, Mutex};
-use device_query::{DeviceQuery, DeviceState, Keycode};
+use device_query::{DeviceQuery, DeviceState, Keycode, MouseState};
 use strum::IntoEnumIterator;
 
 /// In the future this function will host the game menu. As of now it just starts the game unconditoinally.
@@ -26,9 +26,11 @@ async fn game(/* server_ip: &str */) {
     game_object_tetures.insert(
       game_object_type,
       match game_object_type {
-        GameObjectType::Wall             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::UnbreakableWall  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::SniperGirlBullet => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::Wall(_)                 => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::UnbreakableWall         => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperGirlBullet(_)     => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HealerGirlPunch(_)      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::ThrowerGuyProjectile(_) => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
       }
     );
   }
@@ -87,19 +89,6 @@ async fn game(/* server_ip: &str */) {
       vw = vh * (16.0/9.0);
     }
 
-    // update mouse position
-    let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
-    let mut mouse_position: MutexGuard<Vec2> = mouse_position.lock().unwrap();
-    // update mouse position for the input thread to handle.
-    // and translate it from screen coordinates to the same coordinates the player uses (world coordinates)
-    // with the below calculation:
-    //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related
-    //                        conversion.                           coords     ratio       to cropping.
-    //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.
-    mouse_position.x = ((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width();
-    mouse_position.y = ((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height();
-    drop(mouse_position);
-
     // access and lock all necessary mutexes
     let player: Arc<Mutex<ClientPlayer>> = Arc::clone(&player);
     let player: MutexGuard<ClientPlayer> = player.lock().unwrap();
@@ -117,12 +106,27 @@ async fn game(/* server_ip: &str */) {
     let other_players_copy = other_players.clone();
     drop(other_players);
 
+
+
+    // update mouse position
+    let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
+    let mut mouse_position: MutexGuard<Vec2> = mouse_position.lock().unwrap();
+    // update mouse position for the input thread to handle.
+    // This hot garbage WILL be removed once camera is implemented correctly.
+    //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related         center
+    //                        conversion.                           coords     ratio       to cropping.
+    //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.   ,-------'----------,
+    mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0);
+    mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0;
+    drop(mouse_position);
+
+
     clear_background(BLACK);
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, WHITE);
 
     // draw player and crosshair (aim laser)
     player_copy.draw(&player_texture, vh, player_copy.position);
-    player_copy.draw_crosshair(vh);
+    player_copy.draw_crosshair(vh, player_copy.position);
 
     for player in other_players_copy {
       player.draw(&player_texture /* <-- temporary */, vh, player_copy.position);
@@ -247,6 +251,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // for input precision beyond framerate.
     let device_state: DeviceState = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
+    let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
     if !keys.is_empty() {
       movement_vector = Vector2::new();
       keyboard_mode = true; // since we used the keyboard
@@ -260,16 +265,22 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         _ => {}
       }
     }
+    //  LMB
+    if mouse[1] == true {
+      shooting_primary = true;
+    }
+    //  RMB
+    if mouse[3] == true {
+      shooting_secondary = true;
+    }
+
+    println!("{} {}", shooting_primary, shooting_secondary);
 
     if keyboard_mode { 
       let mouse_position = Arc::clone(&mouse_position);
       let mouse_position = mouse_position.lock().unwrap();
-      let player_position = player.position;
-      let mut aim_direction = Vector2::new();
-      aim_direction.x = mouse_position.x - player_position.x;
-      aim_direction.y = mouse_position.y - player_position.y;
+      let aim_direction = Vector2::from(*mouse_position);
       drop(mouse_position);
-      aim_direction = aim_direction.normalize();
       player.aim_direction = aim_direction;
     }
 

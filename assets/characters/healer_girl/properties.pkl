@@ -1,10 +1,10 @@
 health = 255
 
-speed = 100.0
+speed = 120.0
 
-primary_damage = 12
-primary_heal = 0
-primary_cooldown = 0.5
+primary_damage = 0
+primary_heal = 5
+primary_cooldown = 0.3
 
 secondary_damage = 0
 secondary_heal = 0
