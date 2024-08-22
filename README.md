@@ -18,18 +18,25 @@ run both:
 cargo run --release --bin game server
 ```
 
-## Game design and balance rules
-Goal: balance logically/mathematically, and organically later only if needed
-- All characters of the same class must take the exact same amount of time to take down a full-health same-class character when continuously shooting.
-- Secondaries are never direct attacks, and usually will not synergise (directly) with the primary attack.
-- Healers can heal 0-100% at half the kill speed of all other characters.
-- Only healers can have offensive secondaries, charged by healing teammates or passively.
-
-Of course all of this will be kept or trashed depending on playtester opinions.
-
 ## Rendering:
 
 for rendering layers correctly, the client will be sent a pre-sorted list (by the server) of gameobjects to render in that order.
 
 ## TODO
+
+### Immediate
+- [x] Add healing, from attacks
+- [x] Bullets only hit people once
+- [x] Non-piercing bullets need to be deleted once they hit
+- [ ] Bullet hit-radius depends on character
+- [ ] Add healing, passive (to be gamedesigned)
+- [x] Temporary health bar
+- [ ] Collisions with walls
+
+### Irrelevant now, do after playtesting
 - [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
+- [ ] Tie together the game. (Menu, gamemodes, etc)
+- [ ] Improve camera
+- [ ] Animations
+- [ ] Draw sprites
+- [ ] Canvas flipping
