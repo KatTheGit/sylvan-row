@@ -106,13 +106,13 @@ async fn game(/* server_ip: &str */) {
     let other_players_copy = other_players.clone();
     drop(other_players);
 
-
-
     // update mouse position
     let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
     let mut mouse_position: MutexGuard<Vec2> = mouse_position.lock().unwrap();
     // update mouse position for the input thread to handle.
     // This hot garbage WILL be removed once camera is implemented correctly.
+    // but basically what this does is turn the mouse's screen coordinates into game coordinates, the same type
+    // of coordinates the player uses
     //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related         center
     //                        conversion.                           coords     ratio       to cropping.
     //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.   ,-------'----------,
@@ -191,7 +191,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mut shooting_secondary: bool = false;
 
     // maybe? temporary
-    let movement_speed: f32 = 100.0;
+    let movement_speed: f32 = 120.0;
 
     // println!("sender Hz: {}", 1.0 / delta_time);
 

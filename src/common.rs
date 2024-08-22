@@ -34,15 +34,18 @@ pub struct CharacterProperties {
 
   pub speed: f32,
 
-  pub primary_damage:   u8,
-  pub primary_heal:     u8,
-  pub primary_cooldown: f32,
+  pub primary_damage:     u8,
+  pub primary_heal:       u8,
+  pub primary_cooldown:   f32,
+  pub primary_range:      f32,
+  pub primary_shot_speed: f32,
 
   pub secondary_damage:         u8,
   pub secondary_heal:           u8,
   pub secondary_hit_charge:     u8,
   pub secondary_heal_charge:    u8,
   pub secondary_passive_charge: u8,
+  pub secondary_range:          f32,
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
@@ -50,7 +53,7 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
   for character in Character::iter() {
     let character_properties: CharacterProperties = match character {
       Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
-      Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
+      Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/healer_girl/properties.pkl")),
       Character::ThrowerGuy => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
     };
 
@@ -69,11 +72,14 @@ impl CharacterProperties {
       primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage").unwrap()),
       primary_heal:             pkl_u8( find_parameter(&pkl, "primary_heal").unwrap()),
       primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown").unwrap()),
+      primary_range:            pkl_f32(find_parameter(&pkl, "primary_range").unwrap()),
+      primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed").unwrap()),
       secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage").unwrap()),
       secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal").unwrap()),
       secondary_hit_charge:     pkl_u8( find_parameter(&pkl, "secondary_hit_charge").unwrap()),
       secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge").unwrap()),
       secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge").unwrap()),
+      secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range").unwrap()),
     }
   }
 }
@@ -155,7 +161,7 @@ pub struct ClientPacket {
   pub shooting_secondary: bool,
   pub packet_interval:    f32,
 }
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum Team {
   Red = 0,
   Blue = 1,
@@ -187,6 +193,9 @@ pub struct GameObject {
   pub to_be_deleted: bool,
   pub owner_index: usize,
   pub hitpoints: u8,
+  /// Object's left lifetime in seconds.
+  pub lifetime: f32,
+  pub id: u16,
 }
 /// enumerates all possible gameobjects. Their effects are then handled by the server.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Hash, Eq)]
