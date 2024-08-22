@@ -137,8 +137,10 @@ async fn game(/* server_ip: &str */) {
     // draw all gameobjects
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
-      draw_image_relative(texture, game_object.position.x, game_object.position.y, 10.0, 10.0, vh, player_copy.position);
+      draw_image_relative(texture, game_object.position.x-5.0, game_object.position.y-5.0, 10.0, 10.0, vh, player_copy.position);
     }
+
+    draw_line(37.5 * vw, 40.0 * vh, (37.5 + (player_copy.health as f32 / 10.0)) * vw, 40.0 * vh, 1.0*vw, GREEN);
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     next_frame().await;
@@ -353,14 +355,16 @@ fn network_listener(
     let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("Could not deserialise server packet.");
     // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
 
+    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     // if we sent an illegal position, and server does a position override:
     if recieved_server_info.player_packet_is_sent_to.override_position {
       // gain access to the player mutex
-      let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
       player.position = recieved_server_info.player_packet_is_sent_to.position_override;
-      drop(player); // free mutex guard ASAP for others to access player.
     }
+    player.health = recieved_server_info.player_packet_is_sent_to.health;
+    drop(player); // free mutex guard ASAP for others to access player.
     
+
     let mut game_objects = game_objects.lock().unwrap();
     *game_objects = recieved_server_info.game_objects;
     drop(game_objects);

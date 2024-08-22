@@ -1,5 +1,6 @@
 use rand::Rng;
 use top_down_shooter::common::*;
+use core::f32;
 use std::collections::HashMap;
 
 use std::net::UdpSocket;
@@ -128,7 +129,7 @@ fn main() {
           shooting_secondary: false,
           secondary_charge: 0,
           had_illegal_position: false,
-          character: Character::HealerGirl,
+          character: Character::SniperGirl,
           last_shot_time: Instant::now(),
         });
       }
@@ -148,6 +149,7 @@ fn main() {
   // server loop.
   let characters = load_characters();
   let main_loop_players = Arc::clone(&players);
+  let mut bullet_data: HashMap<u16, BulletData> = HashMap::new();
   loop {
     server_counter = Instant::now();
 
@@ -158,7 +160,6 @@ fn main() {
       true_delta_time = desired_delta_time;
     }
 
-    let mut bullet_data: HashMap<u16, BulletData> = HashMap::new();
     
     let mut main_loop_players = main_loop_players.lock().unwrap();
 
@@ -239,6 +240,7 @@ fn main() {
         let id = game_object.id;
         let bullets: Vec<GameObjectType> = vec![GameObjectType::SniperGirlBullet, GameObjectType::HealerGirlPunch];
         if bullets.contains(&game_object.object_type) {
+          println!("removing: {:?}, {}", bullet_data, id);
           bullet_data.remove(&id).expect("Attempted to remove non-bullet");
         }
       }
@@ -295,7 +297,7 @@ fn main() {
         // player.had_illegal_position = false; // reset since we corrected the error.
       }
     }
-    //println!("{:?}", main_loop_players);
+    println!("{:?}", main_loop_players);
     drop(main_loop_players);
     // println!("Server Hz: {}", 1.0 / delta_time);
     delta_time = server_counter.elapsed().as_secs_f64();
@@ -339,7 +341,7 @@ fn load_map_from_file(map: &str) -> Vec<GameObject> {
       to_be_deleted: false,
       owner_index: 200,
       hitpoints: 255,
-      lifetime: 1.0,
+      lifetime: f32::INFINITY,
       id: 0,
     });
   }
@@ -380,7 +382,7 @@ pub fn apply_simple_bullet_logic(
   let character = player.character;
   let character_properties = characters[&character].clone();
   let owner_index = game_object.owner_index;
-  let hit_radius: f32 = 2.0;
+  let hit_radius: f32 = 20.0;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
   for player_index in 0..main_loop_players.len() {
     if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
@@ -424,6 +426,7 @@ pub fn apply_simple_bullet_logic(
 }
 
 /// Contains extra data for bullets specifically.
+#[derive(Debug, Clone)]
 pub struct BulletData {
   pub hit_players: Vec<usize>,
 }

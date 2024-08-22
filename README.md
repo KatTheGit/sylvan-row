@@ -26,10 +26,11 @@ for rendering layers correctly, the client will be sent a pre-sorted list (by th
 
 ### Immediate
 - [x] Add healing, from attacks
-- [ ] Bullets only hit people once
+- [x] Bullets only hit people once
 - [x] Non-piercing bullets need to be deleted once they hit
-- [ ] Add healing, passive (to be designed)
-- [ ] Temporary health bar
+- [ ] Bullet hit-radius depends on character
+- [ ] Add healing, passive (to be gamedesigned)
+- [x] Temporary health bar
 - [ ] Collisions with walls
 
 ### Irrelevant now, do after playtesting
