@@ -6,7 +6,7 @@ A Multiplayer Online Battle Arena game, focusing on the following values:
 - Having brute-force anticheat
 - The client not being very demanding.
 - Having relatively simple but unique characters
-- Having snappy movement (WASD and not click-to-move)
+- Having snappy movement (WASD instead of click-to-move)
 - Controller compatible
 - Top-down shooter style
 - Hand-drawn but 3D-looking graphics
