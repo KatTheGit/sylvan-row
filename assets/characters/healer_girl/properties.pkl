@@ -1,12 +1,13 @@
 health = 255
 
-speed = 120.0
+speed = 60.0
 
 primary_damage = 15
 primary_heal = 30
 primary_cooldown = 0.3
 primary_range = 20.0
 primary_shot_speed = 350.0
+primary_hit_radius = 5.0
 
 secondary_damage = 0
 secondary_heal = 0

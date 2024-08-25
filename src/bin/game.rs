@@ -41,7 +41,9 @@ async fn game(/* server_ip: &str */) {
   let mouse_position: Arc<Mutex<Vec2>> = Arc::new(Mutex::new(mouse_position));
 
   // player in a mutex because many threads need to access and modify this information safely.
-  let player: ClientPlayer = ClientPlayer::new();
+  let mut player: ClientPlayer = ClientPlayer::new();
+  // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
+  player.character = Character::HealerGirl;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   // temporary
@@ -74,6 +76,8 @@ async fn game(/* server_ip: &str */) {
   std::thread::spawn(move || {
     network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players);
   });
+
+  let character_properties: HashMap<Character, CharacterProperties> = load_characters();
 
   // Main thread
   loop {
@@ -126,13 +130,14 @@ async fn game(/* server_ip: &str */) {
 
     // draw player and crosshair (aim laser)
     player_copy.draw(&player_texture, vh, player_copy.position);
-    player_copy.draw_crosshair(vh, player_copy.position);
+    let range = character_properties[&player_copy.character].primary_range;
+    player_copy.draw_crosshair(vh, player_copy.position, range);
 
     for player in other_players_copy {
       player.draw(&player_texture /* <-- temporary */, vh, player_copy.position);
     }
 
-    println!("{}", player_copy.secondary_charge);
+    // println!("{}", player_copy.secondary_charge);
 
     // draw all gameobjects
     for game_object in game_objects_copy {
@@ -140,7 +145,8 @@ async fn game(/* server_ip: &str */) {
       draw_image_relative(texture, game_object.position.x-5.0, game_object.position.y-5.0, 10.0, 10.0, vh, player_copy.position);
     }
 
-    draw_line(37.5 * vw, 40.0 * vh, (37.5 + (player_copy.health as f32 / 10.0)) * vw, 40.0 * vh, 1.0*vw, GREEN);
+    // temporary asf health bar
+    draw_line(43.75 * vw, 40.0 * vh, (43.75 + (player_copy.health as f32 / 20.0)) * vw, 40.0 * vh, 1.0*vw, GREEN);
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     next_frame().await;
@@ -163,6 +169,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
   let sending_socket: UdpSocket = UdpSocket::bind(sending_ip)
     .expect("Could not bind client sender socket");
+
+  let character_properties: HashMap<Character, CharacterProperties> = load_characters();
 
   // initiate gamepad stuff
   let mut gilrs = Gilrs::new().expect("Gilrs failed");
@@ -193,7 +201,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mut shooting_secondary: bool = false;
 
     // maybe? temporary
-    let movement_speed: f32 = 120.0;
+    let movement_speed: f32 = character_properties[&player.character].speed;
 
     // println!("sender Hz: {}", 1.0 / delta_time);
 

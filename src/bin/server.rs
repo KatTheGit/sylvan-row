@@ -174,7 +174,8 @@ fn main() {
       if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
         let mut rng = rand::thread_rng();
         main_loop_players[player_index].last_shot_time = Instant::now();
-        let id = rng.gen_range(1..u16::MAX);
+        let id = 2;
+        //rng.gen_range(1..u16::MAX);
         // Do primary shooting logic
         match main_loop_players[player_index].character {
           Character::SniperGirl => {
@@ -219,10 +220,10 @@ fn main() {
       let game_object_type = game_objects[game_object_index].object_type;
       match game_object_type {
         GameObjectType::SniperGirlBullet => {
-          (main_loop_players, game_objects, bullet_data) = apply_simple_bullet_logic(game_object, main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, false, bullet_data);
+          (main_loop_players, game_objects, bullet_data) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, false, bullet_data);
         }
         GameObjectType::HealerGirlPunch => {
-          (main_loop_players, game_objects, bullet_data) = apply_simple_bullet_logic(game_object, main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, true, bullet_data);
+          (main_loop_players, game_objects, bullet_data) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, true, bullet_data);
         }
         _ => {}
       }
@@ -240,7 +241,6 @@ fn main() {
         let id = game_object.id;
         let bullets: Vec<GameObjectType> = vec![GameObjectType::SniperGirlBullet, GameObjectType::HealerGirlPunch];
         if bullets.contains(&game_object.object_type) {
-          println!("removing: {:?}, {}", bullet_data, id);
           bullet_data.remove(&id).expect("Attempted to remove non-bullet");
         }
       }
@@ -297,7 +297,6 @@ fn main() {
         // player.had_illegal_position = false; // reset since we corrected the error.
       }
     }
-    println!("{:?}", main_loop_players);
     drop(main_loop_players);
     // println!("Server Hz: {}", 1.0 / delta_time);
     delta_time = server_counter.elapsed().as_secs_f64();
@@ -368,7 +367,6 @@ pub struct ServerPlayer {
 /// Applies modifications to players and game objects as a result of
 /// bullet behaviour this frame, for a specific bullet.
 pub fn apply_simple_bullet_logic(
-  game_object: GameObject,
   mut main_loop_players: MutexGuard<Vec<ServerPlayer>>,
   characters: HashMap<Character, CharacterProperties>,
   mut game_objects: Vec<GameObject>,
@@ -377,13 +375,36 @@ pub fn apply_simple_bullet_logic(
   pierceing_shot: bool,
   mut bullet_data: HashMap<u16, BulletData>,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, HashMap<u16, BulletData>) {
-  let game_object = game_objects[game_object_index];
+  let mut game_object = game_objects[game_object_index];
   let player = main_loop_players[game_object.owner_index].clone();
   let character = player.character;
   let character_properties = characters[&character].clone();
   let owner_index = game_object.owner_index;
-  let hit_radius: f32 = 20.0;
+  let hit_radius: f32 = character_properties.primary_hit_radius;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
+  // Calculate collisions with walls
+  let walls: Vec<GameObjectType> = vec![GameObjectType::Wall, GameObjectType::UnbreakableWall];
+  for victim_object_index in 0..game_objects.len() {
+    // if it's a wall
+    if walls.contains(&game_objects[victim_object_index].object_type) {
+      // if it's colliding
+      if Vector2::distance(game_object.position, game_objects[victim_object_index].position) < (5.0 + hit_radius) {
+        // delete the bullet
+        game_objects[game_object_index].to_be_deleted = true;
+        if game_objects[victim_object_index].object_type == GameObjectType::Wall {
+          // damage the wall if it's not unbreakable
+          if game_objects[victim_object_index].hitpoints < character_properties.primary_damage {
+            game_objects[victim_object_index].to_be_deleted = true;
+          } else {
+            game_objects[victim_object_index].hitpoints -= character_properties.primary_damage;
+          }
+        }
+        return (main_loop_players, game_objects, bullet_data); // return early
+      }
+    }
+  }
+
+  // Calculate collisions with players
   for player_index in 0..main_loop_players.len() {
     if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
     owner_index != player_index {

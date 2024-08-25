@@ -1,3 +1,7 @@
+# Game design document (CC BY-NC-ND)
+
+
+
 ## Character balance rules
 Goal: balance logically/mathematically, and organically later only if needed
 - All characters of the same class must take the exact same amount of time to take down a full-health same-class character when continuously shooting.

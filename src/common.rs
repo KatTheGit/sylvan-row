@@ -46,6 +46,7 @@ pub struct CharacterProperties {
   pub secondary_heal_charge:    u8,
   pub secondary_passive_charge: u8,
   pub secondary_range:          f32,
+  pub primary_hit_radius:       f32,
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
@@ -74,6 +75,7 @@ impl CharacterProperties {
       primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown").unwrap()),
       primary_range:            pkl_f32(find_parameter(&pkl, "primary_range").unwrap()),
       primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed").unwrap()),
+      primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius").unwrap()),
       secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage").unwrap()),
       secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal").unwrap()),
       secondary_hit_charge:     pkl_u8( find_parameter(&pkl, "secondary_hit_charge").unwrap()),
@@ -96,13 +98,10 @@ pub fn pkl_f32(pkl_value: PklValue) -> f32 {
     _ => panic!("Pkl value parser could not parse that")
   }
 }
-
 pub fn parse_pkl_string(pkl_string: &str) -> Result<PklValue, String> {
   let content = pkl_string;
   let mut lines = content.lines();
-
   let root_object = parse_object(&mut lines)?;
-
   Ok(root_object)
 }
 
@@ -126,13 +125,13 @@ impl ClientPlayer {
     // TODO: animations
     draw_image_relative(&texture, self.position.x -7.5, self.position.y - (7.5 * (8.0/5.0)), 15.0, 15.0 * (8.0/5.0), vh, position);
   }
-  pub fn draw_crosshair(&self, vh: f32, center_position: Vector2) {
+  pub fn draw_crosshair(&self, vh: f32, center_position: Vector2, range: f32) {
     let relative_position_x = self.position.x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
     let relative_position_y = self.position.y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
     draw_line(
       relative_position_x * vh, relative_position_y * vh,
-      (self.aim_direction.normalize().x * 50.0 * vh) + (relative_position_x * vh),
-      (self.aim_direction.normalize().y * 50.0 * vh) + (relative_position_y * vh),
+      (self.aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
+      (self.aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
       2.0, Color { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }
     );
   }

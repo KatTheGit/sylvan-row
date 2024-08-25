@@ -28,12 +28,13 @@ for rendering layers correctly, the client will be sent a pre-sorted list (by th
 - [x] Add healing, from attacks
 - [x] Bullets only hit people once
 - [x] Non-piercing bullets need to be deleted once they hit
-- [ ] Bullet hit-radius depends on character
-- [ ] Add healing, passive (to be gamedesigned)
+- [x] Bullet hit-radius depends on character
 - [x] Temporary health bar
-- [ ] Collisions with walls
+- [x] Bullet collisions with walls
+- [ ] Player collisions with walls
 
 ### Irrelevant now, do after playtesting
+- [ ] Add healing, passive (to be gamedesigned)
 - [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
 - [ ] Tie together the game. (Menu, gamemodes, etc)
 - [ ] Improve camera
