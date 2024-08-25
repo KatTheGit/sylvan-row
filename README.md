@@ -32,6 +32,7 @@ for rendering layers correctly, the client will be sent a pre-sorted list (by th
 - [x] Temporary health bar
 - [x] Bullet collisions with walls
 - [ ] Player collisions with walls
+- [ ] Fix stupid bullet ID thing
 
 ### Irrelevant now, do after playtesting
 - [ ] Add healing, passive (to be gamedesigned)
