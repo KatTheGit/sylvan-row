@@ -10,19 +10,21 @@ use std::{thread, time::*};
 
 fn main() {
 
+  // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
+  println!("Loaded character properties.");
 
 
   let players: Vec<ServerPlayer> = Vec::new();
   let players = Arc::new(Mutex::new(players));
 
-  // init
+  // initiate all networking sockets
   let server_listen_address = format!("0.0.0.0:{}", SERVER_LISTEN_PORT);
   let server_send_address = format!("0.0.0.0:{}", SERVER_SEND_PORT);
   let listening_socket = UdpSocket::bind(server_listen_address.clone()).expect("Error creating listener UDP socket");
   let sending_socket = UdpSocket::bind(server_send_address).expect("Error creating sender UDP socket");
   let mut buffer = [0; 1024];
-
+  println!("Sockets bound.");
   println!("Listening on: {}", server_listen_address.clone());
 
   let mut red_team_player_count = 0;
@@ -64,11 +66,15 @@ fn main() {
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           
+          // Movement legality calculations
+
           let player_movement_speed: f32 = characters[&player.character].speed;
-          // if yes, update player info
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;
 
+
+          // check if movement is legal
+          
           // check if movement is legal
           let movement_error_margin = 5.0;
           let mut movement_legal = true;
@@ -85,12 +91,13 @@ fn main() {
           if Vector2::distance(new_position, recieved_position) > movement_error_margin {
             movement_legal = false;
           }
-
+          
           if movement_legal {
             // do movement.
             player.position = new_position;
             // println!("✅");
           } else {
+            // Prepare for correction packet
             player.had_illegal_position = true;
             // println!("❌, {}", Vector2::distance(new_position, recieved_position));
           }
@@ -102,10 +109,10 @@ fn main() {
       }
 
       // otherwise, add the player
-      // NOTE: In the future this entire lump of code will be gone, the matchmaker will populate
+      // NOTE: In the future this entire chunk of code will be gone, the matchmaker will populate
       // the list of players beforehand.
       if !player_found && (blue_team_player_count + red_team_player_count < max_players) {
-        // decide the player's team
+        // decide the player's team (alternate for each player)
         let mut team: Team = Team::Blue;
         if blue_team_player_count > red_team_player_count {
           team = Team::Red;
@@ -174,8 +181,7 @@ fn main() {
       if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
         let mut rng = rand::thread_rng();
         main_loop_players[player_index].last_shot_time = Instant::now();
-        let id = 2;
-        //rng.gen_range(1..u16::MAX);
+        let id = rng.gen_range(1..u16::MAX);
         // Do primary shooting logic
         match main_loop_players[player_index].character {
           Character::SniperGirl => {

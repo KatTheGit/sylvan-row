@@ -43,7 +43,7 @@ async fn game(/* server_ip: &str */) {
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
-  player.character = Character::HealerGirl;
+  player.character = Character::SniperGirl;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   // temporary
@@ -64,8 +64,9 @@ async fn game(/* server_ip: &str */) {
   // give it all necessary references to shared mutexes
   let input_thread_player = Arc::clone(&player);
   let input_thread_mouse_position = Arc::clone(&mouse_position);
+  let input_thread_game_objects = Arc::clone(&game_objects);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_mouse_position);
+    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects);
   });
 
   // start the network listener thread.
@@ -160,7 +161,7 @@ async fn game(/* server_ip: &str */) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>) -> ! {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>) -> ! {
 
   // temporary
   let server_ip: &str = "0.0.0.0";
@@ -195,6 +196,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     }
 
     let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
+    let real_game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
+    let game_objects = real_game_objects.clone();
+    drop(real_game_objects);
 
     let mut movement_vector: Vector2 = Vector2::new();
     let mut shooting_primary: bool = false;
@@ -295,6 +299,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       drop(mouse_position);
       player.aim_direction = aim_direction;
     }
+    
+    if player.aim_direction.magnitude() < controller_deadzone {
+      player.aim_direction = Vector2::new();
+    }
 
     // janky but good enough to correct controllers that give weird inputs.
     // should not happen on normal controllers anyways.
@@ -307,15 +315,12 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // expresses the player's movement without the multiplication
     // by delta time and speed. Sent to the server.
     let movement_vector_raw: Vector2 = movement_vector;
-
+    
     movement_vector.x *= movement_speed * delta_time;
     movement_vector.y *= movement_speed * delta_time;
-
+    
     player.position.x += movement_vector.x;
     player.position.y += movement_vector.y;
-    if player.aim_direction.magnitude() < controller_deadzone {
-      player.aim_direction = Vector2::new();
-    }
 
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {

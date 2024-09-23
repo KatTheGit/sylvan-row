@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
 
+pub const TILE_SIZE: f32 = 10.0;
+
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
 pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 300.0;
 /// A client sending packets slower than this will be ignored, as this could be a cheating attempt.
@@ -67,7 +69,6 @@ impl CharacterProperties {
   pub fn from_pkl(pkl_data: &str) -> CharacterProperties {
     let pkl: PklValue = parse_pkl_string(pkl_data).expect("could not parse pkl");
     return CharacterProperties {
-                                  // clean this up
       health:                   pkl_u8( find_parameter(&pkl, "health").unwrap()),
       speed:                    pkl_f32(find_parameter(&pkl, "speed").unwrap()),
       primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage").unwrap()),
@@ -123,7 +124,8 @@ pub struct ClientPlayer {
 impl ClientPlayer {
   pub fn draw(&self, texture: &Texture2D, vh: f32, position: Vector2) {
     // TODO: animations
-    draw_image_relative(&texture, self.position.x -7.5, self.position.y - (7.5 * (8.0/5.0)), 15.0, 15.0 * (8.0/5.0), vh, position);
+    let size: f32 = 12.0;
+    draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, position);
   }
   pub fn draw_crosshair(&self, vh: f32, center_position: Vector2, range: f32) {
     let relative_position_x = self.position.x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
@@ -232,14 +234,12 @@ impl Vector2 {
   pub fn distance(vec1: Vector2, vec2: Vector2) -> f32 {
     return f32::sqrt(f32::powi(vec1.x - vec2.x, 2) + f32::powi(vec1.y - vec2.y, 2))
   }
-  
   pub fn difference(vec1: Vector2, vec2: Vector2) -> Vector2 {
     return Vector2 {
       x: vec2.x - vec1.x,
       y: vec2.y - vec1.y,
     };
   }
-
   pub fn from(vec2: Vec2) -> Vector2 {
     return Vector2 { x: vec2.x, y: vec2.y };
   }
@@ -266,4 +266,19 @@ pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, 
   let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
 
   draw_image(texture, relative_position_x, relative_position_y, w, h, vh);
+}
+
+/// Apply movement taking into account interactions with walls.
+/// Returns the new raw movement vector and the new movement vector.
+pub fn object_aware_movement(
+  current_player_position: Vector2,
+  raw_movement: Vector2,
+  movement: Vector2,
+  game_objects: Vec<GameObject>,
+) -> (Vector2, Vector2) {
+  let mut adjusted_raw_movement = Vector2::new();
+  let mut adjusted_movement = Vector2::new();
+  
+
+  return (adjusted_raw_movement, adjusted_movement);
 }
