@@ -1,26 +1,15 @@
 # Unnamed MOBA
 
-A Multiplayer Online Battle Arena game, focusing on the following values:
-- Being FOSS
-- Being balanced
-- Having brute-force anticheat
-- The client not being very demanding.
-- Having relatively simple but unique characters
-- Having snappy movement (WASD instead of click-to-move)
-- Controller compatible
-- Top-down shooter style, simple twin-stick shooter
+A Multiplayer Online Battle Arena game, focusing on the following:
+- Balanced (no hard-counter interactions)
+- Brute-force anticheat
+- Relatively simple but unique characters
+- Twin-stick shooter style / snappy WASD movement
 - Hand-drawn but 3D-looking graphics
+- Low skill floor, high skill cap (easy to learn, hard to master)
+- Being FOSS
 
 ## README is incomplete ignore everything below this title. Also not accepting contributions as of now, but will gladly in the future.
-
-run both:s
-```
-cargo run --release --bin game server
-```
-
-## Rendering:
-
-for rendering layers correctly, the client will be sent a pre-sorted list (by the server) of gameobjects to render in that order.
 
 ## TODO
 
@@ -32,7 +21,7 @@ for rendering layers correctly, the client will be sent a pre-sorted list (by th
 - [x] Temporary health bar
 - [x] Bullet collisions with walls
 - [ ] Player collisions with walls
-- [ ] Fix stupid bullet ID thingy (or don't it's a 1 in 2^16 chance to crash anyways)
+- [ ] Fix stupid bullet ID thingy (just bloat up the gameobject struct who cares)
 
 ### Irrelevant now, do after playtesting
 - [ ] Add healing, passive (to be gamedesigned)
