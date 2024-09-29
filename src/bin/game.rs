@@ -50,7 +50,7 @@ async fn game(/* server_ip: &str */) {
   let player_texture: Texture2D = Texture2D::from_file_with_format(include_bytes!("../../assets/player/player1.png"), None);
 
   // modified by network listener thread, accessed by input handler and game thread
-  let game_objects: Vec<GameObject> = Vec::new();
+  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
   let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::new(Mutex::new(game_objects));
   // accessed by game thread, modified by network listener thread.
   let other_players: Vec<ClientPlayer> = Vec::new();
@@ -314,13 +314,16 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
 
     // expresses the player's movement without the multiplication
     // by delta time and speed. Sent to the server.
-    let movement_vector_raw: Vector2 = movement_vector;
+    let mut movement_vector_raw: Vector2 = movement_vector;
     
     movement_vector.x *= movement_speed * delta_time;
     movement_vector.y *= movement_speed * delta_time;
-    
+
+    (movement_vector_raw, movement_vector) = object_aware_movement(player.position, movement_vector_raw, movement_vector, game_objects.clone());
     player.position.x += movement_vector.x;
     player.position.y += movement_vector.y;
+
+    println!("{:?}", player.position);
 
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {

@@ -1,3 +1,4 @@
+use bincode::de;
 /// Common functions and structs used by both client and server.
 /// Utility functions too.
 
@@ -268,6 +269,33 @@ pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, 
   draw_image(texture, relative_position_x, relative_position_y, w, h, vh);
 }
 
+pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
+  let mut map_to_return: Vec<GameObject> = Vec::new();
+  for line in map.lines() {
+    let opcodes: Vec<&str> = line.split(" ").collect();
+    let gameobject_type = opcodes[0].to_lowercase();
+    let gameobject_type = gameobject_type.as_str();
+    let pos_x: f32 = opcodes[1].parse().unwrap();
+    let pos_y: f32 = opcodes[2].parse().unwrap();
+
+    map_to_return.push(GameObject {
+      object_type: match gameobject_type {
+        "wall"            => {GameObjectType::Wall},
+        "unbreakablewall" => {GameObjectType::UnbreakableWall},
+        _                 => {panic!("Unexpected ojbect in map file.")},
+      },
+      position: Vector2 { x: pos_x, y: pos_y },
+      direction: Vector2::new(),
+      to_be_deleted: false,
+      owner_index: 200,
+      hitpoints: 255,
+      lifetime: f32::INFINITY,
+      id: 0,
+    });
+  }
+  return map_to_return;
+}
+
 /// Apply movement taking into account interactions with walls.
 /// Returns the new raw movement vector and the new movement vector.
 pub fn object_aware_movement(
@@ -276,9 +304,61 @@ pub fn object_aware_movement(
   movement: Vector2,
   game_objects: Vec<GameObject>,
 ) -> (Vector2, Vector2) {
-  let mut adjusted_raw_movement = Vector2::new();
-  let mut adjusted_movement = Vector2::new();
-  
 
+  let mut adjusted_raw_movement = raw_movement;
+  let mut adjusted_movement = movement;
+  let original_raw_movement_magnitude = raw_movement.magnitude();
+
+  let mut desired_position = current_player_position;
+  desired_position.x += movement.x;
+  desired_position.y += movement.y;
+
+  for game_object in game_objects.clone() {
+    if game_object.object_type == GameObjectType::Wall            ||
+       game_object.object_type == GameObjectType::UnbreakableWall {
+
+      let difference = Vector2::difference(desired_position, game_object.position);
+      if f32::abs(difference.x) <= TILE_SIZE && f32::abs(difference.y) <= TILE_SIZE {
+        println!("ABOUT TO COLLIDE WITH WALL");
+
+        // If colliding with top or bottom of the wall
+        if f32::abs(difference.y) > f32::abs(difference.x) {
+          // adjusted_movement.x = movement.x;
+          // adjusted_movement.y = (game_object.position.y - movement.y.sign() * TILE_SIZE - current_player_position.y);
+          adjusted_movement.y = 0.0;
+        }
+        // If colliding with left or right of the wall
+        else {
+          // adjusted_movement.x = (game_object.position.x - movement.x.sign() * TILE_SIZE - current_player_position.x);
+          // adjusted_movement.y = movement.y;
+          adjusted_movement.x = 0.0;
+        }
+        adjusted_raw_movement = adjusted_movement.normalize();
+        adjusted_raw_movement.x *= original_raw_movement_magnitude;
+        adjusted_raw_movement.y *= original_raw_movement_magnitude;
+      }
+    }
+  }
   return (adjusted_raw_movement, adjusted_movement);
+}
+
+impl BetterSign for f32 {
+  /// Same as signum but returns 0 if the number is 0.
+  fn sign(&self) -> f32 {
+    let mut sign: f32 = 0.0;
+
+    if self > &0.0 {
+      sign = 1.0;
+    }
+
+    if self < &0.0 {
+      sign = -1.0;
+    }
+
+    return sign;
+  }
+}
+
+trait BetterSign {
+  fn sign(&self) -> f32;
 }

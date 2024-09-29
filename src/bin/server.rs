@@ -326,32 +326,6 @@ fn main() {
 /// wall 40.0 10.0
 /// wall 50.0 10.0
 /// ```
-fn load_map_from_file(map: &str) -> Vec<GameObject> {
-  let mut map_to_return: Vec<GameObject> = Vec::new();
-  for line in map.lines() {
-    let opcodes: Vec<&str> = line.split(" ").collect();
-    let gameobject_type = opcodes[0].to_lowercase();
-    let gameobject_type = gameobject_type.as_str();
-    let pos_x: f32 = opcodes[1].parse().unwrap();
-    let pos_y: f32 = opcodes[2].parse().unwrap();
-
-    map_to_return.push(GameObject {
-      object_type: match gameobject_type {
-        "wall"            => {GameObjectType::Wall},
-        "unbreakablewall" => {GameObjectType::UnbreakableWall},
-        _                 => {panic!("Unexpected ojbect in map file.")},
-      },
-      position: Vector2 { x: pos_x, y: pos_y },
-      direction: Vector2::new(),
-      to_be_deleted: false,
-      owner_index: 200,
-      hitpoints: 255,
-      lifetime: f32::INFINITY,
-      id: 0,
-    });
-  }
-  return map_to_return;
-}
 
 /// information held by server about players.
 #[derive(Debug, Clone)]
