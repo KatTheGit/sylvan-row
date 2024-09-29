@@ -40,9 +40,14 @@ fn main() {
       // recieve packet
       let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
-      let recieved_player_info: ClientPacket = bincode::deserialize(data).expect("awwww");
+      let mut recieved_player_info: ClientPacket = bincode::deserialize(data).expect("awwww");
       // println!("SERVER: Received from {}: {:?}", src, recieved_player_info);
-      // temporary
+      
+      // clean all NaNs and infinites
+      recieved_player_info.aim_direction.clean();
+      recieved_player_info.movement.clean();
+      recieved_player_info.position.clean();
+      recieved_player_info.packet_interval.clean();
       
       // update PLAYERS Vector with recieved information.
       let mut listener_players = listener_players.lock().unwrap();
@@ -64,6 +69,8 @@ fn main() {
             break;
           }
 
+          
+
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           
           // Movement legality calculations
@@ -71,9 +78,6 @@ fn main() {
           let player_movement_speed: f32 = characters[&player.character].speed;
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;
-
-
-          // check if movement is legal
           
           // check if movement is legal
           let movement_error_margin = 5.0;
@@ -95,11 +99,11 @@ fn main() {
           if movement_legal {
             // do movement.
             player.position = new_position;
-            // println!("✅");
+            println!("✅");
           } else {
             // Prepare for correction packet
             player.had_illegal_position = true;
-            // println!("❌, {}", Vector2::distance(new_position, recieved_position));
+            println!("❌, {}", Vector2::distance(new_position, recieved_position));
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;

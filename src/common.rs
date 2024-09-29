@@ -193,6 +193,7 @@ pub struct GameObject {
   pub position: Vector2,
   pub direction: Vector2,
   pub to_be_deleted: bool,
+  /// pikmin
   pub owner_index: usize,
   pub hitpoints: u8,
   /// Object's left lifetime in seconds.
@@ -243,6 +244,10 @@ impl Vector2 {
   }
   pub fn from(vec2: Vec2) -> Vector2 {
     return Vector2 { x: vec2.x, y: vec2.y };
+  }
+  pub fn clean(&mut self) {
+    self.x.clean();
+    self.y.clean();
   }
 }
 
@@ -342,7 +347,7 @@ pub fn object_aware_movement(
   return (adjusted_raw_movement, adjusted_movement);
 }
 
-impl BetterSign for f32 {
+impl Extras for f32 {
   /// Same as signum but returns 0 if the number is 0.
   fn sign(&self) -> f32 {
     let mut sign: f32 = 0.0;
@@ -357,8 +362,16 @@ impl BetterSign for f32 {
 
     return sign;
   }
+
+  // If the number is NaN or infinite, set it to 0.
+  fn clean(&mut self) {
+    if self.is_nan() || self.is_infinite() {
+      *self = 0.0;
+    }
+  }
 }
 
-trait BetterSign {
+pub trait Extras {
   fn sign(&self) -> f32;
+  fn clean(&mut self);
 }

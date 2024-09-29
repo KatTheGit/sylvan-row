@@ -323,7 +323,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     player.position.x += movement_vector.x;
     player.position.y += movement_vector.y;
 
-    println!("{:?}", player.position);
+    // println!("{:?}", player.position);
+
+    println!("{:?}", movement_vector);
+    println!("{:?}", movement_vector_raw);
 
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {
