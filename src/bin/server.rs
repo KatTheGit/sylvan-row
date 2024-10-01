@@ -1,4 +1,3 @@
-use rand::Rng;
 use top_down_shooter::common::*;
 use core::f32;
 use std::collections::HashMap;
@@ -23,7 +22,7 @@ fn main() {
   let server_send_address = format!("0.0.0.0:{}", SERVER_SEND_PORT);
   let listening_socket = UdpSocket::bind(server_listen_address.clone()).expect("Error creating listener UDP socket");
   let sending_socket = UdpSocket::bind(server_send_address).expect("Error creating sender UDP socket");
-  let mut buffer = [0; 1024];
+  let mut buffer = [0; 1024]; // The size of this buffer is lowkey kind of low, especially with how big the gameobject struct is.
   println!("Sockets bound.");
   println!("Listening on: {}", server_listen_address.clone());
 
@@ -43,7 +42,7 @@ fn main() {
       let mut recieved_player_info: ClientPacket = bincode::deserialize(data).expect("awwww");
       // println!("SERVER: Received from {}: {:?}", src, recieved_player_info);
       
-      // clean all NaNs and infinites
+      // clean all recieved NaNs and infinites so the server doesnt explode
       recieved_player_info.aim_direction.clean();
       recieved_player_info.movement.clean();
       recieved_player_info.position.clean();
@@ -69,16 +68,13 @@ fn main() {
             break;
           }
 
-          
-
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           
           // Movement legality calculations
-
           let player_movement_speed: f32 = characters[&player.character].speed;
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;
-          
+
           // check if movement is legal
           let movement_error_margin = 5.0;
           let mut movement_legal = true;
@@ -160,7 +156,6 @@ fn main() {
   // server loop.
   let characters = load_characters();
   let main_loop_players = Arc::clone(&players);
-  let mut bullet_data: HashMap<u16, BulletData> = HashMap::new();
   loop {
     server_counter = Instant::now();
 
@@ -183,9 +178,7 @@ fn main() {
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
       if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
-        let mut rng = rand::thread_rng();
         main_loop_players[player_index].last_shot_time = Instant::now();
-        let id = rng.gen_range(1..u16::MAX);
         // Do primary shooting logic
         match main_loop_players[player_index].character {
           Character::SniperGirl => {
@@ -197,7 +190,8 @@ fn main() {
               hitpoints: 0,
               owner_index: player_index,
               lifetime: character.primary_range / character.primary_shot_speed,
-              id,
+              players: Vec::new(),
+              traveled_distance: 0.0,
             });
           }
           Character::HealerGirl => {
@@ -209,14 +203,14 @@ fn main() {
               hitpoints: 0,
               owner_index: player_index,
               lifetime: character.primary_range / character.primary_shot_speed,
-              id,
+              players: Vec::new(),
+              traveled_distance: 0.0,
             });
           }
           Character::ThrowerGuy => {
 
           }
         }
-        bullet_data.insert(id, BulletData { hit_players: Vec::new() });
       }
     }
 
@@ -226,14 +220,13 @@ fn main() {
 
     // Do all logic related to game objects
     for game_object_index in 0..game_objects.len() {
-      let game_object = game_objects[game_object_index];
       let game_object_type = game_objects[game_object_index].object_type;
       match game_object_type {
         GameObjectType::SniperGirlBullet => {
-          (main_loop_players, game_objects, bullet_data) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, false, bullet_data);
+          (main_loop_players, game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, false);
         }
         GameObjectType::HealerGirlPunch => {
-          (main_loop_players, game_objects, bullet_data) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, true, bullet_data);
+          (main_loop_players, game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, true);
         }
         _ => {}
       }
@@ -247,12 +240,6 @@ fn main() {
     for game_object in game_objects {
       if game_object.to_be_deleted == false {
         cleansed_game_objects.push(game_object);
-      } else {
-        let id = game_object.id;
-        let bullets: Vec<GameObjectType> = vec![GameObjectType::SniperGirlBullet, GameObjectType::HealerGirlPunch];
-        if bullets.contains(&game_object.object_type) {
-          bullet_data.remove(&id).expect("Attempted to remove non-bullet");
-        }
       }
     }
 
@@ -357,9 +344,8 @@ pub fn apply_simple_bullet_logic(
   game_object_index: usize,
   true_delta_time: f64,
   pierceing_shot: bool,
-  mut bullet_data: HashMap<u16, BulletData>,
-) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, HashMap<u16, BulletData>) {
-  let mut game_object = game_objects[game_object_index];
+) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>) {
+  let game_object = game_objects[game_object_index].clone();
   let player = main_loop_players[game_object.owner_index].clone();
   let character = player.character;
   let character_properties = characters[&character].clone();
@@ -383,7 +369,7 @@ pub fn apply_simple_bullet_logic(
             game_objects[victim_object_index].hitpoints -= character_properties.primary_damage;
           }
         }
-        return (main_loop_players, game_objects, bullet_data); // return early
+        return (main_loop_players, game_objects); // return early
       }
     }
   }
@@ -393,7 +379,7 @@ pub fn apply_simple_bullet_logic(
     if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
     owner_index != player_index {
 
-      if !(bullet_data.get(&game_object.id).unwrap().hit_players.contains(&player_index)) {
+      if !(game_object.players.contains(&player_index)) {
         // Apply bullet damage
         if main_loop_players[player_index].team != player.team {
           if main_loop_players[player_index].health > character_properties.primary_damage {
@@ -401,7 +387,7 @@ pub fn apply_simple_bullet_logic(
           } else {
             main_loop_players[player_index].health = 0;
           }
-          bullet_data.get_mut(&game_object.id).unwrap().hit_players.push(player_index);
+          game_objects[game_object_index].players.push(player_index);
         }
         // Apply bullet healing, only if in the same team
         if main_loop_players[player_index].team == player.team {
@@ -410,7 +396,7 @@ pub fn apply_simple_bullet_logic(
           } else {
             main_loop_players[player_index].health = 255;
           }
-          bullet_data.get_mut(&game_object.id).unwrap().hit_players.push(player_index);
+          game_objects[game_object_index].players.push(player_index);
         }
         // Apply appropriate secondary charge
         if main_loop_players[owner_index].secondary_charge < 255 - character_properties.secondary_hit_charge {
@@ -427,7 +413,7 @@ pub fn apply_simple_bullet_logic(
   }
   game_objects[game_object_index].position.x += game_object.direction.x * true_delta_time as f32 * bullet_speed;
   game_objects[game_object_index].position.y += game_object.direction.y * true_delta_time as f32 * bullet_speed;
-  return (main_loop_players, game_objects, bullet_data);
+  return (main_loop_players, game_objects);
 }
 
 /// Contains extra data for bullets specifically.

@@ -4,7 +4,7 @@ use bincode::de;
 
 use macroquad::prelude::*;
 use rusty_pkl::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Lines};
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
 
@@ -187,7 +187,8 @@ pub struct ServerPacket {
   pub game_objects: Vec<GameObject>
 }
 /// defines any non-player gameplay element
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
+/// Contains fields that can describe all necessary information for most game objects.
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct GameObject {
   pub object_type: GameObjectType,
   pub position: Vector2,
@@ -198,7 +199,10 @@ pub struct GameObject {
   pub hitpoints: u8,
   /// Object's left lifetime in seconds.
   pub lifetime: f32,
-  pub id: u16,
+  // stuff for bullets for example
+  /// buffer primarily used by bullets to keep track of hit players
+  pub players: Vec<usize>,
+  pub traveled_distance: f32,
 }
 /// enumerates all possible gameobjects. Their effects are then handled by the server.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Hash, Eq)]
@@ -219,6 +223,9 @@ pub struct Vector2 {
 impl Vector2 {
   pub fn normalize(&self) -> Vector2 {
     let magnitude: f32 = self.magnitude();
+    if magnitude == 0.0 {
+      return Vector2 {x: 0.0, y: 0.0};
+    }
     return Vector2 {
       x: self.x / magnitude,
       y: self.y / magnitude,
@@ -295,7 +302,8 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
       owner_index: 200,
       hitpoints: 255,
       lifetime: f32::INFINITY,
-      id: 0,
+      players: Vec::new(),
+      traveled_distance: 0.0,
     });
   }
   return map_to_return;
@@ -321,27 +329,21 @@ pub fn object_aware_movement(
   for game_object in game_objects.clone() {
     if game_object.object_type == GameObjectType::Wall            ||
        game_object.object_type == GameObjectType::UnbreakableWall {
-
       let difference = Vector2::difference(desired_position, game_object.position);
-      if f32::abs(difference.x) <= TILE_SIZE && f32::abs(difference.y) <= TILE_SIZE {
-        println!("ABOUT TO COLLIDE WITH WALL");
 
-        // If colliding with top or bottom of the wall
-        if f32::abs(difference.y) > f32::abs(difference.x) {
-          // adjusted_movement.x = movement.x;
-          // adjusted_movement.y = (game_object.position.y - movement.y.sign() * TILE_SIZE - current_player_position.y);
-          adjusted_movement.y = 0.0;
-        }
-        // If colliding with left or right of the wall
-        else {
-          // adjusted_movement.x = (game_object.position.x - movement.x.sign() * TILE_SIZE - current_player_position.x);
-          // adjusted_movement.y = movement.y;
-          adjusted_movement.x = 0.0;
-        }
-        adjusted_raw_movement = adjusted_movement.normalize();
-        adjusted_raw_movement.x *= original_raw_movement_magnitude;
-        adjusted_raw_movement.y *= original_raw_movement_magnitude;
+      // X axis collision prediction
+      if f32::abs(difference.x) <= TILE_SIZE && f32::abs(current_player_position.y - game_object.position.y) < TILE_SIZE {
+        adjusted_movement.x = 0.0;
       }
+
+      // Y axis
+      if f32::abs(difference.y) <= TILE_SIZE && f32::abs(current_player_position.x - game_object.position.x) < TILE_SIZE {
+        adjusted_movement.y = 0.0;
+      }
+
+      adjusted_raw_movement = adjusted_movement.normalize();
+      adjusted_raw_movement.x *= original_raw_movement_magnitude;
+      adjusted_raw_movement.y *= original_raw_movement_magnitude;
     }
   }
   return (adjusted_raw_movement, adjusted_movement);
@@ -363,7 +365,7 @@ impl Extras for f32 {
     return sign;
   }
 
-  // If the number is NaN or infinite, set it to 0.
+  /// If the number is NaN or infinite, set it to 0.
   fn clean(&mut self) {
     if self.is_nan() || self.is_infinite() {
       *self = 0.0;

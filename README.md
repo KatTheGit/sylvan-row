@@ -20,8 +20,10 @@ A Multiplayer Online Battle Arena game, focusing on the following:
 - [x] Bullet hit-radius depends on character
 - [x] Temporary health bar
 - [x] Bullet collisions with walls
-- [ ] Player collisions with walls
-- [ ] Fix stupid bullet ID thingy (just bloat up the gameobject struct who cares)
+- [ ] Player collisions with walls (done clientside)
+- [ ] Fix stupid bullet ID thingy (done but not tested with 2 players)
+- [ ] Might need to increase the size of the network packet reception buffers.
+- [ ] Clean up code x2
 
 ### Irrelevant now, do after playtesting
 - [ ] Add healing, passive (to be gamedesigned)
