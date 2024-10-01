@@ -6,7 +6,7 @@ use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration};
 use bincode;
 use std::sync::{Arc, Mutex};
-use device_query::{DeviceQuery, DeviceState, Keycode, MouseState};
+use device_query::{DeviceQuery, DeviceState, Keycode};
 use strum::IntoEnumIterator;
 
 /// In the future this function will host the game menu. As of now it just starts the game unconditoinally.

@@ -1,10 +1,9 @@
-use bincode::de;
 /// Common functions and structs used by both client and server.
 /// Utility functions too.
 
 use macroquad::prelude::*;
 use rusty_pkl::*;
-use std::{collections::HashMap, io::Lines};
+use std::collections::HashMap;
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
 
