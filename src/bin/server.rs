@@ -61,12 +61,12 @@ fn main() {
         // use IP as identifier, check if packet from srent player correlates to our player
         if player.ip == src.ip().to_string() {
           let time_since_last_packet = recieved_player_info.packet_interval as f64;
-          if time_since_last_packet < MAX_PACKET_INTERVAL &&
-          time_since_last_packet > MIN_PACKET_INTERVAL  {
-            // ignore this packet since it's coming in too fast
-            player_found = true;
-            break;
-          }
+           if time_since_last_packet < MAX_PACKET_INTERVAL &&
+           time_since_last_packet > MIN_PACKET_INTERVAL  {
+             // ignore this packet since it's coming in too fast
+             player_found = true;
+             break;
+           }
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           
@@ -85,6 +85,9 @@ fn main() {
 
           // calculate current expected position based on input
           let mut new_position = Vector2::new();
+
+          // (movement, movement_new) = object_aware_movement(previous_position, movement, movement, game_objects);
+
           new_position.x = previous_position.x + movement.x * player_movement_speed * time_since_last_packet as f32;
           new_position.y = previous_position.y + movement.y * player_movement_speed * time_since_last_packet as f32;
 
@@ -95,11 +98,11 @@ fn main() {
           if movement_legal {
             // do movement.
             player.position = new_position;
-            println!("✅");
+            // println!("✅");
           } else {
             // Prepare for correction packet
             player.had_illegal_position = true;
-            println!("❌, {}", Vector2::distance(new_position, recieved_position));
+            // println!("❌, {}", Vector2::distance(new_position, recieved_position));
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
@@ -139,6 +142,7 @@ fn main() {
           character: Character::SniperGirl,
           last_shot_time: Instant::now(),
         });
+        println!("Player connected: {}", src.ip().to_string())
       }
       drop(listener_players);
     }
@@ -317,7 +321,6 @@ fn main() {
 /// wall 40.0 10.0
 /// wall 50.0 10.0
 /// ```
-
 /// information held by server about players.
 #[derive(Debug, Clone)]
 pub struct ServerPlayer {

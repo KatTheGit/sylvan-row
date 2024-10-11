@@ -181,7 +181,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
 
   let mut delta_time_counter: Instant = Instant::now();
   let mut delta_time: f32 = delta_time_counter.elapsed().as_secs_f32();
-  let desired_delta_time: f32 = 1.0 / 300.0; // run this thread at 300Hz
+  let desired_delta_time: f32 = 1.0 / 60.0; // run this thread at 300Hz
 
   // Whether in keyboard or controller mode.
   // Ignore mouse pos in controller mode for example.
@@ -325,8 +325,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
 
     // println!("{:?}", player.position);
 
-    println!("{:?}", movement_vector);
-    println!("{:?}", movement_vector_raw);
+    // println!("{:?}", movement_vector);
+    // println!("{:?}", movement_vector_raw);
 
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {

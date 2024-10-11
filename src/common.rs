@@ -9,10 +9,11 @@ use strum::IntoEnumIterator;
 
 pub const TILE_SIZE: f32 = 10.0;
 
+// this is bs
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
-pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 300.0;
+pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 65.0;
 /// A client sending packets slower than this will be ignored, as this could be a cheating attempt.
-pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 275.0;
+pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 55.0;
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// how many packets are averaged when calculating legality of player position.
@@ -156,6 +157,7 @@ impl ClientPlayer {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub struct ClientPacket {
   pub position:           Vector2,
+  /// Raw movement vector
   pub movement:           Vector2,
   pub aim_direction:      Vector2,
   pub shooting_primary:   bool,

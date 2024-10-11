@@ -20,8 +20,8 @@ A Multiplayer Online Battle Arena game, focusing on the following:
 - [x] Bullet hit-radius depends on character
 - [x] Temporary health bar
 - [x] Bullet collisions with walls
+- [x] Fix bullet ID thingy
 - [ ] Player collisions with walls (done clientside)
-- [ ] Fix stupid bullet ID thingy (done but not tested with 2 players)
 - [ ] Might need to increase the size of the network packet reception buffers.
 - [ ] Clean up code x2
 
@@ -33,3 +33,4 @@ A Multiplayer Online Battle Arena game, focusing on the following:
 - [ ] Draw sprites
 - [ ] Canvas flipping
 - [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
+- [ ] Figure out ports and firewall shenanigans
