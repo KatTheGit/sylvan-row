@@ -29,7 +29,6 @@ pub const SERVER_LISTEN_PORT: u32 = 25569;
 pub enum Character {
   SniperGirl,
   HealerGirl,
-  ThrowerGuy,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
@@ -58,7 +57,6 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
     let character_properties: CharacterProperties = match character {
       Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
       Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/healer_girl/properties.pkl")),
-      Character::ThrowerGuy => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
     };
 
     characters.insert(character, character_properties);

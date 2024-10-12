@@ -211,9 +211,6 @@ fn main() {
               traveled_distance: 0.0,
             });
           }
-          Character::ThrowerGuy => {
-
-          }
         }
       }
     }
