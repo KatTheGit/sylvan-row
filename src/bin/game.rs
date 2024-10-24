@@ -9,8 +9,17 @@ use std::sync::{Arc, Mutex};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use strum::IntoEnumIterator;
 
+
+fn window_conf() -> Conf {
+  Conf {
+      window_title: "Game".to_owned(),
+      fullscreen: false,
+      ..Default::default()
+  }
+}
+
 /// In the future this function will host the game menu. As of now it just starts the game unconditoinally.
-#[macroquad::main("Game")]
+#[macroquad::main(window_conf)]
 async fn main() {
   game().await;
 }
@@ -278,6 +287,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Keycode::A => movement_vector.x += -1.0,
         Keycode::S => movement_vector.y +=  1.0,
         Keycode::D => movement_vector.x +=  1.0,
+        Keycode::F11 => set_fullscreen(true),
         _ => {}
       }
     }

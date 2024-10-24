@@ -16,6 +16,9 @@ fn main() {
 
   let players: Vec<ServerPlayer> = Vec::new();
   let players = Arc::new(Mutex::new(players));
+  let game_objects:Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
+  println!("Loaded game objects.");
+  let game_objects = Arc::new(Mutex::new(game_objects));
 
   // initiate all networking sockets
   let server_listen_address = format!("0.0.0.0:{}", SERVER_LISTEN_PORT);
@@ -34,6 +37,7 @@ fn main() {
   
   // networking thread
   let listener_players = Arc::clone(&players);
+  let listener_game_objects = Arc::clone(&game_objects);
   std::thread::spawn(move || {
     loop {
       // recieve packet
@@ -50,6 +54,9 @@ fn main() {
       
       // update PLAYERS Vector with recieved information.
       let mut listener_players = listener_players.lock().unwrap();
+      let listener_game_objects = listener_game_objects.lock().unwrap();
+      let readonly_game_objects = listener_game_objects.clone();
+      drop(listener_game_objects);
       
       let mut player_found: bool = false;
       
@@ -80,20 +87,29 @@ fn main() {
           let mut movement_legal = true;
 
           let recieved_position = recieved_player_info.position;
-          let movement = recieved_player_info.movement;
+          let raw_movement = recieved_player_info.movement;
+          let mut movement = Vector2::new();
+          movement.x = raw_movement.x * player_movement_speed * time_since_last_packet as f32;
+          movement.y = raw_movement.y * player_movement_speed * time_since_last_packet as f32;
           let previous_position = player.position;
 
           // calculate current expected position based on input
           let mut new_position = Vector2::new();
+          let mut new_movement_raw = Vector2::new();
+          (new_movement_raw, _) = object_aware_movement(
+            previous_position,
+            raw_movement,
+            movement,
+            readonly_game_objects
+          );
 
-          // (movement, movement_new) = object_aware_movement(previous_position, movement, movement, game_objects);
-
-          new_position.x = previous_position.x + movement.x * player_movement_speed * time_since_last_packet as f32;
-          new_position.y = previous_position.y + movement.y * player_movement_speed * time_since_last_packet as f32;
+          new_position.x = previous_position.x + new_movement_raw.x * player_movement_speed * time_since_last_packet as f32;
+          new_position.y = previous_position.y + new_movement_raw.y * player_movement_speed * time_since_last_packet as f32;
 
           if Vector2::distance(new_position, recieved_position) > movement_error_margin {
             movement_legal = false;
           }
+          println!("{:?}", new_movement_raw);
           
           if movement_legal {
             // do movement.
@@ -152,10 +168,8 @@ fn main() {
   let mut delta_time: f64 = server_counter.elapsed().as_secs_f64();
   let desired_delta_time: f64 = 1.0 / 2000.0; // Hz
   let mut networking_counter: Instant = Instant::now();
-  
-  let mut game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
-  println!("Loaded game objects.");
-  
+
+  let main_game_objects = Arc::clone(&game_objects);
 
   // server loop.
   let characters = load_characters();
@@ -183,6 +197,7 @@ fn main() {
 
       if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
         main_loop_players[player_index].last_shot_time = Instant::now();
+        let mut game_objects = main_game_objects.lock().unwrap();
         // Do primary shooting logic
         match main_loop_players[player_index].character {
           Character::SniperGirl => {
@@ -212,6 +227,7 @@ fn main() {
             });
           }
         }
+        drop(game_objects);
       }
     }
 
@@ -220,14 +236,15 @@ fn main() {
     // println!("{}", 1.0 / delta_time);
 
     // Do all logic related to game objects
+    let mut game_objects = main_game_objects.lock().unwrap();
     for game_object_index in 0..game_objects.len() {
       let game_object_type = game_objects[game_object_index].object_type;
       match game_object_type {
         GameObjectType::SniperGirlBullet => {
-          (main_loop_players, game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, false);
+          (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
         }
         GameObjectType::HealerGirlPunch => {
-          (main_loop_players, game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects, game_object_index, true_delta_time, true);
+          (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
         }
         _ => {}
       }
@@ -238,13 +255,15 @@ fn main() {
     }
 
     let mut cleansed_game_objects: Vec<GameObject> = Vec::new();
-    for game_object in game_objects {
+    for game_object in game_objects.clone() {
       if game_object.to_be_deleted == false {
         cleansed_game_objects.push(game_object);
       }
     }
 
-    game_objects = cleansed_game_objects;
+    *game_objects = cleansed_game_objects;
+    let game_objects_readonly = game_objects.clone();
+    drop(game_objects);
 
     // Only do networking logic at some frequency
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
@@ -280,7 +299,7 @@ fn main() {
             shooting_secondary: player.shooting_secondary,
           },
           players: other_players,
-          game_objects: game_objects.clone(),
+          game_objects: game_objects_readonly.clone(),
         };
         main_loop_players[index].had_illegal_position = false;
         
