@@ -333,16 +333,14 @@ pub fn object_aware_movement(
       // X axis collision prediction
       if f32::abs(difference.x) <= TILE_SIZE && f32::abs(current_player_position.y - game_object.position.y) < TILE_SIZE {
         adjusted_movement.x = 0.0;
+        adjusted_raw_movement.x = 0.0;
       }
 
       // Y axis
       if f32::abs(difference.y) <= TILE_SIZE && f32::abs(current_player_position.x - game_object.position.x) < TILE_SIZE {
         adjusted_movement.y = 0.0;
+        adjusted_raw_movement.y = 0.0;
       }
-
-      adjusted_raw_movement = adjusted_movement.normalize();
-      adjusted_raw_movement.x *= original_raw_movement_magnitude;
-      adjusted_raw_movement.y *= original_raw_movement_magnitude;
     }
   }
   return (adjusted_raw_movement, adjusted_movement);

@@ -21,7 +21,7 @@ A Multiplayer Online Battle Arena game, focusing on the following:
 - [x] Temporary health bar
 - [x] Bullet collisions with walls
 - [x] Fix bullet ID thingy
-- [ ] Player collisions with walls (done clientside and serverside, however bug (fix by properly setting movement vector magnitude to player speed instead of slown down))
+- [x] Player collisions with walls
 - [ ] Might need to increase the size of the network packet reception buffers.
 - [ ] Extrapolation
 - [ ] Clean up code x2
