@@ -1,14 +1,5 @@
 // Don't show console window on Windows
 #![windows_subsystem = "windows"]
-// OS specific file path separators
-#[cfg(windows)]
-macro_rules! slash{
-  ()=>{r#"\"#}
-}
-#[cfg(not(windows))]
-macro_rules! slash{
-  ()=>{"/"}
-}
 use miniquad::conf::Icon;
 use top_down_shooter::common::*;
 use macroquad::prelude::*;
@@ -27,9 +18,9 @@ fn window_conf() -> Conf {
       window_title: "Game".to_owned(),
       fullscreen: false,
       icon: Some(Icon {
-        small:  Image::from_file_with_format(include_bytes!(concat!("..", slash!(), "..", slash!(), "assets", slash!(),"icon", slash!(),"icon-small.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
-        medium: Image::from_file_with_format(include_bytes!(concat!("..", slash!(), "..", slash!(), "assets", slash!(),"icon", slash!(),"icon-medium.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
-        big:    Image::from_file_with_format(include_bytes!(concat!("..", slash!(), "..", slash!(), "assets", slash!(),"icon", slash!(),"icon-big.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+        small:  Image::from_file_with_format(include_bytes!("../../assets/icon/icon-small.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+        medium: Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-medium.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+        big:    Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-big.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
       }),
       ..Default::default()
   }
