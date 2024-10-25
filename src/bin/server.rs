@@ -109,7 +109,7 @@ fn main() {
           if Vector2::distance(new_position, recieved_position) > movement_error_margin {
             movement_legal = false;
           }
-          println!("{:?}", new_movement_raw);
+          // println!("{:?}", new_movement_raw);
           
           if movement_legal {
             // do movement.

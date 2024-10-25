@@ -1,3 +1,15 @@
+// Don't show console window on Windows
+#![windows_subsystem = "windows"]
+// OS specific file path separators
+#[cfg(windows)]
+macro_rules! slash{
+  ()=>{r#"\"#}
+}
+#[cfg(not(windows))]
+macro_rules! slash{
+  ()=>{"/"}
+}
+use miniquad::conf::Icon;
 use top_down_shooter::common::*;
 use macroquad::prelude::*;
 use gilrs::*;
@@ -14,6 +26,11 @@ fn window_conf() -> Conf {
   Conf {
       window_title: "Game".to_owned(),
       fullscreen: false,
+      icon: Some(Icon {
+        small:  Image::from_file_with_format(include_bytes!(concat!("..", slash!(), "..", slash!(), "assets", slash!(),"icon", slash!(),"icon-small.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+        medium: Image::from_file_with_format(include_bytes!(concat!("..", slash!(), "..", slash!(), "assets", slash!(),"icon", slash!(),"icon-medium.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+        big:    Image::from_file_with_format(include_bytes!(concat!("..", slash!(), "..", slash!(), "assets", slash!(),"icon", slash!(),"icon-big.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+      }),
       ..Default::default()
   }
 }
@@ -196,6 +213,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   // Ignore mouse pos in controller mode for example.
   let mut keyboard_mode: bool = true;
 
+  let mut fullscreen = false;
+  let mut toggle_time: Instant = Instant::now();
+
   loop {
     // println!("network sender Hz: {}", 1.0 / delta_time);
 
@@ -287,7 +307,15 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Keycode::A => movement_vector.x += -1.0,
         Keycode::S => movement_vector.y +=  1.0,
         Keycode::D => movement_vector.x +=  1.0,
-        Keycode::F11 => set_fullscreen(true),
+        Keycode::F11 => {
+          // Dirty solution but works.
+          if toggle_time.elapsed().as_secs_f32() > 0.05 {
+            // can't unset fullscreen on Linux because of macroquad issue.
+            fullscreen = !fullscreen;
+            set_fullscreen(fullscreen);
+          }
+          toggle_time = Instant::now();
+        },
         _ => {}
       }
     }
