@@ -15,14 +15,14 @@ use strum::IntoEnumIterator;
 
 fn window_conf() -> Conf {
   Conf {
-      window_title: "Game".to_owned(),
-      fullscreen: false,
-      icon: Some(Icon {
-        small:  Image::from_file_with_format(include_bytes!("../../assets/icon/icon-small.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
-        medium: Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-medium.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
-        big:    Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-big.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
-      }),
-      ..Default::default()
+    window_title: "Game".to_owned(),
+    fullscreen: false,
+    icon: Some(Icon {
+      small:  Image::from_file_with_format(include_bytes!("../../assets/icon/icon-small.png"), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+      medium: Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-medium.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+      big:    Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-big.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
+    }),
+    ..Default::default()
   }
 }
 
