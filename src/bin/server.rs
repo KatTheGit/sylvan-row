@@ -25,7 +25,7 @@ fn main() {
   let server_send_address = format!("0.0.0.0:{}", SERVER_SEND_PORT);
   let listening_socket = UdpSocket::bind(server_listen_address.clone()).expect("Error creating listener UDP socket");
   let sending_socket = UdpSocket::bind(server_send_address).expect("Error creating sender UDP socket");
-  let mut buffer = [0; 1024]; // The size of this buffer is lowkey kind of low, especially with how big the gameobject struct is.
+  let mut buffer = [0; 4096]; // The size of this buffer is lowkey kind of low, especially with how big the gameobject struct is.
   println!("Sockets bound.");
   println!("Listening on: {}", server_listen_address.clone());
 

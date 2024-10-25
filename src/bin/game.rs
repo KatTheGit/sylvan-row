@@ -1,5 +1,6 @@
 // Don't show console window on Windows
 #![windows_subsystem = "windows"]
+
 use miniquad::conf::Icon;
 use top_down_shooter::common::*;
 use macroquad::prelude::*;
@@ -394,7 +395,7 @@ fn network_listener(
   let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
   let listening_socket: UdpSocket = UdpSocket::bind(listening_ip)
     .expect("Could not bind client listener socket");
-  let mut buffer: [u8; 2048] = [0; 2048];
+  let mut buffer: [u8; 4096] = [0; 4096];
   loop {
     // recieve packet
     let (amt, _src): (usize, std::net::SocketAddr) = listening_socket.recv_from(&mut buffer)
