@@ -1,7 +1,6 @@
 use top_down_shooter::common::*;
 use core::f32;
 use std::collections::HashMap;
-
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex, MutexGuard};
 use bincode;
@@ -32,7 +31,7 @@ fn main() {
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
-  // temporary
+  // temporary, to be dictated by gamemode
   let max_players = 4;
   
   // networking thread
@@ -43,7 +42,7 @@ fn main() {
       // recieve packet
       let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
-      let mut recieved_player_info: ClientPacket = bincode::deserialize(data).expect("awwww");
+      let mut recieved_player_info: ClientPacket = bincode::deserialize(data).expect("Might need to find a solution to this");
       // println!("SERVER: Received from {}: {:?}", src, recieved_player_info);
       
       // clean all recieved NaNs and infinites so the server doesnt explode

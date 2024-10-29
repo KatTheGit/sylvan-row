@@ -4,14 +4,24 @@ A Multiplayer Online Battle Arena game, focusing on the following:
 - Balanced (no hard-counter interactions)
 - Brute-force anticheat
 - Relatively simple but unique characters
-- Twin-stick shooter style / snappy WASD movement
+- Twin-stick top-down shooter style
 - Hand-drawn but 3D-looking graphics
 - Low skill floor, high skill cap (easy to learn, hard to master)
-- Being FOSS
 
-## README is incomplete ignore everything below this title. Also not accepting contributions as of now, but will gladly in the future.
+## Compile & run
 
-## TODO
+```sh
+cargo run --bin game --release
+```
+```sh
+cargo run --bin server --release
+```
+
+## Dependencies
+
+On Linux, you need to additionally install `libudev-dev`.
+
+# TODO
 
 ### Immediate
 - [x] Add healing, from attacks
@@ -23,15 +33,21 @@ A Multiplayer Online Battle Arena game, focusing on the following:
 - [x] Fix bullet ID thingy
 - [x] Player collisions with walls
 - [x] Might need to increase the size of the network packet reception buffers.
-- [ ] Extrapolation
+  - [ ] Fix vulnerability (if client sends big packet, server crashes)
+- [ ] Extrapolation (clientside)
+  - [x] Gameobjects
+  - [ ] Players
 - [ ] Clean up code x2
+- [ ] Add healing, passive (to be gamedesigned)
+- [ ] Design some characters
 
 ### Irrelevant now, do after playtesting
-- [ ] Add healing, passive (to be gamedesigned)
-- [ ] Tie together the game. (Menu, gamemodes, etc)
-- [ ] Improve camera
-- [ ] Animations
+
+- [ ] Hunt for more vulnerabilities
 - [ ] Draw sprites
+- [ ] Animations
+- [ ] Improve camera
+- [ ] Tie together the game. (Menu, gamemodes, etc)
 - [ ] Canvas flipping
 - [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
-- [ ] Figure out ports and firewall shenanigans
+- [ ] Figure out port and firewall shenanigans

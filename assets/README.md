@@ -14,6 +14,8 @@ A multiplayer arena fighting game where players fight with their pick amongst a 
 
 ## Base mechanics
 
+### Controls and Movement
+
 The player has four game controls, which are independent of their picked character:
 - aim
 - move
@@ -22,6 +24,14 @@ The player has four game controls, which are independent of their picked charact
 
 A player may move freely if unobstructed by the map, aim and shoot freely at all times, and shoot their secondary
 once it is charged. These are God given rights and may not be inhibited by other players and their abilities.
+
+### Health and Damage
+
+When taking damage, the player's health (HP) and max health are both reduced, with max health being reduced slower. HP can be recovered after a little while of not taking damage. Max health can only be restored to its original value by healers. Healers restore max health much faster than they restore HP.
+
+### Map
+
+Maps will contain walls. Walls are a major gameplay element. They can be added or removed, but they cannot be easily shot or moved through.
 
 ## Character balance rules
 Goal: balance logically/mathematically, and organically later only if needed

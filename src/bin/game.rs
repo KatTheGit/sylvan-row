@@ -48,7 +48,6 @@ async fn game(/* server_ip: &str */) {
         GameObjectType::UnbreakableWall      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::SniperGirlBullet     => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HealerGirlPunch      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::ThrowerGuyProjectile => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
       }
     );
   }
@@ -116,9 +115,32 @@ async fn game(/* server_ip: &str */) {
     let player: Arc<Mutex<ClientPlayer>> = Arc::clone(&player);
     let player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::clone(&game_objects);
-    let game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
+    let mut game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
     let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::clone(&other_players);
-    let other_players: MutexGuard<Vec<ClientPlayer>> = other_players.lock().unwrap();
+    let mut other_players: MutexGuard<Vec<ClientPlayer>> = other_players.lock().unwrap();
+
+    // Extrapolation
+
+    // for game objects
+    for game_object in game_objects.iter_mut() {
+      match game_object.object_type {
+        GameObjectType::HealerGirlPunch => {
+          let speed: f32 = character_properties[&Character::HealerGirl].speed;
+          game_object.position.x += speed * game_object.direction.x;
+          game_object.position.y += speed * game_object.direction.y;
+        },
+        GameObjectType::SniperGirlBullet => {
+          let speed: f32 = character_properties[&Character::SniperGirl].speed;
+          game_object.position.x += speed * game_object.direction.x * get_frame_time();
+          game_object.position.y += speed * game_object.direction.y * get_frame_time();
+        },
+        _ => {},
+      }
+    }
+    // for players
+    for player in other_players.iter_mut() {
+      // idk
+    }
 
     let player_copy = player.clone();
     drop(player);

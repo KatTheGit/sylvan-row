@@ -210,7 +210,6 @@ pub enum GameObjectType {
   UnbreakableWall,
   SniperGirlBullet,
   HealerGirlPunch,
-  ThrowerGuyProjectile,
 }
 
 // utility
