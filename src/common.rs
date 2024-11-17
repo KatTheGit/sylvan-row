@@ -121,16 +121,47 @@ pub struct ClientPlayer {
 }
 
 impl ClientPlayer {
-  pub fn draw(&self, texture: &Texture2D, vh: f32, position: Vector2) {
+  pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font) {
     // TODO: animations
     let size: f32 = 12.0;
-    draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, position);
+    draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera_position);
+    let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
+    let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };
+    draw_line_relative(
+      self.position.x + secondary_bar_offset.x,
+      self.position.y + secondary_bar_offset.y,
+      self.secondary_charge as f32 / 10.0 + self.position.x + secondary_bar_offset.x,
+      self.position.y + secondary_bar_offset.y,
+      1.5,
+      ORANGE,
+      camera_position, vh);
+    // let health_counter_offset: Vector2 = Vector2 { x: -3.9, y: -10.0 };
+    // let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
+    // let mut font = load_ttf_font_from_bytes(include_bytes!("./../assets/fonts/Action_Man.ttf")).expect("Could not load font.");
+    // font.set_filter(FilterMode::Nearest);
+    // draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, 16, vh, camera_position, GREEN);
+    draw_line_relative(
+      self.position.x + health_bar_offset.x,
+      self.position.y + health_bar_offset.y,
+      self.health as f32 / 10.0 + self.position.x + health_bar_offset.x,
+      self.position.y + health_bar_offset.y,
+      1.5,
+      GREEN,
+      camera_position, vh);
+      let health_counter_offset: Vector2 = Vector2 { x: -11.5, y: -10.6 };
+      let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
+      let font_size: u16 = 4;
+      draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, font_size, vh, camera_position, GREEN);
+      let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
+      let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
+      draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
   }
   pub fn draw_crosshair(&self, vh: f32, center_position: Vector2, range: f32) {
     let relative_position_x = self.position.x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
     let relative_position_y = self.position.y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
     draw_line(
-      relative_position_x * vh, relative_position_y * vh,
+      (self.aim_direction.normalize().x * 5.0 * vh) + relative_position_x * vh,
+      (self.aim_direction.normalize().y * 5.0 * vh) + relative_position_y * vh,
       (self.aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
       (self.aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
       2.0, Color { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }
@@ -138,11 +169,11 @@ impl ClientPlayer {
   }
   pub fn new() -> ClientPlayer {
     return ClientPlayer {
-      health: 255,
+      health: 100,
       position: Vector2::new(),
       aim_direction: Vector2::new(),
       character: Character::SniperGirl,
-      secondary_charge: 0,
+      secondary_charge: 100,
       movement_direction: Vector2::new(),
       shooting_primary: false,
       shooting_secondary: false,
@@ -176,6 +207,7 @@ pub struct ServerRecievingPlayerPacket {
   pub position_override: Vector2,
   pub shooting_primary: bool,
   pub shooting_secondary: bool,
+  pub secondary_charge: u8,
 }
 
 /// information sent by server to client
@@ -277,6 +309,20 @@ pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, 
   let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
 
   draw_image(texture, relative_position_x, relative_position_y, w, h, vh);
+}
+
+pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Color, center_position: Vector2, vh:f32) -> () {
+  let relative_position_x1 = x1 - center_position.x + (50.0 * (16.0/9.0));
+  let relative_position_y1 = y1 - center_position.y + 50.0;
+  let relative_position_x2 = x2 - center_position.x + (50.0 * (16.0/9.0));
+  let relative_position_y2 = y2 - center_position.y + 50.0;
+  draw_line(relative_position_x1 * vh, relative_position_y1 * vh, relative_position_x2 * vh, relative_position_y2 * vh, thickness * vh, color);
+}
+
+pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16, vh: f32, center_position: Vector2, color: Color) -> () {
+  let relative_position_x = x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+  let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
+  draw_text_ex(text, relative_position_x * vh, relative_position_y * vh, TextParams { font: Some(font), font_size: (font_size as f32 * vh) as u16, font_scale: 1.0, font_scale_aspect: 1.0, rotation: 0.0, color });
 }
 
 pub fn load_map_from_file(map: &str) -> Vec<GameObject> {

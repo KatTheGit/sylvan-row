@@ -30,21 +30,25 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Bullet hit-radius depends on character
 - [x] Temporary health bar
 - [x] Bullet collisions with walls
-- [x] Fix bullet ID thingy
+- [x] Fix (delete) bullet ID thingy
 - [x] Player collisions with walls
 - [x] Might need to increase the size of the network packet reception buffers.
-  - [ ] Fix vulnerability (if client sends big packet, server crashes)
 - [ ] Extrapolation (clientside)
   - [x] Gameobjects
   - [ ] Players
 - [ ] Clean up code x2
 - [ ] Add healing, passive (to be gamedesigned)
 - [ ] Design some characters
+- [x] very rough UI
+  - [x] Health bar and count
+  - [x] Secondary attack bar and count
+- [ ] Correctly update info for each player
+- [ ] Implement dash mechanic
 
 ### Irrelevant now, do after playtesting
 
 - [ ] Hunt for more vulnerabilities
-- [ ] Draw sprites
+  - [ ] Fix vulnerability (if client sends big packet, server crashes)
 - [ ] Animations
 - [ ] Improve camera
 - [ ] Tie together the game. (Menu, gamemodes, etc)

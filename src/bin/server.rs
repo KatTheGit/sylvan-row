@@ -143,7 +143,7 @@ fn main() {
         listener_players.push(ServerPlayer {
           ip: src.ip().to_string(),
           team,
-          health: 255,
+          health: 100,
           position: match team {
             Team::Blue => Vector2 { x: 10.0, y: 10.0 },
             Team::Red  => Vector2 { x: 90.0, y: 90.0 },
@@ -269,8 +269,10 @@ fn main() {
       // reset the counter
       networking_counter = Instant::now();
 
+      // Send a packet to each player
       for (index, player) in main_loop_players.clone().iter().enumerate() {
 
+        // Gather info to send about other players
         let mut other_players: Vec<ClientPlayer> = Vec::new();
         for (other_player_index, player) in main_loop_players.clone().iter().enumerate() {
           if other_player_index != index {
@@ -288,7 +290,7 @@ fn main() {
           }
         }
         
-        // packet sent to players
+        // packet sent to player with info about themselves and other players
         let server_packet: ServerPacket = ServerPacket {
           player_packet_is_sent_to: ServerRecievingPlayerPacket {
             health: player.health,
@@ -296,6 +298,7 @@ fn main() {
             position_override: player.position,
             shooting_primary: player.shooting,
             shooting_secondary: player.shooting_secondary,
+            secondary_charge: player.secondary_charge,
           },
           players: other_players,
           game_objects: game_objects_readonly.clone(),

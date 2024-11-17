@@ -2,6 +2,7 @@
 #![windows_subsystem = "windows"]
 
 use miniquad::conf::Icon;
+use miniquad::window::{set_mouse_cursor, set_window_size};
 use top_down_shooter::common::*;
 use macroquad::prelude::*;
 use gilrs::*;
@@ -26,17 +27,17 @@ fn window_conf() -> Conf {
     ..Default::default()
   }
 }
-
 /// In the future this function will host the game menu. As of now it just starts the game unconditoinally.
 #[macroquad::main(window_conf)]
 async fn main() {
+  set_window_size(800, 450);
   game().await;
 }
 
 /// In the future this function will be called by main once the user starts the game
 /// through the menu.
 async fn game(/* server_ip: &str */) {
-
+  set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
   let mut game_object_tetures: HashMap<GameObjectType, Texture2D> = HashMap::new();
@@ -44,10 +45,10 @@ async fn game(/* server_ip: &str */) {
     game_object_tetures.insert(
       game_object_type,
       match game_object_type {
-        GameObjectType::Wall                 => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::UnbreakableWall      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::SniperGirlBullet     => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HealerGirlPunch      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::Wall             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::UnbreakableWall  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperGirlBullet => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HealerGirlPunch  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
       }
     );
   }
@@ -96,6 +97,9 @@ async fn game(/* server_ip: &str */) {
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
+
+  // assets/fonts/Action_Man.ttf
+  let health_bar_font = load_ttf_font_from_bytes(include_bytes!("./../../assets/fonts/Action_Man.ttf")).expect("");
 
   // Main thread
   loop {
@@ -167,15 +171,15 @@ async fn game(/* server_ip: &str */) {
 
 
     clear_background(BLACK);
-    draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, WHITE);
+    draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, GRAY);
 
     // draw player and crosshair (aim laser)
-    player_copy.draw(&player_texture, vh, player_copy.position);
+    player_copy.draw(&player_texture, vh, player_copy.position, &health_bar_font);
     let range = character_properties[&player_copy.character].primary_range;
     player_copy.draw_crosshair(vh, player_copy.position, range);
 
     for player in other_players_copy {
-      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position);
+      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position, &health_bar_font);
     }
 
     // println!("{}", player_copy.secondary_charge);
@@ -187,7 +191,7 @@ async fn game(/* server_ip: &str */) {
     }
 
     // temporary asf health bar
-    draw_line(43.75 * vw, 40.0 * vh, (43.75 + (player_copy.health as f32 / 20.0)) * vw, 40.0 * vh, 1.0*vw, GREEN);
+    //draw_line(43.75 * vw, 40.0 * vh, (43.75 + (player_copy.health as f32 / 20.0)) * vw, 40.0 * vh, 1.0*vw, GREEN);
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     next_frame().await;
@@ -433,6 +437,7 @@ fn network_listener(
       player.position = recieved_server_info.player_packet_is_sent_to.position_override;
     }
     player.health = recieved_server_info.player_packet_is_sent_to.health;
+    player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
     drop(player); // free mutex guard ASAP for others to access player.
     
 

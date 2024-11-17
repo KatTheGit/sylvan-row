@@ -14,13 +14,22 @@ A multiplayer arena fighting game where players fight with their pick amongst a 
 
 ## Base mechanics
 
+There are, independently of the picked character, three types of abilities. These differ by character.
+- Primary attack
+- Secondary attack
+- Dash
+And also character dependent statistics
+- Max health
+- Movement speed
+
 ### Controls and Movement
 
-The player has four game controls, which are independent of their picked character:
+The player has five game controls, which are independent of their picked character:
 - aim
 - move
 - shoot
 - shoot secondary
+- Dash
 
 A player may move freely if unobstructed by the map, aim and shoot freely at all times, and shoot their secondary
 once it is charged. These are God given rights and may not be inhibited by other players and their abilities.
