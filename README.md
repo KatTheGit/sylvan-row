@@ -10,6 +10,8 @@ A Multiplayer Online Battle Arena game, focusing on the following:
 
 ## Compile & run
 
+Tested on Windows, Linux and OSX.
+
 ```sh
 cargo run --bin game --release
 ```
