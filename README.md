@@ -1,23 +1,27 @@
 # Unnamed MOBA
 
-A Multiplayer Online Battle Arena game, focusing on the following:
-- Balanced (no hard-counter interactions)
-- Brute-force anticheat
-- Relatively simple but unique characters
-- Twin-stick top-down shooter style
-- Hand-drawn but 3D-looking graphics
-- Low skill floor, high skill cap (easy to learn, hard to master)
+A Multiplayer Online Battle Arena game, focusing on the following values:
+- Being balanced (no hard-counter interactions)
+- Having brute-force anticheat
+- Having relatively simple but unique characters
+- Playing like a twin-stick top-down shooter
+- Looking hand-drawn but also 3D-ish
+- Being easy to learn but hard to master
 
 ## Compile & run
 
-Tested on Windows, Linux and OSX.
+Tested on Windows, Linux and OSX. Not in a very playable state, so no realeases yet.
 
+Run the game:
 ```sh
 cargo run --bin game --release
 ```
+Run the server:
 ```sh
 cargo run --bin server --release
 ```
+
+You can change the server's IP in `src/bin/game.rs:~211`
 
 ## Dependencies
 
@@ -57,3 +61,8 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Canvas flipping
 - [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
 - [ ] Figure out port and firewall shenanigans
+  - No issues on Windows and OSX
+  - [ ] Pop-up for Linux players who might need to manually make firewall rules.
+  - [ ] Allow use of different ports
+    - [ ] clientside
+    - [ ] serverside
