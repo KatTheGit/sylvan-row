@@ -49,6 +49,11 @@ pub struct CharacterProperties {
   pub secondary_passive_charge: u8,
   pub secondary_range:          f32,
   pub primary_hit_radius:       f32,
+
+  dash_distance:                f32,
+  dash_cooldown:                f32,
+  dash_damage_multiplier:       f32,
+  dash_speed:                   f32,
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
@@ -82,6 +87,10 @@ impl CharacterProperties {
       secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge").unwrap()),
       secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge").unwrap()),
       secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range").unwrap()),
+      dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance").unwrap()),
+      dash_cooldown:            pkl_f32(find_parameter(&pkl, "dash_cooldown").unwrap()),
+      dash_damage_multiplier:   pkl_f32(find_parameter(&pkl, "dash_damage_multiplier").unwrap()),
+      dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed").unwrap()),
     }
   }
 }
@@ -192,6 +201,7 @@ pub struct ClientPacket {
   pub shooting_primary:   bool,
   pub shooting_secondary: bool,
   pub packet_interval:    f32,
+  pub dashing:         bool,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum Team {

@@ -250,6 +250,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mut movement_vector: Vector2 = Vector2::new();
     let mut shooting_primary: bool = false;
     let mut shooting_secondary: bool = false;
+    let mut dashing: bool = false;
 
     // maybe? temporary
     let movement_speed: f32 = character_properties[&player.character].speed;
@@ -307,6 +308,13 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
           }
         } _ => {}
       }
+      match gamepad.button_data(Button::South) {
+        Some(button_data) => {
+          if button_data.value() > 0.0 {
+            dashing = true;
+          }
+        } _ => {}
+      }
     }
 
     // This solution is vile because it will take input even if the window
@@ -325,6 +333,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Keycode::A => movement_vector.x += -1.0,
         Keycode::S => movement_vector.y +=  1.0,
         Keycode::D => movement_vector.x +=  1.0,
+        Keycode::Space => dashing = true,
         Keycode::F11 => {
           // Dirty solution but works.
           if toggle_time.elapsed().as_secs_f32() > 0.05 {
@@ -345,7 +354,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     if mouse[3] == true {
       shooting_secondary = true;
     }
-
+    
+    // println!("{}", dashing);
     // println!("{} {}", shooting_primary, shooting_secondary);
 
     if keyboard_mode { 
@@ -386,12 +396,13 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
 
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {
-      position:      Vector2 {x: player.position.x, y: player.position.y },
+      position:      player.position,
       movement:      movement_vector_raw,
-      aim_direction: Vector2 { x: player.aim_direction.x, y: player.aim_direction.y },
+      aim_direction: player.aim_direction,
       shooting_primary,
       shooting_secondary,
       packet_interval: delta_time,
+      dashing,
     };
 
     // drop mutexguard ASAP so other threads can use player ASAP.

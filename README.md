@@ -50,6 +50,9 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Secondary attack bar and count
 - [ ] Correctly update info for each player
 - [ ] Implement dash mechanic
+  - [x] Client sends dash info
+  - [ ] Server cooks
+  - [ ] Client cooperates
 
 ### Irrelevant now, do after playtesting
 
