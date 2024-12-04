@@ -69,3 +69,7 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Allow use of different ports
     - [ ] clientside
     - [ ] serverside
+
+## Issues that won't be solved
+
+- Fullcreen issue on Linux (Macroquad issue)

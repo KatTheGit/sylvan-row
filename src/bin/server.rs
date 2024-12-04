@@ -75,35 +75,39 @@ fn main() {
            }
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
-          
-          // Movement legality calculations
-          let player_movement_speed: f32 = characters[&player.character].speed;
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;
 
-          // check if movement is legal
+          let mut new_position = Vector2::new();
+          let recieved_position = recieved_player_info.position;
           let movement_error_margin = 5.0;
           let mut movement_legal = true;
 
-          let recieved_position = recieved_player_info.position;
-          let raw_movement = recieved_player_info.movement;
-          let mut movement = Vector2::new();
-          movement.x = raw_movement.x * player_movement_speed * time_since_last_packet as f32;
-          movement.y = raw_movement.y * player_movement_speed * time_since_last_packet as f32;
-          let previous_position = player.position;
+          if recieved_player_info.dashing {
+            let player_dashing_speed: f32 = characters[&player.character].dash_speed;
+          }
+          else {
 
-          // calculate current expected position based on input
-          let mut new_position = Vector2::new();
-          let mut new_movement_raw = Vector2::new();
-          (new_movement_raw, _) = object_aware_movement(
-            previous_position,
-            raw_movement,
-            movement,
-            readonly_game_objects
-          );
+            // Movement legality calculations
+            let player_movement_speed: f32 = characters[&player.character].speed;
+            
+            let raw_movement = recieved_player_info.movement;
+            let mut movement = Vector2::new();
+            movement.x = raw_movement.x * player_movement_speed * time_since_last_packet as f32;
+            movement.y = raw_movement.y * player_movement_speed * time_since_last_packet as f32;
+            let previous_position = player.position;
 
-          new_position.x = previous_position.x + new_movement_raw.x * player_movement_speed * time_since_last_packet as f32;
-          new_position.y = previous_position.y + new_movement_raw.y * player_movement_speed * time_since_last_packet as f32;
+            // calculate current expected position based on input
+            let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
+              previous_position,
+              raw_movement,
+              movement,
+              readonly_game_objects
+            );
+            
+            new_position.x = previous_position.x + new_movement_raw.x * player_movement_speed * time_since_last_packet as f32;
+            new_position.y = previous_position.y + new_movement_raw.y * player_movement_speed * time_since_last_packet as f32;
+          }
 
           if Vector2::distance(new_position, recieved_position) > movement_error_margin {
             movement_legal = false;
@@ -111,12 +115,14 @@ fn main() {
           // println!("{:?}", new_movement_raw);
           
           if movement_legal {
-            // do movement.
+            // Apply the movement that the server calculated, which should be similar to the client's.
             player.position = new_position;
             // println!("✅");
           } else {
-            // Prepare for correction packet
+            // Inform the network sender it needs to send a correction packet (position override packet).
             player.had_illegal_position = true;
+            // Also apply movement.
+            // player.position = new_position;
             // println!("❌, {}", Vector2::distance(new_position, recieved_position));
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
@@ -148,14 +154,18 @@ fn main() {
             Team::Blue => Vector2 { x: 10.0, y: 10.0 },
             Team::Red  => Vector2 { x: 90.0, y: 90.0 },
           },
-          move_direction: Vector2::new(),
-          aim_direction: Vector2::new(),
-          shooting: false,
-          shooting_secondary: false,
-          secondary_charge: 0,
+          move_direction:       Vector2::new(),
+          aim_direction:        Vector2::new(),
+          shooting:             false,
+          shooting_secondary:   false,
+          secondary_charge:     100,
           had_illegal_position: false,
-          character: Character::SniperGirl,
-          last_shot_time: Instant::now(),
+          character:            Character::SniperGirl,
+          last_shot_time:       Instant::now(),
+          is_dashing:           false,
+          last_dash_time:       Instant::now(),
+          dashed_distance:      0.0,
+          dash_direction:       Vector2::new(),
         });
         println!("Player connected: {}", src.ip().to_string())
       }
@@ -165,7 +175,9 @@ fn main() {
   
   let mut server_counter: Instant = Instant::now();
   let mut delta_time: f64 = server_counter.elapsed().as_secs_f64();
-  let desired_delta_time: f64 = 1.0 / 2000.0; // Hz
+  // Server logic frequency in Hertz. Doesn't need to be much higher than 120.
+  // Higher frequency = higher precission with computation trade-off
+  let desired_delta_time: f64 = 1.0 / 400.0;
   let mut networking_counter: Instant = Instant::now();
 
   let main_game_objects = Arc::clone(&game_objects);
@@ -194,6 +206,7 @@ fn main() {
 
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
+      // If someone is shooting, spawn a bullet according to their character.s
       if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
         main_loop_players[player_index].last_shot_time = Instant::now();
         let mut game_objects = main_game_objects.lock().unwrap();
@@ -341,24 +354,28 @@ fn main() {
 /// ```
 /// information held by server about players.
 #[derive(Debug, Clone)]
-pub struct ServerPlayer {
-  pub ip:                            String,
-  pub team:                          Team,
-  pub character:                     Character,
-  pub health:                        u8,
-  pub position:                      Vector2,
-  pub shooting:                      bool,
-  pub last_shot_time:                Instant,
-  pub shooting_secondary:            bool,
-  pub secondary_charge:              u8,
-  pub aim_direction:                 Vector2,
-  pub move_direction:                Vector2,
-  pub had_illegal_position:          bool,
+struct ServerPlayer {
+  ip:                   String,
+  team:                 Team,
+  character:            Character,
+  health:               u8,
+  position:             Vector2,
+  shooting:             bool,
+  last_shot_time:       Instant,
+  shooting_secondary:   bool,
+  secondary_charge:     u8,
+  aim_direction:        Vector2,
+  move_direction:       Vector2,
+  had_illegal_position: bool,
+  is_dashing:           bool,
+  dash_direction:       Vector2,
+  dashed_distance:      f32,
+  last_dash_time:       Instant,
 }
 
 /// Applies modifications to players and game objects as a result of
 /// bullet behaviour this frame, for a specific bullet.
-pub fn apply_simple_bullet_logic(
+fn apply_simple_bullet_logic(
   mut main_loop_players: MutexGuard<Vec<ServerPlayer>>,
   characters: HashMap<Character, CharacterProperties>,
   mut game_objects: Vec<GameObject>,
@@ -435,10 +452,4 @@ pub fn apply_simple_bullet_logic(
   game_objects[game_object_index].position.x += game_object.direction.x * true_delta_time as f32 * bullet_speed;
   game_objects[game_object_index].position.y += game_object.direction.y * true_delta_time as f32 * bullet_speed;
   return (main_loop_players, game_objects);
-}
-
-/// Contains extra data for bullets specifically.
-#[derive(Debug, Clone)]
-pub struct BulletData {
-  pub hit_players: Vec<usize>,
 }

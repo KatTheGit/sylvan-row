@@ -50,10 +50,10 @@ pub struct CharacterProperties {
   pub secondary_range:          f32,
   pub primary_hit_radius:       f32,
 
-  dash_distance:                f32,
-  dash_cooldown:                f32,
-  dash_damage_multiplier:       f32,
-  dash_speed:                   f32,
+  pub dash_distance:                f32,
+  pub dash_cooldown:                f32,
+  pub dash_damage_multiplier:       f32,
+  pub dash_speed:                   f32,
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
@@ -374,7 +374,6 @@ pub fn object_aware_movement(
 
   let mut adjusted_raw_movement = raw_movement;
   let mut adjusted_movement = movement;
-  let original_raw_movement_magnitude = raw_movement.magnitude();
 
   let mut desired_position = current_player_position;
   desired_position.x += movement.x;
