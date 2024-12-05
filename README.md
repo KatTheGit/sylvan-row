@@ -39,20 +39,20 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Fix (delete) bullet ID thingy
 - [x] Player collisions with walls
 - [x] Might need to increase the size of the network packet reception buffers.
-- [ ] Extrapolation (clientside)
-  - [x] Gameobjects
-  - [ ] Players
-- [ ] Clean up code x2
-- [ ] Add healing, passive (to be gamedesigned)
-- [ ] Design some characters
 - [x] very rough UI
   - [x] Health bar and count
   - [x] Secondary attack bar and count
-- [ ] Correctly update info for each player
 - [ ] Implement dash mechanic
   - [x] Client sends dash info
   - [ ] Server cooks
   - [ ] Client cooperates
+- [ ] Design some characters
+- [ ] Add healing, passive (to be gamedesigned)
+- [ ] Correctly update info for each player
+- [ ] Extrapolation (clientside)
+  - [x] Gameobjects
+  - [ ] Players
+- [ ] Clean up code x2
 
 ### Irrelevant now, do after playtesting
 
