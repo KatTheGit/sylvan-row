@@ -44,7 +44,7 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Secondary attack bar and count
 - [ ] Implement dash mechanic
   - [x] Client sends dash info
-  - [ ] Server cooks
+  - [x] Server cooks
   - [ ] Client cooperates
 - [ ] Design some characters
 - [ ] Add healing, passive (to be gamedesigned)

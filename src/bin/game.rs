@@ -61,7 +61,7 @@ async fn game(/* server_ip: &str */) {
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
-  player.character = Character::HealerGirl;
+  player.character = Character::SniperGirl;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   // temporary
@@ -253,10 +253,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mut dashing: bool = false;
 
     // maybe? temporary
-    let movement_speed: f32 = 10.0; //character_properties[&player.character].speed;
+    let movement_speed: f32 = character_properties[&player.character].speed;
 
     // println!("sender Hz: {}", 1.0 / delta_time);
-
 
     // gamepad input handling
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {

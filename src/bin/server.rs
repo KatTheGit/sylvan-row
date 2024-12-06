@@ -67,35 +67,82 @@ fn main() {
         // use IP as identifier, check if packet from srent player correlates to our player
         if player.ip == src.ip().to_string() {
           let time_since_last_packet = recieved_player_info.packet_interval as f64;
-           if time_since_last_packet < MAX_PACKET_INTERVAL &&
-           time_since_last_packet > MIN_PACKET_INTERVAL  {
-             // ignore this packet since it's coming in too fast
-             player_found = true;
-             break;
-           }
-
+          if time_since_last_packet < MAX_PACKET_INTERVAL &&
+          time_since_last_packet > MIN_PACKET_INTERVAL  {
+            // ignore this packet since it's coming in too fast
+            player_found = true;
+            break;
+          }
+          
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;
-
+          
           let mut new_position = Vector2::new();
           let recieved_position = recieved_player_info.position;
           let movement_error_margin = 5.0;
           let mut movement_legal = true;
-
-          if recieved_player_info.dashing {
-            let player_dashing_speed: f32 = characters[&player.character].dash_speed;
+          let previous_position = player.position.clone();
+          
+          // If player wants to dash and isn't dashing...
+          if recieved_player_info.dashing && !player.is_dashing {
+            let player_dash_cooldown = characters[&player.character].dash_cooldown;
+            // And we're past the cooldown...
+            if player.last_dash_time.elapsed().as_secs_f32() > player_dash_cooldown {
+              // reset the cooldown
+              player.last_dash_time = Instant::now();
+              // set dashing to true
+              player.is_dashing = true;
+              // set the dashing direction
+              if recieved_player_info.movement.magnitude() > 0.0 {
+                player.dash_direction = recieved_player_info.movement;
+              }
+              else {
+                player.is_dashing = false;
+              }
+            }
           }
-          else {
+          
+          if player.is_dashing {
+            println!("Dash direction while dashing: {:?}", player.dash_direction);
+            let player_dashing_speed: f32 = characters[&player.character].dash_speed;
+            let player_max_dash_distance: f32 = characters[&player.character].dash_distance;
 
-            // Movement legality calculations
-            let player_movement_speed: f32 = characters[&player.character].speed;
+            let mut dash_movement = Vector2::new();
+            dash_movement.x = player.dash_direction.x * player_dashing_speed * time_since_last_packet as f32;
+            dash_movement.y = player.dash_direction.y * player_dashing_speed * time_since_last_packet as f32;
             
+            // calculate current expected position based on input
+            let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
+              previous_position,
+              player.dash_direction,
+              dash_movement,
+              readonly_game_objects
+            );
+ 
+            if player.dashed_distance < player_max_dash_distance {
+              
+              new_position.x = previous_position.x + new_movement_raw.x * player_dashing_speed * time_since_last_packet as f32;
+              new_position.y = previous_position.y + new_movement_raw.y * player_dashing_speed * time_since_last_packet as f32;
+              
+              player.dashed_distance += Vector2::distance(new_position, previous_position);
+            }
+            else {
+              player.dashed_distance = 0.0;
+              player.is_dashing = false;
+            }
+            
+          }
+          
+          else {
+            
+            // Movement legality calculations
             let raw_movement = recieved_player_info.movement;
             let mut movement = Vector2::new();
+            let player_movement_speed: f32 = characters[&player.character].speed;
+
             movement.x = raw_movement.x * player_movement_speed * time_since_last_packet as f32;
             movement.y = raw_movement.y * player_movement_speed * time_since_last_packet as f32;
-            let previous_position = player.position;
 
             // calculate current expected position based on input
             let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
@@ -104,7 +151,7 @@ fn main() {
               movement,
               readonly_game_objects
             );
-            
+
             new_position.x = previous_position.x + new_movement_raw.x * player_movement_speed * time_since_last_packet as f32;
             new_position.y = previous_position.y + new_movement_raw.y * player_movement_speed * time_since_last_packet as f32;
           }
