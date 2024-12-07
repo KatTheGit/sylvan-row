@@ -5,18 +5,18 @@ speed = 60.0
 primary_damage = 6
 primary_heal = 3
 primary_cooldown = 0.5
-primary_range = 40.0
-primary_shot_speed = 350.0
+primary_range = 50.0
+primary_shot_speed = 100.0
 primary_hit_radius = 5.0
 
 secondary_damage = 0
-secondary_heal = 12.0
+secondary_heal = 12
 secondary_hit_charge = 100
 secondary_heal_charge = 50
-secondary_passive_charge = 1.0
+secondary_passive_charge = 1
 secondary_range = 40.0
 
 dash_distance = 30.0
-dash_cooldown = 1.0
+dash_cooldown = 2.0
 dash_damage_multiplier = 0.5
 dash_speed = 600.0

@@ -134,7 +134,7 @@ pub struct ClientPlayer {
 impl ClientPlayer {
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font) {
     // TODO: animations
-    let size: f32 = 12.0;
+    let size: f32 = 10.0;
     draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera_position);
     let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
     let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };

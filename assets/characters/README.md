@@ -29,9 +29,9 @@ All cooldowns are in seconds. All distances are in screen percentage units (vh).
 
 - `health` character's health (0-255, standadrd 100)
 - `speed` character's speed (0-255, standard 100)
-- `primary_damage` damage of primary attack (0-255, standard 20)
+- `primary_damage` damage of primary attack (0-255, standard 10)
 - `primary_heal` healing provided by primary attack to teammates (0-255, standard 0)
-- `primary_cooldown` time between uses of attack (0.0-f32::MAX, standard 0.5)
+- `primary_cooldown` time between uses of attack (0.0-f32::MAX, standard 0.5-1.0)
 - `primary_range` attack's reach (0.0-f32::MAX, standard 70.0)
 - `primary_shot_speed` how fast the bullet travels (0.0-f32::MAX, standard 100.0)
 - `primary_hit_radius` size of bullet (0.0-f32::MAX, standard 5.0)
