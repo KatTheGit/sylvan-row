@@ -67,12 +67,12 @@ fn main() {
         // use IP as identifier, check if packet from srent player correlates to our player
         if player.ip == src.ip().to_string() {
           let time_since_last_packet = recieved_player_info.packet_interval as f64;
-          if time_since_last_packet < MAX_PACKET_INTERVAL &&
-          time_since_last_packet > MIN_PACKET_INTERVAL  {
-            // ignore this packet since it's coming in too fast
-            player_found = true;
-            break;
-          }
+          // if time_since_last_packet < MAX_PACKET_INTERVAL &&
+          // time_since_last_packet > MIN_PACKET_INTERVAL  {
+          //   // ignore this packet since it's coming in too fast
+          //   player_found = true;
+          //   break;
+          // }
           
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           player.shooting = recieved_player_info.shooting_primary;
@@ -155,6 +155,9 @@ fn main() {
 
             new_position.x = previous_position.x + new_movement_raw.x * player_movement_speed * time_since_last_packet as f32;
             new_position.y = previous_position.y + new_movement_raw.y * player_movement_speed * time_since_last_packet as f32;
+
+            player.move_direction = new_movement_raw;
+
           }
 
           if Vector2::distance(new_position, recieved_position) > movement_error_margin {
