@@ -16,7 +16,7 @@ secondary_heal_charge = 0
 secondary_passive_charge = 0
 secondary_range = 50.0
 
-dash_distance = 100.0
+dash_distance = 50.0
 dash_cooldown = 1.0
 dash_damage_multiplier = 1.0
-dash_speed = 300.0
+dash_speed = 500.0
