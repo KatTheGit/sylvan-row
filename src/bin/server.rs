@@ -104,10 +104,9 @@ fn main() {
           }
           
           if player.is_dashing {
-            println!("Dash direction while dashing: {:?}", player.dash_direction);
             let player_dashing_speed: f32 = characters[&player.character].dash_speed;
             let player_max_dash_distance: f32 = characters[&player.character].dash_distance;
-
+            
             let mut dash_movement = Vector2::new();
             dash_movement.x = player.dash_direction.x * player_dashing_speed * time_since_last_packet as f32;
             dash_movement.y = player.dash_direction.y * player_dashing_speed * time_since_last_packet as f32;
@@ -119,9 +118,8 @@ fn main() {
               dash_movement,
               readonly_game_objects
             );
- 
+            
             if player.dashed_distance < player_max_dash_distance {
-              
               new_position.x = previous_position.x + new_movement_raw.x * player_dashing_speed * time_since_last_packet as f32;
               new_position.y = previous_position.y + new_movement_raw.y * player_dashing_speed * time_since_last_packet as f32;
               
@@ -130,6 +128,9 @@ fn main() {
             else {
               player.dashed_distance = 0.0;
               player.is_dashing = false;
+              // The final frame of the dash new_position isn't updated, if not
+              // for this line the player would get sent back to 0.0-0.0
+              new_position = player.position;
             }
             
           }
@@ -164,13 +165,11 @@ fn main() {
           if movement_legal {
             // Apply the movement that the server calculated, which should be similar to the client's.
             player.position = new_position;
-            // println!("✅");
           } else {
             // Inform the network sender it needs to send a correction packet (position override packet).
             player.had_illegal_position = true;
             // Also apply movement.
-            // player.position = new_position;
-            // println!("❌, {}", Vector2::distance(new_position, recieved_position));
+            player.position = new_position;
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
