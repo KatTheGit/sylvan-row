@@ -206,7 +206,7 @@ fn main() {
           shooting_secondary:   false,
           secondary_charge:     100,
           had_illegal_position: false,
-          character:            Character::SniperGirl,
+          character:            Character::HealerGirl,
           last_shot_time:       Instant::now(),
           is_dashing:           false,
           last_dash_time:       Instant::now(),
@@ -284,6 +284,19 @@ fn main() {
               traveled_distance: 0.0,
             });
           }
+          Character::TimeQueen => {
+            game_objects.push(GameObject {
+              object_type: GameObjectType::TimeQueenSword,
+              position: main_loop_players[player_index].position,
+              direction: main_loop_players[player_index].aim_direction,
+              to_be_deleted: false,
+              hitpoints: 0,
+              owner_index: player_index,
+              lifetime: character.primary_range / character.primary_shot_speed,
+              players: Vec::new(),
+              traveled_distance: 0.0,
+            });
+          }
         }
         drop(game_objects);
       }
@@ -302,6 +315,9 @@ fn main() {
           (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
         }
         GameObjectType::HealerGirlPunch => {
+          (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
+        }
+        GameObjectType::TimeQueenSword => {
           (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
         }
         _ => {}

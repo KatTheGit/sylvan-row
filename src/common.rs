@@ -29,6 +29,7 @@ pub const SERVER_LISTEN_PORT: u32 = 25569;
 pub enum Character {
   SniperGirl,
   HealerGirl,
+  TimeQueen,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
@@ -62,6 +63,7 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
     let character_properties: CharacterProperties = match character {
       Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
       Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/healer_girl/properties.pkl")),
+      Character::TimeQueen => CharacterProperties::from_pkl(include_str!("../assets/characters/time_queen/properties.pkl")),
     };
 
     characters.insert(character, character_properties);
@@ -252,6 +254,7 @@ pub enum GameObjectType {
   UnbreakableWall,
   SniperGirlBullet,
   HealerGirlPunch,
+  TimeQueenSword,
 }
 
 // utility
@@ -354,7 +357,7 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
       direction: Vector2::new(),
       to_be_deleted: false,
       owner_index: 200,
-      hitpoints: 255,
+      hitpoints: 30,
       lifetime: f32::INFINITY,
       players: Vec::new(),
       traveled_distance: 0.0,
