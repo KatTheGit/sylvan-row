@@ -42,15 +42,19 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] very rough UI
   - [x] Health bar and count
   - [x] Secondary attack bar and count
-- [ ] Implement dash mechanic
+- [x] Implement dash mechanic
   - [x] Client sends dash info
   - [x] Server cooks
   - [ ] Client cooperates
-- [ ] Design some characters
-- [ ] Correctly update info for each player
-- [ ] Extrapolation (clientside)
+- [x] Design some characters
+- [ ] Implement first 3 characters
+  - [ ] Healer
+  - [ ] Sniper
+  - [ ] Assassin
+- [x] Correctly update info for each player
+- [x] Extrapolation (clientside)
   - [x] Gameobjects
-  - [ ] Players
+  - [x] Players
 - [ ] Clean up code x2
 - [ ] Fix getting stuck inside walls (push out)
 

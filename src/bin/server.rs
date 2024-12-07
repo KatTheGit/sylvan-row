@@ -207,7 +207,7 @@ fn main() {
           aim_direction:        Vector2::new(),
           shooting:             false,
           shooting_secondary:   false,
-          secondary_charge:     100,
+          secondary_charge:     0,
           had_illegal_position: false,
           character:            Character::HealerGirl,
           last_shot_time:       Instant::now(),
@@ -495,17 +495,17 @@ fn apply_simple_bullet_logic(
         // Apply bullet healing, only if in the same team
         if main_loop_players[player_index].team == player.team {
           if main_loop_players[player_index].health < character_properties.primary_heal {
-            main_loop_players[player_index].health -= character_properties.primary_heal;
+            main_loop_players[player_index].health += character_properties.primary_heal;
           } else {
-            main_loop_players[player_index].health = 255;
+            main_loop_players[player_index].health = 100;
           }
           game_objects[game_object_index].players.push(player_index);
         }
         // Apply appropriate secondary charge
-        if main_loop_players[owner_index].secondary_charge < 255 - character_properties.secondary_hit_charge {
+        if main_loop_players[owner_index].secondary_charge < 100 - character_properties.secondary_hit_charge {
           main_loop_players[owner_index].secondary_charge += character_properties.secondary_hit_charge;
         } else {
-          main_loop_players[owner_index].secondary_charge = 255;
+          main_loop_players[owner_index].secondary_charge = 100;
         }
         // Destroy the bullet if it doesn't pierce.
         if !pierceing_shot {
