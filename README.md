@@ -47,12 +47,12 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Server cooks
   - [ ] Client cooperates
 - [ ] Design some characters
-- [ ] Add healing, passive (to be gamedesigned)
 - [ ] Correctly update info for each player
 - [ ] Extrapolation (clientside)
   - [x] Gameobjects
   - [ ] Players
 - [ ] Clean up code x2
+- [ ] Fix getting stuck inside walls (push out)
 
 ### Irrelevant now, do after playtesting
 
@@ -72,4 +72,4 @@ On Linux, you need to additionally install `libudev-dev`.
 
 ## Issues that won't be solved
 
-- Fullcreen issue on Linux (Macroquad issue)
+- Fullcreen issue on Linux (can't exit fullscreen) (Macroquad issue)
