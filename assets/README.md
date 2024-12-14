@@ -34,15 +34,39 @@ The player has five game controls, which are independent of their picked charact
 A player may move freely if unobstructed by the map, aim and shoot freely at all times, and shoot their secondary
 once it is charged. These are God given rights and may not be inhibited by other players and their abilities.
 
-### Health and Damage
-
-When taking damage, the player's health (HP) and max health are both reduced, with max health being reduced slower. HP can be recovered after a little while of not taking damage. Max health can only be restored to its original value by healers. Healers however restore it very slow, and are better at restoring normal HP.
-
 ### Map
 
 Maps will contain walls. Walls are a major gameplay element. They can be added (by abilities) or removed (shot down), but they cannot be easily shot or moved through.
 
 Maps can contains holes or water. These can be shot through but cannot be moved through. No exceptions.
+
+## Classes
+
+These are three classes that create a ternary system. It creates a rock-paper-scissors style countering triangle. Of course all "counters" are soft-counters. There should be no hardcounter matchups.
+
+### Healer
+
+The second fastest class. Are very evasive and can easily avoid big bullets but not enough to evade assassins. They "counter" rangers' defensive playstyles by simply healing when the ranger plays too defensively. They have the second longest range.
+
+Healers excel at supporting assassins in battle.
+
+### Assassin
+
+The fastest class. They specialise in high "burst" mobility and have a higher damage output. They have the shortest range. They easily catch up to healers, but may have a bit more trouble with rangers.
+
+Assassins excel at supporting rangers by protecting them from threats like other assassins or healers.
+
+### Ranger
+
+The slowest but most defensive class. They have a very long range and defensive abilities that make them harder to approach. Assassins have more trouble with them than healers, if the ranger plays carefully.
+
+They excel at helping healers in battle, as they can help defend  them from assassins.
+
+## Random shit I wrote and can't be assed to delete
+
+### Health and Damage
+
+When taking damage, the player's health (HP) and max health are both reduced, with max health being reduced slower. HP can be recovered after a little while of not taking damage. Max health can only be restored to its original value by healers. Healers however restore it very slow, and are better at restoring normal HP.
 
 ## Characters
 
@@ -56,22 +80,3 @@ Of course all of this will be kept or trashed depending on playtester opinions.
 - Attack Range is inversely proportional to movement speed.
 - Bullet size is inversely proportional to bullet speed.
 - The difference between class of any stat cannot be too big. (<20%)
-
-### Classes (these are uninspired guidelines, not obligations)
-
-Healers and Controllers (assisting characters)
-- Marginally better movement speed, slightly smaller hitboxes (to be evasive, as they get targeted)
-- Smaller DPS
-
-Long-rangers and damage dealers (beginner friendly)
-- Only class allowed to have damage-dealing secondaries
-- Lowest movement speed
-
-Close-rangers
-- Faster movement speeds (dodging and approach)
-- Pack a punch
-- Shorter range
-
-### Character ideas (mindstorm)
-- Bureaucrat mage
-- Temporal monarch that can revert their position
