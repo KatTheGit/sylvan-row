@@ -46,10 +46,11 @@ async fn game(/* server_ip: &str */) {
       game_object_type,
       match game_object_type {
         GameObjectType::Wall             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperWall       => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::UnbreakableWall  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::SniperGirlBullet => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HealerGirlPunch  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::TimeQueenSword  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::TimeQueenSword   => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
       }
     );
   }
@@ -62,7 +63,7 @@ async fn game(/* server_ip: &str */) {
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
-  player.character = Character::HealerGirl;
+  player.character = Character::SniperGirl;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   // temporary
@@ -130,7 +131,12 @@ async fn game(/* server_ip: &str */) {
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
         GameObjectType::HealerGirlPunch | GameObjectType::TimeQueenSword | GameObjectType::SniperGirlBullet => {
-          let speed: f32 = character_properties[&Character::HealerGirl].speed;
+          let speed: f32 = character_properties[&(match game_object.object_type {
+            GameObjectType::HealerGirlPunch => Character::HealerGirl,
+            GameObjectType::SniperGirlBullet => Character::SniperGirl,
+            GameObjectType::TimeQueenSword => Character::TimeQueen,
+            _ => panic!()
+          })].primary_shot_speed;
           game_object.position.x += speed * game_object.direction.x * get_frame_time();
           game_object.position.y += speed * game_object.direction.y * get_frame_time();
         }

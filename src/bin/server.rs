@@ -207,9 +207,9 @@ fn main() {
           aim_direction:        Vector2::new(),
           shooting:             false,
           shooting_secondary:   false,
-          secondary_charge:     0,
+          secondary_charge:     100,
           had_illegal_position: false,
-          character:            Character::HealerGirl,
+          character:            Character::SniperGirl,
           last_shot_time:       Instant::now(),
           is_dashing:           false,
           last_dash_time:       Instant::now(),
@@ -236,22 +236,25 @@ fn main() {
   let main_loop_players = Arc::clone(&players);
   loop {
     server_counter = Instant::now();
-
+    
     let mut true_delta_time: f64 = 0.0;
     if delta_time > desired_delta_time {
       true_delta_time = delta_time;
     } else {
       true_delta_time = desired_delta_time;
     }
-
+    
     
     let mut main_loop_players = main_loop_players.lock().unwrap();
-
+    
     // do all logic related to players
     for player_index in 0..main_loop_players.len() {
       let shooting = main_loop_players[player_index].shooting;
       let shooting_secondary = main_loop_players[player_index].shooting_secondary;
       let last_shot_time = main_loop_players[player_index].last_shot_time;
+      let secondary_charge = main_loop_players[player_index].secondary_charge;
+
+      let player_info = main_loop_players[player_index].clone();
 
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
@@ -303,6 +306,48 @@ fn main() {
         }
         drop(game_objects);
       }
+      
+      // If a player is trying to use their secondary and they have enough charge to do so, apply custom logic.
+      if shooting_secondary && secondary_charge >= character.secondary_charge_use {
+        main_loop_players[player_index].shooting_secondary = false;
+        let mut secondary_used_successfully = false;
+        
+        match main_loop_players[player_index].character {
+          
+          Character::HealerGirl => {
+            // Create a bullet type and then define its actions in the next loop that handles bullets
+          },
+          Character::SniperGirl => {
+            // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
+            let wall_place_distance = character.secondary_range;
+            let mut desired_placement_position: Vector2 = player_info.position;
+            desired_placement_position.x += player_info.aim_direction.x * wall_place_distance;
+            desired_placement_position.y += player_info.aim_direction.y * wall_place_distance;
+            let mut game_objects = main_game_objects.lock().unwrap();
+            game_objects.push(GameObject {
+              object_type: GameObjectType::SniperWall,
+              position: desired_placement_position,
+              direction: Vector2::new(),
+              to_be_deleted: false,
+              owner_index: 0,
+              hitpoints: 255,
+              lifetime: 5.0,
+              players: vec![],
+              traveled_distance: 0.0,
+            });
+            drop(game_objects);
+            
+            secondary_used_successfully = true;
+          },
+          Character::TimeQueen => {
+            // Revert position somehow
+          },
+        }
+        if secondary_used_successfully {
+          main_loop_players[player_index].secondary_charge -= character.secondary_charge_use;
+        }
+      }
+      
     }
 
     

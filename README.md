@@ -49,17 +49,26 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Design some characters
 - [ ] Implement first 3 characters
   - [ ] Healer
+    - [x] Primary (single shot)
+    - [x] Dash (short dash)
+    - [ ] Secondary (healing aura...?)
   - [ ] Sniper
+    - [x] Primary (single shot)
+    - [x] Dash (semi-long dash)
+    - [ ] Secondary (wall placement)
   - [ ] Assassin
+    - [x] Primary (sword, splash)
+    - [x] Dash (long dash)
+    - [ ] Secondary (position revert)
 - [x] Correctly update info for each player
 - [x] Extrapolation (clientside)
   - [x] Gameobjects
   - [x] Players
-- [ ] Clean up code x2
 - [ ] Fix getting stuck inside walls (push out)
 
 ### Irrelevant now, do after playtesting
 
+- [ ] Clean up code x2
 - [ ] Hunt for more vulnerabilities
   - [ ] Fix vulnerability (if client sends big packet, server crashes)
 - [ ] Animations
@@ -73,6 +82,8 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Allow use of different ports
     - [ ] clientside
     - [ ] serverside
+- [ ] Further network-related de-jittering measures than simple extrapolation.
+- [ ] Map editor
 
 ## Issues that won't be solved
 

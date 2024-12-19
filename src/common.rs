@@ -50,6 +50,7 @@ pub struct CharacterProperties {
   pub secondary_passive_charge: u8,
   pub secondary_range:          f32,
   pub primary_hit_radius:       f32,
+  pub secondary_charge_use:     u8,
 
   pub dash_distance:                f32,
   pub dash_cooldown:                f32,
@@ -89,6 +90,7 @@ impl CharacterProperties {
       secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge").unwrap()),
       secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge").unwrap()),
       secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range").unwrap()),
+      secondary_charge_use:     pkl_u8(find_parameter(&pkl, "secondary_charge_use").unwrap()),
       dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance").unwrap()),
       dash_cooldown:            pkl_f32(find_parameter(&pkl, "dash_cooldown").unwrap()),
       dash_damage_multiplier:   pkl_f32(find_parameter(&pkl, "dash_damage_multiplier").unwrap()),
@@ -251,6 +253,7 @@ pub struct GameObject {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Hash, Eq)]
 pub enum GameObjectType {
   Wall,
+  SniperWall,
   UnbreakableWall,
   SniperGirlBullet,
   HealerGirlPunch,
