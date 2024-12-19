@@ -41,6 +41,7 @@ All cooldowns are in seconds. All distances are in screen percentage units (vh).
 - `secondary_heal_charge` amount secondary bar is recharged from healing teammate (0-255, standard 50)
 - `secondary_passive_charge` amount secondary bar is recharged each second (0-255, standard 0)
 - `secondary_range`
+- `secondary_charge_use` Amount of secondary charge removed by using secondary attack.
 - `dash_distance` distance player dashes or jumps (0.0-f32::MAX, standard 50.0)
 - `dash_cooldown` minimum time between dashes (0.0-f32::MAX, standard 10.0)
 - `dash_damage_multiplier` how much damage is reduced or increassed during the dash, as a quotient (0.0-f32::MAX, standard 0.0-1.0)
