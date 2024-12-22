@@ -131,15 +131,27 @@ pub struct ClientPlayer {
   pub shooting_primary: bool,
   pub shooting_secondary: bool,
   pub team: Team,
+  pub time_since_last_dash: f32,
 }
 
 impl ClientPlayer {
-  pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font) {
+  pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties) {
     // TODO: animations
     let size: f32 = 10.0;
     draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera_position);
     let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
     let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };
+    let dash_bar_offset: Vector2 = Vector2 { x: -5.0, y: -15.0 };
+    let mut dash_ratio = self.time_since_last_dash / character.dash_cooldown;
+    if dash_ratio > 1.0 {dash_ratio = 1.0};
+    draw_line_relative(
+      self.position.x + dash_bar_offset.x,
+      self.position.y + dash_bar_offset.y,
+      dash_ratio * 10.0 + self.position.x + dash_bar_offset.x,
+      self.position.y + dash_bar_offset.y,
+      1.5,
+      BLUE,
+      camera_position, vh);
     draw_line_relative(
       self.position.x + secondary_bar_offset.x,
       self.position.y + secondary_bar_offset.y,
@@ -191,6 +203,7 @@ impl ClientPlayer {
       shooting_primary: false,
       shooting_secondary: false,
       team: Team::Blue,
+      time_since_last_dash: 0.0,
     };
   }
 }
@@ -222,6 +235,7 @@ pub struct ServerRecievingPlayerPacket {
   pub shooting_primary: bool,
   pub shooting_secondary: bool,
   pub secondary_charge: u8,
+  pub last_dash_time: f32,
 }
 
 /// information sent by server to client

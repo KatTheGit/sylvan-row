@@ -210,10 +210,10 @@ async fn game(/* server_ip: &str */) {
       (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
       2.0, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
     );
-    player_copy.draw(&player_texture, vh, player_copy.position, &health_bar_font);
+    player_copy.draw(&player_texture, vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
     
     for player in other_players_copy {
-      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position, &health_bar_font);
+      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
     }
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
@@ -448,6 +448,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   }
 }
 
+// (vscode) MARK: Network Listen
 fn network_listener(
   player: Arc<Mutex<ClientPlayer>>,
   game_objects: Arc<Mutex<Vec<GameObject>>>,
@@ -473,6 +474,7 @@ fn network_listener(
     }
     player.health = recieved_server_info.player_packet_is_sent_to.health;
     player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
+    player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
     drop(player); // free mutex guard ASAP for others to access player.
     
 

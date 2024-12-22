@@ -6,7 +6,7 @@ primary_damage = 6
 primary_heal = 3
 primary_cooldown = 0.5
 primary_range = 50.0
-primary_shot_speed = 100.0
+primary_shot_speed = 300.0
 primary_hit_radius = 5.0
 
 secondary_damage = 0
