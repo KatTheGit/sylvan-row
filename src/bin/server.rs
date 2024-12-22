@@ -209,7 +209,7 @@ fn main() {
           shooting_secondary:   false,
           secondary_charge:     100,
           had_illegal_position: false,
-          character:            Character::SniperGirl,
+          character:            Character::HealerGirl,
           last_shot_time:       Instant::now(),
           is_dashing:           false,
           last_dash_time:       Instant::now(),
@@ -231,10 +231,14 @@ fn main() {
 
   let main_game_objects = Arc::clone(&game_objects);
 
-  // server loop.
+  // for once-per-second operations, called ticks
+  let mut tick_counter = Instant::now();
+  
+  // (vscode) MARK: Server Loop
   let characters = load_characters();
   let main_loop_players = Arc::clone(&players);
   loop {
+    let mut tick: bool = false;
     server_counter = Instant::now();
     
     let mut true_delta_time: f64 = 0.0;
@@ -244,6 +248,11 @@ fn main() {
       true_delta_time = desired_delta_time;
     }
     
+    // for once-per-second operations
+    if tick_counter.elapsed().as_secs_f32() > 1.0 {
+      tick = true;
+      tick_counter = Instant::now();
+    }
     
     let mut main_loop_players = main_loop_players.lock().unwrap();
     
@@ -268,6 +277,7 @@ fn main() {
           Character::SniperGirl => {
             game_objects.push(GameObject {
               object_type: GameObjectType::SniperGirlBullet,
+              size: TILE_SIZE,
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
@@ -281,6 +291,7 @@ fn main() {
           Character::HealerGirl => {
             game_objects.push(GameObject {
               object_type: GameObjectType::HealerGirlPunch,
+              size: TILE_SIZE,
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
@@ -294,6 +305,7 @@ fn main() {
           Character::TimeQueen => {
             game_objects.push(GameObject {
               object_type: GameObjectType::TimeQueenSword,
+              size: TILE_SIZE,
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
@@ -317,6 +329,21 @@ fn main() {
           
           Character::HealerGirl => {
             // Create a bullet type and then define its actions in the next loop that handles bullets
+            let mut game_objects = main_game_objects.lock().unwrap();
+            game_objects.push(GameObject {
+              object_type: GameObjectType::HealerAura,
+              size: 60.0,
+              position: player_info.position,
+              direction: Vector2::new(),
+              to_be_deleted: false,
+              owner_index: player_index,
+              hitpoints: 0,
+              lifetime: 5.0,
+              players: vec![],
+              traveled_distance: 0.0,
+            });
+            drop(game_objects);
+            secondary_used_successfully = true;
           },
           Character::SniperGirl => {
             // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
@@ -343,6 +370,7 @@ fn main() {
             if wall_can_be_placed {
               game_objects.push(GameObject {
                 object_type: GameObjectType::SniperWall,
+                size: TILE_SIZE,
                 position: desired_placement_position,
                 direction: Vector2::new(),
                 to_be_deleted: false,
@@ -386,6 +414,19 @@ fn main() {
         }
         GameObjectType::TimeQueenSword => {
           (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
+        }
+        GameObjectType::HealerAura => {
+          game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
+           // every second apply heal
+           if tick {
+             for player_index in 0..main_loop_players.len() {
+              if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
+                if main_loop_players[player_index].health < 100 {
+                  main_loop_players[player_index].health += 10;
+                }
+              }
+             }
+           }
         }
         _ => {}
       }

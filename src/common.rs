@@ -236,6 +236,7 @@ pub struct ServerPacket {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct GameObject {
   pub object_type: GameObjectType,
+  pub size: f32,
   pub position: Vector2,
   pub direction: Vector2,
   pub to_be_deleted: bool,
@@ -254,6 +255,7 @@ pub struct GameObject {
 pub enum GameObjectType {
   Wall,
   SniperWall,
+  HealerAura,
   UnbreakableWall,
   SniperGirlBullet,
   HealerGirlPunch,
@@ -356,6 +358,7 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
         "unbreakablewall" => {GameObjectType::UnbreakableWall},
         _                 => {panic!("Unexpected ojbect in map file.")},
       },
+      size: TILE_SIZE,
       position: Vector2 { x: pos_x, y: pos_y },
       direction: Vector2::new(),
       to_be_deleted: false,

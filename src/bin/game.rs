@@ -76,7 +76,7 @@ async fn game(/* server_ip: &str */) {
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
-  player.character = Character::SniperGirl;
+  player.character = Character::HealerGirl;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   // temporary
@@ -194,7 +194,8 @@ async fn game(/* server_ip: &str */) {
     // draw all gameobjects
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
-      draw_image_relative(texture, game_object.position.x-5.0, game_object.position.y-5.0, 10.0, 10.0, vh, player_copy.position);
+      let size = game_object.size;
+      draw_image_relative(texture, game_object.position.x - size/2.0, game_object.position.y - size/2.0, size, size, vh, player_copy.position);
     }
 
     // draw player and crosshair (aim laser)
@@ -345,7 +346,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let device_state: DeviceState = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
     let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
-    println!("{:?}", mouse);
     if !keys.is_empty() {
       movement_vector = Vector2::new();
       keyboard_mode = true; // since we used the keyboard
