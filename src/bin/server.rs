@@ -322,13 +322,25 @@ fn main() {
             // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
             let wall_place_distance = character.secondary_range;
             let mut desired_placement_position: Vector2 = player_info.position;
-            desired_placement_position.x += player_info.aim_direction.x * wall_place_distance;
-            desired_placement_position.y += player_info.aim_direction.y * wall_place_distance;
-
+            // round to closest 10
+            desired_placement_position.x += ((((player_info.aim_direction.x * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position.y += ((((player_info.aim_direction.y * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            
             let mut wall_can_be_placed = true;
+            let mut game_objects = main_game_objects.lock().unwrap();
+            for game_object in game_objects.clone() {
+              match game_object.object_type {
+                GameObjectType::SniperWall | GameObjectType::UnbreakableWall | GameObjectType::Wall => {
+                  if game_object.position.x == desired_placement_position.x && game_object.position.y == desired_placement_position.y {
+                    wall_can_be_placed = false;
+                  }
+                },
+                _ => {}
+              }
+            }
+
 
             if wall_can_be_placed {
-              let mut game_objects = main_game_objects.lock().unwrap();
               game_objects.push(GameObject {
                 object_type: GameObjectType::SniperWall,
                 position: desired_placement_position,
@@ -340,10 +352,10 @@ fn main() {
                 players: vec![],
                 traveled_distance: 0.0,
               });
-              drop(game_objects);
+              secondary_used_successfully = true;
             }
+            drop(game_objects);
             
-            secondary_used_successfully = true;
           },
           Character::TimeQueen => {
             // Revert position somehow

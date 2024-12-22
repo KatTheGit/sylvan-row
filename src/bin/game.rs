@@ -14,7 +14,6 @@ use std::sync::{Arc, Mutex};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use strum::IntoEnumIterator;
 
-
 fn window_conf() -> Conf {
   Conf {
     window_title: "Game".to_owned(),
@@ -35,7 +34,7 @@ async fn main() {
 }
 
 /// In the future this function will be called by main once the user starts the game
-/// through the menu.
+/// through the menu.a
 async fn game(/* server_ip: &str */) {
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
@@ -125,7 +124,7 @@ async fn game(/* server_ip: &str */) {
     let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::clone(&other_players);
     let mut other_players: MutexGuard<Vec<ClientPlayer>> = other_players.lock().unwrap();
 
-    // Extrapolation
+    // (vscode) MARK: Extrapolation
 
     // for game objects
     for game_object in game_objects.iter_mut() {
@@ -158,7 +157,7 @@ async fn game(/* server_ip: &str */) {
     let other_players_copy = other_players.clone();
     drop(other_players);
 
-    // update mouse position
+    // (vscode) MARK: update mouse pos
     let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
     let mut mouse_position: MutexGuard<Vec2> = mouse_position.lock().unwrap();
     // update mouse position for the input thread to handle.
@@ -173,6 +172,7 @@ async fn game(/* server_ip: &str */) {
     let aim_direction: Vector2 = Vector2::difference(Vector2::new(), Vector2::from(mouse_position.clone()));
     drop(mouse_position);
 
+    // (vscode) MARK: Draw
     // Draw the backgrounds
     clear_background(BLACK);
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, GRAY);
@@ -206,6 +206,7 @@ async fn game(/* server_ip: &str */) {
   }
 }
 
+// (vscode) MARK: Network and Input
 /// This thread:
 /// - handles input and updates player info
 /// - handles sending player info to the server
