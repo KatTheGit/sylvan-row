@@ -14,6 +14,19 @@ use std::sync::{Arc, Mutex};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use strum::IntoEnumIterator;
 
+#[cfg(target_os = "macos")]
+fn rmb_index() -> usize {
+  return 2;
+}
+#[cfg(target_os = "linux")]
+fn rmb_index() -> usize {
+  return 3;
+}
+#[cfg(target_os = "windows")]
+fn rmb_index() -> usize {
+  return 3; // to be tested
+}
+
 fn window_conf() -> Conf {
   Conf {
     window_title: "Game".to_owned(),
@@ -46,6 +59,7 @@ async fn game(/* server_ip: &str */) {
       match game_object_type {
         GameObjectType::Wall             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::SniperWall       => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HealerAura       => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/secondary.png"), None),
         GameObjectType::UnbreakableWall  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::SniperGirlBullet => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HealerGirlPunch  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
@@ -331,6 +345,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let device_state: DeviceState = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
     let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
+    println!("{:?}", mouse);
     if !keys.is_empty() {
       movement_vector = Vector2::new();
       keyboard_mode = true; // since we used the keyboard
@@ -359,7 +374,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       shooting_primary = true;
     }
     //  RMB
-    if mouse[3] == true {
+    // 3 anywhere, 2 on macos
+    if mouse[rmb_index()] == true {
       shooting_secondary = true;
     }
     
