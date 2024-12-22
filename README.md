@@ -84,6 +84,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [ ] serverside
 - [ ] Further network-related de-jittering measures than simple extrapolation.
 - [ ] Map editor
+- [ ] Offload work to client if possible
 
 ## Issues that won't be solved
 

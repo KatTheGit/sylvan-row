@@ -102,7 +102,7 @@ fn main() {
               }
             }
           }
-          
+          // (vscode) MARK: Dashing Legality
           if player.is_dashing {
             let player_dashing_speed: f32 = characters[&player.character].dash_speed;
             let player_max_dash_distance: f32 = characters[&player.character].dash_distance;
@@ -136,7 +136,7 @@ fn main() {
           }
           
           else {
-            
+            // (vscode) MARK: Movement Legality
             // Movement legality calculations
             let raw_movement = recieved_player_info.movement;
             let mut movement = Vector2::new();
@@ -180,7 +180,7 @@ fn main() {
           break
         }
       }
-
+      // (vscode) MARK: Instantiate Player
       // otherwise, add the player
       // NOTE: In the future this entire chunk of code will be gone, the matchmaker will populate
       // the list of players beforehand.
@@ -258,6 +258,7 @@ fn main() {
 
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
+      // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.s
       if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
         main_loop_players[player_index].last_shot_time = Instant::now();
@@ -306,7 +307,7 @@ fn main() {
         }
         drop(game_objects);
       }
-      
+      // (vscode) MARK: Secondaries
       // If a player is trying to use their secondary and they have enough charge to do so, apply custom logic.
       if shooting_secondary && secondary_charge >= character.secondary_charge_use {
         main_loop_players[player_index].shooting_secondary = false;
@@ -323,19 +324,24 @@ fn main() {
             let mut desired_placement_position: Vector2 = player_info.position;
             desired_placement_position.x += player_info.aim_direction.x * wall_place_distance;
             desired_placement_position.y += player_info.aim_direction.y * wall_place_distance;
-            let mut game_objects = main_game_objects.lock().unwrap();
-            game_objects.push(GameObject {
-              object_type: GameObjectType::SniperWall,
-              position: desired_placement_position,
-              direction: Vector2::new(),
-              to_be_deleted: false,
-              owner_index: 0,
-              hitpoints: 255,
-              lifetime: 5.0,
-              players: vec![],
-              traveled_distance: 0.0,
-            });
-            drop(game_objects);
+
+            let mut wall_can_be_placed = true;
+
+            if wall_can_be_placed {
+              let mut game_objects = main_game_objects.lock().unwrap();
+              game_objects.push(GameObject {
+                object_type: GameObjectType::SniperWall,
+                position: desired_placement_position,
+                direction: Vector2::new(),
+                to_be_deleted: false,
+                owner_index: 0,
+                hitpoints: 255,
+                lifetime: 5.0,
+                players: vec![],
+                traveled_distance: 0.0,
+              });
+              drop(game_objects);
+            }
             
             secondary_used_successfully = true;
           },
@@ -354,6 +360,7 @@ fn main() {
     // println!("{:?}", game_objects);
     // println!("{}", 1.0 / delta_time);
 
+    // (vscode) MARK: Object Handling
     // Do all logic related to game objects
     let mut game_objects = main_game_objects.lock().unwrap();
     for game_object_index in 0..game_objects.len() {
@@ -387,6 +394,7 @@ fn main() {
     let game_objects_readonly = game_objects.clone();
     drop(game_objects);
 
+    // (vscode) MARK: Networking
     // Only do networking logic at some frequency
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
       // reset the counter
@@ -447,6 +455,8 @@ fn main() {
     }
   }
 }
+
+// (vscode) MARK: Functions, Structs
 
 /// Loads any map from a properly formatted string: `<object> [posX] [posY]`
 /// 

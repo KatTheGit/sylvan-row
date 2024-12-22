@@ -162,30 +162,20 @@ async fn game(/* server_ip: &str */) {
     let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
     let mut mouse_position: MutexGuard<Vec2> = mouse_position.lock().unwrap();
     // update mouse position for the input thread to handle.
-    // This hot garbage WILL be removed once camera is implemented correctly.
-    // but basically what this does is turn the mouse's screen coordinates into game coordinates, the same type
-    // of coordinates the player uses
+    // This hot garbage WILL be removed once camera is implemented correctly. Mayhaps.
+    // But what this does is turn the mouse's screen coordinates into game coordinates,
+    // the same type of coordinates the player uses
     //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related         center
     //                        conversion.                           coords     ratio       to cropping.
     //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.   ,-------'----------,
     mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0);
     mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0;
+    let aim_direction: Vector2 = Vector2::difference(Vector2::new(), Vector2::from(mouse_position.clone()));
     drop(mouse_position);
 
-
+    // Draw the backgrounds
     clear_background(BLACK);
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, GRAY);
-
-    // draw player and crosshair (aim laser)
-    player_copy.draw(&player_texture, vh, player_copy.position, &health_bar_font);
-    let range = character_properties[&player_copy.character].primary_range;
-    player_copy.draw_crosshair(vh, player_copy.position, range);
-
-    for player in other_players_copy {
-      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position, &health_bar_font);
-    }
-
-    // println!("{}", player_copy.secondary_charge);
 
     // draw all gameobjects
     for game_object in game_objects_copy {
@@ -193,8 +183,23 @@ async fn game(/* server_ip: &str */) {
       draw_image_relative(texture, game_object.position.x-5.0, game_object.position.y-5.0, 10.0, 10.0, vh, player_copy.position);
     }
 
-    // temporary asf health bar
-    //draw_line(43.75 * vw, 40.0 * vh, (43.75 + (player_copy.health as f32 / 20.0)) * vw, 40.0 * vh, 1.0*vw, GREEN);
+    // draw player and crosshair (aim laser)
+    let range = character_properties[&player_copy.character].primary_range;
+    // player_copy.draw_crosshair(vh, player_copy.position, range);
+    let relative_position_x = 50.0 * (16.0/9.0); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+    let relative_position_y = 50.0; //+ (vh * 100.0) / 2.0;
+    draw_line(
+      (aim_direction.normalize().x * 5.0 * vh) + relative_position_x * vh,
+      (aim_direction.normalize().y * 5.0 * vh) + relative_position_y * vh,
+      (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
+      (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
+      2.0, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
+    );
+    player_copy.draw(&player_texture, vh, player_copy.position, &health_bar_font);
+    
+    for player in other_players_copy {
+      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position, &health_bar_font);
+    }
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     next_frame().await;
@@ -228,7 +233,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
 
   let mut delta_time_counter: Instant = Instant::now();
   let mut delta_time: f32 = delta_time_counter.elapsed().as_secs_f32();
-  let desired_delta_time: f32 = 1.0 / 60.0; // run this thread at 300Hz
+  let desired_delta_time: f32 = 1.0 / 60.0; // Hz
 
   // Whether in keyboard or controller mode.
   // Ignore mouse pos in controller mode for example.
