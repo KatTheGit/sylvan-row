@@ -89,3 +89,4 @@ On Linux, you need to additionally install `libudev-dev`.
 ## Issues that won't be solved
 
 - Fullcreen issue on Linux (can't exit fullscreen) (Macroquad issue)
+- Icon doesn't shop up on Linux (Macroquad issue)
