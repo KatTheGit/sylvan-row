@@ -76,7 +76,7 @@ async fn game(/* server_ip: &str */) {
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
-  player.character = Character::HealerGirl;
+  player.character = Character::SniperGirl;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   // temporary

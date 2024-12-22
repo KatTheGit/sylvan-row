@@ -48,14 +48,14 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Client cooperates
 - [x] Design some characters
 - [ ] Implement first 3 characters
-  - [ ] Healer
+  - [x] Healer
     - [x] Primary (single shot)
     - [x] Dash (short dash)
-    - [ ] Secondary (healing aura...?)
-  - [ ] Sniper
+    - [x] Secondary (healing aura...?)
+  - [x] Sniper
     - [x] Primary (single shot)
     - [x] Dash (semi-long dash)
-    - [ ] Secondary (wall placement)
+    - [x] Secondary (wall placement)
   - [ ] Assassin
     - [x] Primary (sword, splash)
     - [x] Dash (long dash)
@@ -64,16 +64,26 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Extrapolation (clientside)
   - [x] Gameobjects
   - [x] Players
+
+### Get ready for playtesting
+
 - [ ] Fix getting stuck inside walls (push out)
+- [ ] Very rough art
+  - [ ] Character top-down views
+  - [ ] Wall sprites
+  - [ ] Bullets
+- [ ] Decent map
 
 ### Irrelevant now, do after playtesting
 
 - [ ] Clean up code x2
 - [ ] Hunt for more vulnerabilities
   - [ ] Fix vulnerability (if client sends big packet, server crashes)
-- [ ] Animations
+  - [ ] If client sends incorrect packet, server crashes
 - [ ] Improve camera
-- [ ] Tie together the game. (Menu, gamemodes, etc)
+- [ ] Animations
+- [ ] Tie together the game. (Menu, gamemodes, matchmaking server, etc)
+  - [ ] Allow a quick-play mode for developer use only
 - [ ] Canvas flipping
 - [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
 - [ ] Figure out port and firewall shenanigans

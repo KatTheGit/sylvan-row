@@ -132,9 +132,8 @@ fn main() {
               // for this line the player would get sent back to 0.0-0.0
               new_position = player.position;
             }
-            
           }
-          
+
           else {
             // (vscode) MARK: Movement Legality
             // Movement legality calculations
@@ -209,7 +208,7 @@ fn main() {
           shooting_secondary:   false,
           secondary_charge:     100,
           had_illegal_position: false,
-          character:            Character::HealerGirl,
+          character:            Character::SniperGirl,
           last_shot_time:       Instant::now(),
           is_dashing:           false,
           last_dash_time:       Instant::now(),
@@ -350,9 +349,9 @@ fn main() {
             let wall_place_distance = character.secondary_range;
             let mut desired_placement_position: Vector2 = player_info.position;
             // round to closest 10
-            desired_placement_position.x += ((((player_info.aim_direction.x * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position.y += ((((player_info.aim_direction.y * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            
+            desired_placement_position.x = ((((desired_placement_position.x + player_info.aim_direction.x * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position.y = ((((desired_placement_position.y + player_info.aim_direction.y * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+
             let mut wall_can_be_placed = true;
             let mut game_objects = main_game_objects.lock().unwrap();
             for game_object in game_objects.clone() {
@@ -566,7 +565,7 @@ fn apply_simple_bullet_logic(
   let hit_radius: f32 = character_properties.primary_hit_radius;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
   // Calculate collisions with walls
-  let walls: Vec<GameObjectType> = vec![GameObjectType::Wall, GameObjectType::UnbreakableWall];
+  let walls: Vec<GameObjectType> = vec![GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
   for victim_object_index in 0..game_objects.len() {
     // if it's a wall
     if walls.contains(&game_objects[victim_object_index].object_type) {
