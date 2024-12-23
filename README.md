@@ -68,6 +68,8 @@ On Linux, you need to additionally install `libudev-dev`.
 ### Get ready for playtesting
 
 - [ ] Fix getting stuck inside walls (push out)
+- [ ] Fix hp overheal (implement a heal function or sum idk)
+- [ ] Balance changes
 - [ ] Very rough art
   - [ ] Character top-down views
   - [ ] Wall sprites
@@ -99,4 +101,4 @@ On Linux, you need to additionally install `libudev-dev`.
 ## Issues that won't be solved
 
 - Fullcreen issue on Linux (can't exit fullscreen) (Macroquad issue)
-- Icon doesn't shop up on Linux (Macroquad issue)
+- Icon doesn't show up on Linux (Macroquad issue)

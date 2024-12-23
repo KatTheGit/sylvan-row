@@ -214,6 +214,7 @@ fn main() {
           last_dash_time:       Instant::now(),
           dashed_distance:      0.0,
           dash_direction:       Vector2::new(),
+          previous_positions:   Vec::new(),
         });
         println!("Player connected: {}", src.ip().to_string())
       }
@@ -265,6 +266,13 @@ fn main() {
       let player_info = main_loop_players[player_index].clone();
 
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
+
+      // (vscode) MARK: Passives & Other
+
+      if main_loop_players[player_index].character == Character::TimeQueen {
+        // Frequency to run at?
+        
+      }
 
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.s
@@ -545,6 +553,7 @@ struct ServerPlayer {
   dash_direction:       Vector2,
   dashed_distance:      f32,
   last_dash_time:       Instant,
+  previous_positions:   Vec<Vector2>,
 }
 
 /// Applies modifications to players and game objects as a result of
