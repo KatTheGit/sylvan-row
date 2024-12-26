@@ -233,12 +233,16 @@ fn main() {
 
   // for once-per-second operations, called ticks
   let mut tick_counter = Instant::now();
+
+  // for once-per-decisecond operations.
+  let mut tenth_tick_counter = Instant::now();
   
   // (vscode) MARK: Server Loop
   let characters = load_characters();
   let main_loop_players = Arc::clone(&players);
   loop {
     let mut tick: bool = false;
+    let mut tenth_tick: bool = false;
     server_counter = Instant::now();
     
     let mut true_delta_time: f64 = 0.0;
@@ -252,6 +256,11 @@ fn main() {
     if tick_counter.elapsed().as_secs_f32() > 1.0 {
       tick = true;
       tick_counter = Instant::now();
+    }
+    // for once-per-decisecond operations
+    if tenth_tick_counter.elapsed().as_secs_f32() > 0.1 {
+      tenth_tick = true;
+      tenth_tick_counter = Instant::now();
     }
     
     let mut main_loop_players = main_loop_players.lock().unwrap();
@@ -269,9 +278,15 @@ fn main() {
 
       // (vscode) MARK: Passives & Other
 
-      if main_loop_players[player_index].character == Character::TimeQueen {
-        // Frequency to run at?
-        
+      if tenth_tick {
+        if main_loop_players[player_index].character == Character::TimeQueen {
+          let position: Vector2 = main_loop_players[player_index].position.clone();
+          main_loop_players[player_index].previous_positions.push(position);
+          let position_buffer_length: usize = 100;
+          if main_loop_players[player_index].previous_positions.len() > position_buffer_length {
+            main_loop_players[player_index].previous_positions.remove(0);
+          }
+        }
       }
 
       // (vscode) MARK: Primaries
