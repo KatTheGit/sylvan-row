@@ -69,7 +69,7 @@ On Linux, you need to additionally install `libudev-dev`.
 ### Get ready for playtesting
 
 - [x] "Fix" getting stuck inside walls (push out)
-- [ ] Fix hp overheal (implement a heal function or sum idk)
+- [ ] Fix hp overheal (done but not tested)
 - [ ] Balance changes
 - [ ] Very rough art
   - [ ] Character top-down views
