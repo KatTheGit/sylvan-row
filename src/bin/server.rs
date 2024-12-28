@@ -6,6 +6,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use bincode;
 use std::{thread, time::*};
 
+const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
+
 fn main() {
 
   // Load character properties
@@ -34,7 +36,7 @@ fn main() {
   // temporary, to be dictated by gamemode
   let max_players = 4;
   
-  // networking thread
+  // (vscode) MARK: Networking - Listen
   let listener_players = Arc::clone(&players);
   let listener_game_objects = Arc::clone(&game_objects);
   std::thread::spawn(move || {
@@ -206,9 +208,10 @@ fn main() {
           aim_direction:        Vector2::new(),
           shooting:             false,
           shooting_secondary:   false,
+          secondary_cast_time:  Instant::now(),
           secondary_charge:     100,
           had_illegal_position: false,
-          character:            Character::SniperGirl,
+          character:            Character::TimeQueen,
           last_shot_time:       Instant::now(),
           is_dashing:           false,
           last_dash_time:       Instant::now(),
@@ -271,24 +274,40 @@ fn main() {
       let shooting_secondary = main_loop_players[player_index].shooting_secondary;
       let last_shot_time = main_loop_players[player_index].last_shot_time;
       let secondary_charge = main_loop_players[player_index].secondary_charge;
-
       let player_info = main_loop_players[player_index].clone();
-
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
       // (vscode) MARK: Passives & Other
+      // Handling of passive abilities and anything else that may need to be run all the time.
 
-      if tenth_tick {
-        if main_loop_players[player_index].character == Character::TimeQueen {
+      // Handling of time queen flashsback ability
+      if main_loop_players[player_index].character == Character::TimeQueen {
+        // Update once per decisecond
+        if tenth_tick {
+          // update buffer of positions when secondary isnt active
           let position: Vector2 = main_loop_players[player_index].position.clone();
           main_loop_players[player_index].previous_positions.push(position);
-          let position_buffer_length: usize = 100;
+          // cut the buffer to remain the correct size
+          let position_buffer_length: usize = (character.secondary_cooldown * 10.0) as usize;
           if main_loop_players[player_index].previous_positions.len() > position_buffer_length {
             main_loop_players[player_index].previous_positions.remove(0);
           }
         }
       }
 
+      // Get stuck player out of walls
+      let unstucker_game_objects = main_game_objects.lock().unwrap();
+      for game_object_index in 0..unstucker_game_objects.len() {
+        
+        if WALL_TYPES.contains(&unstucker_game_objects[game_object_index].object_type) {
+          let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
+          if f32::abs(difference.x) < TILE_SIZE && f32::abs(difference.y) < TILE_SIZE {
+            main_loop_players[player_index].position.x += difference.x;
+            main_loop_players[player_index].position.y += difference.y;
+          }
+        }
+      }
+      drop(unstucker_game_objects);
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.s
       if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
@@ -349,6 +368,7 @@ fn main() {
         
         match main_loop_players[player_index].character {
           
+          // Create a healing aura
           Character::HealerGirl => {
             // Create a bullet type and then define its actions in the next loop that handles bullets
             let mut game_objects = main_game_objects.lock().unwrap();
@@ -367,6 +387,7 @@ fn main() {
             drop(game_objects);
             secondary_used_successfully = true;
           },
+          // Place walls
           Character::SniperGirl => {
             // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
             let wall_place_distance = character.secondary_range;
@@ -387,8 +408,6 @@ fn main() {
                 _ => {}
               }
             }
-
-
             if wall_can_be_placed {
               game_objects.push(GameObject {
                 object_type: GameObjectType::SniperWall,
@@ -405,10 +424,19 @@ fn main() {
               secondary_used_successfully = true;
             }
             drop(game_objects);
-            
           },
+          // position revert
           Character::TimeQueen => {
-            // Revert position somehow
+            let flashback_length = (character.secondary_cooldown * 10.0) as usize; // deciseconds
+            if player_info.previous_positions.len() >= flashback_length
+            && main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() >= character.secondary_cooldown {
+              main_loop_players[player_index].secondary_cast_time = Instant::now();
+              secondary_used_successfully = true;
+              main_loop_players[player_index].secondary_cast_time = Instant::now();
+              // set position to beginning of buffer (where player was 3 seconds ago)
+              main_loop_players[player_index].position = main_loop_players[player_index].previous_positions[0];
+              main_loop_players[player_index].previous_positions = Vec::new();
+            }
           },
         }
         if secondary_used_successfully {
@@ -417,7 +445,6 @@ fn main() {
       }
       
     }
-
     
     // println!("{:?}", game_objects);
     // println!("{}", 1.0 / delta_time);
@@ -443,9 +470,8 @@ fn main() {
            if tick {
              for player_index in 0..main_loop_players.len() {
               if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
-                if main_loop_players[player_index].health < 100 {
-                  main_loop_players[player_index].health += 10;
-                }
+                let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
+                main_loop_players[player_index].health.heal(heal_amount);
               }
              }
            }
@@ -469,7 +495,7 @@ fn main() {
     let game_objects_readonly = game_objects.clone();
     drop(game_objects);
 
-    // (vscode) MARK: Networking
+    // (vscode) MARK: Networking - Send
     // Only do networking logic at some frequency
     if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
       // reset the counter
@@ -560,6 +586,7 @@ struct ServerPlayer {
   shooting:             bool,
   last_shot_time:       Instant,
   shooting_secondary:   bool,
+  secondary_cast_time:  Instant,
   secondary_charge:     u8,
   aim_direction:        Vector2,
   move_direction:       Vector2,
@@ -589,10 +616,9 @@ fn apply_simple_bullet_logic(
   let hit_radius: f32 = character_properties.primary_hit_radius;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
   // Calculate collisions with walls
-  let walls: Vec<GameObjectType> = vec![GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
   for victim_object_index in 0..game_objects.len() {
     // if it's a wall
-    if walls.contains(&game_objects[victim_object_index].object_type) {
+    if WALL_TYPES.contains(&game_objects[victim_object_index].object_type) {
       // if it's colliding
       if Vector2::distance(game_object.position, game_objects[victim_object_index].position) < (5.0 + hit_radius) {
         // delete the bullet

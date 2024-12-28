@@ -44,6 +44,7 @@ pub struct CharacterProperties {
   pub primary_shot_speed: f32,
 
   pub secondary_damage:         u8,
+  pub secondary_cooldown:       f32,
   pub secondary_heal:           u8,
   pub secondary_hit_charge:     u8,
   pub secondary_heal_charge:    u8,
@@ -89,6 +90,7 @@ impl CharacterProperties {
       secondary_hit_charge:     pkl_u8( find_parameter(&pkl, "secondary_hit_charge").unwrap()),
       secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge").unwrap()),
       secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge").unwrap()),
+      secondary_cooldown:       pkl_f32(find_parameter(&pkl, "secondary_cooldown").unwrap()),
       secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range").unwrap()),
       secondary_charge_use:     pkl_u8(find_parameter(&pkl, "secondary_charge_use").unwrap()),
       dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance").unwrap()),
@@ -450,4 +452,18 @@ impl Extras for f32 {
 pub trait Extras {
   fn sign(&self) -> f32;
   fn clean(&mut self);
+}
+
+impl Heal for u8 {
+  fn heal(&mut self, health: u8) {
+    let max_health: u8 = 100;
+    if self.clone() + health > max_health {
+      *self = 100
+    } else {
+      *self += health;
+    }
+  }
+}
+pub trait Heal {
+  fn heal(&mut self, health:u8) -> ();
 }

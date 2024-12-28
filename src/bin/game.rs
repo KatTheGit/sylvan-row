@@ -76,7 +76,7 @@ async fn game(/* server_ip: &str */) {
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
-  player.character = Character::SniperGirl;
+  player.character = Character::TimeQueen;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   // temporary
@@ -118,7 +118,6 @@ async fn game(/* server_ip: &str */) {
 
   // Main thread
   loop {
-
     // update vw and vh, used to correctly draw things scale to the screen.
     // one vh for example is 1% of screen height.
     // it's the same as in css.

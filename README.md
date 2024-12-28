@@ -59,7 +59,8 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Assassin
     - [x] Primary (sword, splash)
     - [x] Dash (long dash)
-    - [ ] Secondary (position revert)
+    - [x] Secondary (position revert)
+      - [ ] Render it
 - [x] Correctly update info for each player
 - [x] Extrapolation (clientside)
   - [x] Gameobjects
@@ -67,7 +68,7 @@ On Linux, you need to additionally install `libudev-dev`.
 
 ### Get ready for playtesting
 
-- [ ] Fix getting stuck inside walls (push out)
+- [x] "Fix" getting stuck inside walls (push out)
 - [ ] Fix hp overheal (implement a heal function or sum idk)
 - [ ] Balance changes
 - [ ] Very rough art
@@ -78,11 +79,12 @@ On Linux, you need to additionally install `libudev-dev`.
 
 ### Irrelevant now, do after playtesting
 
-- [ ] Clean up code x2
+- [ ] Clean up code
 - [ ] Hunt for more vulnerabilities
-  - [ ] Fix vulnerability (if client sends big packet, server crashes)
+  - [ ] If client sends big packet, server crashes
   - [ ] If client sends incorrect packet, server crashes
 - [ ] Improve camera
+- [ ] Vertical sorting of gameobjects and drawing layers
 - [ ] Animations
 - [ ] Tie together the game. (Menu, gamemodes, matchmaking server, etc)
   - [ ] Allow a quick-play mode for developer use only

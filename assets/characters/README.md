@@ -18,6 +18,7 @@ secondary_hit_charge = u8
 secondary_heal_charge = u8
 secondary_passive_charge = u8
 secondary_range = f32
+secondary_cooldown = f32
 
 dash_distance = f32
 dash_cooldown = f32
@@ -41,6 +42,7 @@ All cooldowns are in seconds. All distances are in screen percentage units (vh).
 - `secondary_heal_charge` amount secondary bar is recharged from healing teammate (0-255, standard 50)
 - `secondary_passive_charge` amount secondary bar is recharged each second (0-255, standard 0)
 - `secondary_range`
+- `secondary_cooldown` expresses the minimum duration between usess of secondary attack in seconds. Can also express the length of said attack.
 - `secondary_charge_use` Amount of secondary charge removed by using secondary attack.
 - `dash_distance` distance player dashes or jumps (0.0-f32::MAX, standard 50.0)
 - `dash_cooldown` minimum time between dashes (0.0-f32::MAX, standard 10.0)

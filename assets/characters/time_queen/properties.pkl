@@ -11,11 +11,12 @@ primary_hit_radius = 5.0
 
 secondary_damage = 0
 secondary_heal = 0
-secondary_hit_charge = 34
+secondary_hit_charge = 25
 secondary_heal_charge = 0
 secondary_passive_charge = 10
 secondary_range = 0.0
-secondary_charge_use = 2
+secondary_charge_use = 50
+secondary_cooldown = 3.0
 
 dash_distance = 60.0
 dash_cooldown = 5.0
