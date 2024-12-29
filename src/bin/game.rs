@@ -83,7 +83,7 @@ async fn game(/* server_ip: &str */) {
   let player_texture: Texture2D = Texture2D::from_file_with_format(include_bytes!("../../assets/player/player1.png"), None);
 
   // modified by network listener thread, accessed by input handler and game thread
-  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
+  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
   let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::new(Mutex::new(game_objects));
   // accessed by game thread, modified by network listener thread.
   let other_players: Vec<ClientPlayer> = Vec::new();
