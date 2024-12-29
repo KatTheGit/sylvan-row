@@ -24,7 +24,7 @@ fn rmb_index() -> usize {
 }
 #[cfg(target_os = "windows")]
 fn rmb_index() -> usize {
-  return 3; // to be tested
+  return 2;
 }
 
 fn window_conf() -> Conf {
@@ -231,7 +231,7 @@ async fn game(/* server_ip: &str */) {
 fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>) -> ! {
 
   // temporary
-  let server_ip: &str = "0.0.0.0";
+  let server_ip: &str = "192.168.1.8";
   let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
   // create the socket for sending info.
   let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
@@ -379,7 +379,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     }
     
     // println!("{}", dashing);
-    // println!("{} {}", shooting_primary, shooting_secondary);
+    println!("{} {}", shooting_primary, shooting_secondary);
 
     if keyboard_mode { 
       let mouse_position = Arc::clone(&mouse_position);
