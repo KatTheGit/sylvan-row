@@ -211,7 +211,7 @@ fn main() {
           secondary_cast_time:  Instant::now(),
           secondary_charge:     100,
           had_illegal_position: false,
-          character:            Character::TimeQueen,
+          character:            Character::HealerGirl,
           last_shot_time:       Instant::now(),
           is_dashing:           false,
           last_dash_time:       Instant::now(),
@@ -301,7 +301,6 @@ fn main() {
         
         if WALL_TYPES.contains(&unstucker_game_objects[game_object_index].object_type) {
           let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
-          println!("{:?}", difference);
           if f32::abs(difference.x) < TILE_SIZE && f32::abs(difference.y) < TILE_SIZE {
             main_loop_players[player_index].position.x -= TILE_SIZE - difference.x;
             main_loop_players[player_index].position.y -= TILE_SIZE - difference.y;
