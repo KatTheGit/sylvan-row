@@ -17,7 +17,7 @@ fn main() {
 
   let players: Vec<ServerPlayer> = Vec::new();
   let players = Arc::new(Mutex::new(players));
-  let game_objects:Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
+  let game_objects:Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
   println!("Loaded game objects.");
   let game_objects = Arc::new(Mutex::new(game_objects));
 
@@ -301,9 +301,10 @@ fn main() {
         
         if WALL_TYPES.contains(&unstucker_game_objects[game_object_index].object_type) {
           let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
+          println!("{:?}", difference);
           if f32::abs(difference.x) < TILE_SIZE && f32::abs(difference.y) < TILE_SIZE {
-            main_loop_players[player_index].position.x += difference.x;
-            main_loop_players[player_index].position.y += difference.y;
+            main_loop_players[player_index].position.x -= TILE_SIZE - difference.x;
+            main_loop_players[player_index].position.y -= TILE_SIZE - difference.y;
           }
         }
       }
