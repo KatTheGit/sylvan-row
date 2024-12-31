@@ -407,6 +407,7 @@ pub fn object_aware_movement(
 
   for game_object in game_objects.clone() {
     if game_object.object_type == GameObjectType::Wall            ||
+       game_object.object_type == GameObjectType::SniperWall            ||
        game_object.object_type == GameObjectType::UnbreakableWall {
       let difference = Vector2::difference(desired_position, game_object.position);
 
