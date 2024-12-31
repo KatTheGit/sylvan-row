@@ -13,6 +13,8 @@ use bincode;
 use std::sync::{Arc, Mutex};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use strum::IntoEnumIterator;
+use std::fs::File;
+use std::io::{Read, Write};
 
 #[cfg(target_os = "macos")]
 fn rmb_index() -> usize {
@@ -58,9 +60,9 @@ async fn game(/* server_ip: &str */) {
       game_object_type,
       match game_object_type {
         GameObjectType::Wall             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::SniperWall       => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperWall       => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/wall.png"), None),
         GameObjectType::HealerAura       => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/secondary.png"), None),
-        GameObjectType::UnbreakableWall  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::UnbreakableWall  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
         GameObjectType::SniperGirlBullet => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HealerGirlPunch  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::TimeQueenSword   => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
@@ -79,8 +81,17 @@ async fn game(/* server_ip: &str */) {
   player.character = Character::TimeQueen;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
-  // temporary
-  let player_texture: Texture2D = Texture2D::from_file_with_format(include_bytes!("../../assets/player/player1.png"), None);
+  let mut player_textures: HashMap<Character, Texture2D> = HashMap::new();
+  for character in Character::iter() {
+    player_textures.insert(
+      character,
+      match character {
+        Character::TimeQueen  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/test.png"), None),
+        Character::HealerGirl => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/test.png"), None),
+        Character::SniperGirl => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/test.png"), None),
+      }
+    );
+  }
 
   // modified by network listener thread, accessed by input handler and game thread
   let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
@@ -209,10 +220,10 @@ async fn game(/* server_ip: &str */) {
       (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
       2.0, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
     );
-    player_copy.draw(&player_texture, vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
+    player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
     
     for player in other_players_copy {
-      player.draw(&player_texture /* <-- temporary */, vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
+      player.draw(&player_textures[&player.character], vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
     }
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
@@ -230,13 +241,50 @@ async fn game(/* server_ip: &str */) {
 /// slow monitors.
 fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>) -> ! {
 
-  // temporary
-  let server_ip: &str = "192.168.1.8";
+  let mut server_ip: String = String::new();
+  let ip_file_name = "moba_ip.txt";
+  let ip_file = File::open(ip_file_name);
+  match ip_file {
+    // file exists
+    Ok(mut file) => {
+      let mut data = vec![];
+      match file.read_to_end(&mut data) {
+        // could read file
+        Ok(_) => {
+          server_ip = String::from_utf8(data).expect("Couldn't read IP.");
+        }
+        // couldnt read file
+        Err(_) => {
+          println!("Couldn't read IP. defaulting to 0.0.0.0.");
+          server_ip = String::from("0.0.0.0");
+        }
+      }
+    }
+    // file doesn't exist
+    Err(error) => {
+      println!("Config file not found, attempting to creating one... Error: {}.", error);
+      match File::create(ip_file_name) {
+        // Could create file
+        Ok(mut file) => {
+          let _ = file.write_all(b"0.0.0.0");
+          println!("Config file created with default ip 0.0.0.0.");
+          server_ip = String::from("0.0.0.0");
+        }
+        // Couldn't create file
+        Err(error) => {
+          println!("Could not create config file. Defaulting to 0.0.0.0.");
+          server_ip = String::from("0.0.0.0");
+        }
+      }
+    }
+  }
+
   let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
   // create the socket for sending info.
   let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
   let sending_socket: UdpSocket = UdpSocket::bind(sending_ip)
     .expect("Could not bind client sender socket");
+  println!("Socket bound to IP: {}", server_ip);
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
 
@@ -379,7 +427,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     }
     
     // println!("{}", dashing);
-    println!("{} {}", shooting_primary, shooting_secondary);
+    // println!("{} {}", shooting_primary, shooting_secondary);
 
     if keyboard_mode { 
       let mouse_position = Arc::clone(&mouse_position);
@@ -474,6 +522,7 @@ fn network_listener(
     player.health = recieved_server_info.player_packet_is_sent_to.health;
     player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
     player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
+    player.character = recieved_server_info.player_packet_is_sent_to.character;
     drop(player); // free mutex guard ASAP for others to access player.
     
 

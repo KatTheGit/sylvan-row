@@ -34,7 +34,8 @@ fn main() {
   let mut blue_team_player_count = 0;
 
   // temporary, to be dictated by gamemode
-  let max_players = 4;
+  let mut character_queue: Vec<Character> = vec![Character::SniperGirl, Character::TimeQueen, Character::HealerGirl, Character::SniperGirl, Character::TimeQueen, Character::HealerGirl];
+  let max_players = character_queue.len();
   
   // (vscode) MARK: Networking - Listen
   let listener_players = Arc::clone(&players);
@@ -211,7 +212,7 @@ fn main() {
           secondary_cast_time:  Instant::now(),
           secondary_charge:     100,
           had_illegal_position: false,
-          character:            Character::HealerGirl,
+          character:            character_queue[0],
           last_shot_time:       Instant::now(),
           is_dashing:           false,
           last_dash_time:       Instant::now(),
@@ -219,7 +220,8 @@ fn main() {
           dash_direction:       Vector2::new(),
           previous_positions:   Vec::new(),
         });
-        println!("Player connected: {}", src.ip().to_string())
+        println!("Player connected: {}", src.ip().to_string());
+        character_queue.remove(0);
       }
       drop(listener_players);
     }
@@ -302,6 +304,7 @@ fn main() {
         if WALL_TYPES.contains(&unstucker_game_objects[game_object_index].object_type) {
           let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
           if f32::abs(difference.x) < TILE_SIZE && f32::abs(difference.y) < TILE_SIZE {
+            // push out the necessary amount
             main_loop_players[player_index].position.x -= TILE_SIZE - difference.x;
             main_loop_players[player_index].position.y -= TILE_SIZE - difference.y;
           }
@@ -533,6 +536,7 @@ fn main() {
             shooting_secondary: player.shooting_secondary,
             secondary_charge: player.secondary_charge,
             last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
+            character: player.character,
           },
           players: other_players,
           game_objects: game_objects_readonly.clone(),

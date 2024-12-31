@@ -238,6 +238,7 @@ pub struct ServerRecievingPlayerPacket {
   pub shooting_secondary: bool,
   pub secondary_charge: u8,
   pub last_dash_time: f32,
+  pub character: Character,
 }
 
 /// information sent by server to client

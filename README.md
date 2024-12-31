@@ -69,13 +69,19 @@ On Linux, you need to additionally install `libudev-dev`.
 ### Get ready for playtesting
 
 - [x] "Fix" getting stuck inside walls (push out)
-- [ ] Fix hp overheal (done but not tested)
+- [x] Fix hp overheal
+- [ ] Server charcter queue
+  - [x] Implement
+  - [ ] Test
+- [x] Read IP from file
 - [ ] Balance changes
-- [ ] Very rough art
-  - [ ] Character top-down views
-  - [ ] Wall sprites
-  - [ ] Bullets
-- [ ] Decent map
+- [x] Very rough art
+  - [x] Character top-down views
+    - [ ] Impove
+  - [x] Wall sprites
+  - [x] Bullets
+- [x] Decent map
+  - [x] Map "editor"
 
 ### Irrelevant now, do after playtesting
 
