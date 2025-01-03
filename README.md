@@ -66,7 +66,7 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Gameobjects
   - [x] Players
 
-### Get ready for playtesting
+### Get ready for playtest 1
 
 - [x] "Fix" getting stuck inside walls (push out)
 - [x] Fix hp overheal
@@ -82,6 +82,15 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Bullets
 - [x] Decent map
   - [x] Map "editor"
+
+### Playtest 1 issues
+
+- [ ] Aiming lazer too thin, weird result on OLED screens (maybe?).
+- [ ] Game too chaotic
+  - [ ] Restrict players to map bounds
+  - [ ] Make characters slower
+  - [ ] Visual clarity
+  - [ ] Respawning
 
 ### Irrelevant now, do after playtesting
 

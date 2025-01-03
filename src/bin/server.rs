@@ -279,6 +279,11 @@ fn main() {
       let player_info = main_loop_players[player_index].clone();
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
+      // if main_loop_players[player_index].health >= 0 {
+      //   main_loop_players[player_index].health = 100;
+      //   main_loop_players[player_index].position = Vector2::new();
+      // }
+
       // (vscode) MARK: Passives & Other
       // Handling of passive abilities and anything else that may need to be run all the time.
 
