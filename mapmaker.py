@@ -5,23 +5,25 @@ map_path = "assets/maps/map_maker.map"
 # W = wall
 # U = unbreakable_wall
 map_drawing = """
-........WW.....W...
-...............WW..
-..W............W...
-.............WWW...
-...................
-....UW....W........
-....W....WW........
-....W..............
-....W..............
-........W.....W....
-W.......WWW...W....
+UUUUUUUUUUUUUUUUUUUUU
+U........WW.....W...U
+U...............WW..U
+U..W............W...U
+U.............WWW...U
+U...................U
+U....UW....W........U
+U....W....WW........U
+U....W..............U
+U....W..............U
+U........W.....W....U
+UW.......WWW...W....U
+UUUUUUUUUUUUUUUUUUUUU
 """
 
 map_file = ""
 for y, line in enumerate(io.StringIO(map_drawing)):
     for x, char in enumerate(repr(line)):
-        position = f"{x*tile_size}.0 {y*tile_size}.0\n"
+        position = f"{x*tile_size-20}.0 {y*tile_size-20}.0\n"
         if char == 'W':
             map_file += "wall " + position
         if char == 'U':

@@ -427,7 +427,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     }
     
     // println!("{}", dashing);
-    // println!("{} {}", shooting_primary, shooting_secondary);
+    println!("{} {}", shooting_primary, shooting_secondary);
 
     if keyboard_mode { 
       let mouse_position = Arc::clone(&mouse_position);

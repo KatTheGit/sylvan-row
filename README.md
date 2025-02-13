@@ -92,6 +92,11 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Visual clarity
   - [ ] Respawning
 
+### Create gamemode
+
+- [ ] UI
+- [ ] MacOS not recieving server packets or something idek
+
 ### Irrelevant now, do after playtesting
 
 - [ ] Clean up code

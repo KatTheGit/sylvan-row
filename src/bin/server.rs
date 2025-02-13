@@ -33,8 +33,8 @@ fn main() {
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
-  // temporary, to be dictated by gamemode
   let mut character_queue: Vec<Character> = vec![Character::SniperGirl, Character::TimeQueen, Character::HealerGirl, Character::SniperGirl, Character::TimeQueen, Character::HealerGirl];
+  // temporary, to be dictated by gamemode
   let max_players = character_queue.len();
   
   // (vscode) MARK: Networking - Listen
