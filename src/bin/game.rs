@@ -70,6 +70,9 @@ async fn game(/* server_ip: &str */) {
     );
   }
 
+  let gamemode_info: GameModeInfo = GameModeInfo::new();
+  let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
+
   // since only the main thread is allowed to read mouse position using macroquad,
   // main thread will have to modify it, and input thread will read it.
   let mouse_position: Vec2 = Vec2::new(0.0, 0.0);
@@ -118,8 +121,9 @@ async fn game(/* server_ip: &str */) {
   let network_listener_player = Arc::clone(&player);
   let network_listener_game_objects = Arc::clone(&game_objects);
   let network_listener_other_players = Arc::clone(&other_players);
+  let gamemode_info_listener= Arc::clone(&gamemode_info);
   std::thread::spawn(move || {
-    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players);
+    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players, gamemode_info_listener);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -172,6 +176,7 @@ async fn game(/* server_ip: &str */) {
       player.position.y += character_properties[&player.character].speed * player.movement_direction.y * get_frame_time() / 2.0;
     }
 
+    // readonly
     let player_copy = player.clone();
     drop(player);
 
@@ -197,6 +202,7 @@ async fn game(/* server_ip: &str */) {
     drop(mouse_position);
 
     // (vscode) MARK: Draw
+
     // Draw the backgrounds
     clear_background(BLACK);
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, GRAY);
@@ -210,21 +216,33 @@ async fn game(/* server_ip: &str */) {
 
     // draw player and crosshair (aim laser)
     let range = character_properties[&player_copy.character].primary_range;
-    // player_copy.draw_crosshair(vh, player_copy.position, range);
     let relative_position_x = 50.0 * (16.0/9.0); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
     let relative_position_y = 50.0; //+ (vh * 100.0) / 2.0;
     draw_line(
-      (aim_direction.normalize().x * 5.0 * vh) + relative_position_x * vh,
-      (aim_direction.normalize().y * 5.0 * vh) + relative_position_y * vh,
+      (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
+      (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
       (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
       (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
-      2.0, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
+      0.2 * vw, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
     );
     player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
     
     for player in other_players_copy {
       player.draw(&player_textures[&player.character], vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
     }
+    // MARK: UI
+    // time, kills, rounds
+    let mut gamemode_info_main = gamemode_info.lock().unwrap();
+    let timer_width: f32 = 5.0;
+    draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, WHITE);
+    draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);
+    draw_text_relative(format!("Blue Kills: {}", gamemode_info_main.kills_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
+    draw_text_relative(format!("Blue Wins : {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
+    draw_text_relative(format!("Red Kills : {}", gamemode_info_main.kills_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
+    draw_text_relative(format!("Red Wins  : {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
+    let bar_offsets = 5.0;
+    // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
+    drop(gamemode_info_main);
 
     draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     next_frame().await;
@@ -427,7 +445,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     }
     
     // println!("{}", dashing);
-    println!("{} {}", shooting_primary, shooting_secondary);
+    //println!("{} {}", shooting_primary, shooting_secondary);
 
     if keyboard_mode { 
       let mouse_position = Arc::clone(&mouse_position);
@@ -499,19 +517,21 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
 fn network_listener(
   player: Arc<Mutex<ClientPlayer>>,
   game_objects: Arc<Mutex<Vec<GameObject>>>,
-  other_players: Arc<Mutex<Vec<ClientPlayer>>>) -> ! {
+  other_players: Arc<Mutex<Vec<ClientPlayer>>>,
+  gamemode_info: Arc<Mutex<GameModeInfo>> ) -> ! {
 
   let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
   let listening_socket: UdpSocket = UdpSocket::bind(listening_ip)
     .expect("Could not bind client listener socket");
-  let mut buffer: [u8; 4096] = [0; 4096];
+  // if we get another Io(Kind(UnexpectedEof)) then this buffer is too small
+  let mut buffer: [u8; 4096*4] = [0; 4096*4];
   loop {
     // recieve packet
-    let (amt, _src): (usize, std::net::SocketAddr) = listening_socket.recv_from(&mut buffer)
+    let (amt, src): (usize, std::net::SocketAddr) = listening_socket.recv_from(&mut buffer)
       .expect("Listening socket failed to recieve.");
     let data: &[u8] = &buffer[..amt];
     let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("Could not deserialise server packet.");
-    // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+    println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
 
     let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     // if we sent an illegal position, and server does a position override:
@@ -533,5 +553,9 @@ fn network_listener(
     let mut other_players = other_players.lock().unwrap();
     *other_players = recieved_server_info.players;
     drop(other_players);
+
+    let mut gamemode_info_listener = gamemode_info.lock().unwrap();
+    *gamemode_info_listener = recieved_server_info.gamemode_info;
+    drop (gamemode_info_listener)
   }
 }

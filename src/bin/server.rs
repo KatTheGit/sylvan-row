@@ -9,6 +9,8 @@ use std::{thread, time::*};
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
 
 fn main() {
+  // set the gamemode (temporary)
+  let selected_game_mode = GameMode::DeathMatchArena;
 
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
@@ -165,7 +167,6 @@ fn main() {
           if Vector2::distance(new_position, recieved_position) > movement_error_margin {
             movement_legal = false;
           }
-          // println!("{:?}", new_movement_raw);
           
           if movement_legal {
             // Apply the movement that the server calculated, which should be similar to the client's.
@@ -178,6 +179,7 @@ fn main() {
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
+          println!("{:?}", player.position.clone());
           listener_players[player_index] = player;
           break
         }
@@ -300,6 +302,12 @@ fn main() {
             main_loop_players[player_index].previous_positions.remove(0);
           }
         }
+      }
+
+      // increase secondary charge passively
+      if tick {
+        let charge_amount = characters[&main_loop_players[player_index].character].secondary_passive_charge;
+        main_loop_players[player_index].secondary_charge.heal(charge_amount);
       }
 
       // Get stuck player out of walls
@@ -545,6 +553,13 @@ fn main() {
           },
           players: other_players,
           game_objects: game_objects_readonly.clone(),
+          gamemode_info: GameModeInfo {
+            time: 11,
+            rounds_won_red: 12,
+            rounds_won_blue: 13,
+            kills_red: 14,
+            kills_blue: 15,
+          },
         };
         main_loop_players[index].had_illegal_position = false;
         

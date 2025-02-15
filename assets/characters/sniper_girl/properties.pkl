@@ -14,7 +14,7 @@ secondary_heal = 0
 secondary_hit_charge = 20
 secondary_heal_charge = 0 
 secondary_passive_charge = 5
-secondary_range = 50.0
+secondary_range = 30.0
 secondary_charge_use = 10
 secondary_cooldown = 0.0
 

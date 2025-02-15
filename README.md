@@ -92,13 +92,31 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Visual clarity
   - [ ] Respawning
 
-### Create gamemode
+### Create gamemode (polish the game for PROPER playtesting)
 
 - [ ] UI
-- [ ] MacOS not recieving server packets or something idek
+  - [ ] Gamemode UI
+    - [ ] Make server send gamemode info
+      - [ ] Rounds
+      - [ ] Game time
+      - [ ] Kills per player
+      - [ ] Allied player's healths
+- [x] Io(Kind(UnexpectedEof)) error (buffer size increased)
+- [ ] Improve existing characters
+  - [ ] The bunny is bland
+    - [ ] Dash ability
+    - [ ] Redo main attack
+    - [ ] Modify secondary to heal self less
+  - [ ] The queen is bland
+    - [ ] Dash ability
+    - [ ] Secondary has a trail (clientside)
+  - [ ] The wolf just sucks
+    - [ ] Dash ability
 
 ### Irrelevant now, do after playtesting
 
+- [ ] Network packets are HUGE
+- [ ] Maybe use interpolation instead of extrapolation, could result in delay, but will look far better.
 - [ ] Clean up code
 - [ ] Hunt for more vulnerabilities
   - [ ] If client sends big packet, server crashes
@@ -109,7 +127,9 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Tie together the game. (Menu, gamemodes, matchmaking server, etc)
   - [ ] Allow a quick-play mode for developer use only
 - [ ] Canvas flipping
-- [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
+- [ ] Anticheat
+  - [ ] Anticheat still doesnt work since a client can report false packet intervals. The server needs to calculate the intervals the client is sending at as an average. This will be ignored for the sake of working on the rest of the game.
+  - [ ] Hide certain stats if player not within visual range
 - [ ] Figure out port and firewall shenanigans
   - No issues on Windows and OSX
   - [ ] Pop-up for Linux players who might need to manually make firewall rules.

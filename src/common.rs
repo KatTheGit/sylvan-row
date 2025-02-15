@@ -25,12 +25,45 @@ pub const CLIENT_LISTEN_PORT: u32 = 25567;
 pub const SERVER_SEND_PORT:   u32 = 25568;
 pub const SERVER_LISTEN_PORT: u32 = 25569;
 
+// MARK: Gamemodes
+pub enum GameMode {
+  /// Fast respawns, team with most kills wins
+  DeathMatch,
+  /// Round-based fight
+  Arena,
+  /// A mix of deathmatch and arena
+  DeathMatchArena,
+}
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct GameModeInfo {
+  /// time left in seconds
+  pub time: u16,
+  pub rounds_won_red: u8,
+  pub rounds_won_blue: u8,
+  /// number of kills from blue team this round
+  pub kills_red: u8,
+  /// number of kills from red team this round
+  pub kills_blue: u8,
+}
+impl GameModeInfo {
+  pub fn new() -> GameModeInfo {
+    return GameModeInfo {
+      time: 0,
+      rounds_won_blue: 0,
+      rounds_won_red: 0,
+      kills_blue: 0,
+      kills_red: 0,
+    }
+  }
+}
+
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Character {
   SniperGirl,
   HealerGirl,
   TimeQueen,
 }
+// MARK: Characters
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
   pub health: u8,
@@ -120,6 +153,8 @@ pub fn parse_pkl_string(pkl_string: &str) -> Result<PklValue, String> {
   Ok(root_object)
 }
 
+// MARK: Client
+
 /// Information held by client about self and other players.
 /// Sent by server to client as well.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -135,7 +170,7 @@ pub struct ClientPlayer {
   pub team: Team,
   pub time_since_last_dash: f32,
 }
-
+// MARK: Client Player
 impl ClientPlayer {
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties) {
     // TODO: animations
@@ -183,17 +218,6 @@ impl ClientPlayer {
       let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
       draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
   }
-  pub fn draw_crosshair(&self, vh: f32, center_position: Vector2, range: f32) {
-    let relative_position_x = self.position.x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-    let relative_position_y = self.position.y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
-    draw_line(
-      (self.aim_direction.normalize().x * 5.0 * vh) + relative_position_x * vh,
-      (self.aim_direction.normalize().y * 5.0 * vh) + relative_position_y * vh,
-      (self.aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
-      (self.aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
-      2.0, Color { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }
-    );
-  }
   pub fn new() -> ClientPlayer {
     return ClientPlayer {
       health: 100,
@@ -227,7 +251,7 @@ pub enum Team {
   Red = 0,
   Blue = 1,
 }
-
+// MARK: Server
 /// Information sent by srever to client about themself
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub struct ServerRecievingPlayerPacket {
@@ -245,9 +269,11 @@ pub struct ServerRecievingPlayerPacket {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct ServerPacket {
   pub player_packet_is_sent_to: ServerRecievingPlayerPacket,
-  pub players:      Vec<ClientPlayer>,
-  pub game_objects: Vec<GameObject>
+  pub players:       Vec<ClientPlayer>,
+  pub game_objects:  Vec<GameObject>,
+  pub gamemode_info: GameModeInfo,
 }
+// MARK: Gameobject
 /// defines any non-player gameplay element
 /// Contains fields that can describe all necessary information for most game objects.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -278,7 +304,7 @@ pub enum GameObjectType {
   HealerGirlPunch,
   TimeQueenSword,
 }
-
+// MARK: Vectors
 // utility
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 pub struct Vector2 {
@@ -334,7 +360,7 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32) 
     pivot: Some(Vec2 { x: 0.0, y: 0.0 })
   });
 }
-
+// MARK: Draw
 /// same as draw_image but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.
 pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, center_position: Vector2) -> () {
@@ -427,6 +453,7 @@ pub fn object_aware_movement(
   return (adjusted_raw_movement, adjusted_movement);
 }
 
+// MARK: Extras (f32)
 impl Extras for f32 {
   /// Same as signum but returns 0 if the number is 0.
   fn sign(&self) -> f32 {
