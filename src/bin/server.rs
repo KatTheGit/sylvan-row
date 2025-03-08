@@ -7,6 +7,8 @@ use bincode;
 use std::{thread, time::*};
 
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
+static mut SPAWN_RED: Vector2 = Vector2 {x: 100.0, y: 100.0};
+static mut SPAWN_BLUE: Vector2 = Vector2 {x: 0.0, y: 0.0};
 
 fn main() {
   // set the gamemode (temporary)
@@ -281,10 +283,19 @@ fn main() {
       let player_info = main_loop_players[player_index].clone();
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
-      // if main_loop_players[player_index].health >= 0 {
-      //   main_loop_players[player_index].health = 100;
-      //   main_loop_players[player_index].position = Vector2::new();
-      // }
+      if main_loop_players[player_index].health == 0 {
+        main_loop_players[player_index].health = 100;
+        if main_loop_players[player_index].team == Team::Blue {
+          unsafe {
+            main_loop_players[player_index].position = SPAWN_BLUE;
+          }
+        }
+        else {
+          unsafe {
+            main_loop_players[player_index].position = SPAWN_RED;
+          }
+        }
+      }
 
       // (vscode) MARK: Passives & Other
       // Handling of passive abilities and anything else that may need to be run all the time.

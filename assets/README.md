@@ -11,6 +11,7 @@ A multiplayer arena fighting game where players fight with their pick amongst a 
 - Being controller compatible and **friendly**
 - Being a top-down shooter
 - Having hand-drawn but 3D-looking graphics
+- Being easy to learn and hard to master
 
 ## Base mechanics
 

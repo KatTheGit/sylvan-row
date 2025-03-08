@@ -1,33 +1,29 @@
 # Unnamed MOBA
 
-A Multiplayer Online Battle Arena game, focusing on the following values:
-- Being balanced (no hard-counter interactions)
-- Having brute-force anticheat
-- Having relatively simple but unique characters
-- Playing like a twin-stick top-down shooter
-- Looking hand-drawn but also 3D-ish
-- Being easy to learn but hard to master
+A Multiplayer Online Battle Arena game, with the ambition of being balanced (with no hard-counter interactions), simple  but unique characters, playing like a twin stick shooter (PC and controller), while having a working anticheat despite being FOSS.
 
-## Compile & run
+One day this game will be complete, but you can copy the repository yourself if you want a template. The `assets` directory is strictly licensed.
 
-Tested on Windows, Linux and OSX. Not in a very playable state, so no realeases yet.
+## Play
+
+Tested on Windows, Linux and OSX. Not in a very playable state. There is a playtest release, but it's very rough. A properly playable release is being worked on.
 
 Run the game:
 ```sh
-cargo run --bin game --release
+cargo run --bin game --release # or ./client.sh
 ```
 Run the server:
 ```sh
-cargo run --bin server --release
+cargo run --bin server --release # or ./server.sh
 ```
 
-You can change the server's IP in `src/bin/game.rs:~211`
+You can change the server's IP in the file that gets created in the same directory the game is run. Default is 0.0.0.0.
 
 ## Dependencies
 
 On Linux, you need to additionally install `libudev-dev`.
 
-# TODO
+# To do
 
 ### Immediate
 - [x] Add healing, from attacks
@@ -46,6 +42,7 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Client sends dash info
   - [x] Server cooks
   - [ ] Client cooperates
+    - [ ] Put the logic in a common function
 - [x] Design some characters
 - [ ] Implement first 3 characters
   - [x] Healer
@@ -85,22 +82,30 @@ On Linux, you need to additionally install `libudev-dev`.
 
 ### Playtest 1 issues
 
-- [ ] Aiming lazer too thin, weird result on OLED screens (maybe?).
+- [x] Aiming lazer too thin, weird result on high res OLED screens (maybe?).
 - [ ] Game too chaotic
-  - [ ] Restrict players to map bounds
+  - [x] Restrict players to map bounds
   - [ ] Make characters slower
   - [ ] Visual clarity
-  - [ ] Respawning
+  - [ ] Death and respawning
 
 ### Create gamemode (polish the game for PROPER playtesting)
 
-- [ ] UI
-  - [ ] Gamemode UI
-    - [ ] Make server send gamemode info
-      - [ ] Rounds
-      - [ ] Game time
-      - [ ] Kills per player
-      - [ ] Allied player's healths
+- [x] UI
+  - [x] Gamemode UI
+    - [x] Make server send gamemode info
+      - [x] Rounds
+      - [x] Game time
+      - [ ] Kills per player...? (not necessary yet)
+      - [ ] Allied player's healths...?
+- [ ] Create a gamemode
+  - [ ] Deathmatch gamemode
+  - [ ] Arena gamemode
+    - [ ] Requires a death state
+- [ ] Sounds
+  - [ ] Find a sound engine
+  - [ ] Proper sound design (not good sounds, but one sound for everything) 
+    - [ ] Credit sounds when necessary in license file
 - [x] Io(Kind(UnexpectedEof)) error (buffer size increased)
 - [ ] Improve existing characters
   - [ ] The bunny is bland
@@ -112,7 +117,18 @@ On Linux, you need to additionally install `libudev-dev`.
     - [ ] Secondary has a trail (clientside)
   - [ ] The wolf just sucks
     - [ ] Dash ability
-
+- [ ] Make the game not look like doodoo
+  - [ ] Good looking tiles (TAKE INSPIRATION FROM OTHER GAMES)
+    - [ ] Background tiles
+      - [ ] Create a second layer of map tiles
+      - [ ] Draw
+    - [ ] Foreground tiles
+      - [ ] Create wall types to have wall variety
+      - [ ] Draw
+    - [ ] Better characters?
+- [ ] Clean up the code
+  - [ ] More stuff in common functions
+  - [ ] Different files for each thread or something
 ### Irrelevant now, do after playtesting
 
 - [ ] Network packets are HUGE
@@ -125,6 +141,8 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Vertical sorting of gameobjects and drawing layers
 - [ ] Animations
 - [ ] Tie together the game. (Menu, gamemodes, matchmaking server, etc)
+  - [ ] Create main menu
+  - [ ] Create matchmaking server
   - [ ] Allow a quick-play mode for developer use only
 - [ ] Canvas flipping
 - [ ] Anticheat
@@ -139,6 +157,8 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Further network-related de-jittering measures than simple extrapolation.
 - [ ] Map editor
 - [ ] Offload work to client if possible
+- [ ] Custom font?
+  - [ ] Figure out TTF or make own monospace font engine
 
 ## Issues that won't be solved
 
