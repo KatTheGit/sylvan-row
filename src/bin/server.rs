@@ -129,8 +129,13 @@ fn main() {
             if player.dashed_distance < player_max_dash_distance {
               new_position.x = previous_position.x + new_movement_raw.x * player_dashing_speed * time_since_last_packet as f32;
               new_position.y = previous_position.y + new_movement_raw.y * player_dashing_speed * time_since_last_packet as f32;
-              
-              player.dashed_distance += Vector2::distance(new_position, previous_position);
+              let dashed_distance_this_frame = Vector2::distance(new_position, previous_position);
+              if dashed_distance_this_frame > 0.0 {
+                player.dashed_distance += Vector2::distance(new_position, previous_position);
+              }
+              else {
+                player.is_dashing = false;
+              }
             }
             else {
               player.dashed_distance = 0.0;
@@ -181,7 +186,7 @@ fn main() {
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
-          println!("{:?}", player.position.clone());
+          // println!("{:?}", player.position.clone());
           listener_players[player_index] = player;
           break
         }
@@ -231,6 +236,8 @@ fn main() {
     }
   });
   
+  // (vscode) MARK: Server Loop Initiate
+
   let mut server_counter: Instant = Instant::now();
   let mut delta_time: f64 = server_counter.elapsed().as_secs_f64();
   // Server logic frequency in Hertz. Doesn't need to be much higher than 120.
@@ -246,9 +253,22 @@ fn main() {
   // for once-per-decisecond operations.
   let mut tenth_tick_counter = Instant::now();
   
-  // (vscode) MARK: Server Loop
   let characters = load_characters();
   let main_loop_players = Arc::clone(&players);
+  
+  // Used for game time counter. Can be reset when going into new rounds, for example...
+  let mut game_start_time: Instant = Instant::now();
+  
+  // holds game information, to be displayed by client, and modified when shit happens.
+  let mut gamemode_info: GameModeInfo = GameModeInfo {
+    time: 0,
+    rounds_won_red: 0,
+    rounds_won_blue: 0,
+    kills_red: 0,
+    kills_blue: 0
+  };
+
+  // (vscode) MARK: Server Loop
   loop {
     let mut tick: bool = false;
     let mut tenth_tick: bool = false;
@@ -271,10 +291,16 @@ fn main() {
       tenth_tick = true;
       tenth_tick_counter = Instant::now();
     }
-    
+
+    // update gamemode info
+    if tick {
+      // update game clock
+      gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
+    }
+  
     let mut main_loop_players = main_loop_players.lock().unwrap();
     
-    // do all logic related to players
+    // (vscode) MARK: Player logic
     for player_index in 0..main_loop_players.len() {
       let shooting = main_loop_players[player_index].shooting;
       let shooting_secondary = main_loop_players[player_index].shooting_secondary;
@@ -283,16 +309,19 @@ fn main() {
       let player_info = main_loop_players[player_index].clone();
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
+      // Handle death
       if main_loop_players[player_index].health == 0 {
         main_loop_players[player_index].health = 100;
         if main_loop_players[player_index].team == Team::Blue {
           unsafe {
             main_loop_players[player_index].position = SPAWN_BLUE;
+            gamemode_info.kills_red += 1;
           }
         }
         else {
           unsafe {
             main_loop_players[player_index].position = SPAWN_RED;
+            gamemode_info.kills_blue += 1;
           }
         }
       }
@@ -300,7 +329,7 @@ fn main() {
       // (vscode) MARK: Passives & Other
       // Handling of passive abilities and anything else that may need to be run all the time.
 
-      // Handling of time queen flashsback ability
+      // Handling of time queen flashsback ability - keep a buffer of positions for the flashback
       if main_loop_players[player_index].character == Character::TimeQueen {
         // Update once per decisecond
         if tenth_tick {
@@ -345,7 +374,7 @@ fn main() {
           Character::SniperGirl => {
             game_objects.push(GameObject {
               object_type: GameObjectType::SniperGirlBullet,
-              size: TILE_SIZE,
+              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
@@ -359,7 +388,7 @@ fn main() {
           Character::HealerGirl => {
             game_objects.push(GameObject {
               object_type: GameObjectType::HealerGirlPunch,
-              size: TILE_SIZE,
+              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
@@ -373,7 +402,7 @@ fn main() {
           Character::TimeQueen => {
             game_objects.push(GameObject {
               object_type: GameObjectType::TimeQueenSword,
-              size: TILE_SIZE,
+              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
@@ -401,7 +430,7 @@ fn main() {
             let mut game_objects = main_game_objects.lock().unwrap();
             game_objects.push(GameObject {
               object_type: GameObjectType::HealerAura,
-              size: 60.0,
+              size: Vector2 { x: 60.0, y: 60.0 },
               position: player_info.position,
               direction: Vector2::new(),
               to_be_deleted: false,
@@ -438,7 +467,7 @@ fn main() {
             if wall_can_be_placed {
               game_objects.push(GameObject {
                 object_type: GameObjectType::SniperWall,
-                size: TILE_SIZE,
+                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
                 position: desired_placement_position,
                 direction: Vector2::new(),
                 to_be_deleted: false,
@@ -564,13 +593,7 @@ fn main() {
           },
           players: other_players,
           game_objects: game_objects_readonly.clone(),
-          gamemode_info: GameModeInfo {
-            time: 11,
-            rounds_won_red: 12,
-            rounds_won_blue: 13,
-            kills_red: 14,
-            kills_blue: 15,
-          },
+          gamemode_info: gamemode_info.clone(),
         };
         main_loop_players[index].had_illegal_position = false;
         

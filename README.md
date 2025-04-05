@@ -55,9 +55,9 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Secondary (wall placement)
   - [ ] Assassin
     - [x] Primary (sword, splash)
-    - [x] Dash (long dash)
-    - [x] Secondary (position revert)
+    - [ ] Dash (position revert)
       - [ ] Render it
+    - [ ] Secondary (some sort of lifesteal)
 - [x] Correctly update info for each player
 - [x] Extrapolation (clientside)
   - [x] Gameobjects
@@ -67,14 +67,13 @@ On Linux, you need to additionally install `libudev-dev`.
 
 - [x] "Fix" getting stuck inside walls (push out)
 - [x] Fix hp overheal
-- [ ] Server charcter queue
+- [x] Server charcter queue
   - [x] Implement
-  - [ ] Test
+  - [x] Test
 - [x] Read IP from file
-- [ ] Balance changes
+- [x] Balance changes
 - [x] Very rough art
   - [x] Character top-down views
-    - [ ] Impove
   - [x] Wall sprites
   - [x] Bullets
 - [x] Decent map
@@ -85,9 +84,11 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Aiming lazer too thin, weird result on high res OLED screens (maybe?).
 - [ ] Game too chaotic
   - [x] Restrict players to map bounds
-  - [ ] Make characters slower
+  - [ ] Make characters slower (really necessary?)
   - [ ] Visual clarity
   - [ ] Death and respawning
+    - [ ] Death state
+    - [ ] Death spectator camera
 
 ### Create gamemode (polish the game for PROPER playtesting)
 
@@ -98,6 +99,7 @@ On Linux, you need to additionally install `libudev-dev`.
       - [x] Game time
       - [ ] Kills per player...? (not necessary yet)
       - [ ] Allied player's healths...?
+- [x] When dashing straight into a wall, you get stuck, because the server won't stop trying to make you go until you've traveled the desired dash distance.
 - [ ] Create a gamemode
   - [ ] Deathmatch gamemode
   - [ ] Arena gamemode
@@ -107,6 +109,9 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Proper sound design (not good sounds, but one sound for everything) 
     - [ ] Credit sounds when necessary in license file
 - [x] Io(Kind(UnexpectedEof)) error (buffer size increased)
+- [ ] Death
+  - [x] Respawn instantly
+  - [ ] Respawn after delay or round end
 - [ ] Improve existing characters
   - [ ] The bunny is bland
     - [ ] Dash ability
@@ -156,11 +161,13 @@ On Linux, you need to additionally install `libudev-dev`.
     - [ ] serverside
 - [ ] Further network-related de-jittering measures than simple extrapolation.
 - [ ] Map editor
-- [ ] Offload work to client if possible
+- [ ] Offload work to client if possible (probably just minimize server work)
 - [ ] Custom font?
   - [ ] Figure out TTF or make own monospace font engine
+- [ ] Proper render order
 
 ## Issues that won't be solved
 
 - Fullcreen issue on Linux (can't exit fullscreen) (Macroquad issue)
+  - [x] Holy shit they fixed it
 - Icon doesn't show up on Linux (Macroquad issue)

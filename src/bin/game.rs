@@ -211,7 +211,7 @@ async fn game(/* server_ip: &str */) {
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
       let size = game_object.size;
-      draw_image_relative(texture, game_object.position.x - size/2.0, game_object.position.y - size/2.0, size, size, vh, player_copy.position);
+      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.position);
     }
 
     // draw player and crosshair (aim laser)
@@ -531,7 +531,7 @@ fn network_listener(
       .expect("Listening socket failed to recieve.");
     let data: &[u8] = &buffer[..amt];
     let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("Could not deserialise server packet.");
-    println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+    // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
 
     let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     // if we sent an illegal position, and server does a position override:
