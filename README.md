@@ -116,6 +116,7 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] The bunny is bland
     - [ ] Dash ability
     - [ ] Redo main attack
+      - [ ] Vamp for tethered teammate
     - [ ] Modify secondary to heal self less
   - [ ] The queen is bland
     - [ ] Dash ability
