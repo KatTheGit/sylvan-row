@@ -1,8 +1,9 @@
-# Unnamed MOBA
+# Sylvan Row
+A Multiplayer Online Battle Arena game, with the ambition of being balanced (with no hard-counter interactions), having simple  but unique characters, playing like a twin stick shooter (PC and controller), while having a working anticheat despite being FOSS.
 
-A Multiplayer Online Battle Arena game, with the ambition of being balanced (with no hard-counter interactions), simple  but unique characters, playing like a twin stick shooter (PC and controller), while having a working anticheat despite being FOSS.
+<img src="assets/characters/time_queen/textures/banner.png" width="300" title="Preliminary art of one of the characters" alt="An anthro lioness in armor"/>
 
-One day this game will be complete, but you can copy the repository yourself if you want a template. The `assets` directory is strictly licensed.
+This game is still incomplete, but will be worked on more when I'm less busy. You can copy the repository yourself if you want a template. The `assets` directory is strictly licensed.
 
 ## Play
 
@@ -157,6 +158,7 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Figure out port and firewall shenanigans
   - No issues on Windows and OSX
   - [ ] Pop-up for Linux players who might need to manually make firewall rules.
+    - [ ] Also a pop-up for Linux users to install the dependency.
   - [ ] Allow use of different ports
     - [ ] clientside
     - [ ] serverside
