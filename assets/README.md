@@ -78,7 +78,6 @@ Raphaelle is an Archangel, a type of Angel tasked both with healing the Forest-S
 Primary attack
 
 
-
 Secondary attack
 
 

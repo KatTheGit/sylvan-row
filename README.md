@@ -26,7 +26,8 @@ On Linux, you need to additionally install `libudev-dev`.
 
 # To do
 
-### Immediate
+### Engine
+
 - [x] Add healing, from attacks
 - [x] Bullets only hit people once
 - [x] Non-piercing bullets need to be deleted once they hit
@@ -45,7 +46,7 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Client cooperates
     - [ ] Put the logic in a common function
 - [x] Design some characters
-- [ ] Implement first 3 characters
+- [x] Implement first 3 characters
   - [x] Healer
     - [x] Primary (single shot)
     - [x] Dash (short dash)
@@ -83,16 +84,16 @@ On Linux, you need to additionally install `libudev-dev`.
 ### Playtest 1 issues
 
 - [x] Aiming lazer too thin, weird result on high res OLED screens (maybe?).
-- [ ] Game too chaotic
+- [x] Game too chaotic
   - [x] Restrict players to map bounds
-  - [ ] Make characters slower (really necessary?)
-  - [ ] Visual clarity
+  - [ ] Make characters slower (really necessary?) (if playtest reveals a necessity for this...)
+  - [ ] Visual clarity (bruh what did i mean by this)
   - [x] Death and respawning
     - [x] Death state (server communicates whether alive or dead)
     - [x] Death spectator camera
       - [x] Camera "system"
 
-### Create gamemode (polish the game for PROPER playtesting)
+### Make a FUNCTIONAL game
 
 - [x] UI
   - [x] Gamemode UI
@@ -100,31 +101,32 @@ On Linux, you need to additionally install `libudev-dev`.
       - [x] Rounds
       - [x] Game time
       - [ ] Kills per player...? (not necessary yet)
-      - [ ] Allied player's healths...?
+      - [ ] Allied player's healths on top...?
 - [x] When dashing straight into a wall, you get stuck, because the server won't stop trying to make you go until you've traveled the desired dash distance.
-- [ ] Create a gamemode
-  - [ ] Deathmatch gamemode
+- [x] Create a gamemode
+  - [x] Deathmatch gamemode
+  - [ ] Add rounds
   - [ ] Arena gamemode
-    - [ ] Requires a death state
-- [ ] Sounds
-  - [ ] Find a sound engine
-  - [ ] Proper sound design (not good sounds, but one sound for everything) 
-    - [ ] Credit sounds when necessary in license file
+    - [ ] Requires a death state that can be maintained until round restart
 - [x] Io(Kind(UnexpectedEof)) error (buffer size increased)
-- [ ] Death
-  - [x] Respawn instantly
-  - [ ] Respawn after delay or round end
 - [ ] Improve existing characters
   - [ ] The bunny is bland
     - [ ] Dash ability
     - [ ] Redo main attack
-      - [ ] Vamp for tethered teammate
+      - [ ] Vamp for tethered teammate, shiv-like relationship with dash...
     - [ ] Modify secondary to heal self less
   - [ ] The queen is bland
     - [ ] Dash ability
     - [ ] Secondary has a trail (clientside)
   - [ ] The wolf just sucks
     - [ ] Dash ability
+
+### Once a functional game is made, make it pretty, make it clean, make it good.
+
+- [ ] Sounds
+  - [ ] Find a sound engine
+  - [ ] Proper sound design (not good sounds, but one sound for everything) 
+    - [ ] Credit sounds when necessary in license file
 - [ ] Make the game not look like doodoo
   - [ ] Good looking tiles (TAKE INSPIRATION FROM OTHER GAMES)
     - [ ] Background tiles
@@ -137,9 +139,6 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Clean up the code
   - [ ] More stuff in common functions
   - [ ] Different files for each thread or something
-
-### Irrelevant now, do after playtesting
-
 - [ ] Network packets are HUGE
 - [ ] Maybe use interpolation instead of extrapolation, could result in delay, but will look far better.
 - [ ] Clean up code
