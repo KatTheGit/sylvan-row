@@ -92,7 +92,7 @@ fn main() {
           let previous_position = player.position.clone();
           
           // If player wants to dash and isn't dashing...
-          if recieved_player_info.dashing && !player.is_dashing {
+          if recieved_player_info.dashing && !player.is_dashing && !player.is_dead {
             let player_dash_cooldown = characters[&player.character].dash_cooldown;
             // And we're past the cooldown...
             if player.last_dash_time.elapsed().as_secs_f32() > player_dash_cooldown {
@@ -110,7 +110,7 @@ fn main() {
             }
           }
           // (vscode) MARK: Dashing Legality
-          if player.is_dashing {
+          if player.is_dashing && !player.is_dead {
             let player_dashing_speed: f32 = characters[&player.character].dash_speed;
             let player_max_dash_distance: f32 = characters[&player.character].dash_distance;
             
@@ -170,19 +170,20 @@ fn main() {
             player.move_direction = new_movement_raw;
 
           }
-
-          if Vector2::distance(new_position, recieved_position) > movement_error_margin {
-            movement_legal = false;
-          }
-          
-          if movement_legal {
-            // Apply the movement that the server calculated, which should be similar to the client's.
-            player.position = new_position;
-          } else {
-            // Inform the network sender it needs to send a correction packet (position override packet).
-            player.had_illegal_position = true;
-            // Also apply movement.
-            player.position = new_position;
+          if !player.is_dead {
+            if Vector2::distance(new_position, recieved_position) > movement_error_margin {
+              movement_legal = false;
+            }
+            
+            if movement_legal {
+              // Apply the movement that the server calculated, which should be similar to the client's.
+              player.position = new_position;
+            } else {
+              // Inform the network sender it needs to send a correction packet (position override packet).
+              player.had_illegal_position = true;
+              // Also apply movement.
+              player.position = new_position;
+            }
           }
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
@@ -228,6 +229,8 @@ fn main() {
           dashed_distance:      0.0,
           dash_direction:       Vector2::new(),
           previous_positions:   Vec::new(),
+          is_dead:              false,
+          death_timer_start:    Instant::now(),
         });
         println!("Player connected: {}", src.ip().to_string());
         character_queue.remove(0);
@@ -265,7 +268,8 @@ fn main() {
     rounds_won_red: 0,
     rounds_won_blue: 0,
     kills_red: 0,
-    kills_blue: 0
+    kills_blue: 0,
+    death_timeout: 3.0,
   };
 
   // (vscode) MARK: Server Loop
@@ -309,21 +313,37 @@ fn main() {
       let player_info = main_loop_players[player_index].clone();
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
-      // Handle death
+      // MARK: Handle death
+
+      // if this player is at health 0
       if main_loop_players[player_index].health == 0 {
+        // set them back to 100
         main_loop_players[player_index].health = 100;
+        // kill them
+        main_loop_players[player_index].is_dead = true;
+        // mark when they died so we know when to respawn them
+        main_loop_players[player_index].death_timer_start = Instant::now();
+        // send them to their respective spawn
         if main_loop_players[player_index].team == Team::Blue {
           unsafe {
             main_loop_players[player_index].position = SPAWN_BLUE;
+            println!("Sending {} to blue spawn", main_loop_players[player_index].ip);
+            // Give a kill to the red team
             gamemode_info.kills_red += 1;
           }
         }
         else {
           unsafe {
             main_loop_players[player_index].position = SPAWN_RED;
+            println!("Sending bro to red team spawn");
+            // Give a kill to the blue team
             gamemode_info.kills_blue += 1;
           }
         }
+      }
+      // If the death timer is over, unkill them
+      if (main_loop_players[player_index].is_dead) && (main_loop_players[player_index].death_timer_start.elapsed().as_secs_f32() > gamemode_info.death_timeout) {
+        main_loop_players[player_index].is_dead = false;
       }
 
       // (vscode) MARK: Passives & Other
@@ -574,11 +594,13 @@ fn main() {
               shooting_secondary: player.shooting_secondary,
               team: player.team,
               character: player.character,
-              time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32()
+              time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
+              is_dead: false,
+              camera: Camera::new(),
             })
           }
         }
-        
+
         // packet sent to player with info about themselves and other players
         let server_packet: ServerPacket = ServerPacket {
           player_packet_is_sent_to: ServerRecievingPlayerPacket {
@@ -590,6 +612,7 @@ fn main() {
             secondary_charge: player.secondary_charge,
             last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
             character: player.character,
+            is_dead: player.is_dead,
           },
           players: other_players,
           game_objects: game_objects_readonly.clone(),
@@ -619,21 +642,9 @@ fn main() {
 
 // (vscode) MARK: Functions, Structs
 
-/// Loads any map from a properly formatted string: `<object> [posX] [posY]`
+/// Information held by server about players.
 /// 
-/// example:
-/// ```rust
-/// let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
-/// ```
-/// map1.map:
-/// ```
-/// wall 10.0 10.0
-/// wall 20.0 10.0
-/// wall 30.0 10.0
-/// wall 40.0 10.0
-/// wall 50.0 10.0
-/// ```
-/// information held by server about players.
+/// This struct can be as herfty as we want, it stays here, doesn't get sent through network.
 #[derive(Debug, Clone)]
 struct ServerPlayer {
   ip:                   String,
@@ -654,6 +665,9 @@ struct ServerPlayer {
   dashed_distance:      f32,
   last_dash_time:       Instant,
   previous_positions:   Vec<Vector2>,
+  /// bro forgor to live
+  is_dead:              bool,
+  death_timer_start:    Instant,
 }
 
 /// Applies modifications to players and game objects as a result of

@@ -47,6 +47,8 @@ Maps can contains holes or water. These can be shot through but cannot be moved 
 
 These are three classes that create a ternary system. It creates a rock-paper-scissors style countering triangle. Of course all "counters" are soft-counters. There should be no hardcounter matchups.
 
+These are *general*, uninspired rules. Characters do not need to adhere to this system.
+
 ### Healer
 
 The second fastest class. Are very evasive and can easily avoid big bullets but not enough to evade assassins. They "counter" rangers' defensive playstyles by simply healing when the ranger plays too defensively. They have the second longest range.
@@ -64,3 +66,50 @@ Assassins excel at supporting rangers by protecting them from threats like other
 The slowest but most defensive class. They have a very long range and defensive abilities that make them harder to approach. Assassins have more trouble with them than healers, if the ranger plays carefully.
 
 They excel at helping healers in battle, as they can help defend  them from assassins.
+
+## Character concepts
+
+### Raphaelle
+
+Raphaelle is an Archangel, a type of Angel tasked both with healing the Forest-Sanctum and the Fauna. Like all Angels, she is veiled.
+
+- Class: Healer
+
+Primary attack
+
+
+
+Secondary attack
+
+
+Dash
+- Shiv style dash?
+
+### Hernani
+
+A romantic bandit paranoically hiding from the authorities.
+
+- Class: Ranger
+
+Primary attack
+
+- Long range shot
+
+Secondary attack
+
+
+Dash
+- Shiv style dash?
+
+### Queen
+
+- class: Assassin
+
+Primary attack
+
+- Short range sword slash
+
+Secondary attack
+
+
+Dash

@@ -87,9 +87,10 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Restrict players to map bounds
   - [ ] Make characters slower (really necessary?)
   - [ ] Visual clarity
-  - [ ] Death and respawning
-    - [ ] Death state
-    - [ ] Death spectator camera
+  - [x] Death and respawning
+    - [x] Death state (server communicates whether alive or dead)
+    - [x] Death spectator camera
+      - [x] Camera "system"
 
 ### Create gamemode (polish the game for PROPER playtesting)
 
@@ -136,6 +137,7 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Clean up the code
   - [ ] More stuff in common functions
   - [ ] Different files for each thread or something
+
 ### Irrelevant now, do after playtesting
 
 - [ ] Network packets are HUGE

@@ -4,6 +4,7 @@
 use miniquad::conf::Icon;
 use miniquad::window::{set_mouse_cursor, set_window_size};
 use top_down_shooter::common::*;
+use top_down_shooter::common::Camera;
 use macroquad::prelude::*;
 use gilrs::*;
 use std::collections::HashMap;
@@ -47,7 +48,7 @@ async fn main() {
   set_window_size(800, 450);
   game().await;
 }
-
+// (vscode) MARK: main()
 /// In the future this function will be called by main once the user starts the game
 /// through the menu.a
 async fn game(/* server_ip: &str */) {
@@ -177,7 +178,7 @@ async fn game(/* server_ip: &str */) {
     }
 
     // readonly
-    let player_copy = player.clone();
+    let mut player_copy = player.clone();
     drop(player);
 
     let game_objects_copy = game_objects.clone();
@@ -185,6 +186,14 @@ async fn game(/* server_ip: &str */) {
 
     let other_players_copy = other_players.clone();
     drop(other_players);
+    
+    let mut camera_offset: Vector2 = Vector2::new();
+    // Set camera offset (lock to player, freecam if dead)
+    if player_copy.is_dead == false {
+      camera_offset = Vector2 { x: 0.0, y: 0.0 };
+      player_copy.camera.position.x = player_copy.position.x + camera_offset.x;
+      player_copy.camera.position.y = player_copy.position.y + camera_offset.y;
+    }
 
     // (vscode) MARK: update mouse pos
     let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
@@ -196,8 +205,8 @@ async fn game(/* server_ip: &str */) {
     //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related         center
     //                        conversion.                           coords     ratio       to cropping.
     //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.   ,-------'----------,
-    mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0);
-    mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0;
+    mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0) + camera_offset.x; 
+    mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0                + camera_offset.y;
     let aim_direction: Vector2 = Vector2::difference(Vector2::new(), Vector2::from(mouse_position.clone()));
     drop(mouse_position);
 
@@ -211,24 +220,30 @@ async fn game(/* server_ip: &str */) {
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
       let size = game_object.size;
-      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.position);
+      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position);
     }
 
     // draw player and crosshair (aim laser)
     let range = character_properties[&player_copy.character].primary_range;
-    let relative_position_x = 50.0 * (16.0/9.0); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-    let relative_position_y = 50.0; //+ (vh * 100.0) / 2.0;
-    draw_line(
-      (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
-      (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
-      (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
-      (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
-      0.2 * vw, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
-    );
-    player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
+    let relative_position_x = 50.0 * (16.0/9.0) - camera_offset.x; //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+    let relative_position_y = 50.0 - camera_offset.y; //+ (vh * 100.0) / 2.0;
+    // test
+    //let relative_position_x = main_camera.position.x;
+    //let relative_position_y = main_camera.position.y;
+    if !player_copy.is_dead {
+      draw_line(
+        (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
+        (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
+        (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
+        (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
+        0.2 * vw, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
+      );
+    }
+    // temporary ofc
+    player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
     
     for player in other_players_copy {
-      player.draw(&player_textures[&player.character], vh, player_copy.position, &health_bar_font, character_properties[&player_copy.character].clone());
+      player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
     }
     // MARK: UI
     // time, kills, rounds
@@ -447,6 +462,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // println!("{}", dashing);
     //println!("{} {}", shooting_primary, shooting_secondary);
 
+    // MARK: Idk figure shit out
+
     if keyboard_mode { 
       let mouse_position = Arc::clone(&mouse_position);
       let mouse_position = mouse_position.lock().unwrap();
@@ -474,12 +491,16 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     movement_vector.x *= movement_speed * delta_time;
     movement_vector.y *= movement_speed * delta_time;
 
-    (movement_vector_raw, movement_vector) = object_aware_movement(player.position, movement_vector_raw, movement_vector, game_objects.clone());
-    player.position.x += movement_vector.x;
-    player.position.y += movement_vector.y;
+    if player.is_dead == false {  
+      (movement_vector_raw, movement_vector) = object_aware_movement(player.position, movement_vector_raw, movement_vector, game_objects.clone());
+      player.position.x += movement_vector.x;
+      player.position.y += movement_vector.y;
+    } if player.is_dead {
+      player.camera.position.x += movement_vector.x;
+      player.camera.position.y += movement_vector.y;
+    }
 
     // println!("{:?}", player.position);
-
     // println!("{:?}", movement_vector);
     // println!("{:?}", movement_vector_raw);
 
@@ -539,10 +560,19 @@ fn network_listener(
       // gain access to the player mutex
       player.position = recieved_server_info.player_packet_is_sent_to.position_override;
     }
+
+    // handle camera position upon death
+    if !player.is_dead && recieved_server_info.player_packet_is_sent_to.is_dead {
+      // we just died rn, so set the camera pos (which is now a freecam) to current position
+      // no clue why i have to do this, but for some reason upon death the camera moves "randomly"
+      player.camera.position = player.position;
+    }
+
     player.health = recieved_server_info.player_packet_is_sent_to.health;
     player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
     player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
     player.character = recieved_server_info.player_packet_is_sent_to.character;
+    player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
     drop(player); // free mutex guard ASAP for others to access player.
     
 

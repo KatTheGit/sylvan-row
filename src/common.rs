@@ -26,6 +26,17 @@ pub const SERVER_SEND_PORT:   u32 = 25568;
 pub const SERVER_LISTEN_PORT: u32 = 25569;
 
 // MARK: Gamemodes
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct Camera {
+  pub position: Vector2,
+}
+impl Camera {
+  pub fn new() -> Camera {
+    return Camera { position: Vector2::new() };
+  }
+}
+
 pub enum GameMode {
   /// Fast respawns, team with most kills wins
   DeathMatch,
@@ -44,6 +55,8 @@ pub struct GameModeInfo {
   pub kills_red: u8,
   /// number of kills from red team this round
   pub kills_blue: u8,
+  /// How long to wait until a respawn after death
+  pub death_timeout: f32,
 }
 impl GameModeInfo {
   pub fn new() -> GameModeInfo {
@@ -53,6 +66,7 @@ impl GameModeInfo {
       rounds_won_red: 0,
       kills_blue: 0,
       kills_red: 0,
+      death_timeout: 3.0,
     }
   }
 }
@@ -169,6 +183,8 @@ pub struct ClientPlayer {
   pub shooting_secondary: bool,
   pub team: Team,
   pub time_since_last_dash: f32,
+  pub is_dead: bool,
+  pub camera: Camera,
 }
 // MARK: Client Player
 impl ClientPlayer {
@@ -230,6 +246,8 @@ impl ClientPlayer {
       shooting_secondary: false,
       team: Team::Blue,
       time_since_last_dash: 0.0,
+      is_dead: false,
+      camera: Camera::new(),
     };
   }
 }
@@ -256,13 +274,14 @@ pub enum Team {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub struct ServerRecievingPlayerPacket {
   pub health: u8,
-  pub override_position: bool,
-  pub position_override: Vector2,
-  pub shooting_primary: bool,
+  pub override_position:  bool,
+  pub position_override:  Vector2,
+  pub shooting_primary:   bool,
   pub shooting_secondary: bool,
-  pub secondary_charge: u8,
-  pub last_dash_time: f32,
-  pub character: Character,
+  pub secondary_charge:   u8,
+  pub last_dash_time:     f32,
+  pub character:          Character,
+  pub is_dead:            bool,
 }
 
 /// information sent by server to client
@@ -386,6 +405,20 @@ pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16
   draw_text_ex(text, relative_position_x * vh, relative_position_y * vh, TextParams { font: Some(font), font_size: (font_size as f32 * vh) as u16, font_scale: 1.0, font_scale_aspect: 1.0, rotation: 0.0, color });
 }
 
+/// Loads any map from a properly formatted string: `<object> [posX] [posY]`
+/// 
+/// example:
+/// ```rust
+/// let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
+/// ```
+/// map1.map:
+/// ```
+/// wall 10.0 10.0
+/// wall 20.0 10.0
+/// wall 30.0 10.0
+/// wall 40.0 10.0
+/// wall 50.0 10.0
+/// ```
 pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
   let mut map_to_return: Vec<GameObject> = Vec::new();
   for line in map.lines() {
