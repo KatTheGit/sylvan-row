@@ -1,1 +1,1 @@
-cargo run --bin server
+cargo run --bin server ## Server doesn't lag, can be run without --release.

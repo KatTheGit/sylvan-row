@@ -1,1 +1,1 @@
-cargo run --bin game --release
+cargo run --bin game --release ## Game lags when not in release mode
