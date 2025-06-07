@@ -6,7 +6,7 @@ This document specifies all design rules and choices for this videogame.
 
 A multiplayer arena fighting game where players fight with their pick amongst a cast of varied characters. It focuses on the following values:
 - Having balanced characters
-- Having relatively simple but unique characters
+- Having relatively simple but unique characters (not many abilities but intricate)
 - Having snappy movement (WASD instead of click-to-move)
 - Being controller compatible and **friendly**
 - Being a top-down shooter
@@ -47,8 +47,6 @@ Maps can contains holes or water. These can be shot through but cannot be moved 
 
 These are three classes that create a ternary system. It creates a rock-paper-scissors style countering triangle. Of course all "counters" are soft-counters. There should be no hardcounter matchups.
 
-These are *general*, uninspired rules. Characters do not need to adhere to this system.
-
 ### Healer
 
 The second fastest class. Are very evasive and can easily avoid big bullets but not enough to evade assassins. They "counter" rangers' defensive playstyles by simply healing when the ranger plays too defensively. They have the second longest range.
@@ -67,48 +65,33 @@ The slowest but most defensive class. They have a very long range and defensive 
 
 They excel at helping healers in battle, as they can help defend  them from assassins.
 
-## Character concepts
+## Character brainstorming
 
-### Raphaelle
+### The Healer (Raphaelle)
 
-Raphaelle is an Archangel, a type of Angel tasked both with healing the Forest-Sanctum and the Fauna. Like all Angels, she is veiled.
+- Primary
+  - A mid-range shot that heals or damages
+  - A lifesteal mid-range shot that sends the health to nearby teammates (or self if no one around)
+- Secondary
+  - Healing aura
+  - Healing burst proportional to secondary charge
+- Movement
+  - Dash that heals people
+  - Shiv-like empowered dash
 
-- Class: Healer
+### The Assassin
 
-Primary attack
+- Primary
+  - A sword slash
+- Secondary
+  - Flashback ability (revert 3 seconds in time) CON: could be annoying as shit
+- Movement
+  - 
 
+### The Ranger (Hernani)
 
-Secondary attack
-
-
-Dash
-- Shiv style dash?
-
-### Hernani
-
-A romantic bandit paranoically hiding from the authorities.
-
-- Class: Ranger
-
-Primary attack
-
-- Long range shot
-
-Secondary attack
-
-
-Dash
-- Shiv style dash?
-
-### Queen
-
-- class: Assassin
-
-Primary attack
-
-- Short range sword slash
-
-Secondary attack
-
-
-Dash
+- Primary
+  - Long range shot
+- Secondary
+  - Place down a wall, using some secondary charge
+- Movement
