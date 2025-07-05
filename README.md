@@ -1,3 +1,7 @@
+# Notice
+
+OrnitOnGithub is no more and this project is now owned by Kat.
+
 # Sylvan Row
 A Multiplayer Online Battle Arena game, with the ambition of being balanced (with no hard-counter interactions), having simple  but unique characters, playing like a twin stick shooter (PC and controller), while having a working anticheat despite being FOSS.
 
@@ -55,11 +59,8 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Primary (single shot)
     - [x] Dash (semi-long dash)
     - [x] Secondary (wall placement)
-  - [ ] Assassin
-    - [x] Primary (sword, splash)
-    - [ ] Dash (position revert)
-      - [ ] Render it
-    - [ ] Secondary (some sort of lifesteal)
+  - [x] Assassin
+    - [ ] Rethink kit
 - [x] Correctly update info for each player
 - [x] Extrapolation (clientside)
   - [x] Gameobjects
@@ -104,10 +105,11 @@ On Linux, you need to additionally install `libudev-dev`.
       - [ ] Allied player's healths on top...?
 - [x] When dashing straight into a wall, you get stuck, because the server won't stop trying to make you go until you've traveled the desired dash distance.
 - [x] Create a gamemode
-  - [x] Deathmatch gamemode
+  - [x] Basic eathmatch gamemode
   - [ ] Add rounds
   - [ ] Arena gamemode
     - [ ] Requires a death state that can be maintained until round restart
+      - [x] Death state
 - [x] Io(Kind(UnexpectedEof)) error (buffer size increased)
 - [ ] Improve existing characters
   - [ ] The bunny is bland
@@ -120,6 +122,10 @@ On Linux, you need to additionally install `libudev-dev`.
     - [ ] Secondary has a trail (clientside)
   - [ ] The wolf just sucks
     - [ ] Dash ability
+
+### Second round of playtesting
+
+- [ ] Once the characters are satisfactory, Create a unique gamemode
 
 ### Once a functional game is made, make it pretty, make it clean, make it good.
 

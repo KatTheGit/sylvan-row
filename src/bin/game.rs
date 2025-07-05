@@ -4,7 +4,6 @@
 use miniquad::conf::Icon;
 use miniquad::window::{set_mouse_cursor, set_window_size};
 use top_down_shooter::common::*;
-use top_down_shooter::common::Camera;
 use macroquad::prelude::*;
 use gilrs::*;
 use std::collections::HashMap;
@@ -105,8 +104,8 @@ async fn game(/* server_ip: &str */) {
   let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::new(Mutex::new(other_players));
 
   // express 1% of cropped screen width and height respectively.
-  let mut vw: f32 = 10.0; // init with random value
-  let mut vh: f32 = 10.0;
+  let mut vw: f32;
+  let mut vh: f32;
 
   // start the input listener and network sender thread.
   // give it all necessary references to shared mutexes
@@ -137,6 +136,7 @@ async fn game(/* server_ip: &str */) {
     // update vw and vh, used to correctly draw things scale to the screen.
     // one vh for example is 1% of screen height.
     // it's the same as in css.
+    // TEMPORARY - In the future, don't restrict to 16/9
     if screen_height() * (16.0/9.0) > screen_width() {
       vw = screen_width() / 100.0;
       vh = vw / (16.0/9.0);
@@ -214,6 +214,7 @@ async fn game(/* server_ip: &str */) {
 
     // Draw the backgrounds
     clear_background(BLACK);
+    // TEMPORARY
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, GRAY);
 
     // draw all gameobjects
@@ -247,15 +248,15 @@ async fn game(/* server_ip: &str */) {
     }
     // MARK: UI
     // time, kills, rounds
-    let mut gamemode_info_main = gamemode_info.lock().unwrap();
-    let timer_width: f32 = 5.0;
+    let gamemode_info_main = gamemode_info.lock().unwrap();
+    // let timer_width: f32 = 5.0;
     draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, WHITE);
     draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);
     draw_text_relative(format!("Blue Kills: {}", gamemode_info_main.kills_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
     draw_text_relative(format!("Blue Wins : {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
     draw_text_relative(format!("Red Kills : {}", gamemode_info_main.kills_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
     draw_text_relative(format!("Red Wins  : {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
-    let bar_offsets = 5.0;
+    // let bar_offsets = 5.0;
     // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
     drop(gamemode_info_main);
 
@@ -274,7 +275,7 @@ async fn game(/* server_ip: &str */) {
 /// slow monitors.
 fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>) -> ! {
 
-  let mut server_ip: String = String::new();
+  let server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
   let ip_file = File::open(ip_file_name);
   match ip_file {
@@ -305,7 +306,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         }
         // Couldn't create file
         Err(error) => {
-          println!("Could not create config file. Defaulting to 0.0.0.0.");
+          println!("Could not create config file. Defaulting to 0.0.0.0.\nReason:\n{}", error);
           server_ip = String::from("0.0.0.0");
         }
       }
@@ -548,7 +549,7 @@ fn network_listener(
   let mut buffer: [u8; 4096*4] = [0; 4096*4];
   loop {
     // recieve packet
-    let (amt, src): (usize, std::net::SocketAddr) = listening_socket.recv_from(&mut buffer)
+    let (amt, _): (usize, std::net::SocketAddr) = listening_socket.recv_from(&mut buffer)
       .expect("Listening socket failed to recieve.");
     let data: &[u8] = &buffer[..amt];
     let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("Could not deserialise server packet.");

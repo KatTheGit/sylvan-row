@@ -278,7 +278,7 @@ fn main() {
     let mut tenth_tick: bool = false;
     server_counter = Instant::now();
     
-    let mut true_delta_time: f64 = 0.0;
+    let true_delta_time: f64; // does not need to be mutable, since in both branches the value is assigned.
     if delta_time > desired_delta_time {
       true_delta_time = delta_time;
     } else {
