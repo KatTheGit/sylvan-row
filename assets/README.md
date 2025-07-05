@@ -147,5 +147,3 @@ Intended playstyle:
 Intended playstyle:
 - Easy to play, tutorial character ahh
 - Stand back and fire from a distance
-
-git profile test 1
