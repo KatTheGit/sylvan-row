@@ -1,7 +1,3 @@
-# Notice
-
-OrnitOnGithub is no more and this project is now owned by Kat.
-
 # Sylvan Row
 A Multiplayer Online Battle Arena game, with the ambition of being balanced (with no hard-counter interactions), having simple  but unique characters, playing like a twin stick shooter (PC and controller), while having a working anticheat despite being FOSS.
 
@@ -181,3 +177,7 @@ On Linux, you need to additionally install `libudev-dev`.
 - Fullcreen issue on Linux (can't exit fullscreen) (Macroquad issue)
   - [x] Holy shit they fixed it
 - Icon doesn't show up on Linux (Macroquad issue)
+
+# Notice
+
+OrnitOnGithub is no more and this project is now owned by KatTheGit.
