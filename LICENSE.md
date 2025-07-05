@@ -1,6 +1,6 @@
 # Contents of `assets` directory: CC BY-NC-ND
 
-All files in the `assets` directory are © 2024 Ornithopter747 (OrnitOnGithub) and © 2025 Kathleen (KatTheGit) and licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+All files in the `assets` directory are © 2025 Kathleen (KatTheGit) and licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/).
 
 ### Summary of license terms:
 You are free to copy and redistribute the material in any medium or format. The licensor cannot revoke these freedoms as long as you follow the license terms:
@@ -11,7 +11,7 @@ You are free to copy and redistribute the material in any medium or format. The 
 
 # Rest of the project: MIT License
 
-Copyright 2024 Ornithopter747 (OrnitOnGithub) and 2025 Kathleen (KatTheGit)
+Copyright 2025 Kathleen (KatTheGit)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

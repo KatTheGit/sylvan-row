@@ -178,6 +178,6 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Holy shit they fixed it
 - Icon doesn't show up on Linux (Macroquad issue)
 
-# Notice
+## Note
 
-OrnitOnGithub is no more and this project is now owned by KatTheGit.
+This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the original repository](https://github.com/OrnitOnGithub/moba?tab=readme-ov-file#notice)
