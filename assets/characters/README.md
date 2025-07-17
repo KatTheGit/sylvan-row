@@ -7,6 +7,7 @@ speed = f32
 
 primary_damage = u8
 primary_heal = u8
+primary_lifesteal = u8
 primary_cooldown = f32
 primary_range = f32
 primary_shot_speed = f32
@@ -16,6 +17,7 @@ secondary_damage = u8
 secondary_heal = u8
 secondary_hit_charge = u8
 secondary_heal_charge = u8
+secondary_charge_use = u8
 secondary_passive_charge = u8
 secondary_range = f32
 secondary_cooldown = f32

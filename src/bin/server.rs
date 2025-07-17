@@ -2,6 +2,7 @@ use top_down_shooter::common::*;
 use core::f32;
 use std::collections::HashMap;
 use std::net::UdpSocket;
+use std::path::MAIN_SEPARATOR;
 use std::sync::{Arc, Mutex, MutexGuard};
 use bincode;
 use std::{thread, time::*};
@@ -37,7 +38,7 @@ fn main() {
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
-  let mut character_queue: Vec<Character> = vec![Character::SniperGirl, Character::TimeQueen, Character::HealerGirl, Character::SniperGirl, Character::TimeQueen, Character::HealerGirl];
+  let mut character_queue: Vec<Character> = vec![Character::HealerGirl, Character::SniperGirl, Character::TimeQueen, Character::HealerGirl, Character::SniperGirl, Character::TimeQueen, Character::HealerGirl];
   // temporary, to be dictated by gamemode
   let max_players = character_queue.len();
   
@@ -91,6 +92,7 @@ fn main() {
           let mut movement_legal = true;
           let previous_position = player.position.clone();
           
+          // (vscode) MARK: Dashing Legality
           // If player wants to dash and isn't dashing...
           if recieved_player_info.dashing && !player.is_dashing && !player.is_dead {
             let player_dash_cooldown = characters[&player.character].dash_cooldown;
@@ -109,7 +111,6 @@ fn main() {
               }
             }
           }
-          // (vscode) MARK: Dashing Legality
           if player.is_dashing && !player.is_dead {
             let player_dashing_speed: f32 = characters[&player.character].dash_speed;
             let player_max_dash_distance: f32 = characters[&player.character].dash_distance;
@@ -210,7 +211,7 @@ fn main() {
         listener_players.push(ServerPlayer {
           ip: src.ip().to_string(),
           team,
-          health: 100,
+          health: 20,
           position: match team {
             Team::Blue => Vector2 { x: 10.0, y: 10.0 },
             Team::Red  => Vector2 { x: 90.0, y: 90.0 },
@@ -231,6 +232,7 @@ fn main() {
           previous_positions:   Vec::new(),
           is_dead:              false,
           death_timer_start:    Instant::now(),
+          next_shot_empowered:  false,
         });
         println!("Player connected: {}", src.ip().to_string());
         character_queue.remove(0);
@@ -272,6 +274,10 @@ fn main() {
     death_timeout: 3.0,
   };
 
+  // part of dummy summoning
+  // set to TRUE in release server
+  let mut dummy_summoned: bool = false;
+
   // (vscode) MARK: Server Loop
   loop {
     let mut tick: bool = false;
@@ -303,6 +309,37 @@ fn main() {
     }
   
     let mut main_loop_players = main_loop_players.lock().unwrap();
+
+
+    // Summon a dummy for testing
+    if !dummy_summoned {
+      dummy_summoned = true;
+      main_loop_players.push(
+        ServerPlayer {
+          ip: String::from("hello"),
+          team: Team::Red,
+          character: Character::Dummy,
+          health: 0,
+          position: Vector2 { x: 10.0, y: 10.0 },
+          shooting: false,
+          last_dash_time: Instant::now(),
+          last_shot_time: Instant::now(),
+          shooting_secondary: false,
+          secondary_cast_time: Instant::now(),
+          secondary_charge: 0,
+          aim_direction: Vector2::new(),
+          move_direction: Vector2::new(),
+          had_illegal_position: false,
+          is_dashing: false,
+          dash_direction: Vector2::new(),
+          dashed_distance: 0.0,
+          previous_positions: vec![],
+          is_dead: false,
+          death_timer_start: Instant::now(),
+          next_shot_empowered: false,
+        }
+      );
+    }
     
     // (vscode) MARK: Player logic
     for player_index in 0..main_loop_players.len() {
@@ -407,7 +444,10 @@ fn main() {
           }
           Character::HealerGirl => {
             game_objects.push(GameObject {
-              object_type: GameObjectType::HealerGirlPunch,
+              object_type: match main_loop_players[player_index].next_shot_empowered {
+                true => {GameObjectType::HealerGirlBulletEmpowered},
+                false => {GameObjectType::HealerGirlBullet},
+              },
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
@@ -418,6 +458,9 @@ fn main() {
               players: Vec::new(),
               traveled_distance: 0.0,
             });
+            if main_loop_players[player_index].next_shot_empowered {
+              main_loop_players[player_index].next_shot_empowered = false;
+            }
           }
           Character::TimeQueen => {
             game_objects.push(GameObject {
@@ -433,6 +476,7 @@ fn main() {
               traveled_distance: 0.0,
             });
           }
+          Character::Dummy => {}
         }
         drop(game_objects);
       }
@@ -514,6 +558,8 @@ fn main() {
               main_loop_players[player_index].previous_positions = Vec::new();
             }
           },
+
+          Character::Dummy => {}
         }
         if secondary_used_successfully {
           main_loop_players[player_index].secondary_charge -= character.secondary_charge_use;
@@ -531,26 +577,51 @@ fn main() {
     for game_object_index in 0..game_objects.len() {
       let game_object_type = game_objects[game_object_index].object_type;
       match game_object_type {
+
+        // WOLF primary
         GameObjectType::SniperGirlBullet => {
-          (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
+          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
         }
-        GameObjectType::HealerGirlPunch => {
-          (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
-        }
-        GameObjectType::TimeQueenSword => {
-          (main_loop_players, *game_objects) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
-        }
-        GameObjectType::HealerAura => {
-          game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
-           // every second apply heal
-           if tick {
-             for player_index in 0..main_loop_players.len() {
-              if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
-                let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
-                main_loop_players[player_index].health.heal(heal_amount);
+
+        // HEALER GIRL primary
+        GameObjectType::HealerGirlBullet => {
+          let hit: bool;
+          (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
+          
+          // Restore nearby ally health, and some dash charge.
+          if hit {
+            for player_index in 0..main_loop_players.len() {
+              let range: f32 = characters[&Character::HealerGirl].primary_range;
+              if Vector2::distance(
+                main_loop_players[player_index].position,
+                main_loop_players[game_objects[game_object_index].owner_index].position
+              ) < range {
+                // Anyone within range
+                let heal: u8 = characters[&Character::HealerGirl].primary_lifesteal;
+                main_loop_players[player_index].health.heal(heal);
+                // restore dash charge (0.5s)
+                main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(500);
               }
-             }
-           }
+            }
+          }
+        }
+        // HEALER GIRL secondary
+        GameObjectType::HealerAura => {
+          // game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
+          // every second apply heal
+          if tick {
+            for player_index in 0..main_loop_players.len() {
+            if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
+              let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
+              main_loop_players[player_index].health.heal(heal_amount);
+            }
+            }
+          }
+        }
+
+        // QUEEN primary
+        GameObjectType::TimeQueenSword => {
+          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
         }
         _ => {}
       }
@@ -579,6 +650,10 @@ fn main() {
 
       // Send a packet to each player
       for (index, player) in main_loop_players.clone().iter().enumerate() {
+
+        if player.character == Character::Dummy {
+          continue;
+        }
 
         // Gather info to send about other players
         let mut other_players: Vec<ClientPlayer> = Vec::new();
@@ -647,12 +722,14 @@ fn main() {
 /// This struct can be as herfty as we want, it stays here, doesn't get sent through network.
 #[derive(Debug, Clone)]
 struct ServerPlayer {
+  /// also used as an identifier
   ip:                   String,
   team:                 Team,
   character:            Character,
   health:               u8,
   position:             Vector2,
   shooting:             bool,
+  /// To calculate cooldowns
   last_shot_time:       Instant,
   shooting_secondary:   bool,
   secondary_cast_time:  Instant,
@@ -668,6 +745,7 @@ struct ServerPlayer {
   /// bro forgor to live
   is_dead:              bool,
   death_timer_start:    Instant,
+  next_shot_empowered:  bool,
 }
 
 /// Applies modifications to players and game objects as a result of
@@ -679,7 +757,7 @@ fn apply_simple_bullet_logic(
   game_object_index: usize,
   true_delta_time: f64,
   pierceing_shot: bool,
-) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>) {
+) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   let game_object = game_objects[game_object_index].clone();
   let player = main_loop_players[game_object.owner_index].clone();
   let character = player.character;
@@ -703,19 +781,23 @@ fn apply_simple_bullet_logic(
             game_objects[victim_object_index].hitpoints -= character_properties.primary_damage;
           }
         }
-        return (main_loop_players, game_objects); // return early
+        return (main_loop_players, game_objects, false); // return early
       }
     }
   }
 
   // Calculate collisions with players
+  let mut hit: bool = false; // whether we've hit a player
   for player_index in 0..main_loop_players.len() {
+    // If we hit a bloke
     if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
     owner_index != player_index {
-
+      // And if we didn't hit this bloke before
       if !(game_object.players.contains(&player_index)) {
         // Apply bullet damage
         if main_loop_players[player_index].team != player.team {
+          // Confirmed hit.
+            hit = true;
           if main_loop_players[player_index].health > character_properties.primary_damage {
             main_loop_players[player_index].health -= character_properties.primary_damage;
           } else {
@@ -747,5 +829,5 @@ fn apply_simple_bullet_logic(
   }
   game_objects[game_object_index].position.x += game_object.direction.x * true_delta_time as f32 * bullet_speed;
   game_objects[game_object_index].position.y += game_object.direction.y * true_delta_time as f32 * bullet_speed;
-  return (main_loop_players, game_objects);
+  return (main_loop_players, game_objects, hit);
 }

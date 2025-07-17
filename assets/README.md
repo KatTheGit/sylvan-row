@@ -98,40 +98,35 @@ They excel at helping healers in battle, as they can help defend  them from assa
 ### The Healer (Raphaelle)
 
 - Primary
-  - A lifesteal mid-range shot that sends the health to nearby teammates (or self by less if no one around). Partially restores dash charge.
+  - A lifesteal mid-range shot that sends the health to nearby teammates (or a little to self if no one around). Partially restores dash charge.
 - Secondary
-  - Healing aura
-  - Healing burst proportional to secondary charge
-  - Lux-like lazer, but healing
-  - Place down a healing pool
-  - Place down a tree, like Blossom
+  - Place down a zone of increased fire rate and health regen
 - Movement
   - A short dash that empowers the next shot, which does not heal, but does extra damage. If it lands, it restores a bit more dash charge than usually.
 - Passive
   - Flight: Gains a short temporary speed buff upon getting hit.
-  - Relatively fast base movement speed, should be able to keep up with teammates.
+  - Relatively fast base movement speed, should be able to keep up with most teammates.
 
 Intended playstyle:
 - Has to be able to play offensively so she can play defensively.
 - A somewhat versatile, evasive underdog.
   - If helping the team, deals less damage, less offensive, more defensive
   - If solo, can deal more damage, can be more offensive
-  - A good player should merge both playstyles, maybe idk.
+  - A good player should merge both playstyles.
 
 ### The Assassin
 
 - Primary
-  - A sword slash
-  - A sword on a chain that is thrown, and retrieved, boomerang-like projectile.
+  - A sword slash. Fire rate is proportional to secondary charge. At 70% or something, it reaches full potential, where it's 5% above standard.
+    Below that, it is gradually worse, going as far as 20% below standard.
 - Secondary
-  - Flashback ability (revert 3 seconds in time) CON: could be annoying as shit
+  - Teleport forward, entering a "dash mode" where you take less damage, using distance-proportional secondary charge. Charge must be at least 50-70%.
 - Movement
-  - A simple, forward dash
-- Passive?
-  - Secondary or movement charge from getting hit?
+  - A short flashback
+- Passive
 
 Intended playstyle:
-- Hit & run
+- A balanced hit & run
 
 ### The Ranger (Hernani)
 
@@ -147,3 +142,6 @@ Intended playstyle:
 Intended playstyle:
 - Easy to play, tutorial character ahh
 - Stand back and fire from a distance
+
+
+### Random ideas

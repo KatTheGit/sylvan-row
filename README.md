@@ -107,17 +107,13 @@ On Linux, you need to additionally install `libudev-dev`.
     - [ ] Requires a death state that can be maintained until round restart
       - [x] Death state
 - [x] Io(Kind(UnexpectedEof)) error (buffer size increased)
-- [ ] Improve existing characters
-  - [ ] The bunny is bland
-    - [ ] Dash ability
-    - [ ] Redo main attack
-      - [ ] Vamp for tethered teammate, shiv-like relationship with dash...
-    - [ ] Modify secondary to heal self less
-  - [ ] The queen is bland
-    - [ ] Dash ability
+- [ ] Improve existing characters (see assets/README.md)
+  - [ ] The bunny
+  - [ ] The queen
     - [ ] Secondary has a trail (clientside)
-  - [ ] The wolf just sucks
-    - [ ] Dash ability
+  - [ ] The wolf
+- [ ] The code is abysmally dogshit, actually needs urgent fixing
+- [ ] Better, bigger map, and slightly slower characters maybe?
 
 ### Second round of playtesting
 
@@ -125,6 +121,7 @@ On Linux, you need to additionally install `libudev-dev`.
 
 ### Once a functional game is made, make it pretty, make it clean, make it good.
 
+- [ ] Create a circular/elliptic FOW, and remove shitty forced aspect ratio logic
 - [ ] Sounds
   - [ ] Find a sound engine
   - [ ] Proper sound design (not good sounds, but one sound for everything) 
@@ -174,9 +171,10 @@ On Linux, you need to additionally install `libudev-dev`.
 
 ## Issues that won't be solved
 
-- Fullcreen issue on Linux (can't exit fullscreen) (Macroquad issue)
+- Fullcreen issue on Linux (Macroquad issue)
   - [x] Holy shit they fixed it
 - Icon doesn't show up on Linux (Macroquad issue)
+  - [x] Holy guacamole they fixed it
 
 ## Note
 

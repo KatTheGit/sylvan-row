@@ -73,6 +73,8 @@ impl GameModeInfo {
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Character {
+  /// Used for testing. Has lots of health, and that's it.
+  Dummy,
   SniperGirl,
   HealerGirl,
   TimeQueen,
@@ -80,15 +82,22 @@ pub enum Character {
 // MARK: Characters
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
+  /// Maximum (default) health. Standard is 100, but can be more or less.
   pub health: u8,
 
+  /// Movement speed in units per second
   pub speed: f32,
 
   pub primary_damage:     u8,
+  /// Amount allies are healed when hit by this ability.
   pub primary_heal:       u8,
+  /// Amount of healing after a hit. Currently only used by the bunny, who sends the health to allies.
+  pub primary_lifesteal:  u8,
   pub primary_cooldown:   f32,
   pub primary_range:      f32,
   pub primary_shot_speed: f32,
+  /// Girth of the bullet
+  pub primary_hit_radius: f32,
 
   pub secondary_damage:         u8,
   pub secondary_cooldown:       f32,
@@ -97,7 +106,6 @@ pub struct CharacterProperties {
   pub secondary_heal_charge:    u8,
   pub secondary_passive_charge: u8,
   pub secondary_range:          f32,
-  pub primary_hit_radius:       f32,
   pub secondary_charge_use:     u8,
 
   pub dash_distance:                f32,
@@ -110,9 +118,10 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
   let mut characters: HashMap<Character, CharacterProperties> = HashMap::new();
   for character in Character::iter() {
     let character_properties: CharacterProperties = match character {
+      Character::Dummy      => CharacterProperties::from_pkl(include_str!("../assets/characters/dummy/properties.pkl")),
       Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
       Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/healer_girl/properties.pkl")),
-      Character::TimeQueen => CharacterProperties::from_pkl(include_str!("../assets/characters/time_queen/properties.pkl")),
+      Character::TimeQueen =>  CharacterProperties::from_pkl(include_str!("../assets/characters/time_queen/properties.pkl")),
     };
 
     characters.insert(character, character_properties);
@@ -128,6 +137,7 @@ impl CharacterProperties {
       speed:                    pkl_f32(find_parameter(&pkl, "speed").unwrap()),
       primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage").unwrap()),
       primary_heal:             pkl_u8( find_parameter(&pkl, "primary_heal").unwrap()),
+      primary_lifesteal:        pkl_u8( find_parameter(&pkl, "primary_lifesteal").unwrap()),
       primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown").unwrap()),
       primary_range:            pkl_f32(find_parameter(&pkl, "primary_range").unwrap()),
       primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed").unwrap()),
@@ -151,13 +161,13 @@ impl CharacterProperties {
 pub fn pkl_u8(pkl_value: PklValue) -> u8 {
   return match pkl_value {
     PklValue::Integer(value) => value as u8,
-    _ => panic!("Pkl value parser could not parse that")
+    _ => panic!("Pkl value parser could not parse that {:?}", pkl_value)
   }
 }
 pub fn pkl_f32(pkl_value: PklValue) -> f32 {
   return match pkl_value {
     PklValue::Float(value) => value as f32,
-    _ => panic!("Pkl value parser could not parse that")
+    _ => panic!("Pkl value parser could not parse that {:?}", pkl_value)
   }
 }
 pub fn parse_pkl_string(pkl_string: &str) -> Result<PklValue, String> {
@@ -320,7 +330,8 @@ pub enum GameObjectType {
   HealerAura,
   UnbreakableWall,
   SniperGirlBullet,
-  HealerGirlPunch,
+  HealerGirlBullet,
+  HealerGirlBulletEmpowered,
   TimeQueenSword,
 }
 // MARK: Vectors
