@@ -98,11 +98,11 @@ They excel at helping healers in battle, as they can help defend  them from assa
 ### The Healer (Raphaelle)
 
 - Primary
-  - A lifesteal mid-range shot that sends the health to nearby teammates (or a little to self if no one around). Partially restores dash charge.
+  - A lifesteal mid-range shot that sends the health to nearby teammates (or a little to self if no one around).
 - Secondary
   - Place down a zone of increased fire rate and health regen
 - Movement
-  - A short dash that empowers the next shot, which does not heal, but does extra damage. If it lands, it restores a bit more dash charge than usually.
+  - A short dash that empowers the next shot, which does not heal, but does extra damage. If it lands, it restores dash charge.
 - Passive
   - Flight: Gains a short temporary speed buff upon getting hit.
   - Relatively fast base movement speed, should be able to keep up with most teammates.
@@ -142,6 +142,3 @@ Intended playstyle:
 Intended playstyle:
 - Easy to play, tutorial character ahh
 - Stand back and fire from a distance
-
-
-### Random ideas

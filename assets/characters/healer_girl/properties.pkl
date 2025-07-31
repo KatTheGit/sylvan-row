@@ -4,7 +4,10 @@ speed = 60.0
 
 primary_damage = 6
 primary_heal = 0
+primary_damage_2 = 8
+primary_heal_2 = 0
 primary_lifesteal = 3
+primary_lifesteal_2 = 2
 primary_cooldown = 0.5
 primary_range = 70.0
 primary_shot_speed = 200.0

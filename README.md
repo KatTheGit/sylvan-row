@@ -3,11 +3,9 @@ A Multiplayer Online Battle Arena game, with the ambition of being balanced (wit
 
 <img src="assets/characters/time_queen/textures/banner.png" width="300" title="Preliminary art of one of the characters" alt="An anthro lioness in armor"/>
 
-This game is still incomplete, but will be worked on more when I'm less busy. You can copy the repository yourself if you want a template. The `assets` directory is strictly licensed.
-
 ## Play
 
-Tested on Windows, Linux and OSX. Not in a very playable state. There is a playtest release, but it's very rough. A properly playable release is being worked on.
+The game is not yet playable.
 
 Run the game:
 ```sh
@@ -109,11 +107,26 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Io(Kind(UnexpectedEof)) error (buffer size increased)
 - [ ] Improve existing characters (see assets/README.md)
   - [ ] The bunny
+    - [x] Primary
+    - [ ] Secondary
+    - [x] Dash
+    - [ ] Passives
   - [ ] The queen
     - [ ] Secondary has a trail (clientside)
+    - [ ] Primary
+    - [ ] Secondary
+    - [ ] Dash
+    - [ ] Passives
   - [ ] The wolf
+    - [ ] Primary
+    - [ ] Secondary
+    - [ ] Dash
+    - [ ] Passives
 - [ ] The code is abysmally dogshit, actually needs urgent fixing
+  - [ ] Remove boilerplate
+    - [ ] Functions for creating game object structs, and player instantiation (lots of useless boilerplate)
 - [ ] Better, bigger map, and slightly slower characters maybe?
+- [ ] Arbitrary balance (using theory)
 
 ### Second round of playtesting
 
@@ -121,7 +134,7 @@ On Linux, you need to additionally install `libudev-dev`.
 
 ### Once a functional game is made, make it pretty, make it clean, make it good.
 
-- [ ] Create a circular/elliptic FOW, and remove shitty forced aspect ratio logic
+- [ ] Create a circular/elliptic FOW, and remove shitty forced aspect ratio
 - [ ] Sounds
   - [ ] Find a sound engine
   - [ ] Proper sound design (not good sounds, but one sound for everything) 

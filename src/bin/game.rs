@@ -1,20 +1,20 @@
 // Don't show console window on Windows
 #![windows_subsystem = "windows"]
 
-use miniquad::conf::Icon;
 use miniquad::window::{set_mouse_cursor, set_window_size};
+use device_query::{DeviceQuery, DeviceState, Keycode};
 use top_down_shooter::common::*;
+use strum::IntoEnumIterator;
 use macroquad::prelude::*;
+use miniquad::conf::Icon;
 use gilrs::*;
-use std::collections::HashMap;
+use bincode;
 use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration};
-use bincode;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use device_query::{DeviceQuery, DeviceState, Keycode};
-use strum::IntoEnumIterator;
-use std::fs::File;
 use std::io::{Read, Write};
+use std::fs::File;
 
 #[cfg(target_os = "macos")]
 fn rmb_index() -> usize {
@@ -63,7 +63,7 @@ async fn game(/* server_ip: &str */) {
         GameObjectType::SniperWall                 => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/wall.png"), None),
         GameObjectType::HealerAura                 => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/secondary.png"), None),
         GameObjectType::UnbreakableWall            => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
-        GameObjectType::SniperGirlBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperWolfBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HealerGirlBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HealerGirlBulletEmpowered  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::TimeQueenSword             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
@@ -92,7 +92,7 @@ async fn game(/* server_ip: &str */) {
       match character {
         Character::TimeQueen  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/test.png"), None),
         Character::HealerGirl => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/test.png"), None),
-        Character::SniperGirl => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/test.png"), None),
+        Character::SniperWolf => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/test.png"), None),
         Character::Dummy      => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/test.png"), None),
       }
     );
@@ -160,10 +160,10 @@ async fn game(/* server_ip: &str */) {
     // for game objects
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
-        GameObjectType::HealerGirlBullet | GameObjectType::TimeQueenSword | GameObjectType::SniperGirlBullet => {
+        GameObjectType::HealerGirlBullet | GameObjectType::TimeQueenSword | GameObjectType::SniperWolfBullet => {
           let speed: f32 = character_properties[&(match game_object.object_type {
             GameObjectType::HealerGirlBullet => Character::HealerGirl,
-            GameObjectType::SniperGirlBullet => Character::SniperGirl,
+            GameObjectType::SniperWolfBullet => Character::SniperWolf,
             GameObjectType::TimeQueenSword => Character::TimeQueen,
             _ => panic!()
           })].primary_shot_speed;

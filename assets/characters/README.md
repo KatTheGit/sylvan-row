@@ -28,8 +28,10 @@ dash_damage_multiplier = f32
 dash_speed = f32
 ```
 
+
 All cooldowns are in seconds. All distances are in screen percentage units (vh). `dash_damage_multiplier` is a quotient.
 
+(outdated)
 - `health` character's health (0-255, standadrd 100)
 - `speed` character's speed (0-255, standard 100)
 - `primary_damage` damage of primary attack (0-255, standard 10)

@@ -75,7 +75,7 @@ impl GameModeInfo {
 pub enum Character {
   /// Used for testing. Has lots of health, and that's it.
   Dummy,
-  SniperGirl,
+  SniperWolf,
   HealerGirl,
   TimeQueen,
 }
@@ -91,6 +91,11 @@ pub struct CharacterProperties {
   pub primary_damage:     u8,
   /// Amount allies are healed when hit by this ability.
   pub primary_heal:       u8,
+  /// Used for empowered/alternate attacks
+  pub primary_damage_2: u8,
+  /// Amount allies are healed when hit by this ability.
+  /// Used for empowered/alternate attacks.
+  pub primary_heal_2: u8,
   /// Amount of healing after a hit. Currently only used by the bunny, who sends the health to allies.
   pub primary_lifesteal:  u8,
   pub primary_cooldown:   f32,
@@ -119,7 +124,7 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
   for character in Character::iter() {
     let character_properties: CharacterProperties = match character {
       Character::Dummy      => CharacterProperties::from_pkl(include_str!("../assets/characters/dummy/properties.pkl")),
-      Character::SniperGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
+      Character::SniperWolf => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
       Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/healer_girl/properties.pkl")),
       Character::TimeQueen =>  CharacterProperties::from_pkl(include_str!("../assets/characters/time_queen/properties.pkl")),
     };
@@ -133,27 +138,29 @@ impl CharacterProperties {
   pub fn from_pkl(pkl_data: &str) -> CharacterProperties {
     let pkl: PklValue = parse_pkl_string(pkl_data).expect("could not parse pkl");
     return CharacterProperties {
-      health:                   pkl_u8( find_parameter(&pkl, "health").unwrap()),
-      speed:                    pkl_f32(find_parameter(&pkl, "speed").unwrap()),
-      primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage").unwrap()),
-      primary_heal:             pkl_u8( find_parameter(&pkl, "primary_heal").unwrap()),
-      primary_lifesteal:        pkl_u8( find_parameter(&pkl, "primary_lifesteal").unwrap()),
-      primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown").unwrap()),
-      primary_range:            pkl_f32(find_parameter(&pkl, "primary_range").unwrap()),
-      primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed").unwrap()),
-      primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius").unwrap()),
-      secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage").unwrap()),
-      secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal").unwrap()),
-      secondary_hit_charge:     pkl_u8( find_parameter(&pkl, "secondary_hit_charge").unwrap()),
-      secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge").unwrap()),
-      secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge").unwrap()),
-      secondary_cooldown:       pkl_f32(find_parameter(&pkl, "secondary_cooldown").unwrap()),
-      secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range").unwrap()),
-      secondary_charge_use:     pkl_u8(find_parameter(&pkl, "secondary_charge_use").unwrap()),
-      dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance").unwrap()),
-      dash_cooldown:            pkl_f32(find_parameter(&pkl, "dash_cooldown").unwrap()),
-      dash_damage_multiplier:   pkl_f32(find_parameter(&pkl, "dash_damage_multiplier").unwrap()),
-      dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed").unwrap()),
+      health:                   pkl_u8( find_parameter(&pkl, "health"                   ).unwrap()),
+      speed:                    pkl_f32(find_parameter(&pkl, "speed"                    ).unwrap()),
+      primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage"           ).unwrap()),
+      primary_damage_2:         pkl_u8( find_parameter(&pkl, "primary_damage_2"         ).unwrap()),
+      primary_heal:             pkl_u8( find_parameter(&pkl, "primary_heal"             ).unwrap()),
+      primary_heal_2:           pkl_u8( find_parameter(&pkl, "primary_heal_2"           ).unwrap()),
+      primary_lifesteal:        pkl_u8( find_parameter(&pkl, "primary_lifesteal"        ).unwrap()),
+      primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown"         ).unwrap()),
+      primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap()),
+      primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap()),
+      primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap()),
+      secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage"         ).unwrap()),
+      secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal"           ).unwrap()),
+      secondary_hit_charge:     pkl_u8( find_parameter(&pkl, "secondary_hit_charge"     ).unwrap()),
+      secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge"    ).unwrap()),
+      secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge" ).unwrap()),
+      secondary_cooldown:       pkl_f32(find_parameter(&pkl, "secondary_cooldown"       ).unwrap()),
+      secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range"          ).unwrap()),
+      secondary_charge_use:     pkl_u8( find_parameter(&pkl, "secondary_charge_use"     ).unwrap()),
+      dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance"            ).unwrap()),
+      dash_cooldown:            pkl_f32(find_parameter(&pkl, "dash_cooldown"            ).unwrap()),
+      dash_damage_multiplier:   pkl_f32(find_parameter(&pkl, "dash_damage_multiplier"   ).unwrap()),
+      dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed"               ).unwrap()),
     }
   }
 }
@@ -249,7 +256,7 @@ impl ClientPlayer {
       health: 100,
       position: Vector2::new(),
       aim_direction: Vector2::new(),
-      character: Character::SniperGirl,
+      character: Character::SniperWolf,
       secondary_charge: 100,
       movement_direction: Vector2::new(),
       shooting_primary: false,
@@ -329,7 +336,7 @@ pub enum GameObjectType {
   SniperWall,
   HealerAura,
   UnbreakableWall,
-  SniperGirlBullet,
+  SniperWolfBullet,
   HealerGirlBullet,
   HealerGirlBulletEmpowered,
   TimeQueenSword,
@@ -532,6 +539,7 @@ pub trait Extras {
 }
 
 impl Heal for u8 {
+  /// Increment a number without exceeding 100.
   fn heal(&mut self, health: u8) {
     let max_health: u8 = 100;
     if self.clone() + health > max_health {
@@ -543,4 +551,21 @@ impl Heal for u8 {
 }
 pub trait Heal {
   fn heal(&mut self, health:u8) -> ();
+}
+
+/// Stores information about any buff.
+#[derive(Debug, Clone, Copy)]
+pub struct Buff {
+  /// Numerical value associated with buff, like speed gained, or fire rate percentage increase.
+  pub value: f32,
+  /// Time left in seconds
+  pub duration: f32,
+  /// Type of buff. Speed, Fire rate, etc...
+  pub buff_type: BuffType,
+}
+/// Every possible type of buff or nerf
+#[derive(Debug, Clone, Copy)]
+pub enum BuffType {
+  FireRateBoost,
+  SpeedBoost,
 }

@@ -2,7 +2,6 @@ use top_down_shooter::common::*;
 use core::f32;
 use std::collections::HashMap;
 use std::net::UdpSocket;
-use std::path::MAIN_SEPARATOR;
 use std::sync::{Arc, Mutex, MutexGuard};
 use bincode;
 use std::{thread, time::*};
@@ -38,7 +37,7 @@ fn main() {
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
-  let mut character_queue: Vec<Character> = vec![Character::HealerGirl, Character::SniperGirl, Character::TimeQueen, Character::HealerGirl, Character::SniperGirl, Character::TimeQueen, Character::HealerGirl];
+  let mut character_queue: Vec<Character> = vec![Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl];
   // temporary, to be dictated by gamemode
   let max_players = character_queue.len();
   
@@ -72,7 +71,8 @@ fn main() {
         
         let mut player = listener_players[player_index].clone();
         
-        // use IP as identifier, check if packet from srent player correlates to our player
+        // use IP as identifier, check if packet from sent player correlates to our player
+        // Later on we might have an account system and use that as ID. For now, IP will do
         if player.ip == src.ip().to_string() {
           let time_since_last_packet = recieved_player_info.packet_interval as f64;
           // if time_since_last_packet < MAX_PACKET_INTERVAL &&
@@ -105,6 +105,18 @@ fn main() {
               // set the dashing direction
               if recieved_player_info.movement.magnitude() > 0.0 {
                 player.dash_direction = recieved_player_info.movement;
+
+                // Special dash ability handling
+                match player.character {
+                  Character::HealerGirl => {
+                    player.next_shot_empowered = true;
+                  }
+                  Character::SniperWolf => {
+                    // Place down a bomb
+                  }
+                  Character::TimeQueen => {}
+                  Character::Dummy => {}
+                }
               }
               else {
                 player.is_dashing = false;
@@ -233,6 +245,7 @@ fn main() {
           is_dead:              false,
           death_timer_start:    Instant::now(),
           next_shot_empowered:  false,
+          buffs:                Vec::new(),
         });
         println!("Player connected: {}", src.ip().to_string());
         character_queue.remove(0);
@@ -262,7 +275,7 @@ fn main() {
   let main_loop_players = Arc::clone(&players);
   
   // Used for game time counter. Can be reset when going into new rounds, for example...
-  let mut game_start_time: Instant = Instant::now();
+  let game_start_time: Instant = Instant::now();
   
   // holds game information, to be displayed by client, and modified when shit happens.
   let mut gamemode_info: GameModeInfo = GameModeInfo {
@@ -275,7 +288,7 @@ fn main() {
   };
 
   // part of dummy summoning
-  // set to TRUE in release server
+  // set to TRUE in release server, so dummy doesn't get spawned
   let mut dummy_summoned: bool = false;
 
   // (vscode) MARK: Server Loop
@@ -284,6 +297,7 @@ fn main() {
     let mut tenth_tick: bool = false;
     server_counter = Instant::now();
     
+    // Accurate time between two "frames" (server loops)
     let true_delta_time: f64; // does not need to be mutable, since in both branches the value is assigned.
     if delta_time > desired_delta_time {
       true_delta_time = delta_time;
@@ -337,6 +351,7 @@ fn main() {
           is_dead: false,
           death_timer_start: Instant::now(),
           next_shot_empowered: false,
+          buffs: Vec::new(),
         }
       );
     }
@@ -386,6 +401,17 @@ fn main() {
       // (vscode) MARK: Passives & Other
       // Handling of passive abilities and anything else that may need to be run all the time.
 
+      // Reduce buff durations according to time passed, and remove buffs that ended.
+      let mut buffs_to_keep: Vec<Buff> = Vec::new();
+      for buff_index in 0..main_loop_players[player_index].buffs.len() {
+        main_loop_players[player_index].buffs[buff_index].duration -= true_delta_time as f32;
+        if main_loop_players[player_index].buffs[buff_index].duration > 0.0 {
+          buffs_to_keep.push(main_loop_players[player_index].buffs[buff_index])
+        }
+      }
+      main_loop_players[player_index].buffs = buffs_to_keep;
+      
+
       // Handling of time queen flashsback ability - keep a buffer of positions for the flashback
       if main_loop_players[player_index].character == Character::TimeQueen {
         // Update once per decisecond
@@ -428,9 +454,9 @@ fn main() {
         let mut game_objects = main_game_objects.lock().unwrap();
         // Do primary shooting logic
         match main_loop_players[player_index].character {
-          Character::SniperGirl => {
+          Character::SniperWolf => {
             game_objects.push(GameObject {
-              object_type: GameObjectType::SniperGirlBullet,
+              object_type: GameObjectType::SniperWolfBullet,
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
@@ -445,7 +471,7 @@ fn main() {
           Character::HealerGirl => {
             game_objects.push(GameObject {
               object_type: match main_loop_players[player_index].next_shot_empowered {
-                true => {GameObjectType::HealerGirlBulletEmpowered},
+                true  => {GameObjectType::HealerGirlBulletEmpowered},
                 false => {GameObjectType::HealerGirlBullet},
               },
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
@@ -508,7 +534,7 @@ fn main() {
             secondary_used_successfully = true;
           },
           // Place walls
-          Character::SniperGirl => {
+          Character::SniperWolf => {
             // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
             let wall_place_distance = character.secondary_range;
             let mut desired_placement_position: Vector2 = player_info.position;
@@ -579,7 +605,7 @@ fn main() {
       match game_object_type {
 
         // WOLF primary
-        GameObjectType::SniperGirlBullet => {
+        GameObjectType::SniperWolfBullet => {
           (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
         }
 
@@ -588,33 +614,53 @@ fn main() {
           let hit: bool;
           (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
           
-          // Restore nearby ally health, and some dash charge.
+          // Restore nearby ally health
           if hit {
             for player_index in 0..main_loop_players.len() {
               let range: f32 = characters[&Character::HealerGirl].primary_range;
               if Vector2::distance(
                 main_loop_players[player_index].position,
                 main_loop_players[game_objects[game_object_index].owner_index].position
-              ) < range {
+              ) < range &&
+                main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
                 // Anyone within range
                 let heal: u8 = characters[&Character::HealerGirl].primary_lifesteal;
                 main_loop_players[player_index].health.heal(heal);
-                // restore dash charge (0.5s)
-                main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(500);
+                // restore dash charge (0.2s)
+                // main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(200);
               }
             }
           }
         }
+        // HEALER GIRL primary, EMPOWERED
+        GameObjectType::HealerGirlBulletEmpowered => {
+          let hit: bool;
+          (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic_extra(
+            main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true,
+            characters[&Character::HealerGirl].primary_damage_2, 255);
+          if hit {
+            // restore dash charge (0.5s)
+            main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(500);
+          }
+        }
+
         // HEALER GIRL secondary
         GameObjectType::HealerAura => {
           // game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
           // every second apply heal
           if tick {
             for player_index in 0..main_loop_players.len() {
-            if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
-              let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
-              main_loop_players[player_index].health.heal(heal_amount);
-            }
+              // if on same team
+              if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
+                // if within range
+                if Vector2::distance(game_objects[game_object_index].position, main_loop_players[game_objects[game_object_index].owner_index].position)
+                < (game_objects[game_object_index].size.x / 2.0) {
+                  // heal up
+                  let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
+                  main_loop_players[player_index].health.heal(heal_amount);
+                  // provide speed boost
+                }
+              }
             }
           }
         }
@@ -719,7 +765,7 @@ fn main() {
 
 /// Information held by server about players.
 /// 
-/// This struct can be as herfty as we want, it stays here, doesn't get sent through network.
+/// This struct can be as hefty as we want, it stays here, doesn't get sent through network.
 #[derive(Debug, Clone)]
 struct ServerPlayer {
   /// also used as an identifier
@@ -745,18 +791,42 @@ struct ServerPlayer {
   /// bro forgor to live
   is_dead:              bool,
   death_timer_start:    Instant,
+  /// Must be disabled after check.
   next_shot_empowered:  bool,
+  /// list of buffs
+  buffs:                Vec<Buff>,
 }
 
 /// Applies modifications to players and game objects as a result of
 /// bullet behaviour this frame, for a specific bullet.
+/// 
+/// This is a wrapper for `apply_simple_bullet_logic_extra`, with just
+/// the simplest parameters.
 fn apply_simple_bullet_logic(
+  main_loop_players:     MutexGuard<Vec<ServerPlayer>>,
+  characters:            HashMap<Character, CharacterProperties>,
+  game_objects:          Vec<GameObject>,
+  game_object_index:     usize,
+  true_delta_time:       f64,
+  pierceing_shot:        bool,
+) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
+  return apply_simple_bullet_logic_extra(main_loop_players, characters, game_objects, game_object_index, true_delta_time, pierceing_shot, 255, 255);
+}
+
+/// Applies modifications to players and game objects as a result of
+/// bullet behaviour this frame, for a specific bullet.
+/// 
+/// Set `special_samage` to `255` to use default character damage number.
+/// Same with `special_healing`. Setting it to 0 will nullify it.
+fn apply_simple_bullet_logic_extra(
   mut main_loop_players: MutexGuard<Vec<ServerPlayer>>,
-  characters: HashMap<Character, CharacterProperties>,
-  mut game_objects: Vec<GameObject>,
-  game_object_index: usize,
-  true_delta_time: f64,
-  pierceing_shot: bool,
+  characters:            HashMap<Character, CharacterProperties>,
+  mut game_objects:      Vec<GameObject>,
+  game_object_index:     usize,
+  true_delta_time:       f64,
+  pierceing_shot:        bool,
+  special_damage:        u8,
+  special_healing:       u8,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   let game_object = game_objects[game_object_index].clone();
   let player = main_loop_players[game_object.owner_index].clone();
@@ -765,6 +835,16 @@ fn apply_simple_bullet_logic(
   let owner_index = game_object.owner_index;
   let hit_radius: f32 = character_properties.primary_hit_radius;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
+
+  // Set special values
+  let damage: u8;
+  if special_damage == 255 { damage = character_properties.primary_damage; }
+  else                     { damage = special_damage; }
+
+  let healing: u8;
+  if special_damage == 255 { healing = character_properties.primary_heal; }
+  else                     { healing = special_healing; }
+  
   // Calculate collisions with walls
   for victim_object_index in 0..game_objects.len() {
     // if it's a wall
@@ -775,10 +855,11 @@ fn apply_simple_bullet_logic(
         game_objects[game_object_index].to_be_deleted = true;
         if game_objects[victim_object_index].object_type == GameObjectType::Wall {
           // damage the wall if it's not unbreakable
-          if game_objects[victim_object_index].hitpoints < character_properties.primary_damage {
+
+          if game_objects[victim_object_index].hitpoints < damage {
             game_objects[victim_object_index].to_be_deleted = true;
           } else {
-            game_objects[victim_object_index].hitpoints -= character_properties.primary_damage;
+            game_objects[victim_object_index].hitpoints -= damage;
           }
         }
         return (main_loop_players, game_objects, false); // return early
@@ -798,8 +879,8 @@ fn apply_simple_bullet_logic(
         if main_loop_players[player_index].team != player.team {
           // Confirmed hit.
             hit = true;
-          if main_loop_players[player_index].health > character_properties.primary_damage {
-            main_loop_players[player_index].health -= character_properties.primary_damage;
+          if main_loop_players[player_index].health > damage {
+            main_loop_players[player_index].health -= damage;
           } else {
             main_loop_players[player_index].health = 0;
           }
@@ -807,8 +888,8 @@ fn apply_simple_bullet_logic(
         }
         // Apply bullet healing, only if in the same team
         if main_loop_players[player_index].team == player.team {
-          if main_loop_players[player_index].health < character_properties.primary_heal {
-            main_loop_players[player_index].health += character_properties.primary_heal;
+          if main_loop_players[player_index].health < healing {
+            main_loop_players[player_index].health += healing;
           } else {
             main_loop_players[player_index].health = 100;
           }

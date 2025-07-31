@@ -4,6 +4,8 @@ speed = 0.0
 
 primary_damage = 0
 primary_heal = 0
+primary_damage_2 = 0
+primary_heal_2 = 0
 primary_lifesteal = 0
 primary_cooldown = 0.0
 primary_range = 0.0
