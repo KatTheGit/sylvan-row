@@ -37,7 +37,7 @@ fn main() {
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
-  let mut character_queue: Vec<Character> = vec![Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl];
+  let mut character_queue: Vec<Character> = vec![Character::SniperWolf, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl];
   // temporary, to be dictated by gamemode
   let max_players = character_queue.len();
   
@@ -60,9 +60,8 @@ fn main() {
       
       // update PLAYERS Vector with recieved information.
       let mut listener_players = listener_players.lock().unwrap();
-      let listener_game_objects = listener_game_objects.lock().unwrap();
-      let readonly_game_objects = listener_game_objects.clone();
-      drop(listener_game_objects);
+      let mut listener_game_objects = listener_game_objects.lock().unwrap();
+
       
       let mut player_found: bool = false;
       
@@ -106,13 +105,27 @@ fn main() {
               if recieved_player_info.movement.magnitude() > 0.0 {
                 player.dash_direction = recieved_player_info.movement;
 
-                // Special dash ability handling
+                // (vscode) MARK: Special dashes
                 match player.character {
                   Character::HealerGirl => {
                     player.next_shot_empowered = true;
                   }
                   Character::SniperWolf => {
                     // Place down a bomb
+                    listener_game_objects.push(
+                      GameObject {
+                        object_type: GameObjectType::HernaniLandmine,
+                        size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                        position: player.position,
+                        direction: Vector2::new(),
+                        to_be_deleted: false,
+                        owner_index: player_index,
+                        hitpoints: 1,
+                        lifetime: characters[&Character::SniperWolf].dash_cooldown,
+                        players: Vec::new(),
+                        traveled_distance: 0.0,
+                      }
+                    );
                   }
                   Character::TimeQueen => {}
                   Character::Dummy => {}
@@ -136,7 +149,7 @@ fn main() {
               previous_position,
               player.dash_direction,
               dash_movement,
-              readonly_game_objects
+              listener_game_objects.clone(),
             );
             
             if player.dashed_distance < player_max_dash_distance {
@@ -180,7 +193,7 @@ fn main() {
               previous_position,
               raw_movement,
               movement,
-              readonly_game_objects
+              listener_game_objects.clone()
             );
 
             new_position.x = previous_position.x + new_movement_raw.x * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
@@ -211,6 +224,8 @@ fn main() {
           break
         }
       }
+      drop(listener_game_objects);
+
       // (vscode) MARK: Instantiate Player
       // otherwise, add the player
       // NOTE: In the future this entire chunk of code will be gone, the matchmaker will populate
@@ -422,7 +437,7 @@ fn main() {
       // If bunny gets hit, give her a speed buff
       if main_loop_players[player_index].character == Character::HealerGirl
       && main_loop_players[player_index].was_hit {
-        main_loop_players[player_index].buffs.push(Buff { value: 20.0, duration: 0.5, buff_type: BuffType::Speed });
+        main_loop_players[player_index].buffs.push(Buff { value: 12.0, duration: 0.5, buff_type: BuffType::Speed });
       }
 
       // Handling of time queen flashsback ability - keep a buffer of positions for the flashback
@@ -473,8 +488,9 @@ fn main() {
           cooldown -= cooldown * buff.value;
         }
       }
-
-      if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > cooldown {
+      // not sure why this was here, nothing wrong with holding down both buttons
+      //                      \/
+      if shooting /*&& !shooting_secondary*/  && last_shot_time.elapsed().as_secs_f32() > cooldown {
         // main_loop_players[player_index].buffs.push(Buff { value: 0.1, duration: 2.2, buff_type: BuffType::FireRate });
         // main_loop_players[player_index].buffs.push(Buff { value: 20.0, duration: 2.2, buff_type: BuffType::Speed });
         main_loop_players[player_index].last_shot_time = Instant::now();
@@ -602,7 +618,7 @@ fn main() {
                 direction: Vector2::new(),
                 to_be_deleted: false,
                 owner_index: 0,
-                hitpoints: 255,
+                hitpoints: 20,
                 lifetime: 5.0,
                 players: vec![],
                 traveled_distance: 0.0,
@@ -647,6 +663,24 @@ fn main() {
         // WOLF primary
         GameObjectType::SniperWolfBullet => {
           (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
+        }
+        // WOLF dash special
+        GameObjectType::HernaniLandmine => {
+          // if the landmine has existed for long enough...
+          if game_objects[game_object_index].lifetime < (characters[&Character::SniperWolf].dash_cooldown -1.0) {
+            for player_index in 0..main_loop_players.len() {
+              // if not on same team
+              if main_loop_players[player_index].team != main_loop_players[game_objects[game_object_index].owner_index].team {
+                // if within range
+                if Vector2::distance(game_objects[game_object_index].position, main_loop_players[player_index].position)
+                < (game_objects[game_object_index].size.x / 2.0) {
+                  main_loop_players[player_index].health.damage(characters[&Character::SniperWolf].primary_damage_2);
+                  game_objects[game_object_index].to_be_deleted = true;
+                  break;
+                }
+              }
+            }
+          }
         }
 
         // HEALER GIRL primary
@@ -859,7 +893,8 @@ struct ServerPlayer {
 }
 
 /// Applies modifications to players and game objects as a result of
-/// bullet behaviour this frame, for a specific bullet.
+/// bullet behaviour this frame, for a specific bullet. This dumbed
+/// down version is only to be used for character primaries.
 /// 
 /// This is a wrapper for `apply_simple_bullet_logic_extra`, with just
 /// the simplest parameters.
@@ -896,15 +931,18 @@ fn apply_simple_bullet_logic_extra(
   let owner_index = game_object.owner_index;
   let hit_radius: f32 = character_properties.primary_hit_radius;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
-
+  
   // Set special values
   let damage: u8;
   if special_damage == 255 { damage = character_properties.primary_damage; }
   else                     { damage = special_damage; }
-
+  
   let healing: u8;
   if special_damage == 255 { healing = character_properties.primary_heal; }
   else                     { healing = special_healing; }
+  
+  // Temporary. To be improved later.
+  let wall_damage = (damage as f32 * character_properties.wall_damage_multiplier) as u8;
   
   // Calculate collisions with walls
   for victim_object_index in 0..game_objects.len() {
@@ -914,13 +952,13 @@ fn apply_simple_bullet_logic_extra(
       if Vector2::distance(game_object.position, game_objects[victim_object_index].position) < (5.0 + hit_radius) {
         // delete the bullet
         game_objects[game_object_index].to_be_deleted = true;
-        if game_objects[victim_object_index].object_type == GameObjectType::Wall {
-          // damage the wall if it's not unbreakable
+        // damage the wall if it's not unbreakable
+        if game_objects[victim_object_index].object_type != GameObjectType::UnbreakableWall {
 
-          if game_objects[victim_object_index].hitpoints < damage {
+          if game_objects[victim_object_index].hitpoints < wall_damage {
             game_objects[victim_object_index].to_be_deleted = true;
           } else {
-            game_objects[victim_object_index].hitpoints -= damage;
+            game_objects[victim_object_index].hitpoints -= wall_damage;
           }
         }
         return (main_loop_players, game_objects, false); // return early

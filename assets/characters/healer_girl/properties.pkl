@@ -2,22 +2,23 @@ health = 100
 
 speed = 60.0
 
-primary_damage = 6
+primary_damage = 5
 primary_heal = 0
-primary_damage_2 = 8
+primary_damage_2 = 7
 primary_heal_2 = 0
 primary_lifesteal = 3
-primary_lifesteal_2 = 2
+primary_lifesteal_2 = 0
 primary_cooldown = 0.5
 primary_range = 70.0
 primary_shot_speed = 200.0
 primary_hit_radius = 5.0
+wall_damage_multiplier = 1.0
 
 secondary_damage = 0
 secondary_heal = 6
-secondary_hit_charge = 10
+secondary_hit_charge = 7
 secondary_heal_charge = 0
-secondary_passive_charge = 5
+secondary_passive_charge = 3
 secondary_range = 40.0
 secondary_charge_use = 100
 secondary_cooldown = 5.0

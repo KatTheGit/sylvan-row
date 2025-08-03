@@ -103,6 +103,9 @@ pub struct CharacterProperties {
   pub primary_shot_speed: f32,
   /// Girth of the bullet
   pub primary_hit_radius: f32,
+  /// This value is applied to small integers. Be wary of rounding. Only applies to primary attack, in theory.
+  pub wall_damage_multiplier: f32,
+
 
   pub secondary_damage:         u8,
   pub secondary_cooldown:       f32,
@@ -149,6 +152,7 @@ impl CharacterProperties {
       primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap()),
       primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap()),
       primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap()),
+      wall_damage_multiplier:   pkl_f32(find_parameter(&pkl, "wall_damage_multiplier"   ).unwrap()),
       secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage"         ).unwrap()),
       secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal"           ).unwrap()),
       secondary_hit_charge:     pkl_u8( find_parameter(&pkl, "secondary_hit_charge"     ).unwrap()),
@@ -349,6 +353,7 @@ pub enum GameObjectType {
   HealerGirlBullet,
   HealerGirlBulletEmpowered,
   TimeQueenSword,
+  HernaniLandmine,
 }
 // MARK: Vectors
 // utility
@@ -557,9 +562,17 @@ impl Heal for u8 {
       *self += health;
     }
   }
+  fn damage(&mut self, dmg: u8) {
+    if self.clone() < dmg {
+      *self = 0;
+    } else {
+      *self -= dmg;
+    }
+  }
 }
 pub trait Heal {
   fn heal(&mut self, health:u8) -> ();
+  fn damage(&mut self, dmg:u8) -> ();
 }
 
 /// Stores information about any buff.

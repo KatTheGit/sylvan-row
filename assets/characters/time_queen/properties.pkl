@@ -11,6 +11,7 @@ primary_cooldown = 0.6
 primary_range = 30.0
 primary_shot_speed = 350.0
 primary_hit_radius = 5.0
+wall_damage_multiplier = 1.0
 
 secondary_damage = 0
 secondary_heal = 0

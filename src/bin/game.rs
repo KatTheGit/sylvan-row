@@ -67,6 +67,7 @@ async fn game(/* server_ip: &str */) {
         GameObjectType::HealerGirlBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HealerGirlBulletEmpowered  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::TimeQueenSword             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HernaniLandmine            => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
       }
     );
   }

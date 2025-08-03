@@ -25,7 +25,7 @@ On Linux, you need to additionally install `libudev-dev`.
 # To do
 
 ## Playtestable game
-
+- [ ] Client also dashes accordingly
 - [ ] Finish gamemode
   - [ ] Round restarts, announce team victory
 - [ ] Character picker before joining
@@ -36,19 +36,22 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Secondary
     - [x] Dash
     - [x] Passives
-  - [ ] The queen
-    - [ ] Secondary has a trail (clientside)
-    - [ ] Primary
-    - [ ] Secondary
-    - [ ] Dash
-    - [ ] Passives
   - [ ] The wolf
+    - [x] Primary
+    - [x] Secondary
+    - [x] Dash
+    - [x] Passives
+  - [ ] The queen
+    - [ ] Secondary has a trail
     - [ ] Primary
     - [ ] Secondary
     - [ ] Dash
     - [ ] Passives
 - [ ] Improve map
 - [ ] Arbitrary balance using theory
+  - [ ] Bunny
+  - [ ] Queen
+  - [ ] Wolf
 - [ ] Background tile system
 - [ ] Drawings
 
