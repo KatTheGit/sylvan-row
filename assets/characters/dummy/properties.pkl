@@ -2,15 +2,15 @@ health = 255
 
 speed = 0.0
 
-primary_damage = 0
+primary_damage = 10
 primary_heal = 0
 primary_damage_2 = 0
 primary_heal_2 = 0
 primary_lifesteal = 0
-primary_cooldown = 0.0
-primary_range = 0.0
-primary_shot_speed = 0.0
-primary_hit_radius = 0.0
+primary_cooldown = 1.5
+primary_range = 100.0
+primary_shot_speed = 100.0
+primary_hit_radius = 5.0
 
 secondary_damage = 0
 secondary_heal = 0

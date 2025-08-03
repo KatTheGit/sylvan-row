@@ -31,11 +31,11 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Character picker before joining
 - [x] Buff system
 - [ ] Finish Characters
-  - [ ] The bunny
+  - [x] The bunny
     - [x] Primary
-    - [ ] Secondary
+    - [x] Secondary
     - [x] Dash
-    - [ ] Passives
+    - [x] Passives
   - [ ] The queen
     - [ ] Secondary has a trail (clientside)
     - [ ] Primary

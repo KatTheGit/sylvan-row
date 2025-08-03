@@ -252,6 +252,7 @@ fn main() {
           death_timer_start:    Instant::now(),
           next_shot_empowered:  false,
           buffs:                Vec::new(),
+          was_hit:              false,
         });
         println!("Player connected: {}", src.ip().to_string());
         character_queue.remove(0);
@@ -341,13 +342,13 @@ fn main() {
           character: Character::Dummy,
           health: 0,
           position: Vector2 { x: 10.0, y: 10.0 },
-          shooting: false,
+          shooting: true,
           last_dash_time: Instant::now(),
           last_shot_time: Instant::now(),
           shooting_secondary: false,
           secondary_cast_time: Instant::now(),
           secondary_charge: 0,
-          aim_direction: Vector2::new(),
+          aim_direction: Vector2 { x: 1.0, y: 0.0 },
           move_direction: Vector2::new(),
           had_illegal_position: false,
           is_dashing: false,
@@ -358,6 +359,7 @@ fn main() {
           death_timer_start: Instant::now(),
           next_shot_empowered: false,
           buffs: Vec::new(),
+          was_hit: false,
         }
       );
     }
@@ -417,6 +419,11 @@ fn main() {
       }
       main_loop_players[player_index].buffs = buffs_to_keep;
       
+      // If bunny gets hit, give her a speed buff
+      if main_loop_players[player_index].character == Character::HealerGirl
+      && main_loop_players[player_index].was_hit {
+        main_loop_players[player_index].buffs.push(Buff { value: 20.0, duration: 0.5, buff_type: BuffType::Speed });
+      }
 
       // Handling of time queen flashsback ability - keep a buffer of positions for the flashback
       if main_loop_players[player_index].character == Character::TimeQueen {
@@ -453,8 +460,12 @@ fn main() {
         }
       }
       drop(unstucker_game_objects);
+
+      // Remove hit marker
+      main_loop_players[player_index].was_hit = false;
+
       // (vscode) MARK: Primaries
-      // If someone is shooting, spawn a bullet according to their character.s
+      // If someone is shooting, spawn a bullet according to their character.
       let mut cooldown: f32 = character.primary_cooldown;
 
       for buff in main_loop_players[player_index].buffs.clone() {
@@ -518,7 +529,20 @@ fn main() {
               traveled_distance: 0.0,
             });
           }
-          Character::Dummy => {}
+          Character::Dummy => {
+            game_objects.push(GameObject {
+              object_type: GameObjectType::SniperWolfBullet,
+              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+              position: main_loop_players[player_index].position,
+              direction: main_loop_players[player_index].aim_direction,
+              to_be_deleted: false,
+              hitpoints: 0,
+              owner_index: player_index,
+              lifetime: character.primary_range / character.primary_shot_speed,
+              players: Vec::new(),
+              traveled_distance: 0.0,
+            });
+          }
         }
         drop(game_objects);
       }
@@ -683,8 +707,8 @@ fn main() {
                     break; // exit early
                   }
                 }
-                if !buff_found {                                 //        10%  <- find way to source this from properties file sometime idk
-                  main_loop_players[player_index].buffs.push(Buff { value: 0.1, duration: 0.1, buff_type: BuffType::HealerFireRate });
+                if !buff_found {                                 //        2  0%  <- find way to source this from properties file sometime idk
+                  main_loop_players[player_index].buffs.push(Buff { value: 0.2, duration: 0.1, buff_type: BuffType::HealerFireRate });
                 }
               } else {
                 for buff_index in 0..main_loop_players[player_index].buffs.len() {
@@ -830,6 +854,8 @@ struct ServerPlayer {
   next_shot_empowered:  bool,
   /// list of buffs
   buffs:                Vec<Buff>,
+  /// Whether the player was hit this frame. Set to false after handled.
+  was_hit:              bool,
 }
 
 /// Applies modifications to players and game objects as a result of
@@ -914,6 +940,7 @@ fn apply_simple_bullet_logic_extra(
         if main_loop_players[player_index].team != player.team {
           // Confirmed hit.
             hit = true;
+            main_loop_players[player_index].was_hit = true;
           if main_loop_players[player_index].health > damage {
             main_loop_players[player_index].health -= damage;
           } else {
