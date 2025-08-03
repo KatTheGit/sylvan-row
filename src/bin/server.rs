@@ -12,7 +12,7 @@ static mut SPAWN_BLUE: Vector2 = Vector2 {x: 0.0, y: 0.0};
 
 fn main() {
   // set the gamemode (temporary)
-  let selected_game_mode = GameMode::DeathMatchArena;
+  // let selected_game_mode = GameMode::DeathMatchArena;
 
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
@@ -165,9 +165,15 @@ fn main() {
             let raw_movement = recieved_player_info.movement;
             let mut movement = Vector2::new();
             let player_movement_speed: f32 = characters[&player.character].speed;
+            let mut extra_speed: f32 = 0.0;
+            for buff in player.buffs.clone() {
+              if buff.buff_type == BuffType::Speed {
+                extra_speed += buff.value;
+              }
+            }
 
-            movement.x = raw_movement.x * player_movement_speed * time_since_last_packet as f32;
-            movement.y = raw_movement.y * player_movement_speed * time_since_last_packet as f32;
+            movement.x = raw_movement.x * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
+            movement.y = raw_movement.y * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
 
             // calculate current expected position based on input
             let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
@@ -177,8 +183,8 @@ fn main() {
               readonly_game_objects
             );
 
-            new_position.x = previous_position.x + new_movement_raw.x * player_movement_speed * time_since_last_packet as f32;
-            new_position.y = previous_position.y + new_movement_raw.y * player_movement_speed * time_since_last_packet as f32;
+            new_position.x = previous_position.x + new_movement_raw.x * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
+            new_position.y = previous_position.y + new_movement_raw.y * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
 
             player.move_direction = new_movement_raw;
 
@@ -406,7 +412,7 @@ fn main() {
       for buff_index in 0..main_loop_players[player_index].buffs.len() {
         main_loop_players[player_index].buffs[buff_index].duration -= true_delta_time as f32;
         if main_loop_players[player_index].buffs[buff_index].duration > 0.0 {
-          buffs_to_keep.push(main_loop_players[player_index].buffs[buff_index])
+          buffs_to_keep.push(main_loop_players[player_index].buffs[buff_index].clone());
         }
       }
       main_loop_players[player_index].buffs = buffs_to_keep;
@@ -449,7 +455,17 @@ fn main() {
       drop(unstucker_game_objects);
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.s
-      if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > character.primary_cooldown {
+      let mut cooldown: f32 = character.primary_cooldown;
+
+      for buff in main_loop_players[player_index].buffs.clone() {
+        if buff.buff_type == BuffType::FireRate || buff.buff_type == BuffType::HealerFireRate {
+          cooldown -= cooldown * buff.value;
+        }
+      }
+
+      if shooting && !shooting_secondary && last_shot_time.elapsed().as_secs_f32() > cooldown {
+        // main_loop_players[player_index].buffs.push(Buff { value: 0.1, duration: 2.2, buff_type: BuffType::FireRate });
+        // main_loop_players[player_index].buffs.push(Buff { value: 20.0, duration: 2.2, buff_type: BuffType::Speed });
         main_loop_players[player_index].last_shot_time = Instant::now();
         let mut game_objects = main_game_objects.lock().unwrap();
         // Do primary shooting logic
@@ -648,17 +664,34 @@ fn main() {
         GameObjectType::HealerAura => {
           // game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
           // every second apply heal
-          if tick {
-            for player_index in 0..main_loop_players.len() {
-              // if on same team
-              if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
-                // if within range
-                if Vector2::distance(game_objects[game_object_index].position, main_loop_players[game_objects[game_object_index].owner_index].position)
-                < (game_objects[game_object_index].size.x / 2.0) {
-                  // heal up
+          for player_index in 0..main_loop_players.len() {
+            // if on same team
+            if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
+              // if within range
+              if Vector2::distance(game_objects[game_object_index].position, main_loop_players[game_objects[game_object_index].owner_index].position)
+              < (game_objects[game_object_index].size.x / 2.0) {
+                // heal up
+                if tick {
                   let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
                   main_loop_players[player_index].health.heal(heal_amount);
-                  // provide speed boost
+                }
+                // provide fire rate buff, if not present
+                let mut buff_found = false;
+                for buff_index in 0..main_loop_players[player_index].buffs.len() {
+                  if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::HealerFireRate {
+                    buff_found = true;
+                    break; // exit early
+                  }
+                }
+                if !buff_found {                                 //        10%  <- find way to source this from properties file sometime idk
+                  main_loop_players[player_index].buffs.push(Buff { value: 0.1, duration: 0.1, buff_type: BuffType::HealerFireRate });
+                }
+              } else {
+                for buff_index in 0..main_loop_players[player_index].buffs.len() {
+                  if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::HealerFireRate {
+                    main_loop_players[player_index].buffs.remove(buff_index);
+                    break; // exit early
+                  }
                 }
               }
             }
@@ -696,7 +729,7 @@ fn main() {
 
       // Send a packet to each player
       for (index, player) in main_loop_players.clone().iter().enumerate() {
-
+        // not to the dummy though.
         if player.character == Character::Dummy {
           continue;
         }
@@ -718,6 +751,7 @@ fn main() {
               time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
               is_dead: false,
               camera: Camera::new(),
+              buffs: player.buffs.clone(),
             })
           }
         }
@@ -734,6 +768,7 @@ fn main() {
             last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
             character: player.character,
             is_dead: player.is_dead,
+            buffs: player.buffs.clone(),
           },
           players: other_players,
           game_objects: game_objects_readonly.clone(),

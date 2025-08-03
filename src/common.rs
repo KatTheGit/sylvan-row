@@ -202,6 +202,7 @@ pub struct ClientPlayer {
   pub time_since_last_dash: f32,
   pub is_dead: bool,
   pub camera: Camera,
+  pub buffs: Vec<Buff>,
 }
 // MARK: Client Player
 impl ClientPlayer {
@@ -250,6 +251,12 @@ impl ClientPlayer {
       let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
       let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
       draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
+
+      let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -15.0 };
+      for buff in self.buffs.clone() {
+        draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::HealerFireRate => "+ fire rate", BuffType::Speed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+        buff_offset.y -= 3.0;
+      }
   }
   pub fn new() -> ClientPlayer {
     return ClientPlayer {
@@ -265,6 +272,7 @@ impl ClientPlayer {
       time_since_last_dash: 0.0,
       is_dead: false,
       camera: Camera::new(),
+      buffs: Vec::new(),
     };
   }
 }
@@ -288,7 +296,7 @@ pub enum Team {
 }
 // MARK: Server
 /// Information sent by srever to client about themself
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct ServerRecievingPlayerPacket {
   pub health: u8,
   pub override_position:  bool,
@@ -299,6 +307,7 @@ pub struct ServerRecievingPlayerPacket {
   pub last_dash_time:     f32,
   pub character:          Character,
   pub is_dead:            bool,
+  pub buffs:              Vec<Buff>,
 }
 
 /// information sent by server to client
@@ -554,7 +563,7 @@ pub trait Heal {
 }
 
 /// Stores information about any buff.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct Buff {
   /// Numerical value associated with buff, like speed gained, or fire rate percentage increase.
   pub value: f32,
@@ -564,8 +573,9 @@ pub struct Buff {
   pub buff_type: BuffType,
 }
 /// Every possible type of buff or nerf
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
 pub enum BuffType {
-  FireRateBoost,
-  SpeedBoost,
+  HealerFireRate,
+  FireRate,
+  Speed,
 }

@@ -490,9 +490,16 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // expresses the player's movement without the multiplication
     // by delta time and speed. Sent to the server.
     let mut movement_vector_raw: Vector2 = movement_vector;
+
+    let mut extra_speed: f32 = 0.0;
+    for buff in player.buffs.clone() {
+      if buff.buff_type == BuffType::Speed {
+        extra_speed += buff.value;
+      }
+    }
     
-    movement_vector.x *= movement_speed * delta_time;
-    movement_vector.y *= movement_speed * delta_time;
+    movement_vector.x *= (movement_speed + extra_speed) * delta_time;
+    movement_vector.y *= (movement_speed + extra_speed) * delta_time;
 
     if player.is_dead == false {  
       (movement_vector_raw, movement_vector) = object_aware_movement(player.position, movement_vector_raw, movement_vector, game_objects.clone());
@@ -576,7 +583,8 @@ fn network_listener(
     player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
     player.character = recieved_server_info.player_packet_is_sent_to.character;
     player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
-    drop(player); // free mutex guard ASAP for others to access player.
+    player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
+    drop(player); // free mutex guard ASAP for other thread to access player.
     
 
     let mut game_objects = game_objects.lock().unwrap();
