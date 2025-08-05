@@ -75,6 +75,9 @@ async fn game(/* server_ip: &str */) {
   let gamemode_info: GameModeInfo = GameModeInfo::new();
   let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
 
+  let sender_fps: f32 = 0.0;
+  let sender_fps: Arc<Mutex<f32>> = Arc::new(Mutex::new(sender_fps));
+
   // since only the main thread is allowed to read mouse position using macroquad,
   // main thread will have to modify it, and input thread will read it.
   let mouse_position: Vec2 = Vec2::new(0.0, 0.0);
@@ -115,8 +118,9 @@ async fn game(/* server_ip: &str */) {
   let input_thread_player = Arc::clone(&player);
   let input_thread_mouse_position = Arc::clone(&mouse_position);
   let input_thread_game_objects = Arc::clone(&game_objects);
+  let input_thread_sender_fps = Arc::clone(&sender_fps);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects);
+    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps);
   });
 
   // start the network listener thread.
@@ -247,7 +251,7 @@ async fn game(/* server_ip: &str */) {
     player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
     
     for player in other_players_copy {
-      player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
+      player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone());
       if player.character == Character::TimeQueen && !player.is_dead {
         draw_lines(player.previous_positions, player_copy.camera.position, vh, player.team);
       }
@@ -269,7 +273,11 @@ async fn game(/* server_ip: &str */) {
     // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
     drop(gamemode_info_main);
 
-    draw_text(format!("{} fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
+    draw_text(format!("{} draw fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
+    let sender_fps: Arc<Mutex<f32>> = Arc::clone(&sender_fps);
+    let sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
+    draw_text(format!("{} input fps", sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
+    drop(sender_fps);
     next_frame().await;
   }
 }
@@ -282,7 +290,7 @@ async fn game(/* server_ip: &str */) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>) -> ! {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>) -> ! {
 
   let server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
@@ -548,6 +556,11 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
 
     delta_time = delta_time_counter.elapsed().as_secs_f32();
     delta_time_counter = Instant::now();
+
+    let mut sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
+    *sender_fps = (1.0 / delta_time).round();
+    drop(sender_fps);
+
   }
 }
 

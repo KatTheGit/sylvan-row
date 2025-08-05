@@ -36,12 +36,13 @@ A multiplayer arena fighting game where players fight with their pick amongst a 
 # 2. Base mechanics
 
 There are, independently of the picked character, three types of abilities. These differ by character.
-- Primary attack
-- Secondary attack
-- Dash
-- Passive(s) and other
+- Primary attack (sort cooldown)
+- Secondary attack (uses charge, build up my hitting shots.)
+- Dash (longer cooldown)
+- Other
+  - Passive ability
   - Movement speed
-  - Oassive ssecondary charge rate
+  - Passive ssecondary charge rate
 
 ## 2.1. Controls and Movement
 
