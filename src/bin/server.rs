@@ -7,8 +7,8 @@ use bincode;
 use std::{thread, time::*};
 
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
-static mut SPAWN_RED: Vector2 = Vector2 {x: 100.0, y: 100.0};
-static mut SPAWN_BLUE: Vector2 = Vector2 {x: 0.0, y: 0.0};
+static mut SPAWN_RED: Vector2 = Vector2 {x: 300.0, y: 110.0};
+static mut SPAWN_BLUE: Vector2 = Vector2 {x: 20.0, y: 120.0};
 
 fn main() {
   // set the gamemode (temporary)
@@ -242,33 +242,35 @@ fn main() {
         }
         // create server player data
         // this data is pretty irrelevant, we're just initialising the player.
-        listener_players.push(ServerPlayer {
-          ip: src.ip().to_string(),
-          team,
-          health: 20,
-          position: match team {
-            Team::Blue => Vector2 { x: 10.0, y: 10.0 },
-            Team::Red  => Vector2 { x: 90.0, y: 90.0 },
-          },
-          move_direction:       Vector2::new(),
-          aim_direction:        Vector2::new(),
-          shooting:             false,
-          shooting_secondary:   false,
-          secondary_cast_time:  Instant::now(),
-          secondary_charge:     100,
-          had_illegal_position: false,
-          character:            character_queue[0],
-          last_shot_time:       Instant::now(),
-          is_dashing:           false,
-          last_dash_time:       Instant::now(),
-          dashed_distance:      0.0,
-          dash_direction:       Vector2::new(),
-          previous_positions:   Vec::new(),
-          is_dead:              false,
-          death_timer_start:    Instant::now(),
-          next_shot_empowered:  false,
-          buffs:                Vec::new(),
-        });
+        unsafe {
+          listener_players.push(ServerPlayer {
+            ip: src.ip().to_string(),
+            team,
+            health: 20,
+            position: match team {
+              Team::Blue => SPAWN_BLUE,
+              Team::Red  => SPAWN_RED,
+            },
+            move_direction:       Vector2::new(),
+            aim_direction:        Vector2::new(),
+            shooting:             false,
+            shooting_secondary:   false,
+            secondary_cast_time:  Instant::now(),
+            secondary_charge:     100,
+            had_illegal_position: false,
+            character:            character_queue[0],
+            last_shot_time:       Instant::now(),
+            is_dashing:           false,
+            last_dash_time:       Instant::now(),
+            dashed_distance:      0.0,
+            dash_direction:       Vector2::new(),
+            previous_positions:   Vec::new(),
+            is_dead:              false,
+            death_timer_start:    Instant::now(),
+            next_shot_empowered:  false,
+            buffs:                Vec::new(),
+          });
+        }
         println!("Player connected: {}", src.ip().to_string());
         character_queue.remove(0);
       }
@@ -363,7 +365,7 @@ fn main() {
           shooting_secondary: false,
           secondary_cast_time: Instant::now(),
           secondary_charge: 0,
-          aim_direction: Vector2 { x: 1.0, y: 0.0 },
+          aim_direction: Vector2 { x: -1.0, y: 0.0 },
           move_direction: Vector2::new(),
           had_illegal_position: false,
           is_dashing: false,

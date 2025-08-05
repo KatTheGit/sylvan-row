@@ -17,7 +17,8 @@ This document specifies all design rules and choices for this videogame.
   - [4.1. Healers](#41-healers)
     - [4.1.1. Raphaelle](#411-raphaelle)
   - [4.2. Assassins](#42-assassins)
-    - [4.2.1. no name yet](#421-no-name-yet)
+    - [4.2.1. no name yet - IDEA 1 - not yet implemented](#421-no-name-yet---idea-1---not-yet-implemented)
+    - [4.2.2. no name yet - IDEA 2 - current implementation](#422-no-name-yet---idea-2---current-implementation)
   - [4.3. Rangers](#43-rangers)
     - [4.3.1. Hernani](#431-hernani)
 
@@ -135,7 +136,7 @@ Intended playstyle:
 
 ## 4.2. Assassins
 
-### 4.2.1. no name yet
+### 4.2.1. no name yet - IDEA 1 - not yet implemented
 
 - Primary
   - A sword slash. Fire rate is proportional to secondary charge. At 70% or something, it reaches full potential, where it's 5% above standard.
@@ -143,8 +144,23 @@ Intended playstyle:
 - Secondary
   - Teleport forward, entering a "dash mode" where you take less damage, using distance-proportional secondary charge. Charge must be at least 50-70%.
 - Movement
-  - A short flashback
+  - A short flashback.
 - Passive
+  - no passive
+
+Intended playstyle:
+- A balanced hit & run
+
+### 4.2.2. no name yet - IDEA 2 - current implementation
+
+- Primary
+  - A sword slash.
+- Secondary
+  - Flash back to your position 3 seconds ago.
+- Movement
+  - Dash forward, taking reduced damage during the quick dash.
+- Passive
+  - no passive
 
 Intended playstyle:
 - A balanced hit & run

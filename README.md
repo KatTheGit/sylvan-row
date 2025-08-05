@@ -48,7 +48,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [ ] Secondary
     - [ ] Dash
     - [ ] Passives
-- [ ] Improve map
+- [x] Improve map
 - [ ] Arbitrary balance using theory
   - [ ] Bunny
   - [ ] Queen
