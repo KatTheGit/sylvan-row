@@ -207,6 +207,7 @@ pub struct ClientPlayer {
   pub is_dead: bool,
   pub camera: Camera,
   pub buffs: Vec<Buff>,
+  pub previous_positions: Vec<Vector2>,
 }
 // MARK: Client Player
 impl ClientPlayer {
@@ -277,6 +278,7 @@ impl ClientPlayer {
       is_dead: false,
       camera: Camera::new(),
       buffs: Vec::new(),
+      previous_positions: Vec::new(),
     };
   }
 }
@@ -312,6 +314,7 @@ pub struct ServerRecievingPlayerPacket {
   pub character:          Character,
   pub is_dead:            bool,
   pub buffs:              Vec<Buff>,
+  pub previous_positions: Vec<Vector2>,
 }
 
 /// information sent by server to client
@@ -550,29 +553,6 @@ impl Extras for f32 {
 pub trait Extras {
   fn sign(&self) -> f32;
   fn clean(&mut self);
-}
-
-impl Heal for u8 {
-  /// Increment a number without exceeding 100.
-  fn heal(&mut self, health: u8) {
-    let max_health: u8 = 100;
-    if self.clone() + health > max_health {
-      *self = 100
-    } else {
-      *self += health;
-    }
-  }
-  fn damage(&mut self, dmg: u8) {
-    if self.clone() < dmg {
-      *self = 0;
-    } else {
-      *self -= dmg;
-    }
-  }
-}
-pub trait Heal {
-  fn heal(&mut self, health:u8) -> ();
-  fn damage(&mut self, dmg:u8) -> ();
 }
 
 /// Stores information about any buff.

@@ -25,6 +25,7 @@ On Linux, you need to additionally install `libudev-dev`.
 # To do
 
 ## Playtestable game
+- [x] Methods for server player for taking damage, healing, and secondary charge, to ease special logic.
 - [ ] Client also dashes accordingly
 - [ ] Finish gamemode
   - [ ] Round restarts, announce team victory
@@ -36,7 +37,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Secondary
     - [x] Dash
     - [x] Passives
-  - [ ] The wolf
+  - [x] The wolf
     - [x] Primary
     - [x] Secondary
     - [x] Dash
@@ -54,6 +55,7 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Wolf
 - [ ] Background tile system
 - [ ] Drawings
+- [ ] Maybe increase health 100->255 for higher precision, still display 0-100 clientside.
 
 ### After every playtest:
 

@@ -37,7 +37,7 @@ fn main() {
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
-  let mut character_queue: Vec<Character> = vec![Character::SniperWolf, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl];
+  let mut character_queue: Vec<Character> = vec![Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl];
   // temporary, to be dictated by gamemode
   let max_players = character_queue.len();
   
@@ -136,6 +136,7 @@ fn main() {
               }
             }
           }
+          // (vscode) MARK: Dashing
           if player.is_dashing && !player.is_dead {
             let player_dashing_speed: f32 = characters[&player.character].dash_speed;
             let player_max_dash_distance: f32 = characters[&player.character].dash_distance;
@@ -267,7 +268,6 @@ fn main() {
           death_timer_start:    Instant::now(),
           next_shot_empowered:  false,
           buffs:                Vec::new(),
-          was_hit:              false,
         });
         println!("Player connected: {}", src.ip().to_string());
         character_queue.remove(0);
@@ -374,7 +374,6 @@ fn main() {
           death_timer_start: Instant::now(),
           next_shot_empowered: false,
           buffs: Vec::new(),
-          was_hit: false,
         }
       );
     }
@@ -433,12 +432,6 @@ fn main() {
         }
       }
       main_loop_players[player_index].buffs = buffs_to_keep;
-      
-      // If bunny gets hit, give her a speed buff
-      if main_loop_players[player_index].character == Character::HealerGirl
-      && main_loop_players[player_index].was_hit {
-        main_loop_players[player_index].buffs.push(Buff { value: 12.0, duration: 0.5, buff_type: BuffType::Speed });
-      }
 
       // Handling of time queen flashsback ability - keep a buffer of positions for the flashback
       if main_loop_players[player_index].character == Character::TimeQueen {
@@ -458,7 +451,7 @@ fn main() {
       // increase secondary charge passively
       if tick {
         let charge_amount = characters[&main_loop_players[player_index].character].secondary_passive_charge;
-        main_loop_players[player_index].secondary_charge.heal(charge_amount);
+        main_loop_players[player_index].add_charge(charge_amount);
       }
 
       // Get stuck player out of walls
@@ -475,9 +468,6 @@ fn main() {
         }
       }
       drop(unstucker_game_objects);
-
-      // Remove hit marker
-      main_loop_players[player_index].was_hit = false;
 
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.
@@ -674,7 +664,7 @@ fn main() {
                 // if within range
                 if Vector2::distance(game_objects[game_object_index].position, main_loop_players[player_index].position)
                 < (game_objects[game_object_index].size.x / 2.0) {
-                  main_loop_players[player_index].health.damage(characters[&Character::SniperWolf].primary_damage_2);
+                  main_loop_players[player_index].damage(characters[&Character::SniperWolf].primary_damage_2, characters.clone());
                   game_objects[game_object_index].to_be_deleted = true;
                   break;
                 }
@@ -699,7 +689,7 @@ fn main() {
                 main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
                 // Anyone within range
                 let heal: u8 = characters[&Character::HealerGirl].primary_lifesteal;
-                main_loop_players[player_index].health.heal(heal);
+                main_loop_players[player_index].heal(heal, characters.clone());
                 // restore dash charge (0.2s)
                 // main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(200);
               }
@@ -731,7 +721,7 @@ fn main() {
                 // heal up
                 if tick {
                   let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
-                  main_loop_players[player_index].health.heal(heal_amount);
+                  main_loop_players[player_index].heal(heal_amount, characters.clone());
                 }
                 // provide fire rate buff, if not present
                 let mut buff_found = false;
@@ -810,6 +800,10 @@ fn main() {
               is_dead: false,
               camera: Camera::new(),
               buffs: player.buffs.clone(),
+              previous_positions: match player.character {
+                Character::TimeQueen => player.previous_positions.clone(),
+                _ => Vec::new(),
+              }
             })
           }
         }
@@ -827,6 +821,10 @@ fn main() {
             character: player.character,
             is_dead: player.is_dead,
             buffs: player.buffs.clone(),
+            previous_positions: match player.character {
+              Character::TimeQueen => player.previous_positions.clone(),
+              _ => Vec::new(),
+            }
           },
           players: other_players,
           game_objects: game_objects_readonly.clone(),
@@ -888,10 +886,47 @@ struct ServerPlayer {
   next_shot_empowered:  bool,
   /// list of buffs
   buffs:                Vec<Buff>,
-  /// Whether the player was hit this frame. Set to false after handled.
-  was_hit:              bool,
 }
+impl ServerPlayer {
+  fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
 
+    // Special per-character handling
+    match self.character {
+      Character::HealerGirl => {
+        self.buffs.push(
+          Buff { value: 12.0, duration: 0.5, buff_type: BuffType::Speed }
+        );
+      }
+      _ => {}
+    }
+
+    // apply dashing damage reduction or increase.
+    if self.is_dashing {
+      dmg = (dmg as f32 * characters[&self.character].dash_damage_multiplier) as u8;
+    }
+
+    if self.health < dmg {
+      self.health = 0
+    } else {
+      self.health -= dmg;
+    }
+  }
+  fn heal(&mut self, mut heal: u8, characters: HashMap<Character, CharacterProperties>) -> () {
+
+    if self.health + heal > characters[&self.character].health {
+      self.health = characters[&self.character].health;
+    } else {
+      self.health += heal;
+    }
+  }
+  fn add_charge(&mut self, charge: u8) -> () {
+    if self.secondary_charge + charge > 100 {
+      self.secondary_charge = 100;
+    } else {
+      self.secondary_charge += charge;
+    }
+  }
+}
 /// Applies modifications to players and game objects as a result of
 /// bullet behaviour this frame, for a specific bullet. This dumbed
 /// down version is only to be used for character primaries.
@@ -977,30 +1012,17 @@ fn apply_simple_bullet_logic_extra(
         // Apply bullet damage
         if main_loop_players[player_index].team != player.team {
           // Confirmed hit.
-            hit = true;
-            main_loop_players[player_index].was_hit = true;
-          if main_loop_players[player_index].health > damage {
-            main_loop_players[player_index].health -= damage;
-          } else {
-            main_loop_players[player_index].health = 0;
-          }
+          hit = true;
+          main_loop_players[player_index].damage(damage, characters.clone());
           game_objects[game_object_index].players.push(player_index);
         }
         // Apply bullet healing, only if in the same team
         if main_loop_players[player_index].team == player.team {
-          if main_loop_players[player_index].health < healing {
-            main_loop_players[player_index].health += healing;
-          } else {
-            main_loop_players[player_index].health = 100;
-          }
+          main_loop_players[player_index].heal(healing, characters.clone());
           game_objects[game_object_index].players.push(player_index);
         }
         // Apply appropriate secondary charge
-        if main_loop_players[owner_index].secondary_charge < 100 - character_properties.secondary_hit_charge {
-          main_loop_players[owner_index].secondary_charge += character_properties.secondary_hit_charge;
-        } else {
-          main_loop_players[owner_index].secondary_charge = 100;
-        }
+        main_loop_players[owner_index].add_charge(character_properties.secondary_hit_charge);
         // Destroy the bullet if it doesn't pierce.
         if !pierceing_shot {
           game_objects[game_object_index].to_be_deleted = true;

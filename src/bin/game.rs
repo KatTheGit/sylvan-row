@@ -240,7 +240,7 @@ async fn game(/* server_ip: &str */) {
         (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
         (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
         (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
-        0.2 * vw, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
+        0.4 * vh, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
       );
     }
     // temporary ofc
@@ -248,6 +248,12 @@ async fn game(/* server_ip: &str */) {
     
     for player in other_players_copy {
       player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
+      if player.character == Character::TimeQueen && !player.is_dead {
+        draw_lines(player.previous_positions, player_copy.camera.position, vh, player.team);
+      }
+    }
+    if player_copy.character == Character::TimeQueen && !player_copy.is_dead {
+      draw_lines(player_copy.previous_positions, player_copy.camera.position, vh, player_copy.team);
     }
     // MARK: UI
     // time, kills, rounds
@@ -585,6 +591,7 @@ fn network_listener(
     player.character = recieved_server_info.player_packet_is_sent_to.character;
     player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
     player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
+    player.previous_positions = recieved_server_info.player_packet_is_sent_to.previous_positions;
     drop(player); // free mutex guard ASAP for other thread to access player.
     
 
@@ -600,4 +607,18 @@ fn network_listener(
     *gamemode_info_listener = recieved_server_info.gamemode_info;
     drop (gamemode_info_listener)
   }
+}
+
+fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team) -> () {
+  if positions.len() < 2 { return; }
+  for position_index in 0..positions.len()-1 {
+    // if position_index > positions.len() / 3  {
+    //   draw_line_relative(positions[position_index].x, positions[position_index].y, positions[position_index+1].x, positions[position_index+1].y, 0.4, match team {Team::Blue => BLUE, Team::Red => RED}, camera, vh);
+    // } else {
+    //   draw_line_relative(positions[position_index].x, positions[position_index].y, positions[position_index+1].x, positions[position_index+1].y, 0.4, match team {Team::Blue => SKYBLUE, Team::Red => ORANGE}, camera, vh);
+    // }
+    draw_line_relative(positions[position_index].x, positions[position_index].y, positions[position_index+1].x, positions[position_index+1].y, 0.4, match team {Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: 1.0 }, Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: 1.0 }}, camera, vh);
+  }
+  // let texture = Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/tq-flashback.png"), None  );
+  // draw_image_relative(&texture, positions[0].x - TILE_SIZE/2.0, positions[0].y - (TILE_SIZE*1.5)/2.0, TILE_SIZE, TILE_SIZE * 1.5, vh, camera);
 }
