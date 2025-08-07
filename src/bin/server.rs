@@ -12,12 +12,11 @@ static mut SPAWN_BLUE: Vector2 = Vector2 {x: 20.0, y: 120.0};
 
 fn main() {
   // set the gamemode (temporary)
-  // let selected_game_mode = GameMode::DeathMatchArena;
+  let selected_game_mode = GameMode::DeathMatchArena;
 
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
   println!("Loaded character properties.");
-
 
   let players: Vec<ServerPlayer> = Vec::new();
   let players = Arc::new(Mutex::new(players));
@@ -80,7 +79,7 @@ fn main() {
           //   player_found = true;
           //   break;
           // }
-          
+
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;
@@ -348,6 +347,31 @@ fn main() {
   
     let mut main_loop_players = main_loop_players.lock().unwrap();
 
+    // (vscode) MARK: Gamemode
+    if tick {
+      match selected_game_mode {
+        GameMode::DeathMatchArena => {
+          let mut round_restart = false;
+          if gamemode_info.kills_blue >= 5 {
+            gamemode_info.rounds_won_blue += 1;
+            round_restart = true;
+          }
+          if gamemode_info.kills_red >= 5 {
+            gamemode_info.rounds_won_red += 1;
+            round_restart = true;
+          }
+          if round_restart {
+            for player_index in 0..main_loop_players.len() {
+              gamemode_info = main_loop_players[player_index].kill(false, &gamemode_info);
+              gamemode_info.kills_blue = 0;
+              gamemode_info.kills_red  = 0;
+            }
+          }
+        }
+
+        _ => {}
+      }
+    }
 
     // Summon a dummy for testing
     if !dummy_summoned {
@@ -382,6 +406,7 @@ fn main() {
     
     // (vscode) MARK: Player logic
     for player_index in 0..main_loop_players.len() {
+
       let shooting = main_loop_players[player_index].shooting;
       let shooting_secondary = main_loop_players[player_index].shooting_secondary;
       let last_shot_time = main_loop_players[player_index].last_shot_time;
@@ -393,33 +418,16 @@ fn main() {
 
       // if this player is at health 0
       if main_loop_players[player_index].health == 0 {
-        // set them back to 100
-        main_loop_players[player_index].health = 100;
-        // kill them
-        main_loop_players[player_index].is_dead = true;
-        // mark when they died so we know when to respawn them
-        main_loop_players[player_index].death_timer_start = Instant::now();
-        // send them to their respective spawn
-        if main_loop_players[player_index].team == Team::Blue {
-          unsafe {
-            main_loop_players[player_index].position = SPAWN_BLUE;
-            println!("Sending {} to blue spawn", main_loop_players[player_index].ip);
-            // Give a kill to the red team
-            gamemode_info.kills_red += 1;
-          }
-        }
-        else {
-          unsafe {
-            main_loop_players[player_index].position = SPAWN_RED;
-            println!("Sending bro to red team spawn");
-            // Give a kill to the blue team
-            gamemode_info.kills_blue += 1;
-          }
-        }
+        gamemode_info = main_loop_players[player_index].kill(true, &gamemode_info);
       }
       // If the death timer is over, unkill them
       if (main_loop_players[player_index].is_dead) && (main_loop_players[player_index].death_timer_start.elapsed().as_secs_f32() > gamemode_info.death_timeout) {
         main_loop_players[player_index].is_dead = false;
+      }
+
+      // IGNORE ANYTHING BELOW IF PLAYER HAS DIED
+      if main_loop_players[player_index].is_dead {
+        continue;
       }
 
       // (vscode) MARK: Passives & Other
@@ -913,7 +921,7 @@ impl ServerPlayer {
       self.health -= dmg;
     }
   }
-  fn heal(&mut self, mut heal: u8, characters: HashMap<Character, CharacterProperties>) -> () {
+  fn heal(&mut self, heal: u8, characters: HashMap<Character, CharacterProperties>) -> () {
 
     if self.health + heal > characters[&self.character].health {
       self.health = characters[&self.character].health;
@@ -927,6 +935,37 @@ impl ServerPlayer {
     } else {
       self.secondary_charge += charge;
     }
+  }
+  fn kill(&mut self, credit_other_team: bool, gamemode_info: &GameModeInfo) -> GameModeInfo{
+    let mut updated_gamemode_info: GameModeInfo = gamemode_info.clone();
+    // set them back to 100
+    self.health = 100;
+    // kill them
+    self.is_dead = true;
+    // mark when they died so we know when to respawn them
+    self.death_timer_start = Instant::now();
+    // send them to their respective spawn
+    if self.team == Team::Blue {
+      unsafe {
+        self.position = SPAWN_BLUE;
+        println!("Sending {} to blue spawn", self.ip);
+        // Give a kill to the red team
+        if credit_other_team {
+          updated_gamemode_info.kills_red += 1;
+        }
+      }
+    }
+      else {
+        unsafe {
+          self.position = SPAWN_RED;
+          println!("Sending bro to red team spawn");
+          // Give a kill to the blue team
+          if credit_other_team {
+            updated_gamemode_info.kills_blue += 1;
+          }
+        }
+      }
+    return updated_gamemode_info;
   }
 }
 /// Applies modifications to players and game objects as a result of

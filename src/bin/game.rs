@@ -45,12 +45,19 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
   set_window_size(800, 450);
+
+  //loop {
+  //
+  //  next_frame().await;
+  //}
+
   game().await;
 }
 // (vscode) MARK: main()
 /// In the future this function will be called by main once the user starts the game
 /// through the menu.a
 async fn game(/* server_ip: &str */) {
+
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed

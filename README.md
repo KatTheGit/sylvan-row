@@ -27,8 +27,8 @@ On Linux, you need to additionally install `libudev-dev`.
 ## Playtestable game
 - [x] Methods for server player for taking damage, healing, and secondary charge, to ease special logic.
 - [ ] Client also dashes accordingly
-- [ ] Finish gamemode
-  - [ ] Round restarts, announce team victory
+- [x] Finish gamemode
+  - [x] Round restarts
 - [ ] Character picker before joining
 - [x] Buff system
 - [ ] Finish Characters
