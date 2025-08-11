@@ -294,6 +294,8 @@ pub struct ClientPacket {
   pub shooting_secondary: bool,
   pub packet_interval:    f32,
   pub dashing:         bool,
+  /// TEMPORARY
+  pub character: Character,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum Team {

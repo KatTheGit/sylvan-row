@@ -25,11 +25,15 @@ On Linux, you need to additionally install `libudev-dev`.
 # To do
 
 ## Playtestable game
+
 - [x] Methods for server player for taking damage, healing, and secondary charge, to ease special logic.
 - [ ] Client also dashes accordingly
 - [x] Finish gamemode
   - [x] Round restarts
 - [ ] Character picker before joining
+  - [x] UI "library"
+    - [ ] Character picker
+    - [ ] Client directly connects with a desired character specified in each packet sent, since all packets are identical.
 - [x] Buff system
 - [ ] Finish Characters
   - [x] The bunny
@@ -43,7 +47,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Dash
     - [x] Passives
   - [ ] The queen
-    - [ ] Secondary has a trail
+    - [x] Secondary has a trail
     - [ ] Primary
     - [ ] Secondary
     - [ ] Dash
@@ -69,6 +73,14 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Elliptic FOW instead of aspect ratio shenanigans
 - [ ] Sounds
 - [ ] Decent art for the characters now that they're playtest cleared.
+- [ ] Custom controls
+- [ ] Matchmaking server
+  - [ ] Client sends request to play
+  - [ ] Server put player in queue
+  - [ ] Server sends player information about game server
+  - [ ] Server launches Game Server
+  - [ ] Client connects to Game Server
+  - [ ] Profit
 
 ### After every playtest:
 

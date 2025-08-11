@@ -4,6 +4,7 @@
 use miniquad::window::{set_mouse_cursor, set_window_size};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use top_down_shooter::common::*;
+use top_down_shooter::ui;
 use strum::IntoEnumIterator;
 use macroquad::prelude::*;
 use miniquad::conf::Icon;
@@ -46,17 +47,27 @@ fn window_conf() -> Conf {
 async fn main() {
   set_window_size(800, 450);
 
-  //loop {
-  //
-  //  next_frame().await;
-  //}
+  loop {
+    clear_background(WHITE);
+    
+    let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
+    let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Unnamed character 1");
+    let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 }, "Hernani");
+    // println!("{:?}", healer);
 
-  game().await;
+    if healer { game(Character::HealerGirl).await; }
+    if queen  { game(Character::TimeQueen).await;  }
+    if wolf   { game(Character::SniperWolf).await; }
+
+    next_frame().await;
+  }
+
+  //game(Character::HealerGirl).await;
 }
 // (vscode) MARK: main()
 /// In the future this function will be called by main once the user starts the game
 /// through the menu.a
-async fn game(/* server_ip: &str */) {
+async fn game(/* server_ip: &str */ character: Character) {
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
@@ -66,18 +77,21 @@ async fn game(/* server_ip: &str */) {
     game_object_tetures.insert(
       game_object_type,
       match game_object_type {
-        GameObjectType::Wall                       => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::SniperWall                 => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/wall.png"), None),
-        GameObjectType::HealerAura                 => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/secondary.png"), None),
-        GameObjectType::UnbreakableWall            => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
-        GameObjectType::SniperWolfBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HealerGirlBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HealerGirlBulletEmpowered  => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::TimeQueenSword             => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HernaniLandmine            => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::Wall                      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperWall                => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/wall.png"), None),
+        GameObjectType::HealerAura                => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/secondary.png"), None),
+        GameObjectType::UnbreakableWall           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
+        GameObjectType::SniperWolfBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HealerGirlBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HealerGirlBulletEmpowered => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::TimeQueenSword            => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
       }
     );
   }
+
+  let kill_all_threads: bool = false;
+  let kill_all_threads: Arc<Mutex<bool>> = Arc::new(Mutex::new(kill_all_threads));
 
   let gamemode_info: GameModeInfo = GameModeInfo::new();
   let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
@@ -93,7 +107,7 @@ async fn game(/* server_ip: &str */) {
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
-  player.character = Character::TimeQueen;
+  player.character = character;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   let mut player_textures: HashMap<Character, Texture2D> = HashMap::new();
@@ -126,8 +140,9 @@ async fn game(/* server_ip: &str */) {
   let input_thread_mouse_position = Arc::clone(&mouse_position);
   let input_thread_game_objects = Arc::clone(&game_objects);
   let input_thread_sender_fps = Arc::clone(&sender_fps);
+  let input_thread_killall = Arc::clone(&kill_all_threads);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps);
+    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall);
   });
 
   // start the network listener thread.
@@ -136,8 +151,9 @@ async fn game(/* server_ip: &str */) {
   let network_listener_game_objects = Arc::clone(&game_objects);
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
+  let killall_listener = Arc::clone(&kill_all_threads);
   std::thread::spawn(move || {
-    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players, gamemode_info_listener);
+    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players, gamemode_info_listener, killall_listener);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -147,6 +163,19 @@ async fn game(/* server_ip: &str */) {
 
   // Main thread
   loop {
+
+    // SUPER MEGA TEMPORARY
+    let device_state: DeviceState = DeviceState::new();
+    let keys: Vec<Keycode> = device_state.get_keys();
+    if keys.contains(&Keycode::Escape) {
+      // return; // Exit the game, go back to character picker menu // THIS WONT KILL ALL THREADS
+      let mut killall: MutexGuard<bool> = kill_all_threads.lock().unwrap();
+      *killall = true;
+      return;
+    }
+    drop(device_state);
+    drop(keys);
+
     // update vw and vh, used to correctly draw things scale to the screen.
     // one vh for example is 1% of screen height.
     // it's the same as in css.
@@ -297,7 +326,7 @@ async fn game(/* server_ip: &str */) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>) -> ! {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>) -> () {
 
   let server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
@@ -364,7 +393,13 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   let mut toggle_time: Instant = Instant::now();
 
   loop {
-    // println!("network sender Hz: {}", 1.0 / delta_time);
+    //println!("Shit");
+    let kill_this_thread: MutexGuard<bool> = kill.lock().unwrap();
+    if *kill_this_thread {
+      drop(sending_socket);
+      return;
+    }
+    drop(kill_this_thread);
 
     // update active gamepad info
     while let Some(Event { id, event: _, time: _ }) = gilrs.next_event() {
@@ -545,6 +580,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       shooting_secondary,
       packet_interval: delta_time,
       dashing,
+      character: player.character,
     };
 
     // drop mutexguard ASAP so other threads can use player ASAP.
@@ -576,19 +612,40 @@ fn network_listener(
   player: Arc<Mutex<ClientPlayer>>,
   game_objects: Arc<Mutex<Vec<GameObject>>>,
   other_players: Arc<Mutex<Vec<ClientPlayer>>>,
-  gamemode_info: Arc<Mutex<GameModeInfo>> ) -> ! {
+  gamemode_info: Arc<Mutex<GameModeInfo>>,
+  kill: Arc<Mutex<bool>>, ) -> () {
 
   let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
   let listening_socket: UdpSocket = UdpSocket::bind(listening_ip)
-    .expect("Could not bind client listener socket");
+  .expect("Could not bind client listener socket");
+  listening_socket.set_read_timeout(Some(Duration::from_millis(100))).expect("Failed to set timeout ig...");
   // if we get another Io(Kind(UnexpectedEof)) then this buffer is too small
   let mut buffer: [u8; 4096*4] = [0; 4096*4];
   loop {
+
+    let kill_this_thread: MutexGuard<bool> = kill.lock().unwrap();
+    if *kill_this_thread {
+      //drop(listening_socket);
+      return;
+    }
+    drop(kill_this_thread);
+
     // recieve packet
-    let (amt, _): (usize, std::net::SocketAddr) = listening_socket.recv_from(&mut buffer)
-      .expect("Listening socket failed to recieve.");
-    let data: &[u8] = &buffer[..amt];
-    let recieved_server_info: ServerPacket = bincode::deserialize(data).expect("Could not deserialise server packet.");
+    let recieved_server_info: ServerPacket;
+    match listening_socket.recv_from(&mut buffer) {
+      Ok(data) => {
+        let (amt, _): (usize, std::net::SocketAddr) = data;
+        let data: &[u8] = &buffer[..amt];
+        recieved_server_info = bincode::deserialize(data).expect("Could not deserialise server packet.");
+      }
+      Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+        continue;
+      }
+      Err(_) => {
+        println!("error while recieving data.");
+        break;
+      }
+    }
     // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
 
     let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();

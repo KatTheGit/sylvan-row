@@ -36,9 +36,8 @@ fn main() {
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
-  let mut character_queue: Vec<Character> = vec![Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl, Character::SniperWolf, Character::TimeQueen, Character::HealerGirl];
   // temporary, to be dictated by gamemode
-  let max_players = character_queue.len();
+  let max_players = 100;
   
   // (vscode) MARK: Networking - Listen
   let listener_players = Arc::clone(&players);
@@ -79,6 +78,15 @@ fn main() {
           //   player_found = true;
           //   break;
           // }
+
+          if recieved_player_info.character != player.character {
+            println!("recieved character: {:?}, current character: {:?}", recieved_player_info.character, player.character);
+            println!("Changing character to: {:?}", recieved_player_info.character);
+            listener_players[player_index].character = recieved_player_info.character;
+            println!("New character is: {:?}", listener_players[player_index].character);
+
+            listener_players[player_index].kill(false, &GameModeInfo::new());
+          }
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           player.shooting = recieved_player_info.shooting_primary;
@@ -257,7 +265,7 @@ fn main() {
             secondary_cast_time:  Instant::now(),
             secondary_charge:     100,
             had_illegal_position: false,
-            character:            character_queue[0],
+            character:            recieved_player_info.character,
             last_shot_time:       Instant::now(),
             is_dashing:           false,
             last_dash_time:       Instant::now(),
@@ -271,7 +279,6 @@ fn main() {
           });
         }
         println!("Player connected: {}", src.ip().to_string());
-        character_queue.remove(0);
       }
       drop(listener_players);
     }
@@ -413,6 +420,8 @@ fn main() {
       let secondary_charge = main_loop_players[player_index].secondary_charge;
       let player_info = main_loop_players[player_index].clone();
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
+
+      println!("{:?}", main_loop_players[player_index].character);
 
       // MARK: Handle death
 
@@ -808,7 +817,7 @@ fn main() {
               character: player.character,
               time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
               is_dead: false,
-              camera: Camera::new(),
+              camera: Camera::new(),  
               buffs: player.buffs.clone(),
               previous_positions: match player.character {
                 Character::TimeQueen => player.previous_positions.clone(),
@@ -937,6 +946,7 @@ impl ServerPlayer {
     }
   }
   fn kill(&mut self, credit_other_team: bool, gamemode_info: &GameModeInfo) -> GameModeInfo{
+    println!("Running kill function");
     let mut updated_gamemode_info: GameModeInfo = gamemode_info.clone();
     // set them back to 100
     self.health = 100;
@@ -958,7 +968,7 @@ impl ServerPlayer {
       else {
         unsafe {
           self.position = SPAWN_RED;
-          println!("Sending bro to red team spawn");
+          println!("Sending {} to red team spawn", self.ip);
           // Give a kill to the blue team
           if credit_other_team {
             updated_gamemode_info.kills_blue += 1;
