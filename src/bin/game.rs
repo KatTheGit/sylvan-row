@@ -373,7 +373,7 @@ async fn game(/* server_ip: &str */ character: Character) {
 /// slow monitors.
 fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>) -> () {
 
-  let server_ip: String; // immutable binding. cool.
+  let mut server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
   let ip_file = File::open(ip_file_name);
   match ip_file {
@@ -384,6 +384,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         // could read file
         Ok(_) => {
           server_ip = String::from_utf8(data).expect("Couldn't read IP.");
+          server_ip.retain(|c| !c.is_whitespace());
         }
         // couldnt read file
         Err(_) => {
@@ -647,7 +648,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     
     // send data to server
     let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
-    sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
+    sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server. Is your IP address correct?");
 
     let mut update_keyboard_mode: MutexGuard<bool> = global_keyboard_mode.lock().unwrap();
     *update_keyboard_mode = keyboard_mode;
