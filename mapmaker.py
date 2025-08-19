@@ -1,4 +1,5 @@
 import io
+import random
 
 tile_size = 10
 map_path = "assets/maps/map_maker.map"
@@ -41,5 +42,11 @@ for y, line in enumerate(io.StringIO(map_drawing)):
             map_file += "wall " + position
         if char == 'U':
             map_file += "unbreakablewall " + position
+
+        #bg_tiles = ["grass-1", "grass-2", "grass-3", "grass-4", "grass-5"]
+        #bg_tile = random.choice(bg_tiles)
+        #if (x + y) % 2 == 1:
+        #    bg_tile += "-b"
+        #map_file += f"{bg_tile} {position}"
 with open(map_path, 'w') as file:
     file.write(map_file)

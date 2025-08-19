@@ -365,6 +365,20 @@ pub enum GameObjectType {
   HealerGirlBulletEmpowered,
   TimeQueenSword,
   HernaniLandmine,
+  Grass1,
+  Grass2,
+  Grass3,
+  Grass4,
+  Grass5,
+  Grass6,
+  Grass7,
+  Grass1Bright,
+  Grass2Bright,
+  Grass3Bright,
+  Grass4Bright,
+  Grass5Bright,
+  Grass6Bright,
+  Grass7Bright,
 }
 // MARK: Vectors
 // utility
@@ -479,7 +493,7 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
       },
       size: match gameobject_type {
         "wall" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
-        "unbreakablewall" => Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+        "unbreakablewall" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
          _ => {panic!("Unexpected ojbect in map file.")},
       },
       position: Vector2 { x: pos_x, y: pos_y },

@@ -57,10 +57,11 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Improve map
 - [ ] Arbitrarily balance characters
   - [ ] Raphaelle
-  - [ ] Queen
+  - [ ] CyneWynn
   - [ ] Hernani
-- [ ] Simple background tile system
+- [x] Simple background tile system
 - [ ] Basic drawings
+- [ ] Intrapolation?
 
 ### After every playtest:
 

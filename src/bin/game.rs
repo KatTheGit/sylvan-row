@@ -1,8 +1,7 @@
 // Don't show console window on Windows
 #![windows_subsystem = "windows"]
 
-use device_query::keymap;
-use macroquad::miniquad::gl;
+use macroquad::rand::rand;
 use miniquad::window::{set_mouse_cursor, set_window_size};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use top_down_shooter::common::*;
@@ -55,8 +54,8 @@ async fn main() {
     
     if timer.elapsed().as_secs_f32() > 0.5 {
       let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
-      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewyn");
-      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 }, "Hernani");
+      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn");
+      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani");
       // println!("{:?}", healer);
       
       if healer { game(Character::HealerGirl).await; timer = Instant::now() }
@@ -93,6 +92,20 @@ async fn game(/* server_ip: &str */ character: Character) {
         GameObjectType::HealerGirlBulletEmpowered => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::TimeQueenSword            => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
         GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::Grass1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1.png"), None),
+        GameObjectType::Grass2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-2.png"), None),
+        GameObjectType::Grass3                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-3.png"), None),
+        GameObjectType::Grass4                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-4.png"), None),
+        GameObjectType::Grass5                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-5.png"), None),
+        GameObjectType::Grass6                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-6.png"), None),
+        GameObjectType::Grass7                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-7.png"), None),
+        GameObjectType::Grass1Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1-b.png"), None),
+        GameObjectType::Grass2Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-2-b.png"), None),
+        GameObjectType::Grass3Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-3-b.png"), None),
+        GameObjectType::Grass4Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-4-b.png"), None),
+        GameObjectType::Grass5Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-5-b.png"), None),
+        GameObjectType::Grass6Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-6-b.png"), None),
+        GameObjectType::Grass7Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-7-b.png"), None),
       }
     );
   }
@@ -136,6 +149,7 @@ async fn game(/* server_ip: &str */ character: Character) {
   // modified by network listener thread, accessed by input handler and game thread
   let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
   let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::new(Mutex::new(game_objects));
+
   // accessed by game thread, modified by network listener thread.
   let other_players: Vec<ClientPlayer> = Vec::new();
   let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::new(Mutex::new(other_players));
@@ -171,6 +185,8 @@ async fn game(/* server_ip: &str */ character: Character) {
 
   // assets/fonts/Action_Man.ttf
   let health_bar_font = load_ttf_font_from_bytes(include_bytes!("./../../assets/fonts/Action_Man.ttf")).expect("");
+
+  let background_tiles: Vec<BackGroundTile> = load_background_tiles(34, 24);
 
   // Main thread
   loop {
@@ -275,6 +291,11 @@ async fn game(/* server_ip: &str */ character: Character) {
     clear_background(BLACK);
     // TEMPORARY
     draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, GRAY);
+    for background_tile in background_tiles.clone() {
+      let texture = &game_object_tetures[&background_tile.object_type];
+      let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
+      draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position);
+    }
 
     // draw all gameobjects
     for game_object in game_objects_copy {
@@ -282,6 +303,8 @@ async fn game(/* server_ip: &str */ character: Character) {
       let size = game_object.size;
       draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position);
     }
+
+
 
     // draw player and crosshair (aim laser)
     let range = character_properties[&player_copy.character].primary_range;
@@ -744,4 +767,44 @@ fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team) -> 
   }
   // let texture = Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/tq-flashback.png"), None  );
   // draw_image_relative(&texture, positions[0].x - TILE_SIZE/2.0, positions[0].y - (TILE_SIZE*1.5)/2.0, TILE_SIZE, TILE_SIZE * 1.5, vh, camera);
+}
+
+#[derive(Debug, Clone)]
+struct BackGroundTile {
+  position: Vector2,
+  object_type: GameObjectType,
+}
+
+fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile> {
+  let mut tiles: Vec<BackGroundTile> = Vec::new();
+  let bright_tiles = vec![GameObjectType::Grass1Bright,
+                                               GameObjectType::Grass2Bright,
+                                               GameObjectType::Grass3Bright,
+                                               GameObjectType::Grass4Bright,
+                                               GameObjectType::Grass5Bright,
+                                               GameObjectType::Grass6Bright,
+                                               GameObjectType::Grass7Bright, ];
+  let dark_tiles = vec![GameObjectType::Grass1,
+                                               GameObjectType::Grass2,
+                                               GameObjectType::Grass3,
+                                               GameObjectType::Grass4,
+                                               GameObjectType::Grass5,
+                                               GameObjectType::Grass6,
+                                               GameObjectType::Grass7, ];
+
+  for x in 0..map_size_x {
+    for y in 0..map_size_y {
+      let random_num_raw = rand();
+      let mut random_num_f = (random_num_raw as f64) / u32::MAX as f64;
+      random_num_f *= 6.0;
+      let random_num = random_num_f.round() as usize;
+      println!("{:?}", random_num);
+      if (x + y) % 2 == 1 {
+        tiles.push(BackGroundTile { position: Vector2 { x: x as f32 * TILE_SIZE, y: y as f32 * TILE_SIZE + TILE_SIZE*0.5 }, object_type: bright_tiles[random_num] });
+      } else {
+        tiles.push(BackGroundTile { position: Vector2 { x: x as f32 * TILE_SIZE, y: y as f32 * TILE_SIZE + TILE_SIZE*0.5 }, object_type: dark_tiles[random_num] });
+      }
+    }
+  }
+  return tiles;
 }

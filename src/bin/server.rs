@@ -970,9 +970,10 @@ impl ServerPlayer {
     let mut updated_gamemode_info: GameModeInfo = gamemode_info.clone();
     // remove all previous positions
     self.previous_positions = Vec::new();
+    self.secondary_charge = 0;
     // set them back to 100
     self.health = 100;
-    // kill them
+    // set dead flag for other handling
     self.is_dead = true;
     // mark when they died so we know when to respawn them
     self.death_timer_start = Instant::now();
