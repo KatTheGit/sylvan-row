@@ -6,7 +6,6 @@ use rusty_pkl::*;
 use std::collections::HashMap;
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
-use std::time::Instant;
 use std::time::SystemTime;
 
 pub const TILE_SIZE: f32 = 10.0;
