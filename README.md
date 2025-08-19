@@ -46,12 +46,14 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Secondary
     - [x] Dash
     - [x] Passives
-  - [ ] The queen
+  - [x] The queen
     - [x] Secondary has a trail
-    - [ ] Primary
-    - [ ] Secondary
-    - [ ] Dash
-    - [ ] Passives
+    - [x] TEMPORARILY KEEP AS-IS
+    - [ ] Maybe improve
+      - [ ] Primary
+      - [ ] Secondary
+      - [ ] Dash
+      - [ ] Passives
 - [x] Improve map
 - [ ] Arbitrary balance using theory
   - [ ] Bunny

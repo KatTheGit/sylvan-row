@@ -66,6 +66,7 @@ fn main() {
       // iterate through players
       for player_index in 0..listener_players.len() {
         
+        // THIS VALUE WILL THEN BE ASSIGNED BACK TO listener_players[player_index] !!!!
         let mut player = listener_players[player_index].clone();
         
         // use IP as identifier, check if packet from sent player correlates to our player
@@ -82,10 +83,9 @@ fn main() {
           if recieved_player_info.character != player.character {
             println!("recieved character: {:?}, current character: {:?}", recieved_player_info.character, player.character);
             println!("Changing character to: {:?}", recieved_player_info.character);
-            listener_players[player_index].character = recieved_player_info.character;
+            player.character = recieved_player_info.character;
             println!("New character is: {:?}", listener_players[player_index].character);
-
-            listener_players[player_index].kill(false, &GameModeInfo::new());
+            player.kill(false, &GameModeInfo::new());
           }
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
@@ -231,6 +231,15 @@ fn main() {
           listener_players[player_index] = player;
           break
         }
+        // if listener_players[player_index].character != Character::Dummy {
+        //   println!("recv: {:?}", recieved_player_info.character);
+        //   println!("recv: {:?}", src.ip().to_string());
+        //   println!("recv: {:?}", recieved_player_info.position);
+        //   println!("curr: {:?}", listener_players[player_index].character);
+        //   println!("curr: {:?}", listener_players[player_index].ip);
+        //   println!("curr: {:?}", listener_players[player_index].position);
+        //   listener_players[player_index].character = recieved_player_info.character;
+        // }
       }
       drop(listener_game_objects);
 
@@ -319,7 +328,7 @@ fn main() {
 
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = false;
+  let mut dummy_summoned: bool = true;
 
   // (vscode) MARK: Server Loop
   loop {
@@ -421,7 +430,7 @@ fn main() {
       let player_info = main_loop_players[player_index].clone();
       let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
 
-      println!("{:?}", main_loop_players[player_index].character);
+      // println!("{:?}", main_loop_players[player_index].character);
 
       // MARK: Handle death
 
