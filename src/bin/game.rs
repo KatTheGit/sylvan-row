@@ -232,7 +232,7 @@ async fn game(/* server_ip: &str */ character: Character) {
     
     let mut camera_offset: Vector2 = Vector2::new();
     // Set camera offset (lock to player, freecam if dead)
-    if player_copy.is_dead == false {
+    if !player_copy.is_dead {
       camera_offset = Vector2 { x: 0.0, y: 0.0 };
       player_copy.camera.position.x = player_copy.position.x + camera_offset.x;
       player_copy.camera.position.y = player_copy.position.y + camera_offset.y;
@@ -284,7 +284,9 @@ async fn game(/* server_ip: &str */ character: Character) {
       );
     }
     // temporary ofc
-    player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
+    if !player_copy.is_dead {
+      player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
+    }
     
     for player in other_players_copy {
       player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone());
@@ -662,7 +664,8 @@ fn network_listener(
     if !player.is_dead && recieved_server_info.player_packet_is_sent_to.is_dead {
       // we just died rn, so set the camera pos (which is now a freecam) to current position
       // no clue why i have to do this, but for some reason upon death the camera moves "randomly"
-      player.camera.position = player.position;
+      //player.camera.position = player.position;
+      // IDK SEEMS TO WORK WITHOUT
     }
 
     player.health = recieved_server_info.player_packet_is_sent_to.health;
