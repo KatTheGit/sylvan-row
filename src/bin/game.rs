@@ -702,7 +702,10 @@ fn network_listener(
       // IDK SEEMS TO WORK WITHOUT
     }
 
-    let one_way_ping = recieved_server_info.timestamp.elapsed().expect("Ping time error.").as_millis();
+    let one_way_ping = match recieved_server_info.timestamp.elapsed() {
+      Ok(val) => val.as_millis(),
+      Err(_) => 0,
+    };
     // println!("Server to client latency: {:?}ms", one_way_ping);
     player.owl = one_way_ping as u16;
     player.health = recieved_server_info.player_packet_is_sent_to.health;
