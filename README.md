@@ -59,8 +59,8 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Raphaelle
   - [ ] Queen
   - [ ] Hernani
-- [ ] Background tile system
-- [ ] Drawings
+- [ ] Simple background tile system
+- [ ] Basic drawings
 
 ### After every playtest:
 
