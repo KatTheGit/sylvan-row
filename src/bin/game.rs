@@ -1,6 +1,8 @@
 // Don't show console window on Windows
 #![windows_subsystem = "windows"]
 
+use device_query::keymap;
+use macroquad::miniquad::gl;
 use miniquad::window::{set_mouse_cursor, set_window_size};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use top_down_shooter::common::*;
@@ -101,6 +103,9 @@ async fn game(/* server_ip: &str */ character: Character) {
   let gamemode_info: GameModeInfo = GameModeInfo::new();
   let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
 
+  let keyboard_mode: bool = true;
+  let keyboard_mode: Arc<Mutex<bool>> = Arc::new(Mutex::new(keyboard_mode));
+
   let sender_fps: f32 = 0.0;
   let sender_fps: Arc<Mutex<f32>> = Arc::new(Mutex::new(sender_fps));
 
@@ -146,8 +151,9 @@ async fn game(/* server_ip: &str */ character: Character) {
   let input_thread_game_objects = Arc::clone(&game_objects);
   let input_thread_sender_fps = Arc::clone(&sender_fps);
   let input_thread_killall = Arc::clone(&kill_all_threads);
+  let input_thread_keyboard_mode = Arc::clone(&keyboard_mode);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall);
+    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode);
   });
 
   // start the network listener thread.
@@ -255,7 +261,12 @@ async fn game(/* server_ip: &str */ character: Character) {
     //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.   ,-------'----------,
     mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0) + camera_offset.x; 
     mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0                + camera_offset.y;
-    let aim_direction: Vector2 = Vector2::difference(Vector2::new(), Vector2::from(mouse_position.clone()));
+    let keyboard_mode: MutexGuard<bool> = keyboard_mode.lock().unwrap();
+    let mut aim_direction: Vector2 = Vector2::difference(Vector2::new(), Vector2::from(mouse_position.clone()));
+    if !*keyboard_mode {
+      aim_direction = player_copy.aim_direction;
+    }
+    drop(keyboard_mode);
     drop(mouse_position);
 
     // (vscode) MARK: Draw
@@ -336,7 +347,7 @@ async fn game(/* server_ip: &str */ character: Character) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>) -> () {
 
   let server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
@@ -434,7 +445,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // gamepad input handling
     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
 
-      keyboard_mode = false;
+      // keyboard_mode = false;
 
       // Right stick (aim)
       match gamepad.axis_data(Axis::RightStickX)  {
@@ -467,6 +478,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Some(button_data) => {
           if button_data.value() > 0.2 {
             shooting_primary = true;
+            keyboard_mode = false;
           } else {
             shooting_primary = false;
           }
@@ -476,6 +488,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Some(button_data) => {
           if button_data.value() > 0.2 {
             shooting_secondary = true;
+            keyboard_mode = false;
           } else {
             shooting_secondary = false;
           }
@@ -485,8 +498,22 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Some(button_data) => {
           if button_data.value() > 0.0 {
             dashing = true;
+            keyboard_mode = false;
           }
         } _ => {}
+      }
+    }
+
+    if movement_vector.magnitude() > controller_deadzone {
+      keyboard_mode = false;
+    } else {
+      movement_vector = Vector2::new();
+    }
+    if player.aim_direction.magnitude() > controller_deadzone {
+      keyboard_mode = false;
+    } else {
+      if !keyboard_mode {
+        player.aim_direction = Vector2 { x: 1.0, y: 0.0 };
       }
     }
 
@@ -498,6 +525,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
     if !keys.is_empty() {
       movement_vector = Vector2::new();
+      println!("{:?}", keys);
       keyboard_mode = true; // since we used the keyboard
     }
     for key in keys {
@@ -522,11 +550,13 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     //  LMB
     if mouse[1] == true {
       shooting_primary = true;
+      keyboard_mode = true;
     }
     //  RMB
     // 3 anywhere, 2 on macos
     if mouse[rmb_index()] == true {
       shooting_secondary = true;
+      keyboard_mode = true;
     }
     
     // println!("{}", dashing);
@@ -541,10 +571,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       drop(mouse_position);
       player.aim_direction = aim_direction;
     }
-    
-    if player.aim_direction.magnitude() < controller_deadzone {
-      player.aim_direction = Vector2::new();
-    }
+    println!("{:?}", keyboard_mode);
+    println!("{:?}", player.aim_direction);
+    println!("{:?}", player.aim_direction);
 
     // janky but good enough to correct controllers that give weird inputs.
     // should not happen on normal controllers anyways.
@@ -600,6 +629,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
     sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server.");
 
+    let mut update_keyboard_mode: MutexGuard<bool> = global_keyboard_mode.lock().unwrap();
+    *update_keyboard_mode = keyboard_mode;
+    drop(update_keyboard_mode);
     
     // update delta_time and reset counter.
     let delta_time_difference: f32 = desired_delta_time - delta_time_counter.elapsed().as_secs_f32();
