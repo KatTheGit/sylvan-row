@@ -334,6 +334,7 @@ async fn game(/* server_ip: &str */ character: Character) {
     let sender_fps: Arc<Mutex<f32>> = Arc::clone(&sender_fps);
     let sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
     draw_text(format!("{} input fps", sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
+    draw_text(format!("{} ms server to client", player_copy.owl).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
     drop(sender_fps);
     next_frame().await;
   }
@@ -701,6 +702,9 @@ fn network_listener(
       // IDK SEEMS TO WORK WITHOUT
     }
 
+    let one_way_ping = recieved_server_info.timestamp.elapsed().expect("Ping time error.").as_millis();
+    // println!("Server to client latency: {:?}ms", one_way_ping);
+    player.owl = one_way_ping as u16;
     player.health = recieved_server_info.player_packet_is_sent_to.health;
     player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
     player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;

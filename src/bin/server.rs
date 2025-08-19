@@ -831,7 +831,8 @@ fn main() {
               previous_positions: match player.character {
                 Character::TimeQueen => player.previous_positions.clone(),
                 _ => Vec::new(),
-              }
+              },
+              owl: 0,
             })
           }
         }
@@ -857,6 +858,7 @@ fn main() {
           players: other_players,
           game_objects: game_objects_readonly.clone(),
           gamemode_info: gamemode_info.clone(),
+          timestamp: SystemTime::now()
         };
         main_loop_players[index].had_illegal_position = false;
         
@@ -917,7 +919,9 @@ struct ServerPlayer {
 }
 impl ServerPlayer {
   fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
-
+    if self.is_dead {
+      return;
+    }
     // Special per-character handling
     match self.character {
       Character::HealerGirl => {
@@ -940,6 +944,9 @@ impl ServerPlayer {
     }
   }
   fn heal(&mut self, heal: u8, characters: HashMap<Character, CharacterProperties>) -> () {
+    if self.is_dead {
+      return;
+    }
 
     if self.health + heal > characters[&self.character].health {
       self.health = characters[&self.character].health;
@@ -948,6 +955,10 @@ impl ServerPlayer {
     }
   }
   fn add_charge(&mut self, charge: u8) -> () {
+    if self.is_dead {
+      return;
+    }
+
     if self.secondary_charge + charge > 100 {
       self.secondary_charge = 100;
     } else {
@@ -1066,6 +1077,9 @@ fn apply_simple_bullet_logic_extra(
   // Calculate collisions with players
   let mut hit: bool = false; // whether we've hit a player
   for player_index in 0..main_loop_players.len() {
+    if main_loop_players[player_index].is_dead {
+      continue; // skip dead player
+    }
     // If we hit a bloke
     if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
     owner_index != player_index {

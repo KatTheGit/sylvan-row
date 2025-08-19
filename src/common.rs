@@ -6,6 +6,8 @@ use rusty_pkl::*;
 use std::collections::HashMap;
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
+use std::time::Instant;
+use std::time::SystemTime;
 
 pub const TILE_SIZE: f32 = 10.0;
 
@@ -208,6 +210,8 @@ pub struct ClientPlayer {
   pub camera: Camera,
   pub buffs: Vec<Buff>,
   pub previous_positions: Vec<Vector2>,
+  /// One-way latency, from server to client
+  pub owl: u16,
 }
 // MARK: Client Player
 impl ClientPlayer {
@@ -279,6 +283,7 @@ impl ClientPlayer {
       camera: Camera::new(),
       buffs: Vec::new(),
       previous_positions: Vec::new(),
+      owl: 0,
     };
   }
 }
@@ -326,6 +331,7 @@ pub struct ServerPacket {
   pub players:       Vec<ClientPlayer>,
   pub game_objects:  Vec<GameObject>,
   pub gamemode_info: GameModeInfo,
+  pub timestamp:     SystemTime,
 }
 // MARK: Gameobject
 /// defines any non-player gameplay element
