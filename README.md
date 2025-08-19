@@ -55,10 +55,10 @@ On Linux, you need to additionally install `libudev-dev`.
       - [ ] Dash
       - [ ] Passives
 - [x] Improve map
-- [ ] Arbitrary balance using theory
-  - [ ] Bunny
+- [ ] Arbitrarily balance characters
+  - [ ] Raphaelle
   - [ ] Queen
-  - [ ] Wolf
+  - [ ] Hernani
 - [ ] Background tile system
 - [ ] Drawings
 

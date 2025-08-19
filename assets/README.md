@@ -139,6 +139,12 @@ Intended playstyle:
 
 ### 4.2.1. no name yet - IDEA 1 - not yet implemented
 
+- Potential names:
+  - Cyneswith
+  - CyneswiÞ
+  - Cynewynn
+  - Cynewyn
+
 - Primary
   - A sword slash. Fire rate is proportional to secondary charge. At 70% or something, it reaches full potential, where it's 5% above standard.
     Below that, it is gradually worse, going as far as 20% below standard.

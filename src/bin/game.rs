@@ -47,17 +47,22 @@ fn window_conf() -> Conf {
 async fn main() {
   set_window_size(800, 450);
 
+  let mut timer: Instant = Instant::now();
   loop {
     clear_background(WHITE);
     
-    let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
-    let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Unnamed character 1");
-    let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 }, "Hernani");
-    // println!("{:?}", healer);
-
-    if healer { game(Character::HealerGirl).await; }
-    if queen  { game(Character::TimeQueen).await;  }
-    if wolf   { game(Character::SniperWolf).await; }
+    if timer.elapsed().as_secs_f32() > 0.5 {
+      let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
+      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewyn");
+      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 }, "Hernani");
+      // println!("{:?}", healer);
+      
+      if healer { game(Character::HealerGirl).await; timer = Instant::now() }
+      if queen  { game(Character::TimeQueen).await;  timer = Instant::now() }
+      if wolf   { game(Character::SniperWolf).await; timer = Instant::now() }
+    } else {
+      draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
+    }
 
     next_frame().await;
   }

@@ -957,6 +957,8 @@ impl ServerPlayer {
   fn kill(&mut self, credit_other_team: bool, gamemode_info: &GameModeInfo) -> GameModeInfo{
     println!("Running kill function");
     let mut updated_gamemode_info: GameModeInfo = gamemode_info.clone();
+    // remove all previous positions
+    self.previous_positions = Vec::new();
     // set them back to 100
     self.health = 100;
     // kill them
