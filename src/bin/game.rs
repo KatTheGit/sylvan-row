@@ -798,7 +798,6 @@ fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile
       let mut random_num_f = (random_num_raw as f64) / u32::MAX as f64;
       random_num_f *= 6.0;
       let random_num = random_num_f.round() as usize;
-      println!("{:?}", random_num);
       if (x + y) % 2 == 1 {
         tiles.push(BackGroundTile { position: Vector2 { x: x as f32 * TILE_SIZE, y: y as f32 * TILE_SIZE + TILE_SIZE*0.5 }, object_type: bright_tiles[random_num] });
       } else {
