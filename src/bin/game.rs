@@ -525,7 +525,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
     if !keys.is_empty() {
       movement_vector = Vector2::new();
-      println!("{:?}", keys);
       keyboard_mode = true; // since we used the keyboard
     }
     for key in keys {
@@ -571,9 +570,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       drop(mouse_position);
       player.aim_direction = aim_direction;
     }
-    println!("{:?}", keyboard_mode);
-    println!("{:?}", player.aim_direction);
-    println!("{:?}", player.aim_direction);
 
     // janky but good enough to correct controllers that give weird inputs.
     // should not happen on normal controllers anyways.
