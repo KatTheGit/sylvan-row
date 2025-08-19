@@ -296,7 +296,7 @@ async fn game(/* server_ip: &str */ character: Character) {
       draw_lines(player_copy.previous_positions, player_copy.camera.position, vh, player_copy.team);
     }
     if player_copy.is_dead {
-      draw_text_relative("You dead rip", 20.0, 50.0, &health_bar_font, 30, vh, player_copy.camera.position, RED);
+      draw_text("You dead rip", 20.0*vh, 50.0*vh, 20.0*vh, RED);
     }
     // MARK: UI
     // time, kills, rounds
