@@ -30,10 +30,10 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Client also dashes accordingly
 - [x] Finish gamemode
   - [x] Round restarts
-- [ ] Character picker before joining
+- [x] Character picker before joining
   - [x] UI "library"
-    - [ ] Character picker
-    - [ ] Client directly connects with a desired character specified in each packet sent, since all packets are identical.
+    - [x] Character picker
+    - [x] Client directly connects with a desired character specified in each packet sent, since all packets are identical.
 - [x] Buff system
 - [ ] Finish Characters
   - [x] The bunny
@@ -61,13 +61,13 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Wolf
 - [ ] Background tile system
 - [ ] Drawings
-- [ ] Maybe increase health 100->255 for higher precision, still display 0-100 clientside.
 
 ### After every playtest:
 
 - [ ] Balance characters
 - [ ] Change sizes and whatnot
 - [ ] Other feedback
+- [ ] Maybe increase health 100->255 for higher precision, still display 0-100 clientside.
 
 ## Find fun gamemode + a bit of polish
 
