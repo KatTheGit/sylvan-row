@@ -55,13 +55,17 @@ On Linux, you need to additionally install `libudev-dev`.
       - [ ] Dash
       - [ ] Passives
 - [x] Improve map
+- [x] Simple background tile system
 - [ ] Arbitrarily balance characters
   - [ ] Raphaelle
   - [ ] CyneWynn
   - [ ] Hernani
-- [x] Simple background tile system
 - [ ] Basic drawings
-- [ ] Intrapolation?
+  - [ ] Bullets
+  - [ ] Characters
+    - [ ] Raphaelle
+    - [ ] CyneWynn
+    - [ ] Hernani
 
 ### After every playtest:
 
