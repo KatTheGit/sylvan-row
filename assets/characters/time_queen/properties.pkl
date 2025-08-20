@@ -14,15 +14,15 @@ primary_hit_radius = 5.0
 wall_damage_multiplier = 1.0
 
 secondary_damage = 0
-secondary_heal = 0
+secondary_heal = 10
 secondary_hit_charge = 10
 secondary_heal_charge = 0
 secondary_passive_charge = 5
 secondary_range = 0.0
 secondary_charge_use = 100
-secondary_cooldown = 3.0
+secondary_cooldown = 2.5
 
 dash_distance = 60.0
 dash_cooldown = 3.0
-dash_damage_multiplier = 1.0
+dash_damage_multiplier = 0.5
 dash_speed = 600.0

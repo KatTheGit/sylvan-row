@@ -251,7 +251,7 @@ async fn game(/* server_ip: &str */ character: Character) {
     let mut player_copy = player.clone();
     drop(player);
 
-    let game_objects_copy = game_objects.clone();
+    let mut game_objects_copy = game_objects.clone();
     drop(game_objects);
 
     let other_players_copy = other_players.clone();
@@ -298,6 +298,7 @@ async fn game(/* server_ip: &str */ character: Character) {
     }
 
     // draw all gameobjects
+    game_objects_copy = sort_by_depth(game_objects_copy);
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
       let size = game_object.size;
@@ -640,7 +641,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // println!("{:?}", player.position);
     // println!("{:?}", movement_vector);
     // println!("{:?}", movement_vector_raw);
-    println!("{:?}", keyboard_mode);
+    // println!("{:?}", keyboard_mode);
 
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {
@@ -818,4 +819,28 @@ fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile
     }
   }
   return tiles;
+}
+
+/// Incredibly inefficient algorithm to sort gameobjects by height, used
+/// to draw them in order without weird overlaps.
+fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
+  // drawn last = drawn "higher" on "z-axis"
+  // things at the bottom (high y axis) should be higher in "z-axis", ergo drawn last
+  let mut unsorted_objects = objects;
+  let mut sorted_objects: Vec<GameObject> = Vec::new();
+
+  for _ in 0..unsorted_objects.len() {
+    let mut current_lowest_index: usize = 0;
+    let mut current_lowest_height: f32 = f32::MAX;
+    for index in 0..unsorted_objects.len() {
+      let pos = unsorted_objects[index].position.y;
+      if pos < current_lowest_height {
+        current_lowest_index = index;
+        current_lowest_height = pos;
+      }
+    }
+    sorted_objects.push(unsorted_objects[current_lowest_index].clone());
+    unsorted_objects.remove(current_lowest_index);
+  }
+  return sorted_objects
 }

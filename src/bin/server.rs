@@ -7,7 +7,7 @@ use bincode;
 use std::{thread, time::*};
 
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
-static mut SPAWN_RED: Vector2 = Vector2 {x: 300.0, y: 110.0};
+static mut SPAWN_RED: Vector2 = Vector2 {x: 300.0, y: 150.0};
 static mut SPAWN_BLUE: Vector2 = Vector2 {x: 20.0, y: 120.0};
 
 fn main() {
@@ -262,7 +262,7 @@ fn main() {
           listener_players.push(ServerPlayer {
             ip: src.ip().to_string(),
             team,
-            health: 20,
+            health: 100,
             position: match team {
               Team::Blue => SPAWN_BLUE,
               Team::Red  => SPAWN_RED,
@@ -631,7 +631,7 @@ fn main() {
             if wall_can_be_placed {
               game_objects.push(GameObject {
                 object_type: GameObjectType::SniperWall,
-                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
                 position: desired_placement_position,
                 direction: Vector2::new(),
                 to_be_deleted: false,
@@ -656,6 +656,7 @@ fn main() {
               // set position to beginning of buffer (where player was 3 seconds ago)
               main_loop_players[player_index].position = main_loop_players[player_index].previous_positions[0];
               main_loop_players[player_index].previous_positions = Vec::new();
+              main_loop_players[player_index].heal(10, characters.clone());
             }
           },
 
