@@ -58,7 +58,7 @@ On Linux, you need to additionally install `libudev-dev`.
 - [x] Simple background tile system
 - [x] Arbitrarily balance characters
   - [x] Raphaelle
-  - [x] CyneWynn
+  - [x] Cynewynn
   - [x] Hernani
 - [ ] Basic drawings
   - [ ] Bullets
@@ -68,7 +68,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Rotation
   - [ ] Characters
     - [ ] Raphaelle
-    - [ ] CyneWynn
+    - [ ] Cynewynn
     - [ ] Hernani
       - [ ] Wall
 
