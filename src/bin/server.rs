@@ -100,7 +100,7 @@ fn main() {
           
           // (vscode) MARK: Dashing Legality
           // If player wants to dash and isn't dashing...
-          if recieved_player_info.dashing && !player.is_dashing && !player.is_dead {
+          if recieved_player_info.dashing && !player.is_dashing && !player.is_dead && player.move_direction.magnitude() != 0.0{
             let player_dash_cooldown = characters[&player.character].dash_cooldown;
             // And we're past the cooldown...
             if player.last_dash_time.elapsed().as_secs_f32() > player_dash_cooldown {
@@ -328,7 +328,7 @@ fn main() {
 
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = true;
+  let mut dummy_summoned: bool = false;
 
   // (vscode) MARK: Server Loop
   loop {
@@ -508,7 +508,7 @@ fn main() {
       }
       // not sure why this was here, nothing wrong with holding down both buttons
       //                      \/
-      if shooting /*&& !shooting_secondary*/  && last_shot_time.elapsed().as_secs_f32() > cooldown {
+      if shooting /*&& !shooting_secondary*/  && last_shot_time.elapsed().as_secs_f32() > cooldown && main_loop_players[player_index].aim_direction.magnitude() != 0.0 {
         // main_loop_players[player_index].buffs.push(Buff { value: 0.1, duration: 2.2, buff_type: BuffType::FireRate });
         // main_loop_players[player_index].buffs.push(Buff { value: 20.0, duration: 2.2, buff_type: BuffType::Speed });
         main_loop_players[player_index].last_shot_time = Instant::now();

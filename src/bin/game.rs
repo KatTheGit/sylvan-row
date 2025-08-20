@@ -294,14 +294,14 @@ async fn game(/* server_ip: &str */ character: Character) {
     for background_tile in background_tiles.clone() {
       let texture = &game_object_tetures[&background_tile.object_type];
       let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
-      draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position);
+      draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, Vector2::new());
     }
 
     // draw all gameobjects
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
       let size = game_object.size;
-      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position);
+      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, game_object.direction);
     }
 
 
@@ -458,6 +458,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     drop(real_game_objects);
 
     let mut movement_vector: Vector2 = Vector2::new();
+    let mut aim_vector: Vector2 = Vector2::new();
     let mut shooting_primary: bool = false;
     let mut shooting_secondary: bool = false;
     let mut dashing: bool = false;
@@ -475,12 +476,12 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       // Right stick (aim)
       match gamepad.axis_data(Axis::RightStickX)  {
         Some(axis_data) => {
-          player.aim_direction.x = axis_data.value();
+          aim_vector.x = axis_data.value();
         } _ => {}
       }
       match gamepad.axis_data(Axis::RightStickY)  {
         Some(axis_data) => {
-          player.aim_direction.y = -axis_data.value();
+          aim_vector.y = -axis_data.value();
         } _ => {}
       }
 
@@ -527,6 +528,14 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
           }
         } _ => {}
       }
+      match gamepad.button_data(Button::LeftTrigger) {
+        Some(button_data) => {
+          if button_data.value() > 0.0 {
+            dashing = true;
+            keyboard_mode = false;
+          }
+        } _ => {}
+      }
     }
 
     if movement_vector.magnitude() > controller_deadzone {
@@ -534,11 +543,12 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     } else {
       movement_vector = Vector2::new();
     }
-    if player.aim_direction.magnitude() > controller_deadzone {
+    if aim_vector.magnitude() > controller_deadzone {
       keyboard_mode = false;
+      player.aim_direction = aim_vector;
     } else {
       if !keyboard_mode {
-        player.aim_direction = Vector2 { x: 1.0, y: 0.0 };
+        player.aim_direction = Vector2 { x: 0.0, y: 0.0 };
       }
     }
 
@@ -630,6 +640,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // println!("{:?}", player.position);
     // println!("{:?}", movement_vector);
     // println!("{:?}", movement_vector_raw);
+    println!("{:?}", keyboard_mode);
 
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {

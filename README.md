@@ -56,16 +56,21 @@ On Linux, you need to additionally install `libudev-dev`.
       - [ ] Passives
 - [x] Improve map
 - [x] Simple background tile system
-- [ ] Arbitrarily balance characters
-  - [ ] Raphaelle
-  - [ ] CyneWynn
-  - [ ] Hernani
+- [x] Arbitrarily balance characters
+  - [x] Raphaelle
+  - [x] CyneWynn
+  - [x] Hernani
 - [ ] Basic drawings
   - [ ] Bullets
+    - [ ] R
+    - [ ] C
+    - [ ] H
+    - [x] Rotation
   - [ ] Characters
     - [ ] Raphaelle
     - [ ] CyneWynn
     - [ ] Hernani
+      - [ ] Wall
 
 ### After every playtest:
 

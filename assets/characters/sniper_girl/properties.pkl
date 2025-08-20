@@ -1,6 +1,6 @@
 health = 100
 
-speed = 50.0
+speed = 40.0
 
 primary_damage = 12
 primary_heal = 0
