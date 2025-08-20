@@ -137,33 +137,12 @@ Intended playstyle:
 
 ## 4.2. Assassins
 
-### 4.2.1. no name yet - IDEA 1 - not yet implemented
-
-- Potential names:
-  - Cyneswith
-  - CyneswiÞ
-  - Cynewynn
-  - Cynewyn
+### 4.2.1. Synewynn
 
 - Primary
-  - A sword slash. Fire rate is proportional to secondary charge. At 70% or something, it reaches full potential, where it's 5% above standard.
-    Below that, it is gradually worse, going as far as 20% below standard.
+  - A sword slash, whose fire rate is proportional to secondary charge.
 - Secondary
-  - Teleport forward, entering a "dash mode" where you take less damage, using distance-proportional secondary charge. Charge must be at least 50-70%.
-- Movement
-  - A short flashback.
-- Passive
-  - no passive
-
-Intended playstyle:
-- A balanced hit & run
-
-### 4.2.2. no name yet - IDEA 2 - current implementation
-
-- Primary
-  - A sword slash.
-- Secondary
-  - Flash back to your position 3 seconds ago.
+  - Flash back to previous position 2.5s ago, and heal a little.
 - Movement
   - Dash forward, taking reduced damage during the quick dash.
 - Passive

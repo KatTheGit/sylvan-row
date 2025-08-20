@@ -500,6 +500,9 @@ fn main() {
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.
       let mut cooldown: f32 = character.primary_cooldown;
+      if main_loop_players[player_index].character == Character::TimeQueen {
+        cooldown -= cooldown * ((secondary_charge as f32 / 100.0) * 0.10)
+      }
 
       for buff in main_loop_players[player_index].buffs.clone() {
         if buff.buff_type == BuffType::FireRate || buff.buff_type == BuffType::HealerFireRate {
