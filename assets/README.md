@@ -17,8 +17,7 @@ This document specifies all design rules and choices for this videogame.
   - [4.1. Healers](#41-healers)
     - [4.1.1. Raphaelle](#411-raphaelle)
   - [4.2. Assassins](#42-assassins)
-    - [4.2.1. no name yet - IDEA 1 - not yet implemented](#421-no-name-yet---idea-1---not-yet-implemented)
-    - [4.2.2. no name yet - IDEA 2 - current implementation](#422-no-name-yet---idea-2---current-implementation)
+    - [4.2.1. Cynewynn](#421-cynewynn)
   - [4.3. Rangers](#43-rangers)
     - [4.3.1. Hernani](#431-hernani)
 
@@ -137,7 +136,7 @@ Intended playstyle:
 
 ## 4.2. Assassins
 
-### 4.2.1. Synewynn
+### 4.2.1. Cynewynn
 
 - Primary
   - A sword slash, whose fire rate is proportional to secondary charge.

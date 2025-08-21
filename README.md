@@ -56,6 +56,7 @@ On Linux, you need to additionally install `libudev-dev`.
       - [ ] Passives
 - [x] Improve map
 - [x] Simple background tile system
+- [x] Sort gameobjects by height
 - [x] Arbitrarily balance characters
   - [x] Raphaelle
   - [x] Cynewynn
@@ -70,7 +71,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [ ] Raphaelle
     - [ ] Cynewynn
     - [ ] Hernani
-      - [ ] Wall
+      - [x] Wall
 
 ### After every playtest:
 

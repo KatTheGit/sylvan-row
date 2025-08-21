@@ -7,7 +7,7 @@ use bincode;
 use std::{thread, time::*};
 
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
-static mut SPAWN_RED: Vector2 = Vector2 {x: 300.0, y: 150.0};
+static mut SPAWN_RED: Vector2 = Vector2 {x: 300.0, y: 110.0};
 static mut SPAWN_BLUE: Vector2 = Vector2 {x: 20.0, y: 120.0};
 
 fn main() {
@@ -382,6 +382,9 @@ fn main() {
               gamemode_info.kills_blue = 0;
               gamemode_info.kills_red  = 0;
             }
+            let mut reset_game_objects = main_game_objects.lock().unwrap();
+            *reset_game_objects = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
+            drop(reset_game_objects);
           }
         }
 
@@ -970,7 +973,6 @@ impl ServerPlayer {
     }
   }
   fn kill(&mut self, credit_other_team: bool, gamemode_info: &GameModeInfo) -> GameModeInfo{
-    println!("Running kill function");
     let mut updated_gamemode_info: GameModeInfo = gamemode_info.clone();
     // remove all previous positions
     self.previous_positions = Vec::new();
