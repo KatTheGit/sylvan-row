@@ -323,19 +323,27 @@ async fn game(/* server_ip: &str */ character: Character) {
         0.4 * vh, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
       );
     }
+    
+    // draw players and optionally their trails
+    let trail_y_offset: f32 = 4.5;
+    for player in other_players_copy.clone() {
+      if player.character == Character::TimeQueen && !player.is_dead {
+        draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.0, 1.0);
+        draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.3, 0.5);
+        draw_lines(player.previous_positions,         player_copy.camera.position, vh, player.team, trail_y_offset-0.6, 0.25);
+      }
+    }
+    if player_copy.character == Character::TimeQueen && !player_copy.is_dead {
+      draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.0, 0.6);
+      draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.3, 0.4);
+      draw_lines(player_copy.previous_positions.clone(),         player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.6, 0.2);
+    }
     // temporary ofc
     if !player_copy.is_dead {
       player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
     }
-    
     for player in other_players_copy {
       player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone());
-      if player.character == Character::TimeQueen && !player.is_dead {
-        draw_lines(player.previous_positions, player_copy.camera.position, vh, player.team);
-      }
-    }
-    if player_copy.character == Character::TimeQueen && !player_copy.is_dead {
-      draw_lines(player_copy.previous_positions, player_copy.camera.position, vh, player_copy.team);
     }
     if player_copy.is_dead {
       draw_text("You dead rip", 20.0*vh, 50.0*vh, 20.0*vh, RED);
@@ -768,7 +776,7 @@ fn network_listener(
   }
 }
 
-fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team) -> () {
+fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team, y_offset: f32, alpha: f32) -> () {
   if positions.len() < 2 { return; }
   for position_index in 0..positions.len()-1 {
     // if position_index > positions.len() / 3  {
@@ -776,7 +784,7 @@ fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team) -> 
     // } else {
     //   draw_line_relative(positions[position_index].x, positions[position_index].y, positions[position_index+1].x, positions[position_index+1].y, 0.4, match team {Team::Blue => SKYBLUE, Team::Red => ORANGE}, camera, vh);
     // }
-    draw_line_relative(positions[position_index].x, positions[position_index].y, positions[position_index+1].x, positions[position_index+1].y, 0.4, match team {Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: 1.0 }, Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: 1.0 }}, camera, vh);
+    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: alpha }, Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: alpha }}, camera, vh);
   }
   // let texture = Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/tq-flashback.png"), None  );
   // draw_image_relative(&texture, positions[0].x - TILE_SIZE/2.0, positions[0].y - (TILE_SIZE*1.5)/2.0, TILE_SIZE, TILE_SIZE * 1.5, vh, camera);

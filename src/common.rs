@@ -216,6 +216,14 @@ pub struct ClientPlayer {
 impl ClientPlayer {
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties) {
     // TODO: animations
+    let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
+    let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
+    let color = match self.team {
+      Team::Blue => Color { r: 0.3, g: 0.5, b: 0.7, a: 0.5 },
+      Team::Red => Color { r: 0.7, g: 0.5, b: 0.3, a: 0.5 },
+    };
+    draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera_position, vh);
+
     let size: f32 = 10.0;
     draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera_position, Vector2::new());
     let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
@@ -252,19 +260,19 @@ impl ClientPlayer {
       1.5,
       GREEN,
       camera_position, vh);
-      let health_counter_offset: Vector2 = Vector2 { x: -11.5, y: -10.6 };
-      let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
-      let font_size: u16 = 4;
-      draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, font_size, vh, camera_position, GREEN);
-      let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
-      let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
-      draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
+    let health_counter_offset: Vector2 = Vector2 { x: -11.5, y: -10.6 };
+    let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
+    let font_size: u16 = 4;
+    draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, font_size, vh, camera_position, GREEN);
+    let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
+    let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
+    draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
 
-      let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -15.0 };
-      for buff in self.buffs.clone() {
-        draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::HealerFireRate => "+ fire rate", BuffType::Speed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
-        buff_offset.y -= 3.0;
-      }
+    let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -15.0 };
+    for buff in self.buffs.clone() {
+      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::HealerFireRate => "+ fire rate", BuffType::Speed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+      buff_offset.y -= 3.0;
+    }
   }
   pub fn new() -> ClientPlayer {
     return ClientPlayer {
@@ -457,6 +465,11 @@ pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, co
   let relative_position_x2 = x2 - center_position.x + (50.0 * (16.0/9.0));
   let relative_position_y2 = y2 - center_position.y + 50.0;
   draw_line(relative_position_x1 * vh, relative_position_y1 * vh, relative_position_x2 * vh, relative_position_y2 * vh, thickness * vh, color);
+}
+pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Color, center_position: Vector2, vh:f32) -> () {
+  let relative_position_x1 = x1 - center_position.x + (50.0 * (16.0/9.0));
+  let relative_position_y1 = y1 - center_position.y + 50.0;
+  draw_rectangle(relative_position_x1*vh, relative_position_y1*vh, w*vh, h*vh, color);
 }
 
 pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16, vh: f32, center_position: Vector2, color: Color) -> () {
