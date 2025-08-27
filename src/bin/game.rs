@@ -138,7 +138,7 @@ async fn game(/* server_ip: &str */ character: Character) {
     player_textures.insert(
       character,
       match character {
-        Character::TimeQueen  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/test.png"), None),
+        Character::TimeQueen  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/main.png"), None),
         Character::HealerGirl => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/test.png"), None),
         Character::SniperWolf => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/test.png"), None),
         Character::Dummy      => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/test.png"), None),
