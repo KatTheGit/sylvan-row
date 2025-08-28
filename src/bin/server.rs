@@ -541,7 +541,7 @@ fn main() {
                 true  => {GameObjectType::HealerGirlBulletEmpowered},
                 false => {GameObjectType::HealerGirlBullet},
               },
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+              size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,

@@ -228,9 +228,10 @@ async fn game(/* server_ip: &str */ character: Character) {
     // for game objects
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
-        GameObjectType::HealerGirlBullet | GameObjectType::TimeQueenSword | GameObjectType::SniperWolfBullet => {
+        GameObjectType::HealerGirlBullet | GameObjectType::TimeQueenSword | GameObjectType::SniperWolfBullet | GameObjectType::HealerGirlBulletEmpowered => {
           let speed: f32 = character_properties[&(match game_object.object_type {
             GameObjectType::HealerGirlBullet => Character::HealerGirl,
+            GameObjectType::HealerGirlBulletEmpowered => Character::HealerGirl,
             GameObjectType::SniperWolfBullet => Character::SniperWolf,
             GameObjectType::TimeQueenSword => Character::TimeQueen,
             _ => panic!()
@@ -338,6 +339,14 @@ async fn game(/* server_ip: &str */ character: Character) {
       draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.3, 0.4);
       draw_lines(player_copy.previous_positions.clone(),         player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.6, 0.2);
     }
+
+    for player in other_players_copy.clone() {
+
+      if Vector2::distance(player_copy.position, player.position) < character_properties[&Character::HealerGirl].primary_range  {
+        draw_line_relative(player.position.x, player.position.y, player_copy.position.x, player_copy.position.y, 0.5, GREEN, player_copy.camera.position, vh);
+      }
+    }
+
     // temporary ofc
     if !player_copy.is_dead {
       player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
