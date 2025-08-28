@@ -1,6 +1,6 @@
 # 1. Game design document
 
-This document specifies all design rules and choices for this videogame.
+All design guidelines for this videogame.
 
 - [1. Game design document](#1-game-design-document)
   - [1.1. Basic game description](#11-basic-game-description)
@@ -35,11 +35,11 @@ A multiplayer arena fighting game where players fight with their pick amongst a 
 # 2. Base mechanics
 
 There are, independently of the picked character, three types of abilities. These differ by character.
-- Primary attack (sort cooldown)
-- Secondary attack (uses charge, build up my hitting shots.)
+- Primary attack (on short cooldown, generally less than 1s)
+- Secondary attack (uses charge, build by damaging opponents or healing allies.)
 - Dash (longer cooldown)
 - Other
-  - Passive ability
+  - Passive abilities
   - Movement speed
   - Passive ssecondary charge rate
 
@@ -54,6 +54,8 @@ The player has five game controls, which are independent of their picked charact
 
 A player may move freely if unobstructed by the map, aim and shoot freely at all times, and shoot their secondary
 once it is charged. These are the player's rights and may not be inhibited by other players and their abilities (i.e. stun, root).
+
+Characters must be designed to be playable on a controller.
 
 ## 2.2. Stunning and Control
 
@@ -79,10 +81,11 @@ Absolutely everything has to be clear. Everything that is happening on the battl
 - However, only show partial informtion about opponent ability availability.
 - Invisibility, be it invisible players, traps or whatnot again requires a ridiculously cautious playstyle that is disfavoured in this game.
 - One colour for each projectile type depending on team:
-- Red team, healing: Orange
-- Red team, damage: Red duh
-- Blue team, heal: Green
-- Blue team, damage: Have a guess
+  - Red team, healing: Orange
+  - Red team, damage: Red duh
+  - Blue team, heal: Green
+  - Blue team, damage: Have a guess
+
 ## 2.4. Map
 
 Maps contain walls. Walls are a major gameplay element. They can be added (by abilities) or removed (shot down), but they cannot be easily shot or moved through, unless they are temporary.
@@ -118,51 +121,58 @@ They excel at helping healers in battle, as they can help defend  them from assa
 ### 4.1.1. Raphaelle
 
 - Primary
-  - A lifesteal mid-range shot that sends the health to nearby teammates (or a little to self if no one around).
+  - Raphaelle tethers to allies within a certain radius.
+  - She shoots a medium range piercing projectile, if it damages an opponent, her tethered allies will recieve some health. She recieves half the health her allies recieve.
+  - If empowered, her projectile will deal more damage but won't heal allies. If it lands, it will slightly reduce the cooldown on her dash ability.
 - Secondary
-  - Place down a zone of increased fire rate and health regen
-- Movement
-  - A short dash that empowers the next shot, which does not heal, but does extra damage. If it lands, it restores dash charge.
-- Passive
-  - Flight: Gains a short temporary speed buff upon getting hit.
+  - Places down a circular healpool, which periodically heals allies and increases the fire rate of anyone inside.
+- Dash
+  - A short dash that empowers the next primary shot.
+  - Dashing through an ally will heal them. [NOT IMPLEMENTED, might add if her healing output is too low]
+- Passives
+  - Gains a short temporary speed buff upon getting hit.
   - Relatively fast base movement speed, should be able to keep up with most teammates.
+  - Marginally heal tethered allies [NOT IMPLEMENTED, might add if her healing output is too low]
 
 Intended playstyle:
-- Has to be able to play offensively so she can play defensively.
-- A somewhat versatile, evasive underdog.
-  - If helping the team, deals less damage, less offensive, more defensive
-  - If solo, can deal more damage, can be more offensive
-  - A good player should merge both playstyles.
+- Has to be able to play offensively so she can play defensively. She can only heal by attacking players.
+- Can be very evasive, especially if she lands her empowered shots.
 
 ## 4.2. Assassins
 
 ### 4.2.1. Cynewynn
 
 - Primary
-  - A sword slash, whose fire rate is proportional to secondary charge.
+  - A piercing sword slash.
+  - The higher her secondary charge, the faster her attack rate.
 - Secondary
-  - Flash back to previous position 2.5s ago, and heal a little.
+  - Teleport back to her previous position, a few seconds in the past.
+  - Gain a small amount of health doing so.
 - Movement
-  - Dash forward, taking reduced damage during the quick dash.
+  - A long dash on a moderately long cooldown.
+  - Take reduced damage during the dash.
 - Passive
-  - no passive
+  - Highest movement speed.
 
 Intended playstyle:
-- A balanced hit & run
+- A balanced hit & run. She gains from not retreating.
+- She has to be careful. Her dash is on a long cooldown and her secondary reduces her fire rate. Her actions must be planned and she significantly weakens from a hesitant player. Her mobility is her downfall, a smart player might be able to bait out a dash and play around her cooldowns.
 
 ## 4.3. Rangers
 
 ### 4.3.1. Hernani
 
 - Primary
-  - Long range shot
+  - Long range shot, with a relatively low fire rate.
 - Secondary
   - Place down a wall, using some secondary charge
 - Movement
-  - Dash away, placing down a landmine/bear trap/whatnot. The landmine arms after a second or two.
+  - Dash far away, placing down a bear trap. The ability is on a relatively long cooldown.
+  - The bear trap arms after one second, and harms anyone touching it. It lasts until Hernani regains his dash cooldown.
 - Passive
-  - Has an easier time destroying walls
+  - Has an easier time destroying walls.
+  - Slowest movement speed.
 
 Intended playstyle:
-- Easy to play, tutorial character ahh
-- Stand back and fire from a distance
+- Easy to play, tutorial character.
+- Stand back and fire from a distance, while keeping people away with walls and making sure to manage your long cooldown dash adequately.

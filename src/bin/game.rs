@@ -289,9 +289,9 @@ async fn game(/* server_ip: &str */ character: Character) {
     // (vscode) MARK: Draw
 
     // Draw the backgrounds
-    clear_background(BLACK);
+    clear_background(SKYBLUE);
     // TEMPORARY
-    draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, GRAY);
+    draw_rectangle(0.0, 0.0, 100.0 * vw, 100.0 * vh, Color { r: 0.55, g: 0.75, b: 0.5, a: 1.0 });
     for background_tile in background_tiles.clone() {
       let texture = &game_object_tetures[&background_tile.object_type];
       let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
@@ -340,10 +340,17 @@ async fn game(/* server_ip: &str */ character: Character) {
       draw_lines(player_copy.previous_positions.clone(),         player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.6, 0.2);
     }
 
-    for player in other_players_copy.clone() {
-
-      if Vector2::distance(player_copy.position, player.position) < character_properties[&Character::HealerGirl].primary_range  {
-        draw_line_relative(player.position.x, player.position.y, player_copy.position.x, player_copy.position.y, 0.5, GREEN, player_copy.camera.position, vh);
+    // Draw raphaelle's tethering.
+    let mut all_players_copy: Vec<ClientPlayer> = other_players_copy.clone();
+    all_players_copy.push(player_copy.clone());
+    for player in all_players_copy.clone() {
+      if player.character == Character::HealerGirl {
+        for player_2 in all_players_copy.clone() {
+          if Vector2::distance(player.position, player_2.position) < character_properties[&Character::HealerGirl].primary_range
+          && player.team == player_2.team {
+            draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, GREEN, player_copy.camera.position, vh);
+          }
+        }
       }
     }
 
@@ -361,7 +368,7 @@ async fn game(/* server_ip: &str */ character: Character) {
     // time, kills, rounds
     let gamemode_info_main = gamemode_info.lock().unwrap();
     // let timer_width: f32 = 5.0;
-    draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, WHITE);
+    draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.5 });
     draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);
     draw_text_relative(format!("Blue Kills: {}", gamemode_info_main.kills_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
     draw_text_relative(format!("Blue Wins : {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
