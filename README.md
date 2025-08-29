@@ -72,6 +72,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Cynewynn
     - [ ] Hernani
       - [x] Wall
+      - [x] Landmine
 
 ### After every playtest:
 
@@ -94,6 +95,10 @@ On Linux, you need to additionally install `libudev-dev`.
   - [ ] Server launches Game Server
   - [ ] Client connects to Game Server
   - [ ] Profit
+  - [ ] Account system
+    - [ ] One way password hash
+    - [ ] User database
+    - [ ] Login window and allat
 
 ### After every playtest:
 

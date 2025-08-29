@@ -618,8 +618,8 @@ fn main() {
             let wall_place_distance = character.secondary_range;
             let mut desired_placement_position: Vector2 = player_info.position;
             // round to closest 10
-            desired_placement_position.x = ((((desired_placement_position.x + player_info.aim_direction.x * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position.y = ((((desired_placement_position.y + player_info.aim_direction.y * wall_place_distance) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position.x = ((((desired_placement_position.x + player_info.aim_direction.x * wall_place_distance + TILE_SIZE/2.0) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position.y = ((((desired_placement_position.y + player_info.aim_direction.y * wall_place_distance + TILE_SIZE/2.0) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
 
             let mut wall_can_be_placed = true;
             let mut game_objects = main_game_objects.lock().unwrap();

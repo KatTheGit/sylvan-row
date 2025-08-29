@@ -342,6 +342,23 @@ async fn game(/* server_ip: &str */ character: Character) {
         (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
         0.4 * vh, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
       );
+      if player_copy.character == Character::SniperWolf {
+        let range: f32 = character_properties[&Character::SniperWolf].secondary_range - TILE_SIZE/2.0;
+        let aim_dir = aim_direction.normalize();
+        // perpendicular direction 1
+        let aim_dir_alpha = Vector2 {x:   aim_dir.y, y: - aim_dir.x};
+        // perpendicular direction 2
+        let aim_dir_gamma = Vector2 {x: - aim_dir.y, y:   aim_dir.x};
+
+        let width = 2.0;
+        draw_line(
+        (aim_dir.x * range + aim_dir_alpha.x * width) * vh + relative_position_x * vh,
+        (aim_dir.y * range + aim_dir_alpha.y * width) * vh + relative_position_y * vh,
+        (aim_dir.x * range + aim_dir_gamma.x * width) * vh + relative_position_x * vh,
+        (aim_dir.y * range + aim_dir_gamma.y * width) * vh + relative_position_y * vh,
+        0.4 * vh, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
+      );
+      }
     }
     
     // draw players and optionally their trails
