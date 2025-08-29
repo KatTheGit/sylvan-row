@@ -10,7 +10,8 @@ primary_lifesteal = 0
 primary_cooldown = 1.0
 primary_range = 80.0
 primary_shot_speed = 200.0
-primary_hit_radius = 5.0
+primary_wall_hit_radius = 3.0
+primary_hit_radius = 7.0
 wall_damage_multiplier = 1.5
 
 secondary_damage = 0

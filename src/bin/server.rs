@@ -395,7 +395,7 @@ fn main() {
       main_loop_players.push(
         ServerPlayer {
           ip: String::from("hello"),
-          team: Team::Blue,
+          team: Team::Red,
           character: Character::Dummy,
           health: 0,
           position: Vector2 { x: 10.0, y: 10.0 },
@@ -521,7 +521,7 @@ fn main() {
           Character::SniperWolf => {
             game_objects.push(GameObject {
               object_type: GameObjectType::SniperWolfBullet,
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+              size: Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
@@ -555,8 +555,10 @@ fn main() {
           Character::TimeQueen => {
             game_objects.push(GameObject {
               object_type: GameObjectType::TimeQueenSword,
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-              position: main_loop_players[player_index].position,
+              size: Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
+              position: Vector2 {
+                x: main_loop_players[player_index].position.x + main_loop_players[player_index].aim_direction.x * 5.0 ,
+                y: main_loop_players[player_index].position.y + main_loop_players[player_index].aim_direction.y * 5.0 },
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
@@ -1042,6 +1044,7 @@ fn apply_simple_bullet_logic_extra(
   let character_properties = characters[&character].clone();
   let owner_index = game_object.owner_index;
   let hit_radius: f32 = character_properties.primary_hit_radius;
+  let wall_hit_radius: f32 = character_properties.primary_wall_hit_radius;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
   
   // Set special values
@@ -1061,7 +1064,7 @@ fn apply_simple_bullet_logic_extra(
     // if it's a wall
     if WALL_TYPES.contains(&game_objects[victim_object_index].object_type) {
       // if it's colliding
-      if Vector2::distance(game_object.position, game_objects[victim_object_index].position) < (5.0 + hit_radius) {
+      if Vector2::distance(game_object.position, game_objects[victim_object_index].position) < (5.0 + wall_hit_radius) {
         // delete the bullet
         game_objects[game_object_index].to_be_deleted = true;
         // damage the wall if it's not unbreakable

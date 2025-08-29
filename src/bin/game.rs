@@ -87,11 +87,11 @@ async fn game(/* server_ip: &str */ character: Character) {
         GameObjectType::SniperWall                => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/wall.png"), None),
         GameObjectType::HealerAura                => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/secondary.png"), None),
         GameObjectType::UnbreakableWall           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
-        GameObjectType::SniperWolfBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HealerGirlBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HealerGirlBulletEmpowered => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::TimeQueenSword            => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
+        GameObjectType::SniperWolfBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/bullet.png"), None),
+        GameObjectType::HealerGirlBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/bullet.png"), None),
+        GameObjectType::HealerGirlBulletEmpowered => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/bullet.png"), None),
+        GameObjectType::TimeQueenSword            => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/bullet.png"), None),
+        GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/trap.png"), None),
         GameObjectType::Grass1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1.png"), None),
         GameObjectType::Grass2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-2.png"), None),
         GameObjectType::Grass3                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-3.png"), None),
@@ -320,7 +320,7 @@ async fn game(/* server_ip: &str */ character: Character) {
           size.y,
           vh, player_copy.camera.position,
           game_object.direction,
-          Color { r: 0.05, g: 0.0, b: 0.1, a: 0.3 });
+          Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 });
       }
       draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, game_object.direction, WHITE);
     }

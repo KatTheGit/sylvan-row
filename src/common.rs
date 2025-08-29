@@ -104,6 +104,7 @@ pub struct CharacterProperties {
   pub primary_shot_speed: f32,
   /// Girth of the bullet
   pub primary_hit_radius: f32,
+  pub primary_wall_hit_radius: f32,
   /// This value is applied to small integers. Be wary of rounding. Only applies to primary attack, in theory.
   pub wall_damage_multiplier: f32,
 
@@ -153,6 +154,7 @@ impl CharacterProperties {
       primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap()),
       primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap()),
       primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap()),
+      primary_wall_hit_radius:  pkl_f32(find_parameter(&pkl, "primary_wall_hit_radius"  ).unwrap()),
       wall_damage_multiplier:   pkl_f32(find_parameter(&pkl, "wall_damage_multiplier"   ).unwrap()),
       secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage"         ).unwrap()),
       secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal"           ).unwrap()),

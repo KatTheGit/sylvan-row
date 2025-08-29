@@ -62,14 +62,14 @@ On Linux, you need to additionally install `libudev-dev`.
   - [x] Cynewynn
   - [x] Hernani
 - [ ] Basic drawings
-  - [ ] Bullets
-    - [ ] R
-    - [ ] C
-    - [ ] H
+  - [x] Bullets
+    - [x] R
+    - [x] C
+    - [x] H
     - [x] Rotation
   - [ ] Characters
     - [ ] Raphaelle
-    - [ ] Cynewynn
+    - [x] Cynewynn
     - [ ] Hernani
       - [x] Wall
 
@@ -128,3 +128,8 @@ On Linux, you need to additionally install `libudev-dev`.
 ## Note
 
 This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the original repository](https://github.com/OrnitOnGithub/moba?tab=readme-ov-file#notice)
+
+## Extra credits
+
+- MylesDeGreat on deviantart for inspiration on the sword slash sprite
+- posemy.art for reference images
