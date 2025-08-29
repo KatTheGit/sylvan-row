@@ -81,10 +81,7 @@ fn main() {
           // }
 
           if recieved_player_info.character != player.character {
-            println!("recieved character: {:?}, current character: {:?}", recieved_player_info.character, player.character);
-            println!("Changing character to: {:?}", recieved_player_info.character);
             player.character = recieved_player_info.character;
-            println!("New character is: {:?}", listener_players[player_index].character);
             player.kill(false, &GameModeInfo::new());
           }
 
@@ -398,7 +395,7 @@ fn main() {
       main_loop_players.push(
         ServerPlayer {
           ip: String::from("hello"),
-          team: Team::Red,
+          team: Team::Blue,
           character: Character::Dummy,
           health: 0,
           position: Vector2 { x: 10.0, y: 10.0 },

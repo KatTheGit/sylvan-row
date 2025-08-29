@@ -225,7 +225,7 @@ impl ClientPlayer {
     draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera_position, vh);
 
     let size: f32 = 10.0;
-    draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera_position, Vector2::new());
+    draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera_position, Vector2::new(), WHITE);
     let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
     let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };
     let dash_bar_offset: Vector2 = Vector2 { x: -5.0, y: -15.0 };
@@ -433,12 +433,12 @@ impl Vector2 {
 }
 
 /// wrapper function for `draw_texture_ex`, simplifies it.
-pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, rotation: Vector2) -> () {
+pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, rotation: Vector2, color: Color) -> () {
   let mut rotation_rad: f32 = 0.0;
   if rotation.magnitude() != 0.0 {
     rotation_rad = rotation.y.atan2(rotation.x);
   }
-  draw_texture_ex(texture, x * vh, y * vh, WHITE, DrawTextureParams {
+  draw_texture_ex(texture, x * vh, y * vh, color, DrawTextureParams {
     dest_size: Some(Vec2 { x: w * vh, y: h * vh}),
     source: None,
     rotation: rotation_rad,
@@ -450,13 +450,13 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, 
 // MARK: Draw
 /// same as draw_image but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.
-pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, center_position: Vector2, rotation: Vector2) -> () {
+pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, center_position: Vector2, rotation: Vector2, color: Color) -> () {
 
   // draw relative to position and centered.
   let relative_position_x = x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
   let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
 
-  draw_image(texture, relative_position_x, relative_position_y, w, h, vh, rotation);
+  draw_image(texture, relative_position_x, relative_position_y, w, h, vh, rotation, color);
 }
 
 pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Color, center_position: Vector2, vh:f32) -> () {

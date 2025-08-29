@@ -295,7 +295,7 @@ async fn game(/* server_ip: &str */ character: Character) {
     for background_tile in background_tiles.clone() {
       let texture = &game_object_tetures[&background_tile.object_type];
       let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
-      draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, Vector2::new());
+      draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, Vector2::new(), WHITE);
     }
 
     // draw all gameobjects
@@ -303,7 +303,26 @@ async fn game(/* server_ip: &str */ character: Character) {
     for game_object in game_objects_copy {
       let texture = &game_object_tetures[&game_object.object_type];
       let size = game_object.size;
-      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, game_object.direction);
+      let shadow_offset: f32 = 5.0;
+
+      // Draw shadows on certain objects
+      let shaded_objects = vec![GameObjectType::HealerGirlBullet,
+                                                     GameObjectType::HealerGirlBulletEmpowered,
+                                                     GameObjectType::SniperWolfBullet,
+                                                     GameObjectType::TimeQueenSword,
+                                                    ];
+      if shaded_objects.contains(&game_object.object_type) {
+        draw_image_relative(
+          texture,
+          game_object.position.x - size.x/2.0,
+          game_object.position.y - size.y/2.0 + shadow_offset,
+          size.x,
+          size.y,
+          vh, player_copy.camera.position,
+          game_object.direction,
+          Color { r: 0.05, g: 0.0, b: 0.1, a: 0.3 });
+      }
+      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, game_object.direction, WHITE);
     }
 
 
