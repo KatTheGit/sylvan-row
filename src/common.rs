@@ -312,6 +312,7 @@ pub struct ClientPacket {
   pub dashing:         bool,
   /// TEMPORARY
   pub character: Character,
+  pub port: u16,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum Team {

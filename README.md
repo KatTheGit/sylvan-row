@@ -142,3 +142,4 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
 
 - MylesDeGreat on deviantart for inspiration on the sword slash sprite
 - posemy.art for reference images
+- playit.gg for tunnels

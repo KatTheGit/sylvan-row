@@ -17,6 +17,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
 use std::fs::File;
+use ::rand::thread_rng;
+use ::rand::Rng;
 
 #[cfg(target_os = "macos")]
 fn rmb_index() -> usize {
@@ -74,6 +76,31 @@ async fn main() {
 /// In the future this function will be called by main once the user starts the game
 /// through the menu.a
 async fn game(/* server_ip: &str */ character: Character) {
+
+  
+  // Find a random free port and use it
+  let min_port: u16 = 49152;
+  let max_port: u16 = 65535;
+  let mut port: u16;
+  let mut rng = thread_rng();
+  loop {
+    let y: f64 = rng.gen(); // generates a float between 0 and 1
+    port = min_port + (y * (max_port - min_port) as f64) as u16;
+    print!("Attempted port: {}. Status: ", port);
+    let dummy_ip: String = format!("0.0.0.0:{}", port);
+    match UdpSocket::bind(dummy_ip) {
+      Ok(_) => {
+        // PORT IS GOOD
+        println!("Good");
+        break;
+      }
+      Err(_) => {
+        // PORT IS BAD
+        // try again
+        println!("Bad. Trying again.");
+      }
+    }
+  }
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
@@ -167,7 +194,7 @@ async fn game(/* server_ip: &str */ character: Character) {
   let input_thread_killall = Arc::clone(&kill_all_threads);
   let input_thread_keyboard_mode = Arc::clone(&keyboard_mode);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode);
+    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port);
   });
 
   // start the network listener thread.
@@ -178,7 +205,7 @@ async fn game(/* server_ip: &str */ character: Character) {
   let gamemode_info_listener= Arc::clone(&gamemode_info);
   let killall_listener = Arc::clone(&kill_all_threads);
   std::thread::spawn(move || {
-    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players, gamemode_info_listener, killall_listener);
+    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players, gamemode_info_listener, killall_listener, port);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -432,7 +459,7 @@ async fn game(/* server_ip: &str */ character: Character) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16) -> () {
 
   let mut server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
@@ -713,6 +740,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       packet_interval: delta_time,
       dashing,
       character: player.character,
+      port: port,
     };
 
     // drop mutexguard ASAP so other threads can use player ASAP.
@@ -748,9 +776,11 @@ fn network_listener(
   game_objects: Arc<Mutex<Vec<GameObject>>>,
   other_players: Arc<Mutex<Vec<ClientPlayer>>>,
   gamemode_info: Arc<Mutex<GameModeInfo>>,
-  kill: Arc<Mutex<bool>>, ) -> () {
+  kill: Arc<Mutex<bool>>,
+  port: u16,
+) -> () {
 
-  let listening_ip: String = format!("0.0.0.0:{}", CLIENT_LISTEN_PORT);
+  let listening_ip: String = format!("0.0.0.0:{}", port);
   let listening_socket: UdpSocket = UdpSocket::bind(listening_ip)
   .expect("Could not bind client listener socket");
   listening_socket.set_read_timeout(Some(Duration::from_millis(100))).expect("Failed to set timeout ig...");

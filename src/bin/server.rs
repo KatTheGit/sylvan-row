@@ -258,6 +258,7 @@ fn main() {
         unsafe {
           listener_players.push(ServerPlayer {
             ip: src.ip().to_string(),
+            port: recieved_player_info.port,
             team,
             health: 100,
             position: match team {
@@ -284,7 +285,7 @@ fn main() {
             buffs:                Vec::new(),
           });
         }
-        println!("Player connected: {}", src.ip().to_string());
+        println!("Player connected: {}:{}", src.ip().to_string(), src.port().to_string());
       }
       drop(listener_players);
     }
@@ -395,6 +396,7 @@ fn main() {
       main_loop_players.push(
         ServerPlayer {
           ip: String::from("hello"),
+          port: 12,
           team: Team::Red,
           character: Character::Dummy,
           health: 0,
@@ -871,7 +873,7 @@ fn main() {
         let mut player_ip = player.ip.clone();
         let split_player_ip: Vec<&str> = player_ip.split(":").collect();
         player_ip = split_player_ip[0].to_string();
-        player_ip = format!("{}:{}", player_ip, CLIENT_LISTEN_PORT);
+        player_ip = format!("{}:{}", player_ip, player.port);
         // println!("PLAYER IP: {}", player_ip);
         // println!("PACKET: {:?}", server_packet);
         let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
@@ -897,6 +899,7 @@ fn main() {
 struct ServerPlayer {
   /// also used as an identifier
   ip:                   String,
+  port:                 u16,
   team:                 Team,
   character:            Character,
   health:               u8,
