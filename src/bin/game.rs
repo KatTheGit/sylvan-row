@@ -33,7 +33,7 @@ fn rmb_index() -> usize {
 
 fn window_conf() -> Conf {
   Conf {
-    window_title: "Game".to_owned(),
+    window_title: "Sylvan Row".to_owned(),
     fullscreen: false,
     icon: Some(Icon {
       small:  Image::from_file_with_format(include_bytes!("../../assets/icon/icon-small.png"), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
@@ -449,8 +449,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         }
         // couldnt read file
         Err(_) => {
-          println!("Couldn't read IP. defaulting to 0.0.0.0.");
-          server_ip = String::from("0.0.0.0");
+          println!("Couldn't read IP. defaulting to {}.", DEFAULT_SERVER_IP);
+          server_ip = String::from(DEFAULT_SERVER_IP);
         }
       }
     }
@@ -460,20 +460,20 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       match File::create(ip_file_name) {
         // Could create file
         Ok(mut file) => {
-          let _ = file.write_all(b"0.0.0.0");
-          println!("Config file created with default ip 0.0.0.0.");
-          server_ip = String::from("0.0.0.0");
+          let _ = file.write_all(DEFAULT_SERVER_IP.as_bytes());
+          println!("Config file created with default ip {}.", DEFAULT_SERVER_IP);
+          server_ip = String::from(DEFAULT_SERVER_IP);
         }
         // Couldn't create file
         Err(error) => {
-          println!("Could not create config file. Defaulting to 0.0.0.0.\nReason:\n{}", error);
-          server_ip = String::from("0.0.0.0");
+          println!("Could not create config file. Defaulting to {}.\nReason:\n{}", DEFAULT_SERVER_IP, error);
+          server_ip = String::from(DEFAULT_SERVER_IP);
         }
       }
     }
   }
 
-  let server_ip: String = format!("{}:{}", server_ip, SERVER_LISTEN_PORT);
+  let server_ip: String = format!("{}:{}", server_ip, PLAYIT_PORT);
   // create the socket for sending info.
   let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
   let sending_socket: UdpSocket = UdpSocket::bind(sending_ip)

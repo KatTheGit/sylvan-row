@@ -25,6 +25,8 @@ pub const CLIENT_SEND_PORT:   u32 = 25566;
 pub const CLIENT_LISTEN_PORT: u32 = 25567;
 pub const SERVER_SEND_PORT:   u32 = 25568;
 pub const SERVER_LISTEN_PORT: u32 = 25569;
+pub const PLAYIT_PORT:        u32 = 2741;
+pub const DEFAULT_SERVER_IP: &str = "147.185.221.31";
 
 // MARK: Gamemodes
 

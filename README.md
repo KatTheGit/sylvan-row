@@ -16,7 +16,9 @@ Run the server:
 cargo run --bin server --release # or ./server.sh
 ```
 
-You can change the server's IP in the file that gets created in the same directory the game is run. Default is 0.0.0.0.
+You can change the server's IP in the file that gets created in the same directory the game is run.
+
+Change the ports in common.rs.
 
 ## Dependencies
 
