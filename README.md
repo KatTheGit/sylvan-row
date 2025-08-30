@@ -35,7 +35,7 @@ On Linux, you need to additionally install `libudev-dev`.
     - [x] Character picker
     - [x] Client directly connects with a desired character specified in each packet sent, since all packets are identical.
 - [x] Buff system
-- [ ] Finish Characters
+- [x] Finish Characters
   - [x] The bunny
     - [x] Primary
     - [x] Secondary
@@ -105,10 +105,12 @@ On Linux, you need to additionally install `libudev-dev`.
 - [ ] Update gamemode
 
 ## Polish
+
 - [ ] Clean up code if necessary
 - [ ] Good sound design
   - [ ] One sound for every action, etc...
 - [ ] Main menu and matchmaking server
+- [ ] Account system
 - [ ] Better graphics
   - [ ] Animation system
   - [ ] Proper art

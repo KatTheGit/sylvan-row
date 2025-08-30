@@ -325,7 +325,7 @@ fn main() {
 
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = false;
+  let mut dummy_summoned: bool = true;
 
   // (vscode) MARK: Server Loop
   loop {
