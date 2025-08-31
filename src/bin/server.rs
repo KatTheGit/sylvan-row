@@ -236,8 +236,10 @@ fn main() {
           }
 
           // Send a return packet.
+          // (vscode) MARK: Network Return
           // not to the dummy though.
           if player.character == Character::Dummy {
+            player_found = true;
             break;
           }
 
@@ -299,7 +301,7 @@ fn main() {
           let mut player_ip = player.ip.clone();
           let split_player_ip: Vec<&str> = player_ip.split(":").collect();
           player_ip = split_player_ip[0].to_string();
-          player_ip = format!("{}:{}", player_ip, player.port);
+          player_ip = format!("{}:{}", player_ip, player.true_port);
           // println!("PLAYER IP: {}", player_ip);
           // println!("PACKET: {:?}", server_packet);
           let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
@@ -331,7 +333,6 @@ fn main() {
         }
         // create server player data
         // this data is pretty irrelevant, we're just initialising the player.
-        println!("{} {} {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port.to_string());
         unsafe {
           listener_players.push(ServerPlayer {
             ip: src.ip().to_string(),
@@ -363,7 +364,7 @@ fn main() {
             buffs:                Vec::new(),
           });
         }
-        println!("Player connected: {}:{}", src.ip().to_string(), src.port().to_string());
+        println!("Player connected: {}: {} - {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port);
       }
       drop(listener_players);
     }

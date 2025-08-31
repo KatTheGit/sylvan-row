@@ -19,12 +19,8 @@ pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// how many packets are averaged when calculating legality of player position.
 pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
-
-// TODO: later do this dynamically for client at least
-pub const CLIENT_SEND_PORT:   u32 = 25566;
-pub const SERVER_PORT:        u32 = 25569;
-pub const PLAYIT_PORT:        u32 = 2741;
-pub const DEFAULT_SERVER_IP: &str = "147.185.221.31";
+pub const SERVER_PORT:        u16 = 25569;
+pub const DEFAULT_SERVER_IP: &str = "147.185.221.31:2741";
 
 // MARK: Gamemodes
 

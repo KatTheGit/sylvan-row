@@ -50,34 +50,6 @@ fn window_conf() -> Conf {
 async fn main() {
   set_window_size(800, 450);
 
-  let mut timer: Instant = Instant::now();
-  loop {
-    clear_background(WHITE);
-    
-    if timer.elapsed().as_secs_f32() > 0.5 {
-      let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
-      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn");
-      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani");
-      // println!("{:?}", healer);
-      
-      if healer { game(Character::HealerGirl).await; timer = Instant::now() }
-      if queen  { game(Character::TimeQueen).await;  timer = Instant::now() }
-      if wolf   { game(Character::SniperWolf).await; timer = Instant::now() }
-    } else {
-      draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
-    }
-
-    next_frame().await;
-  }
-
-  //game(Character::HealerGirl).await;
-}
-// (vscode) MARK: main()
-/// In the future this function will be called by main once the user starts the game
-/// through the menu.a
-async fn game(/* server_ip: &str */ character: Character) {
-
-  
   // Find a random free port and use it
   let min_port: u16 = 49152;
   let max_port: u16 = 65535;
@@ -101,6 +73,33 @@ async fn game(/* server_ip: &str */ character: Character) {
       }
     }
   }
+
+  let mut timer: Instant = Instant::now();
+  loop {
+    clear_background(WHITE);
+    
+    if timer.elapsed().as_secs_f32() > 0.5 {
+      let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
+      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn");
+      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani");
+      // println!("{:?}", healer);
+      
+      if healer { game(Character::HealerGirl, port).await; timer = Instant::now() }
+      if queen  { game(Character::TimeQueen, port).await;  timer = Instant::now() }
+      if wolf   { game(Character::SniperWolf, port).await; timer = Instant::now() }
+    } else {
+      draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
+    }
+
+    next_frame().await;
+  }
+
+  //game(Character::HealerGirl).await;
+}
+// (vscode) MARK: main()
+/// In the future this function will be called by main once the user starts the game
+/// through the menu.a
+async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
@@ -193,19 +192,10 @@ async fn game(/* server_ip: &str */ character: Character) {
   let input_thread_sender_fps = Arc::clone(&sender_fps);
   let input_thread_killall = Arc::clone(&kill_all_threads);
   let input_thread_keyboard_mode = Arc::clone(&keyboard_mode);
-  std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port);
-  });
-
-  // start the network listener thread.
-  // give it all necessary references to shared mutexes
-  let network_listener_player = Arc::clone(&player);
-  let network_listener_game_objects = Arc::clone(&game_objects);
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
-  let killall_listener = Arc::clone(&kill_all_threads);
   std::thread::spawn(move || {
-    network_listener(network_listener_player, network_listener_game_objects, network_listener_other_players, gamemode_info_listener, killall_listener, port);
+    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -459,7 +449,7 @@ async fn game(/* server_ip: &str */ character: Character) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>) -> () {
 
   let mut server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
@@ -500,12 +490,19 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     }
   }
 
-  let server_ip: String = format!("{}:{}", server_ip, PLAYIT_PORT);
+  let server_ip: String = format!("{}", server_ip);
   // create the socket for sending info.
-  let sending_ip: String = format!("0.0.0.0:{}", CLIENT_SEND_PORT);
-  let sending_socket: UdpSocket = UdpSocket::bind(sending_ip)
+  let sending_ip: String = format!("0.0.0.0:{}", port);
+  let socket: UdpSocket = UdpSocket::bind(sending_ip)
     .expect("Could not bind client sender socket");
   println!("Socket bound to IP: {}", server_ip);
+
+
+  socket.set_nonblocking(true).expect("idk");
+  socket.set_read_timeout(Some(Duration::from_millis(100))).expect("Failed to set timeout ig...");
+  // if we get another Io(Kind(UnexpectedEof)) then this buffer is too small
+  const MUL: usize = 40;
+  let mut buffer: [u8; 4096*MUL] = [0; 4096*MUL];
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
 
@@ -530,10 +527,72 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     //println!("Shit");
     let kill_this_thread: MutexGuard<bool> = kill.lock().unwrap();
     if *kill_this_thread {
-      drop(sending_socket);
+      drop(socket);
       return;
     }
     drop(kill_this_thread);
+
+
+    // MARK: recieve packet
+    let recieved_server_info: ServerPacket;
+    match socket.recv_from(&mut buffer) {
+      Ok(data) => {
+        let (amt, _): (usize, std::net::SocketAddr) = data;
+        let data: &[u8] = &buffer[..amt];
+        recieved_server_info = bincode::deserialize(data).expect("Could not deserialise server packet.");
+        // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
+        let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
+        // if we sent an illegal position, and server does a position override:
+        if recieved_server_info.player_packet_is_sent_to.override_position {
+          // gain access to the player mutex
+          player.position = recieved_server_info.player_packet_is_sent_to.position_override;
+        }
+
+        // handle camera position upon death
+        if !player.is_dead && recieved_server_info.player_packet_is_sent_to.is_dead {
+          // we just died rn, so set the camera pos (which is now a freecam) to current position
+          // no clue why i have to do this, but for some reason upon death the camera moves "randomly"
+          //player.camera.position = player.position;
+          // IDK SEEMS TO WORK WITHOUT
+        }
+
+        let one_way_ping = match recieved_server_info.timestamp.elapsed() {
+          Ok(val) => val.as_millis(),
+          Err(_) => 0,
+        };
+        // println!("Server to client latency: {:?}ms", one_way_ping);
+        player.owl = one_way_ping as u16;
+        player.health = recieved_server_info.player_packet_is_sent_to.health;
+        player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
+        player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
+        player.character = recieved_server_info.player_packet_is_sent_to.character;
+        player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
+        player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
+        player.previous_positions = recieved_server_info.player_packet_is_sent_to.previous_positions;
+        player.team = recieved_server_info.player_packet_is_sent_to.team;
+        drop(player); // free mutex guard ASAP for other thread to access player.
+        
+
+        let mut game_objects = game_objects.lock().unwrap();
+        *game_objects = recieved_server_info.game_objects;
+        drop(game_objects);
+
+        let mut other_players = other_players.lock().unwrap();
+        *other_players = recieved_server_info.players;
+        drop(other_players);
+
+        let mut gamemode_info_listener = gamemode_info.lock().unwrap();
+        *gamemode_info_listener = recieved_server_info.gamemode_info;
+        drop (gamemode_info_listener)
+      }
+      Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+        // do nothing lol idc
+      }
+      Err(_) => {
+        println!("error while recieving data.");
+      }
+    }
+
 
     // update active gamepad info
     while let Some(Event { id, event: _, time: _ }) = gilrs.next_event() {
@@ -748,7 +807,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     
     // send data to server
     let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
-    sending_socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server. Is your IP address correct?");
+    socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server. Is your IP address correct?");
 
     let mut update_keyboard_mode: MutexGuard<bool> = global_keyboard_mode.lock().unwrap();
     *update_keyboard_mode = keyboard_mode;
@@ -767,96 +826,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     *sender_fps = (1.0 / delta_time).round();
     drop(sender_fps);
 
-  }
-}
-
-// (vscode) MARK: Network Listen
-fn network_listener(
-  player: Arc<Mutex<ClientPlayer>>,
-  game_objects: Arc<Mutex<Vec<GameObject>>>,
-  other_players: Arc<Mutex<Vec<ClientPlayer>>>,
-  gamemode_info: Arc<Mutex<GameModeInfo>>,
-  kill: Arc<Mutex<bool>>,
-  port: u16,
-) -> () {
-
-  let listening_ip: String = format!("0.0.0.0:{}", port);
-  let listening_socket: UdpSocket = UdpSocket::bind(listening_ip)
-  .expect("Could not bind client listener socket");
-  listening_socket.set_read_timeout(Some(Duration::from_millis(100))).expect("Failed to set timeout ig...");
-  // if we get another Io(Kind(UnexpectedEof)) then this buffer is too small
-  const MUL: usize = 40;
-  let mut buffer: [u8; 4096*MUL] = [0; 4096*MUL];
-  loop {
-
-    let kill_this_thread: MutexGuard<bool> = kill.lock().unwrap();
-    if *kill_this_thread {
-      //drop(listening_socket);
-      return;
-    }
-    drop(kill_this_thread);
-
-    // recieve packet
-    let recieved_server_info: ServerPacket;
-    match listening_socket.recv_from(&mut buffer) {
-      Ok(data) => {
-        let (amt, _): (usize, std::net::SocketAddr) = data;
-        let data: &[u8] = &buffer[..amt];
-        recieved_server_info = bincode::deserialize(data).expect("Could not deserialise server packet.");
-      }
-      Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-        continue;
-      }
-      Err(_) => {
-        println!("error while recieving data.");
-        break;
-      }
-    }
-    // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
-
-    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
-    // if we sent an illegal position, and server does a position override:
-    if recieved_server_info.player_packet_is_sent_to.override_position {
-      // gain access to the player mutex
-      player.position = recieved_server_info.player_packet_is_sent_to.position_override;
-    }
-
-    // handle camera position upon death
-    if !player.is_dead && recieved_server_info.player_packet_is_sent_to.is_dead {
-      // we just died rn, so set the camera pos (which is now a freecam) to current position
-      // no clue why i have to do this, but for some reason upon death the camera moves "randomly"
-      //player.camera.position = player.position;
-      // IDK SEEMS TO WORK WITHOUT
-    }
-
-    let one_way_ping = match recieved_server_info.timestamp.elapsed() {
-      Ok(val) => val.as_millis(),
-      Err(_) => 0,
-    };
-    // println!("Server to client latency: {:?}ms", one_way_ping);
-    player.owl = one_way_ping as u16;
-    player.health = recieved_server_info.player_packet_is_sent_to.health;
-    player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
-    player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
-    player.character = recieved_server_info.player_packet_is_sent_to.character;
-    player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
-    player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
-    player.previous_positions = recieved_server_info.player_packet_is_sent_to.previous_positions;
-    player.team = recieved_server_info.player_packet_is_sent_to.team;
-    drop(player); // free mutex guard ASAP for other thread to access player.
-    
-
-    let mut game_objects = game_objects.lock().unwrap();
-    *game_objects = recieved_server_info.game_objects;
-    drop(game_objects);
-
-    let mut other_players = other_players.lock().unwrap();
-    *other_players = recieved_server_info.players;
-    drop(other_players);
-
-    let mut gamemode_info_listener = gamemode_info.lock().unwrap();
-    *gamemode_info_listener = recieved_server_info.gamemode_info;
-    drop (gamemode_info_listener)
   }
 }
 
