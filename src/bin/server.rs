@@ -376,7 +376,6 @@ fn main() {
   // Server logic frequency in Hertz. Doesn't need to be much higher than 120.
   // Higher frequency = higher precission with computation trade-off
   let desired_delta_time: f64 = 1.0 / 400.0;
-  let mut networking_counter: Instant = Instant::now();
 
   let main_game_objects = Arc::clone(&game_objects);
 
@@ -881,20 +880,6 @@ fn main() {
     }
 
     *game_objects = cleansed_game_objects;
-    let game_objects_readonly = game_objects.clone();
-    drop(game_objects);
-
-    // (vscode) MARK: Networking - Send
-    // Only do networking logic at some frequency
-    if networking_counter.elapsed().as_secs_f64() > MAX_PACKET_INTERVAL {
-      // reset the counter
-      networking_counter = Instant::now();
-
-      // Send a packet to each player
-      for (index, player) in main_loop_players.clone().iter().enumerate() {
-        // DO NOTHING -- IGNORE THIS FOR NOW, OLD CODE
-      }
-    }
     drop(main_loop_players);
     // println!("Server Hz: {}", 1.0 / delta_time);
     delta_time = server_counter.elapsed().as_secs_f64();
