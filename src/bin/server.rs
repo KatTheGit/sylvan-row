@@ -25,27 +25,37 @@ fn main() {
   let game_objects = Arc::new(Mutex::new(game_objects));
 
   // initiate all networking sockets
-  let server_listen_address = format!("0.0.0.0:{}", SERVER_LISTEN_PORT);
-  let server_send_address = format!("0.0.0.0:{}", SERVER_SEND_PORT);
-  let listening_socket = UdpSocket::bind(server_listen_address.clone()).expect("Error creating listener UDP socket");
-  let sending_socket = UdpSocket::bind(server_send_address).expect("Error creating sender UDP socket");
+  let server_address = format!("0.0.0.0:{}", SERVER_PORT);
+  let socket = UdpSocket::bind(server_address.clone()).expect("Error creating listener UDP socket");
   let mut buffer = [0; 4096]; // The size of this buffer is lowkey kind of low, especially with how big the gameobject struct is.
   println!("Sockets bound.");
-  println!("Listening on: {}", server_listen_address.clone());
+  println!("Listening on: {}", server_address.clone());
 
   let mut red_team_player_count = 0;
   let mut blue_team_player_count = 0;
 
   // temporary, to be dictated by gamemode
   let max_players = 100;
+
+   // holds game information, to be displayed by client, and modified when shit happens.
+  let general_gamemode_info: GameModeInfo = GameModeInfo {
+    time: 0,
+    rounds_won_red: 0,
+    rounds_won_blue: 0,
+    kills_red: 0,
+    kills_blue: 0,
+    death_timeout: 3.0,
+  };
+  let general_gamemode_info = Arc::new(Mutex::new(general_gamemode_info));
   
   // (vscode) MARK: Networking - Listen
   let listener_players = Arc::clone(&players);
+  let listener_gamemode_info = Arc::clone(&general_gamemode_info);
   let listener_game_objects = Arc::clone(&game_objects);
   std::thread::spawn(move || {
     loop {
       // recieve packet
-      let (amt, src) = listening_socket.recv_from(&mut buffer).expect(":(");
+      let (amt, src) = socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
       let mut recieved_player_info: ClientPacket = bincode::deserialize(data).expect("Might need to find a solution to this");
       // println!("SERVER: Received from {}: {:?}", src, recieved_player_info);
@@ -71,7 +81,9 @@ fn main() {
         
         // use IP as identifier, check if packet from sent player correlates to our player
         // Later on we might have an account system and use that as ID. For now, IP will do
-        if player.ip == src.ip().to_string() {
+        if player.ip == src.ip().to_string() && player.port == recieved_player_info.port {
+          // If this check passes, we're now running logic for the player that sent the packet.
+          // This block of code handles recieving data, and then sends out a return packet.
           let time_since_last_packet = recieved_player_info.packet_interval as f64;
           // if time_since_last_packet < MAX_PACKET_INTERVAL &&
           // time_since_last_packet > MIN_PACKET_INTERVAL  {
@@ -222,21 +234,85 @@ fn main() {
               player.position = new_position;
             }
           }
+
+          // Send a return packet.
+          // not to the dummy though.
+          if player.character == Character::Dummy {
+            break;
+          }
+
+          // Gather info to send about other players
+          let mut other_players: Vec<ClientPlayer> = Vec::new();
+          for (other_player_index, player) in listener_players.clone().iter().enumerate() {
+            if other_player_index != player_index {
+              other_players.push(ClientPlayer {
+                health: player.health,
+                position: player.position,
+                secondary_charge: player.secondary_charge,
+                aim_direction: player.aim_direction,
+                movement_direction: player.move_direction,
+                shooting_primary: player.shooting,
+                shooting_secondary: player.shooting_secondary,
+                team: player.team,
+                character: player.character,
+                time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
+                is_dead: false,
+                camera: Camera::new(),  
+                buffs: player.buffs.clone(),
+                previous_positions: match player.character {
+                  Character::TimeQueen => player.previous_positions.clone(),
+                  _ => Vec::new(),
+                },
+                owl: 0,
+              })
+            }
+          }
+
+          // packet sent to player with info about themselves and other players
+          let gamemode_info = listener_gamemode_info.lock().unwrap();
+          let server_packet: ServerPacket = ServerPacket {
+            player_packet_is_sent_to: ServerRecievingPlayerPacket {
+              health: player.health,
+              override_position: player.had_illegal_position,
+              position_override: player.position,
+              shooting_primary: player.shooting,
+              shooting_secondary: player.shooting_secondary,
+              secondary_charge: player.secondary_charge,
+              last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
+              character: player.character,
+              is_dead: player.is_dead,
+              buffs: player.buffs.clone(),
+              previous_positions: match player.character {
+                Character::TimeQueen => player.previous_positions.clone(),
+                _ => Vec::new(),
+              },
+              team: player.team,
+            },
+            players: other_players,
+            game_objects: listener_game_objects.clone(),
+            gamemode_info: gamemode_info.clone(),
+            timestamp: SystemTime::now()
+          };
+          drop(gamemode_info);
+          listener_players[player_index].had_illegal_position = false;
+          
+          let mut player_ip = player.ip.clone();
+          let split_player_ip: Vec<&str> = player_ip.split(":").collect();
+          player_ip = split_player_ip[0].to_string();
+          player_ip = format!("{}:{}", player_ip, player.port);
+          // println!("PLAYER IP: {}", player_ip);
+          // println!("PACKET: {:?}", server_packet);
+          let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
+          socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
+          // player.had_illegal_position = false; // reset since we corrected the error.
+
+
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
           // println!("{:?}", player.position.clone());
           listener_players[player_index] = player;
           break
         }
-        // if listener_players[player_index].character != Character::Dummy {
-        //   println!("recv: {:?}", recieved_player_info.character);
-        //   println!("recv: {:?}", src.ip().to_string());
-        //   println!("recv: {:?}", recieved_player_info.position);
-        //   println!("curr: {:?}", listener_players[player_index].character);
-        //   println!("curr: {:?}", listener_players[player_index].ip);
-        //   println!("curr: {:?}", listener_players[player_index].position);
-        //   listener_players[player_index].character = recieved_player_info.character;
-        // }
       }
       drop(listener_game_objects);
 
@@ -255,10 +331,12 @@ fn main() {
         }
         // create server player data
         // this data is pretty irrelevant, we're just initialising the player.
+        println!("{} {} {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port.to_string());
         unsafe {
           listener_players.push(ServerPlayer {
             ip: src.ip().to_string(),
             port: recieved_player_info.port,
+            true_port: src.port(),
             team,
             health: 100,
             position: match team {
@@ -313,22 +391,14 @@ fn main() {
   
   // Used for game time counter. Can be reset when going into new rounds, for example...
   let game_start_time: Instant = Instant::now();
-  
-  // holds game information, to be displayed by client, and modified when shit happens.
-  let mut gamemode_info: GameModeInfo = GameModeInfo {
-    time: 0,
-    rounds_won_red: 0,
-    rounds_won_blue: 0,
-    kills_red: 0,
-    kills_blue: 0,
-    death_timeout: 3.0,
-  };
 
+  
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
   let mut dummy_summoned: bool = true;
-
+  
   // (vscode) MARK: Server Loop
+  let main_gamemode_info = Arc::clone(&general_gamemode_info);
   loop {
     let mut tick: bool = false;
     let mut tenth_tick: bool = false;
@@ -356,13 +426,16 @@ fn main() {
     // update gamemode info
     if tick {
       // update game clock
+      let mut gamemode_info = main_gamemode_info.lock().unwrap();
       gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
+      drop(gamemode_info);
     }
   
     let mut main_loop_players = main_loop_players.lock().unwrap();
 
     // (vscode) MARK: Gamemode
     if tick {
+      let mut gamemode_info = main_gamemode_info.lock().unwrap();
       match selected_game_mode {
         GameMode::DeathMatchArena => {
           let mut round_restart = false;
@@ -376,7 +449,7 @@ fn main() {
           }
           if round_restart {
             for player_index in 0..main_loop_players.len() {
-              gamemode_info = main_loop_players[player_index].kill(false, &gamemode_info);
+              *gamemode_info = main_loop_players[player_index].kill(false, &gamemode_info.clone());
               gamemode_info.kills_blue = 0;
               gamemode_info.kills_red  = 0;
             }
@@ -388,6 +461,7 @@ fn main() {
 
         _ => {}
       }
+      drop(gamemode_info);
     }
 
     // Summon a dummy for testing
@@ -397,6 +471,7 @@ fn main() {
         ServerPlayer {
           ip: String::from("hello"),
           port: 12,
+          true_port: 12,
           team: Team::Red,
           character: Character::Dummy,
           health: 0,
@@ -425,6 +500,8 @@ fn main() {
     // (vscode) MARK: Player logic
     for player_index in 0..main_loop_players.len() {
 
+      let mut gamemode_info = main_gamemode_info.lock().unwrap();
+
       let shooting = main_loop_players[player_index].shooting;
       let shooting_secondary = main_loop_players[player_index].shooting_secondary;
       let last_shot_time = main_loop_players[player_index].last_shot_time;
@@ -438,7 +515,7 @@ fn main() {
 
       // if this player is at health 0
       if main_loop_players[player_index].health == 0 {
-        gamemode_info = main_loop_players[player_index].kill(true, &gamemode_info);
+        *gamemode_info = main_loop_players[player_index].kill(true, &gamemode_info.clone());
       }
       // If the death timer is over, unkill them
       if (main_loop_players[player_index].is_dead) && (main_loop_players[player_index].death_timer_start.elapsed().as_secs_f32() > gamemode_info.death_timeout) {
@@ -449,6 +526,8 @@ fn main() {
       if main_loop_players[player_index].is_dead {
         continue;
       }
+
+      drop(gamemode_info);
 
       // (vscode) MARK: Passives & Other
       // Handling of passive abilities and anything else that may need to be run all the time.
@@ -675,7 +754,7 @@ fn main() {
       }
       
     }
-    
+
     // println!("{:?}", game_objects);
     // println!("{}", 1.0 / delta_time);
 
@@ -813,72 +892,7 @@ fn main() {
 
       // Send a packet to each player
       for (index, player) in main_loop_players.clone().iter().enumerate() {
-        // not to the dummy though.
-        if player.character == Character::Dummy {
-          continue;
-        }
-
-        // Gather info to send about other players
-        let mut other_players: Vec<ClientPlayer> = Vec::new();
-        for (other_player_index, player) in main_loop_players.clone().iter().enumerate() {
-          if other_player_index != index {
-            other_players.push(ClientPlayer {
-              health: player.health,
-              position: player.position,
-              secondary_charge: player.secondary_charge,
-              aim_direction: player.aim_direction,
-              movement_direction: player.move_direction,
-              shooting_primary: player.shooting,
-              shooting_secondary: player.shooting_secondary,
-              team: player.team,
-              character: player.character,
-              time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
-              is_dead: false,
-              camera: Camera::new(),  
-              buffs: player.buffs.clone(),
-              previous_positions: match player.character {
-                Character::TimeQueen => player.previous_positions.clone(),
-                _ => Vec::new(),
-              },
-              owl: 0,
-            })
-          }
-        }
-
-        // packet sent to player with info about themselves and other players
-        let server_packet: ServerPacket = ServerPacket {
-          player_packet_is_sent_to: ServerRecievingPlayerPacket {
-            health: player.health,
-            override_position: player.had_illegal_position,
-            position_override: player.position,
-            shooting_primary: player.shooting,
-            shooting_secondary: player.shooting_secondary,
-            secondary_charge: player.secondary_charge,
-            last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
-            character: player.character,
-            is_dead: player.is_dead,
-            buffs: player.buffs.clone(),
-            previous_positions: match player.character {
-              Character::TimeQueen => player.previous_positions.clone(),
-              _ => Vec::new(),
-            }
-          },
-          players: other_players,
-          game_objects: game_objects_readonly.clone(),
-          gamemode_info: gamemode_info.clone(),
-          timestamp: SystemTime::now()
-        };
-        main_loop_players[index].had_illegal_position = false;
-        
-        let mut player_ip = player.ip.clone();
-        let split_player_ip: Vec<&str> = player_ip.split(":").collect();
-        player_ip = split_player_ip[0].to_string();
-        player_ip = format!("{}:{}", player_ip, player.port);
-        // println!("PLAYER IP: {}", player_ip);
-        // println!("PACKET: {:?}", server_packet);
-        let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
-        sending_socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
-        // player.had_illegal_position = false; // reset since we corrected the error.
+        // DO NOTHING -- IGNORE THIS FOR NOW, OLD CODE
       }
     }
     drop(main_loop_players);
@@ -900,6 +914,7 @@ struct ServerPlayer {
   /// also used as an identifier
   ip:                   String,
   port:                 u16,
+  true_port:            u16,
   team:                 Team,
   character:            Character,
   health:               u8,

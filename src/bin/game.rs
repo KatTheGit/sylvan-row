@@ -785,7 +785,8 @@ fn network_listener(
   .expect("Could not bind client listener socket");
   listening_socket.set_read_timeout(Some(Duration::from_millis(100))).expect("Failed to set timeout ig...");
   // if we get another Io(Kind(UnexpectedEof)) then this buffer is too small
-  let mut buffer: [u8; 4096*4] = [0; 4096*4];
+  const MUL: usize = 40;
+  let mut buffer: [u8; 4096*MUL] = [0; 4096*MUL];
   loop {
 
     let kill_this_thread: MutexGuard<bool> = kill.lock().unwrap();
@@ -841,6 +842,7 @@ fn network_listener(
     player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
     player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
     player.previous_positions = recieved_server_info.player_packet_is_sent_to.previous_positions;
+    player.team = recieved_server_info.player_packet_is_sent_to.team;
     drop(player); // free mutex guard ASAP for other thread to access player.
     
 

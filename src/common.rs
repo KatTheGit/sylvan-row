@@ -22,9 +22,7 @@ pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
 
 // TODO: later do this dynamically for client at least
 pub const CLIENT_SEND_PORT:   u32 = 25566;
-pub const CLIENT_LISTEN_PORT: u32 = 25567;
-pub const SERVER_SEND_PORT:   u32 = 25568;
-pub const SERVER_LISTEN_PORT: u32 = 25569;
+pub const SERVER_PORT:        u32 = 25569;
 pub const PLAYIT_PORT:        u32 = 2741;
 pub const DEFAULT_SERVER_IP: &str = "147.185.221.31";
 
@@ -334,6 +332,7 @@ pub struct ServerRecievingPlayerPacket {
   pub is_dead:            bool,
   pub buffs:              Vec<Buff>,
   pub previous_positions: Vec<Vector2>,
+  pub team:               Team,
 }
 
 /// information sent by server to client
