@@ -22,7 +22,7 @@ Change the ports in common.rs.
 
 ## Dependencies
 
-On Linux, you need to additionally install `libudev-dev`.
+On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-config` (apt package names).
 
 # To do
 
