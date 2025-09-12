@@ -205,6 +205,11 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
   let background_tiles: Vec<BackGroundTile> = load_background_tiles(34, 24);
 
+  let mut timer_for_text_update = Instant::now();
+  let mut slow_sender_fps: f32 = 0.0;
+  let mut slow_draw_fps = 0;
+  let mut slow_owl = 0;
+
   // Main thread
   loop {
 
@@ -436,13 +441,23 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
     drop(gamemode_info_main);
 
-    draw_text(format!("{} draw fps", get_fps()).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
-    let sender_fps: Arc<Mutex<f32>> = Arc::clone(&sender_fps);
-    let sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
-    draw_text(format!("{} input fps", sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
-    drop(sender_fps);
-    draw_text(format!("{} ms server to client", player_copy.owl).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
-    draw_text(format!("{} ms estimated ping", player_copy.owl*2).as_str(), 20.0, 80.0, 20.0, DARKGRAY);
+    if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
+      timer_for_text_update = Instant::now();
+
+      let sender_fps: Arc<Mutex<f32>> = Arc::clone(&sender_fps);
+      let sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
+      slow_sender_fps = *sender_fps;
+      drop(sender_fps);
+
+      slow_draw_fps = get_fps();
+
+      slow_owl = player_copy.owl;
+    }
+
+    draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
+    draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
+    draw_text(format!("{} ms server to client", slow_owl).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
+    draw_text(format!("{} ms estimated ping", slow_owl*2).as_str(), 20.0, 80.0, 20.0, DARKGRAY);
     next_frame().await;
   }
 }
