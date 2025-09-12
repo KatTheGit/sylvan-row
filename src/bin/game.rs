@@ -467,7 +467,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         // couldnt read file
         Err(_) => {
           println!("Couldn't read IP. defaulting to {}.", DEFAULT_SERVER_IP);
-          server_ip = String::from(DEFAULT_SERVER_IP);
+          server_ip = String::from(format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT));
         }
       }
     }
@@ -479,18 +479,19 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Ok(mut file) => {
           let _ = file.write_all(DEFAULT_SERVER_IP.as_bytes());
           println!("Config file created with default ip {}.", DEFAULT_SERVER_IP);
-          server_ip = String::from(DEFAULT_SERVER_IP);
+          server_ip = String::from(format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT));
         }
         // Couldn't create file
         Err(error) => {
           println!("Could not create config file. Defaulting to {}.\nReason:\n{}", DEFAULT_SERVER_IP, error);
-          server_ip = String::from(DEFAULT_SERVER_IP);
+          server_ip = String::from(format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT));
         }
       }
     }
   }
 
-  let server_ip: String = format!("{}", server_ip);
+  // let server_ip: String = format!("{}", server_ip);
+  println!("{}", server_ip);
   // create the socket for sending info.
   let sending_ip: String = format!("0.0.0.0:{}", port);
   let socket: UdpSocket = UdpSocket::bind(sending_ip)
