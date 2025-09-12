@@ -20,7 +20,8 @@ pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 /// how many packets are averaged when calculating legality of player position.
 pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
 pub const SERVER_PORT:        u16 = 25569;
-pub const DEFAULT_SERVER_IP: &str = "0.0.0.0";
+/// Default IP to be used when there's an issue with the moba_ip.txt file.
+pub const DEFAULT_SERVER_IP: &str = "52.47.114.158"; // my AWS instance address lol
 
 // MARK: Gamemodes
 

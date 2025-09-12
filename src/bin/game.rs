@@ -344,7 +344,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
 
 
-    // draw player and crosshair (aim laser)
+    // draw player and aim laser
     let range = character_properties[&player_copy.character].primary_range;
     let relative_position_x = 50.0 * (16.0/9.0) - camera_offset.x; //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
     let relative_position_y = 50.0 - camera_offset.y; //+ (vh * 100.0) / 2.0;
@@ -357,7 +357,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
         (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
         (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
-        0.4 * vh, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
+        0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 1.0 }
       );
       if player_copy.character == Character::SniperWolf {
         let range: f32 = character_properties[&Character::SniperWolf].secondary_range - TILE_SIZE/2.0;
@@ -401,7 +401,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         for player_2 in all_players_copy.clone() {
           if Vector2::distance(player.position, player_2.position) < character_properties[&Character::HealerGirl].primary_range
           && player.team == player_2.team {
-            draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, GREEN, player_copy.camera.position, vh);
+            // if on same team, green. If on enemy team, orange.
+            let color = match player.team == player_copy.team {
+              true => GREEN,
+              false => ORANGE,
+            };
+            draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, player_copy.camera.position, vh);
           }
         }
       }
@@ -454,6 +459,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   let mut server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
   let ip_file = File::open(ip_file_name);
+  let default_ip: String = format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT);
   match ip_file {
     // file exists
     Ok(mut file) => {
@@ -461,37 +467,41 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       match file.read_to_end(&mut data) {
         // could read file
         Ok(_) => {
-          server_ip = String::from_utf8(data).expect("Couldn't read IP.");
+          server_ip = String::from_utf8(data).expect("Couldn't read IP in file.");
           server_ip.retain(|c| !c.is_whitespace());
+          // if smaller than smallest possible length: we have a problem (file might be empty)
+          if server_ip.len() < String::from("0.0.0.0:0").len() {
+            println!("IP address was invalid (are you using X.X.X.X:X format?). Defaulting to {}", default_ip);
+            server_ip = default_ip;
+          }
         }
         // couldnt read file
         Err(_) => {
-          println!("Couldn't read IP. defaulting to {}.", DEFAULT_SERVER_IP);
-          server_ip = String::from(format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT));
+          println!("Couldn't read IP. defaulting to {}.", default_ip);
+          server_ip = default_ip;
         }
       }
     }
     // file doesn't exist
     Err(error) => {
-      println!("Config file not found, attempting to creating one... Error: {}.", error);
+      println!("Config file not found, attempting to creating one... Error: {}", error);
       match File::create(ip_file_name) {
         // Could create file
         Ok(mut file) => {
           let _ = file.write_all(DEFAULT_SERVER_IP.as_bytes());
-          println!("Config file created with default ip {}.", DEFAULT_SERVER_IP);
-          server_ip = String::from(format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT));
+          println!("Config file created with default ip {}", default_ip);
+          server_ip = default_ip;
         }
         // Couldn't create file
         Err(error) => {
-          println!("Could not create config file. Defaulting to {}.\nReason:\n{}", DEFAULT_SERVER_IP, error);
-          server_ip = String::from(format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT));
+          println!("Could not create config file. Defaulting to {}\nReason:\n{}", default_ip, error);
+          server_ip = default_ip;
         }
       }
     }
   }
 
   // let server_ip: String = format!("{}", server_ip);
-  println!("{}", server_ip);
   // create the socket for sending info.
   let sending_ip: String = format!("0.0.0.0:{}", port);
   let socket: UdpSocket = UdpSocket::bind(sending_ip)
@@ -742,7 +752,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     }
     
     // println!("{}", dashing);
-    //println!("{} {}", shooting_primary, shooting_secondary);
+    // println!("{} {}", shooting_primary, shooting_secondary);
 
     // MARK: Idk figure shit out
 
