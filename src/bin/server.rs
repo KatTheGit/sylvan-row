@@ -301,7 +301,7 @@ fn main() {
           let mut player_ip = player.ip.clone();
           let split_player_ip: Vec<&str> = player_ip.split(":").collect();
           player_ip = split_player_ip[0].to_string();
-          player_ip = format!("{}:{}", player_ip, player.port);
+          player_ip = format!("{}:{}", player_ip, player.true_port);
           // println!("PLAYER IP: {}", player_ip);
           // println!("PACKET: {:?}", server_packet);
           let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
