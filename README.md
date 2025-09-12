@@ -69,7 +69,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [ ] Characters
     - [x] Raphaelle
     - [x] Cynewynn
-    - [ ] Hernani
+    - [x] Hernani
       - [x] Wall
       - [x] Landmine
 - [x] Disconnect players after inactivity

@@ -746,9 +746,15 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         Keycode::F11 => {
           // Dirty solution but works.
           if toggle_time.elapsed().as_secs_f32() > 0.05 {
-            // can't unset fullscreen on Linux because of macroquad issue.
             fullscreen = !fullscreen;
             set_fullscreen(fullscreen);
+          }
+          toggle_time = Instant::now();
+        },
+        Keycode::F10 => {
+          // Dirty solution but works.
+          if toggle_time.elapsed().as_secs_f32() > 0.05 {
+            set_window_size(800, 450);
           }
           toggle_time = Instant::now();
         },
