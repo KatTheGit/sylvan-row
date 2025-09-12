@@ -19,9 +19,11 @@ pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// how many packets are averaged when calculating legality of player position.
 pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
+/// Port the server is hosted on. Used by server, and by the client to set the
+/// default address of the server.
 pub const SERVER_PORT:        u16 = 25569;
 /// Default IP to be used when there's an issue with the moba_ip.txt file.
-pub const DEFAULT_SERVER_IP: &str = "13.38.240.14"; // my AWS instance address lol
+pub const DEFAULT_SERVER_IP: &str = "13.38.240.14"; // my AWS instance address
 
 // MARK: Gamemodes
 
@@ -69,6 +71,7 @@ impl GameModeInfo {
   }
 }
 
+// MARK: Characters
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Character {
   /// Used for testing. Has lots of health, and that's it.
@@ -77,7 +80,6 @@ pub enum Character {
   HealerGirl,
   TimeQueen,
 }
-// MARK: Characters
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
   /// Maximum (default) health. Standard is 100, but can be more or less.
