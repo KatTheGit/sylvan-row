@@ -29,7 +29,8 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 ## Playtestable game
 
 - [x] Methods for server player for taking damage, healing, and secondary charge, to ease special logic.
-- [ ] Client also dashes accordingly
+- [x] Client also dashes accordingly
+  - [x] Somewhat fixed, new networking makes it smoother.
 - [x] Finish gamemode
   - [x] Round restarts
 - [x] Character picker before joining
@@ -50,12 +51,6 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
     - [x] Passives
   - [x] The queen
     - [x] Secondary has a trail
-    - [x] TEMPORARILY KEEP AS-IS
-    - [ ] Maybe improve
-      - [ ] Primary
-      - [ ] Secondary
-      - [ ] Dash
-      - [ ] Passives
 - [x] Improve map
 - [x] Simple background tile system
 - [x] Sort gameobjects by height
@@ -66,15 +61,19 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Basic drawings
   - [x] Bullets
     - [x] R
+      - [x] Normal
+      - [x] Empowered
     - [x] C
     - [x] H
     - [x] Rotation
   - [ ] Characters
-    - [ ] Raphaelle
+    - [x] Raphaelle
     - [x] Cynewynn
     - [ ] Hernani
       - [x] Wall
       - [x] Landmine
+- [x] Disconnect players after inactivity
+  - [x] Fix indexing issue (If a player quits, previously assigned "owner index" values become wrong.) Replace with port number?
 
 ### After every playtest:
 

@@ -85,6 +85,7 @@ fn main() {
           // If this check passes, we're now running logic for the player that sent the packet.
           // This block of code handles recieving data, and then sends out a return packet.
           let time_since_last_packet = recieved_player_info.packet_interval as f64;
+          player.last_packet_time = Instant::now();
           // if time_since_last_packet < MAX_PACKET_INTERVAL &&
           // time_since_last_packet > MIN_PACKET_INTERVAL  {
           //   // ignore this packet since it's coming in too fast
@@ -135,7 +136,7 @@ fn main() {
                         position: player.position,
                         direction: Vector2::new(),
                         to_be_deleted: false,
-                        owner_index: player_index,
+                        owner_port: listener_players[player_index].port,
                         hitpoints: 1,
                         lifetime: characters[&Character::SniperWolf].dash_cooldown,
                         players: Vec::new(),
@@ -362,10 +363,21 @@ fn main() {
             death_timer_start:    Instant::now(),
             next_shot_empowered:  false,
             buffs:                Vec::new(),
+            last_packet_time: Instant::now(),
           });
         }
         println!("Player connected: {}: {} - {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port);
       }
+
+      // Occasionally check for goners
+      for player_index in 0..listener_players.len() {
+        if (listener_players[player_index].last_packet_time.elapsed().as_secs_f32() > 100.0)
+        && (listener_players[player_index].character != Character::Dummy                  ) {
+          listener_players.remove(player_index);
+          break;
+        }
+      }
+
       drop(listener_players);
     }
   });
@@ -493,6 +505,7 @@ fn main() {
           death_timer_start: Instant::now(),
           next_shot_empowered: false,
           buffs: Vec::new(),
+          last_packet_time: Instant::now(),
         }
       );
     }
@@ -607,7 +620,7 @@ fn main() {
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_index: player_index,
+              owner_port: main_loop_players[player_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -624,7 +637,7 @@ fn main() {
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_index: player_index,
+              owner_port: main_loop_players[player_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -643,7 +656,7 @@ fn main() {
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_index: player_index,
+              owner_port: main_loop_players[player_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -657,7 +670,7 @@ fn main() {
               direction: main_loop_players[player_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_index: player_index,
+              owner_port: main_loop_players[player_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -684,7 +697,7 @@ fn main() {
               position: player_info.position,
               direction: Vector2::new(),
               to_be_deleted: false,
-              owner_index: player_index,
+              owner_port: main_loop_players[player_index].port,
               hitpoints: 0,
               lifetime: 5.0,
               players: vec![],
@@ -721,7 +734,7 @@ fn main() {
                 position: desired_placement_position,
                 direction: Vector2::new(),
                 to_be_deleted: false,
-                owner_index: 0,
+                owner_port: main_loop_players[player_index].port,
                 hitpoints: 20,
                 lifetime: 5.0,
                 players: vec![],
@@ -775,7 +788,7 @@ fn main() {
           if game_objects[game_object_index].lifetime < (characters[&Character::SniperWolf].dash_cooldown -1.0) {
             for player_index in 0..main_loop_players.len() {
               // if not on same team
-              if main_loop_players[player_index].team != main_loop_players[game_objects[game_object_index].owner_index].team {
+              if main_loop_players[player_index].team != main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
                 // if within range
                 if Vector2::distance(game_objects[game_object_index].position, main_loop_players[player_index].position)
                 < (game_objects[game_object_index].size.x / 2.0) {
@@ -799,11 +812,11 @@ fn main() {
               let range: f32 = characters[&Character::HealerGirl].primary_range;
               if Vector2::distance(
                 main_loop_players[player_index].position,
-                main_loop_players[game_objects[game_object_index].owner_index].position
+                main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].position
               ) < range &&
-                main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
+                main_loop_players[player_index].team == main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
                 // Anyone within range
-                if player_index == game_objects[game_object_index].owner_index {
+                if player_index == index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone()) {
                   // if self, heal less
                   let heal_self: u8 = characters[&Character::HealerGirl].primary_lifesteal;
                   main_loop_players[player_index].heal(heal_self, characters.clone());
@@ -827,7 +840,8 @@ fn main() {
             characters[&Character::HealerGirl].primary_damage_2, 255);
           if hit {
             // restore dash charge (0.5s)
-            main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(500);
+            let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
+            main_loop_players[owner_index].last_dash_time -= Duration::from_millis(500);
           }
         }
 
@@ -837,9 +851,9 @@ fn main() {
           // every second apply heal
           for player_index in 0..main_loop_players.len() {
             // if on same team
-            if main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
+            if main_loop_players[player_index].team == main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
               // if within range
-              if Vector2::distance(game_objects[game_object_index].position, main_loop_players[game_objects[game_object_index].owner_index].position)
+              if Vector2::distance(game_objects[game_object_index].position, main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].position)
               < (game_objects[game_object_index].size.x / 2.0) {
                 // heal up
                 if tick {
@@ -934,6 +948,7 @@ struct ServerPlayer {
   next_shot_empowered:  bool,
   /// list of buffs
   buffs:                Vec<Buff>,
+  last_packet_time:     Instant,
 }
 impl ServerPlayer {
   fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
@@ -1051,10 +1066,10 @@ fn apply_simple_bullet_logic_extra(
   special_healing:       u8,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   let game_object = game_objects[game_object_index].clone();
-  let player = main_loop_players[game_object.owner_index].clone();
+  let owner_port = game_object.owner_port;
+  let player = main_loop_players[index_by_port(owner_port, main_loop_players.clone())].clone();
   let character = player.character;
   let character_properties = characters[&character].clone();
-  let owner_index = game_object.owner_index;
   let hit_radius: f32 = character_properties.primary_hit_radius;
   let wall_hit_radius: f32 = character_properties.primary_wall_hit_radius;
   let bullet_speed: f32 = character_properties.primary_shot_speed;
@@ -1101,7 +1116,7 @@ fn apply_simple_bullet_logic_extra(
     }
     // If we hit a bloke
     if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
-    owner_index != player_index {
+    owner_port != main_loop_players[player_index].port {
       // And if we didn't hit this bloke before
       if !(game_object.players.contains(&player_index)) {
         // Apply bullet damage
@@ -1125,6 +1140,7 @@ fn apply_simple_bullet_logic_extra(
           }
         }
         // Apply appropriate secondary charge
+        let owner_index = index_by_port(owner_port, main_loop_players.clone());
         main_loop_players[owner_index].add_charge(character_properties.secondary_hit_charge);
       }
     }
@@ -1132,4 +1148,13 @@ fn apply_simple_bullet_logic_extra(
   game_objects[game_object_index].position.x += game_object.direction.x * true_delta_time as f32 * bullet_speed;
   game_objects[game_object_index].position.y += game_object.direction.y * true_delta_time as f32 * bullet_speed;
   return (main_loop_players, game_objects, hit);
+}
+
+fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
+  for player_index in 0..players.len() {
+    if players[player_index].port == port {
+      return player_index;
+    }
+  }
+  return 999999; // Make DAMN sure this causes an issue if we don't find a player.
 }

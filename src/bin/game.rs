@@ -115,7 +115,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::UnbreakableWall           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
         GameObjectType::SniperWolfBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/bullet.png"), None),
         GameObjectType::HealerGirlBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/bullet.png"), None),
-        GameObjectType::HealerGirlBulletEmpowered => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/bullet.png"), None),
+        GameObjectType::HealerGirlBulletEmpowered => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/bullet-empowered.png"), None),
         GameObjectType::TimeQueenSword            => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/bullet.png"), None),
         GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/trap.png"), None),
         GameObjectType::Grass1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1.png"), None),
