@@ -803,9 +803,17 @@ fn main() {
               ) < range &&
                 main_loop_players[player_index].team == main_loop_players[game_objects[game_object_index].owner_index].team {
                 // Anyone within range
-                let heal: u8 = characters[&Character::HealerGirl].primary_lifesteal;
-                main_loop_players[player_index].heal(heal, characters.clone());
-                // restore dash charge (0.2s)
+                if player_index == game_objects[game_object_index].owner_index {
+                  // if self, heal less
+                  let heal_self: u8 = characters[&Character::HealerGirl].primary_lifesteal;
+                  main_loop_players[player_index].heal(heal_self, characters.clone());
+                }
+                else {
+                  // otherwise, apply normal heal
+                  let heal: u8 = characters[&Character::HealerGirl].primary_heal_2;
+                  main_loop_players[player_index].heal(heal, characters.clone());
+                }
+                  // restore dash charge (0.2s)
                 // main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(200);
               }
             }
