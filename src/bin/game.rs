@@ -440,8 +440,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     let sender_fps: Arc<Mutex<f32>> = Arc::clone(&sender_fps);
     let sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
     draw_text(format!("{} input fps", sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
-    draw_text(format!("{} ms server to client", player_copy.owl).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
     drop(sender_fps);
+    draw_text(format!("{} ms server to client", player_copy.owl).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
+    draw_text(format!("{} ms estimated ping", player_copy.owl*2).as_str(), 20.0, 80.0, 20.0, DARKGRAY);
     next_frame().await;
   }
 }

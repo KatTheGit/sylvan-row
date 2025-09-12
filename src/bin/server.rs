@@ -1102,18 +1102,22 @@ fn apply_simple_bullet_logic_extra(
           hit = true;
           main_loop_players[player_index].damage(damage, characters.clone());
           game_objects[game_object_index].players.push(player_index);
+          // Destroy the bullet if it doesn't pierce.
+          if !pierceing_shot {
+            game_objects[game_object_index].to_be_deleted = true;
+          }
         }
         // Apply bullet healing, only if in the same team
-        if main_loop_players[player_index].team == player.team {
+        if main_loop_players[player_index].team == player.team && healing > 0 {
           main_loop_players[player_index].heal(healing, characters.clone());
           game_objects[game_object_index].players.push(player_index);
+          // Destroy the bullet if it doesn't pierce.
+          if !pierceing_shot {
+            game_objects[game_object_index].to_be_deleted = true;
+          }
         }
         // Apply appropriate secondary charge
         main_loop_players[owner_index].add_charge(character_properties.secondary_hit_charge);
-        // Destroy the bullet if it doesn't pierce.
-        if !pierceing_shot {
-          game_objects[game_object_index].to_be_deleted = true;
-        }
       }
     }
   }

@@ -217,9 +217,10 @@ impl ClientPlayer {
     // TODO: animations
     let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
+    let bg_opacity: f32 = 0.4;
     let color = match self.team {
-      Team::Blue => Color { r: 0.3, g: 0.5, b: 0.7, a: 0.5 },
-      Team::Red => Color { r: 0.7, g: 0.5, b: 0.3, a: 0.5 },
+      Team::Blue => Color { r: 0.3, g: 0.5, b: 0.7, a: bg_opacity },
+      Team::Red => Color { r: 0.7, g: 0.5, b: 0.3, a: bg_opacity },
     };
     draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera_position, vh);
 
@@ -267,7 +268,7 @@ impl ClientPlayer {
     let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
     draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
 
-    let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -15.0 };
+    let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
     for buff in self.buffs.clone() {
       draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::HealerFireRate => "+ fire rate", BuffType::Speed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
       buff_offset.y -= 3.0;
