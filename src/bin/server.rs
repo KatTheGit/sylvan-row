@@ -374,8 +374,8 @@ fn main() {
       for player_index in 0..listener_players.len() {
         if (listener_players[player_index].last_packet_time.elapsed().as_secs_f32() > 10.0)
         && (listener_players[player_index].character != Character::Dummy                  ) {
-          listener_players.remove(player_index);
           println!("Player forecefully disconnected: {}", listener_players[player_index].ip);
+          listener_players.remove(player_index);
           break;
         }
       }
