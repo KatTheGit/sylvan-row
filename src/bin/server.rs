@@ -52,6 +52,7 @@ fn main() {
   let listener_players = Arc::clone(&players);
   let listener_gamemode_info = Arc::clone(&general_gamemode_info);
   let listener_game_objects = Arc::clone(&game_objects);
+  println!();
   std::thread::spawn(move || {
     loop {
       // recieve packet
@@ -374,6 +375,7 @@ fn main() {
         if (listener_players[player_index].last_packet_time.elapsed().as_secs_f32() > 10.0)
         && (listener_players[player_index].character != Character::Dummy                  ) {
           listener_players.remove(player_index);
+          println!("Player forecefully disconnected: {}", listener_players[player_index].ip);
           break;
         }
       }
@@ -1013,7 +1015,7 @@ impl ServerPlayer {
     if self.team == Team::Blue {
       unsafe {
         self.position = SPAWN_BLUE;
-        println!("Sending {} to blue spawn", self.ip);
+        // println!("Sending {} to blue spawn", self.ip);
         // Give a kill to the red team
         if credit_other_team {
           updated_gamemode_info.kills_red += 1;
@@ -1023,7 +1025,7 @@ impl ServerPlayer {
       else {
         unsafe {
           self.position = SPAWN_RED;
-          println!("Sending {} to red team spawn", self.ip);
+          // println!("Sending {} to red team spawn", self.ip);
           // Give a kill to the blue team
           if credit_other_team {
             updated_gamemode_info.kills_blue += 1;

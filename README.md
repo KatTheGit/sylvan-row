@@ -81,6 +81,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Change sizes and whatnot
 - [ ] Other feedback
 - [ ] Maybe increase health 100->255 for higher precision, still display 0-100 clientside.
+  - [ ] Or just use floats atp
 
 ## Find fun gamemode + a bit of polish
 
