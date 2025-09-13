@@ -504,7 +504,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       match File::create(ip_file_name) {
         // Could create file
         Ok(mut file) => {
-          let _ = file.write_all(DEFAULT_SERVER_IP.as_bytes());
+          let _ = file.write_all(default_ip.as_bytes());
           println!("Config file created with default ip {}", default_ip);
           server_ip = default_ip;
         }
