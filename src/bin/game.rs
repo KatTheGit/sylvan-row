@@ -12,7 +12,7 @@ use miniquad::conf::Icon;
 use gilrs::*;
 use bincode;
 use std::{net::UdpSocket, sync::MutexGuard};
-use std::time::{Instant, Duration};
+use std::time::{Instant, Duration, SystemTime};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
@@ -208,7 +208,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   let mut timer_for_text_update = Instant::now();
   let mut slow_sender_fps: f32 = 0.0;
   let mut slow_draw_fps = 0;
-  let mut slow_owl = 0;
+  let mut slow_ping = 0;
 
   // Main thread
   loop {
@@ -451,13 +451,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
       slow_draw_fps = get_fps();
 
-      slow_owl = player_copy.owl;
+      slow_ping = player_copy.ping;
     }
 
     draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
-    draw_text(format!("{} ms server to client", slow_owl).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
-    draw_text(format!("{} ms estimated ping", slow_owl*2).as_str(), 20.0, 80.0, 20.0, DARKGRAY);
+    draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
     next_frame().await;
   }
 }
@@ -583,12 +582,12 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
           // IDK SEEMS TO WORK WITHOUT
         }
 
-        let one_way_ping = match recieved_server_info.timestamp.elapsed() {
+        let ping = match recieved_server_info.timestamp.elapsed() {
           Ok(val) => val.as_millis(),
           Err(_) => 0,
         };
         // println!("Server to client latency: {:?}ms", one_way_ping);
-        player.owl = one_way_ping as u16;
+        player.ping = ping as u16;
         player.health = recieved_server_info.player_packet_is_sent_to.health;
         player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
         player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
@@ -822,6 +821,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // println!("{:?}", movement_vector_raw);
     // println!("{:?}", keyboard_mode);
 
+    // (vscode) MARK: send packet
+
     // create the packet to be sent to server.
     let client_packet: ClientPacket = ClientPacket {
       position:      player.position,
@@ -833,6 +834,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       dashing,
       character: player.character,
       port: port,
+      timestamp: SystemTime::now(), // ping!
     };
 
     // drop mutexguard ASAP so other threads can use player ASAP.

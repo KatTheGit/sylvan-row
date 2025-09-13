@@ -211,7 +211,7 @@ pub struct ClientPlayer {
   pub buffs: Vec<Buff>,
   pub previous_positions: Vec<Vector2>,
   /// One-way latency, from server to client
-  pub owl: u16,
+  pub ping: u16,
 }
 // MARK: Client Player
 impl ClientPlayer {
@@ -292,7 +292,7 @@ impl ClientPlayer {
       camera: Camera::new(),
       buffs: Vec::new(),
       previous_positions: Vec::new(),
-      owl: 0,
+      ping: 0,
     };
   }
 }
@@ -311,6 +311,7 @@ pub struct ClientPacket {
   /// TEMPORARY
   pub character: Character,
   pub port: u16,
+  pub timestamp: SystemTime,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum Team {

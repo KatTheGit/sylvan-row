@@ -267,7 +267,7 @@ fn main() {
                   Character::TimeQueen => player.previous_positions.clone(),
                   _ => Vec::new(),
                 },
-                owl: 0,
+                ping: 0,
               })
             }
           }
@@ -295,7 +295,7 @@ fn main() {
             players: other_players,
             game_objects: listener_game_objects.clone(),
             gamemode_info: gamemode_info.clone(),
-            timestamp: SystemTime::now()
+            timestamp: recieved_player_info.timestamp, // pong!
           };
           drop(gamemode_info);
           listener_players[player_index].had_illegal_position = false;
