@@ -5,7 +5,7 @@ A Multiplayer Online Battle Arena game, with the ambition of being balanced (wit
 
 ## Play
 
-The game is not yet playable.
+The game is currently having scheduled playtests at https://discord.gg/4SbwGZeYcx. Otherwise:
 
 Run the game:
 ```sh
@@ -15,10 +15,9 @@ Run the server:
 ```sh
 cargo run --bin server --release # or ./server.sh
 ```
+Or yk just build the binaries
 
-You can change the server's IP in the file that gets created in the same directory the game is run.
-
-Change the ports in common.rs.
+When you run the game, a file called `moba_ip.txt` will be created in the same directory. It contains the default IP address to the current game server. You can change it to your own server, or change the default address in `common.rs`.
 
 ## Dependencies
 
@@ -58,7 +57,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [x] Raphaelle
   - [x] Cynewynn
   - [x] Hernani
-- [ ] Basic drawings
+- [x] Basic drawings
   - [x] Bullets
     - [x] R
       - [x] Normal
@@ -66,7 +65,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
     - [x] C
     - [x] H
     - [x] Rotation
-  - [ ] Characters
+  - [x] Characters
     - [x] Raphaelle
     - [x] Cynewynn
     - [x] Hernani

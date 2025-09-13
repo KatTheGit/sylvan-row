@@ -14,4 +14,8 @@ rusty-pkl = "0.1.2"
 serde = { version = "1.0.204", features = ["derive"] }
 strum = "0.26.3"
 strum_macros = "0.26.4"
+winresource = "0.1.23"
+
+[build-dependencies]
+winresource = "0.1.23"
 
