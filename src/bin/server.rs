@@ -787,7 +787,7 @@ fn main() {
         // WOLF dash special
         GameObjectType::HernaniLandmine => {
           // if the landmine has existed for long enough...
-          if game_objects[game_object_index].lifetime < (characters[&Character::SniperWolf].dash_cooldown -1.0) {
+          if game_objects[game_object_index].lifetime < (characters[&Character::SniperWolf].dash_cooldown - 0.5) {
             for player_index in 0..main_loop_players.len() {
               // if not on same team
               if main_loop_players[player_index].team != main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {

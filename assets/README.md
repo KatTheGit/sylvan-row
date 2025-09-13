@@ -168,7 +168,7 @@ Intended playstyle:
   - Place down a wall, using some secondary charge
 - Movement
   - Dash far away, placing down a bear trap. The ability is on a relatively long cooldown.
-  - The bear trap arms after one second, and harms anyone touching it. It lasts until Hernani regains his dash cooldown.
+  - The bear trap arms after half a second, and harms anyone touching it. It lasts until Hernani regains his dash cooldown, or until someone steps on it.
 - Passive
   - Has an easier time destroying walls.
   - Slowest movement speed.
