@@ -124,7 +124,16 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Find vulnerabilities
   - [ ] Big packets and false packets can crash
 - [ ] Optimise size of network packets
-- [ ] 
+
+## Publish
+
+- [ ] Decide whether to fully host on cloud or use a VPS for tunneling
+  - [ ] Find an adequate provider
+- [ ] Publish on steam
+- [ ] Advertise
+  - [ ] Reddit?
+  - [ ] Tiktok
+  - [ ] Youtube?
 
 ## Issues that won't be solved
 
