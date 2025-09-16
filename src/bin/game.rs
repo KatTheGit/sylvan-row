@@ -4,8 +4,8 @@
 use macroquad::rand::rand;
 use miniquad::window::{set_mouse_cursor, set_window_size};
 use device_query::{DeviceQuery, DeviceState, Keycode};
-use top_down_shooter::common::*;
-use top_down_shooter::ui;
+use sylvan_row::common::*;
+use sylvan_row::ui;
 use strum::IntoEnumIterator;
 use macroquad::prelude::*;
 use miniquad::conf::Icon;

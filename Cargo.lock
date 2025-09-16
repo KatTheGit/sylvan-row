@@ -704,6 +704,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "sylvan_row"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "device_query",
+ "gilrs",
+ "macroquad",
+ "rand",
+ "rust-embed",
+ "rusty-pkl",
+ "serde",
+ "strum",
+ "strum_macros",
+ "winresource",
+]
+
+[[package]]
 name = "syn"
 version = "2.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -754,23 +771,6 @@ name = "toml_write"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
-
-[[package]]
-name = "top-down-shooter"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "device_query",
- "gilrs",
- "macroquad",
- "rand",
- "rust-embed",
- "rusty-pkl",
- "serde",
- "strum",
- "strum_macros",
- "winresource",
-]
 
 [[package]]
 name = "ttf-parser"

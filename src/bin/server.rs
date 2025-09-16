@@ -1,4 +1,4 @@
-use top_down_shooter::common::*;
+use sylvan_row::common::*;
 use core::f32;
 use std::collections::HashMap;
 use std::net::UdpSocket;
@@ -983,7 +983,8 @@ impl ServerPlayer {
       return;
     }
 
-    if self.health + heal > characters[&self.character].health {
+    // this edge case crashes the server
+    if self.health as i16 + heal as i16 > characters[&self.character].health as i16 {
       self.health = characters[&self.character].health;
     } else {
       self.health += heal;
