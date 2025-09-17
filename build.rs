@@ -1,6 +1,5 @@
 // Thank you https://stackoverflow.com/questions/30291757/attaching-an-icon-resource-to-a-rust-application
 use std::{ env, io, };
-use winresource::*;
 fn main() -> io::Result<()> {
   if env::var_os("CARGO_CFG_WINDOWS").is_some() {
     winresource::WindowsResource::new()
