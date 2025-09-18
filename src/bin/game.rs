@@ -1,5 +1,6 @@
 // Don't show console window on Windows
 #![windows_subsystem = "windows"]
+#![allow(unused_parens)]
 
 use macroquad::rand::rand;
 use miniquad::window::{set_mouse_cursor, set_window_size};
@@ -11,6 +12,8 @@ use macroquad::prelude::*;
 use miniquad::conf::Icon;
 use gilrs::*;
 use bincode;
+use sylvan_row::ui::draw_ability_icon;
+use sylvan_row::ui::DivBox;
 use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration, SystemTime};
 use std::collections::HashMap;
@@ -441,6 +444,25 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
     drop(gamemode_info_main);
 
+    // Ability icons
+    let ability_info_box: DivBox = DivBox { position: Vector2 { x: 5.0, y: 83.0 }, nested: Vec::new() };
+    let primary_cooldown: f32 = if player_copy.last_shot_time < character_properties[&player_copy.character].primary_cooldown {
+      player_copy.last_shot_time / character_properties[&player_copy.character].primary_cooldown
+    } else {
+      1.0
+    };
+    let secondary_cooldown: f32 = player_copy.secondary_charge as f32 / 100.0;
+    let dash_cooldown: f32 = if player_copy.time_since_last_dash < character_properties[&player_copy.character].dash_cooldown {
+      player_copy.time_since_last_dash / character_properties[&player_copy.character].dash_cooldown
+    } else {
+      1.0
+    };
+    draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 0.0,  y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 1, player_copy.shooting_primary, primary_cooldown , vh, &health_bar_font);
+    draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 12.5, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 3, player_copy.dashing, dash_cooldown , vh, &health_bar_font);
+    draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 25.0, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 2, player_copy.shooting_secondary, secondary_cooldown , vh, &health_bar_font);
+
+
+    // Draw fps, etc
     if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
       timer_for_text_update = Instant::now();
 
@@ -453,7 +475,6 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
       slow_ping = player_copy.ping;
     }
-
     draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
     draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
@@ -596,6 +617,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
         player.previous_positions = recieved_server_info.player_packet_is_sent_to.previous_positions;
         player.team = recieved_server_info.player_packet_is_sent_to.team;
+        player.last_shot_time = recieved_server_info.player_packet_is_sent_to.time_since_last_primary;
         drop(player); // free mutex guard ASAP for other thread to access player.
         
 
@@ -604,7 +626,11 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         drop(game_objects);
 
         let mut other_players = other_players.lock().unwrap();
-        *other_players = recieved_server_info.players;
+        let mut recieved_players: Vec<ClientPlayer> = Vec::new();
+        for player in recieved_server_info.players {
+          recieved_players.push(ClientPlayer::from_otherplayer(player));
+        }
+        *other_players = recieved_players;
         drop(other_players);
 
         let mut gamemode_info_listener = gamemode_info.lock().unwrap();
@@ -837,6 +863,11 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
       timestamp: SystemTime::now(), // ping!
     };
 
+    // update player info
+    player.shooting_primary = shooting_primary;
+    player.dashing = dashing;
+    player.shooting_secondary = shooting_secondary;
+    
     // drop mutexguard ASAP so other threads can use player ASAP.
     drop(player);
     
@@ -923,7 +954,10 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
   // drawn last = drawn "higher" on "z-axis"
   // things at the bottom (high y axis) should be higher in "z-axis", ergo drawn last
   let mut unsorted_objects = objects;
-  let mut sorted_objects: Vec<GameObject> = Vec::new();
+  // "lowest" layer
+  let mut sorted_objects_layer_1: Vec<GameObject> = Vec::new();
+  // "highest" layer
+  let mut sorted_objects_layer_2: Vec<GameObject> = Vec::new();
 
   for _ in 0..unsorted_objects.len() {
     let mut current_lowest_index: usize = 0;
@@ -935,8 +969,19 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
         current_lowest_height = pos;
       }
     }
-    sorted_objects.push(unsorted_objects[current_lowest_index].clone());
+    match unsorted_objects[current_lowest_index].object_type {
+      GameObjectType::HealerAura      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::HernaniLandmine => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      _                               => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }
+    }
     unsorted_objects.remove(current_lowest_index);
   }
-  return sorted_objects
+  if sorted_objects_layer_1.is_empty() {
+    return sorted_objects_layer_2;
+  }
+  if sorted_objects_layer_2.is_empty() {
+    return sorted_objects_layer_1;
+  }
+  return [&sorted_objects_layer_1[0..sorted_objects_layer_1.len()], &sorted_objects_layer_2[0..sorted_objects_layer_2.len()]].concat();
+
 }

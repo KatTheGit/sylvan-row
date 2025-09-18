@@ -246,10 +246,10 @@ fn main() {
           }
 
           // Gather info to send about other players
-          let mut other_players: Vec<ClientPlayer> = Vec::new();
+          let mut other_players: Vec<OtherPlayer> = Vec::new();
           for (other_player_index, player) in listener_players.clone().iter().enumerate() {
             if other_player_index != player_index {
-              other_players.push(ClientPlayer {
+              other_players.push(OtherPlayer {
                 health: player.health,
                 position: player.position,
                 secondary_charge: player.secondary_charge,
@@ -267,7 +267,6 @@ fn main() {
                   Character::TimeQueen => player.previous_positions.clone(),
                   _ => Vec::new(),
                 },
-                ping: 0,
               })
             }
           }
@@ -291,6 +290,7 @@ fn main() {
                 _ => Vec::new(),
               },
               team: player.team,
+              time_since_last_primary: player.last_shot_time.elapsed().as_secs_f32(),
             },
             players: other_players,
             game_objects: listener_game_objects.clone(),
@@ -390,7 +390,7 @@ fn main() {
   let mut delta_time: f64 = server_counter.elapsed().as_secs_f64();
   // Server logic frequency in Hertz. Doesn't need to be much higher than 120.
   // Higher frequency = higher precission with computation trade-off
-  let desired_delta_time: f64 = 1.0 / 400.0;
+  let desired_delta_time: f64 = 1.0 / 120.0;
 
   let main_game_objects = Arc::clone(&game_objects);
 

@@ -193,7 +193,6 @@ pub fn parse_pkl_string(pkl_string: &str) -> Result<PklValue, String> {
 // MARK: Client
 
 /// Information held by client about self and other players.
-/// Sent by server to client as well.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct ClientPlayer {
   pub health: u8,
@@ -210,11 +209,49 @@ pub struct ClientPlayer {
   pub camera: Camera,
   pub buffs: Vec<Buff>,
   pub previous_positions: Vec<Vector2>,
-  /// One-way latency, from server to client
   pub ping: u16,
+  pub last_shot_time: f32,
+  pub dashing: bool,
 }
-// MARK: Client Player
+/// Information sent by server to client about other players.
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct OtherPlayer {
+  pub health: u8,
+  pub position: Vector2,
+  pub aim_direction: Vector2,
+  pub character: Character,
+  pub secondary_charge: u8,
+  pub movement_direction: Vector2,
+  pub shooting_primary: bool,
+  pub shooting_secondary: bool,
+  pub team: Team,
+  pub time_since_last_dash: f32,
+  pub is_dead: bool,
+  pub camera: Camera,
+  pub buffs: Vec<Buff>,
+  pub previous_positions: Vec<Vector2>,
+}
 impl ClientPlayer {
+  pub fn from_otherplayer(other_player: OtherPlayer) -> ClientPlayer {
+    return ClientPlayer { health: other_player.health,
+      position: other_player.position,
+      aim_direction: other_player.aim_direction,
+      character: other_player.character,
+      secondary_charge: other_player.secondary_charge,
+      movement_direction: other_player.movement_direction,
+      shooting_primary: other_player.shooting_primary,
+      shooting_secondary: other_player.shooting_secondary,
+      team: other_player.team,
+      time_since_last_dash: other_player.time_since_last_dash,
+      is_dead: other_player.is_dead,
+      camera: other_player.camera,
+      buffs: other_player.buffs,
+      previous_positions: other_player.previous_positions,
+      ping: 0,
+      last_shot_time: 0.0,
+      dashing: false,
+    }
+  }
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties) {
     // TODO: animations
     let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
@@ -293,6 +330,8 @@ impl ClientPlayer {
       buffs: Vec::new(),
       previous_positions: Vec::new(),
       ping: 0,
+      last_shot_time: 0.0,
+      dashing: false,
     };
   }
 }
@@ -334,13 +373,14 @@ pub struct ServerRecievingPlayerPacket {
   pub buffs:              Vec<Buff>,
   pub previous_positions: Vec<Vector2>,
   pub team:               Team,
+  pub time_since_last_primary: f32,
 }
 
 /// information sent by server to client
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct ServerPacket {
   pub player_packet_is_sent_to: ServerRecievingPlayerPacket,
-  pub players:       Vec<ClientPlayer>,
+  pub players:       Vec<OtherPlayer>,
   pub game_objects:  Vec<GameObject>,
   pub gamemode_info: GameModeInfo,
   pub timestamp:     SystemTime,

@@ -1,11 +1,11 @@
 # Sylvan Row
-A Multiplayer Online Battle Arena game, with the ambition of being balanced (with no hard-counter interactions), having simple  but unique characters, playing like a twin stick shooter (PC and controller), while having a working anticheat despite being FOSS.
+A twin-stick hero shooter, with the ambition of avoiding hard-counter interactions, having simple but unique characters, playing on keyboard&mouse and controller, all while having a working anticheat despite being FOSS.
 
 <img src="assets/characters/time_queen/textures/banner.png" width="300" title="Preliminary art of one of the characters" alt="An anthro lioness in armor"/>
 
 ## Play
 
-The game is currently having scheduled playtests at https://discord.gg/4SbwGZeYcx. Otherwise:
+The game is currently having scheduled playtests at https://discord.gg/4SbwGZeYcx. There is a playable release, and its default IP is set to a random AWS server.
 
 Run the game:
 ```sh
@@ -16,6 +16,9 @@ Run the server:
 cargo run --bin server --release # or ./server.sh
 ```
 Or yk just build the binaries
+```
+cargo build --release
+```
 
 When you run the game, a file called `moba_ip.txt` will be created in the same directory. It contains the default IP address to the current game server. You can change it to your own server, or change the default address in `common.rs`.
 
@@ -134,6 +137,14 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [ ] Reddit?
   - [ ] Tiktok
   - [ ] Youtube?
+
+## Independent of playtests
+
+- [ ] Clean up code
+- [ ] Make a better looking UI
+  - [x] Ability cooldowns
+  - [ ] Teammates, opponents, etc.
+  - [ ] Font that looks ok
 
 ## Issues that won't be solved
 
