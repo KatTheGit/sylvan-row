@@ -1,9 +1,7 @@
 use core::panic;
 
 use macroquad::prelude::*;
-use crate::common::draw_image;
-use crate::common::Vector2;
-use crate::common::ClientPlayer;
+use crate::common::*;
 
 pub fn button(position: Vector2, size: Vector2, text: &str) -> bool {
   draw_rectangle(position.x, position.y, size.x, size.y, LIGHTGRAY);
@@ -49,7 +47,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     (position.y + squish_offset/2.0) * vh,
     (size.x - squish_offset) * vh,
     ((size.y - squish_offset) * (1.0 - progress)) * vh,
-    Color { r: 0.1, g: 0.0, b: 0.2, a: 0.3 },
+    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.4 },
   );
   let text = match ability_index {
     1 => " LMB ",
@@ -60,9 +58,28 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
   draw_text_ex(text, (position.x + size.y * 0.125) * vh, (position.y + size.y * 1.3) * vh, TextParams { font: Some(font), font_size: (size.x * 0.3 * vh) as u16, ..Default::default() });
 }
 
-pub fn player_info(position: Vector2, size: f32, player: ClientPlayer) -> () {
-
+pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Font, vh: f32) -> () {
+  let color = match player.team {
+    Team::Red => RED,
+    Team::Blue => BLUE,
+  };
+  draw_text_ex("Player", (position.x) * vh, (position.y) * vh, TextParams { font: Some(font), font_size: (size * 0.5 * vh) as u16, color: color, ..Default::default() });
+  draw_rectangle(
+    (position.x) * vh,
+    (position.y + 1.5) * vh,
+    (size * (100.0 as f32 / 100.0) * 2.0 ) * vh,
+    (size * 0.25 ) * vh,
+    Color { r: 0.0, g: 0.0, b: 0.0, a: 0.5 },
+  );
+  draw_rectangle(
+    (position.x) * vh,
+    (position.y + 1.5) * vh,
+    (size * (player.health as f32 / 100.0) * 2.0 ) * vh,
+    (size * 0.25 ) * vh,
+    Color { r: 0.0, g: 1.0, b: 0.1, a: 1.0 },
+  );
 }
+
 /// Used to place items in relation to itself. In other words, a sort of "container".
 pub struct DivBox {
   pub position: Vector2,

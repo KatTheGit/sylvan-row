@@ -13,6 +13,7 @@ use miniquad::conf::Icon;
 use gilrs::*;
 use bincode;
 use sylvan_row::ui::draw_ability_icon;
+use sylvan_row::ui::draw_player_info;
 use sylvan_row::ui::DivBox;
 use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration, SystemTime};
@@ -424,7 +425,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     if !player_copy.is_dead {
       player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
     }
-    for player in other_players_copy {
+    for player in other_players_copy.clone() {
       player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone());
     }
     if player_copy.is_dead {
@@ -461,6 +462,26 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 12.5, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 3, player_copy.dashing, dash_cooldown , vh, &health_bar_font);
     draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 25.0, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 2, player_copy.shooting_secondary, secondary_cooldown , vh, &health_bar_font);
 
+    let mut red_team_players: u8  = 0;
+    let mut blue_team_players :u8 = 0;
+    let height: f32 = 7.5;
+    let red_team_box: DivBox = DivBox { position: Vector2 { x: (85.0 / vh) * vw, y: height }, nested: Vec::new() };
+    let blue_team_box: DivBox = DivBox { position: Vector2 { x: 5.0, y: height }, nested: Vec::new() };
+    let mut all_players = other_players_copy.clone();
+    all_players.push(player_copy.clone());
+    for player in all_players {
+      match player.team {
+        Team::Blue => {
+          blue_team_players += 1;
+          draw_player_info(blue_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * blue_team_players as f32 }), 10.0, player, &health_bar_font, vh);
+        },
+        Team::Red => {
+          red_team_players += 1;
+          draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh);
+        }
+      }
+
+    }
 
     // Draw fps, etc
     if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
@@ -971,7 +992,7 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
     }
     match unsorted_objects[current_lowest_index].object_type {
       GameObjectType::HealerAura      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
-      GameObjectType::HernaniLandmine => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::HernaniLandmine => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }
       _                               => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }
     }
     unsorted_objects.remove(current_lowest_index);

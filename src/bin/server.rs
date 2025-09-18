@@ -86,7 +86,6 @@ fn main() {
           // If this check passes, we're now running logic for the player that sent the packet.
           // This block of code handles recieving data, and then sends out a return packet.
           let time_since_last_packet = recieved_player_info.packet_interval as f64;
-          player.last_packet_time = Instant::now();
           // if time_since_last_packet < MAX_PACKET_INTERVAL &&
           // time_since_last_packet > MIN_PACKET_INTERVAL  {
           //   // ignore this packet since it's coming in too fast
@@ -245,71 +244,77 @@ fn main() {
             break;
           }
 
-          // Gather info to send about other players
-          let mut other_players: Vec<OtherPlayer> = Vec::new();
-          for (other_player_index, player) in listener_players.clone().iter().enumerate() {
-            if other_player_index != player_index {
-              other_players.push(OtherPlayer {
+          if player.last_packet_time.elapsed().as_secs_f64() < MAX_PACKET_INTERVAL {
+            // do nothing
+          } else {
+            player.last_packet_time = Instant::now();
+
+
+            // Gather info to send about other players
+            let mut other_players: Vec<OtherPlayer> = Vec::new();
+            for (other_player_index, player) in listener_players.clone().iter().enumerate() {
+              if other_player_index != player_index {
+                other_players.push(OtherPlayer {
+                  health: player.health,
+                  position: player.position,
+                  secondary_charge: player.secondary_charge,
+                  aim_direction: player.aim_direction,
+                  movement_direction: player.move_direction,
+                  shooting_primary: player.shooting,
+                  shooting_secondary: player.shooting_secondary,
+                  team: player.team,
+                  character: player.character,
+                  time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
+                  is_dead: false,
+                  camera: Camera::new(),  
+                  buffs: player.buffs.clone(),
+                  previous_positions: match player.character {
+                    Character::TimeQueen => player.previous_positions.clone(),
+                    _ => Vec::new(),
+                  },
+                })
+              }
+            }
+
+            // packet sent to player with info about themselves and other players
+            let gamemode_info = listener_gamemode_info.lock().unwrap();
+            let server_packet: ServerPacket = ServerPacket {
+              player_packet_is_sent_to: ServerRecievingPlayerPacket {
                 health: player.health,
-                position: player.position,
-                secondary_charge: player.secondary_charge,
-                aim_direction: player.aim_direction,
-                movement_direction: player.move_direction,
+                override_position: player.had_illegal_position,
+                position_override: player.position,
                 shooting_primary: player.shooting,
                 shooting_secondary: player.shooting_secondary,
-                team: player.team,
+                secondary_charge: player.secondary_charge,
+                last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
                 character: player.character,
-                time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
-                is_dead: false,
-                camera: Camera::new(),  
+                is_dead: player.is_dead,
                 buffs: player.buffs.clone(),
                 previous_positions: match player.character {
                   Character::TimeQueen => player.previous_positions.clone(),
                   _ => Vec::new(),
                 },
-              })
-            }
-          }
-
-          // packet sent to player with info about themselves and other players
-          let gamemode_info = listener_gamemode_info.lock().unwrap();
-          let server_packet: ServerPacket = ServerPacket {
-            player_packet_is_sent_to: ServerRecievingPlayerPacket {
-              health: player.health,
-              override_position: player.had_illegal_position,
-              position_override: player.position,
-              shooting_primary: player.shooting,
-              shooting_secondary: player.shooting_secondary,
-              secondary_charge: player.secondary_charge,
-              last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
-              character: player.character,
-              is_dead: player.is_dead,
-              buffs: player.buffs.clone(),
-              previous_positions: match player.character {
-                Character::TimeQueen => player.previous_positions.clone(),
-                _ => Vec::new(),
+                team: player.team,
+                time_since_last_primary: player.last_shot_time.elapsed().as_secs_f32(),
               },
-              team: player.team,
-              time_since_last_primary: player.last_shot_time.elapsed().as_secs_f32(),
-            },
-            players: other_players,
-            game_objects: listener_game_objects.clone(),
-            gamemode_info: gamemode_info.clone(),
-            timestamp: recieved_player_info.timestamp, // pong!
-          };
-          drop(gamemode_info);
-          listener_players[player_index].had_illegal_position = false;
-          
-          let mut player_ip = player.ip.clone();
-          let split_player_ip: Vec<&str> = player_ip.split(":").collect();
-          player_ip = split_player_ip[0].to_string();
-          player_ip = format!("{}:{}", player_ip, player.true_port);
-          // println!("PLAYER IP: {}", player_ip);
-          // println!("PACKET: {:?}", server_packet);
-          let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
-          socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
-          // player.had_illegal_position = false; // reset since we corrected the error.
-
+              players: other_players,
+              game_objects: listener_game_objects.clone(),
+              gamemode_info: gamemode_info.clone(),
+              timestamp: recieved_player_info.timestamp, // pong!
+            };
+            drop(gamemode_info);
+            listener_players[player_index].had_illegal_position = false;
+            
+            let mut player_ip = player.ip.clone();
+            let split_player_ip: Vec<&str> = player_ip.split(":").collect();
+            player_ip = split_player_ip[0].to_string();
+            player_ip = format!("{}:{}", player_ip, player.true_port);
+            // println!("PLAYER IP: {}", player_ip);
+            // println!("PACKET: {:?}", server_packet);
+            let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
+            socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
+            // player.had_illegal_position = false; // reset since we corrected the error.
+         }
 
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
@@ -921,8 +926,8 @@ fn main() {
 /// This struct can be as hefty as we want, it stays here, doesn't get sent through network.
 #[derive(Debug, Clone)]
 struct ServerPlayer {
-  /// also used as an identifier
   ip:                   String,
+  /// also used as an identifier
   port:                 u16,
   true_port:            u16,
   team:                 Team,
