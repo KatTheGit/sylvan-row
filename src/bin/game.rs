@@ -580,9 +580,14 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   // temporary
   let controller_deadzone: f32 = 0.3;
 
-  let mut delta_time_counter: Instant = Instant::now();
-  let mut delta_time: f32 = delta_time_counter.elapsed().as_secs_f32();
-  let desired_delta_time: f32 = 1.0 / 60.0; // Hz
+
+  let mut frame_counter:   Instant = Instant::now();
+  let mut network_counter: Instant = Instant::now();
+
+  // whether to enforce the frame time limit
+  let frame_time_locked: bool = false;
+  let desired_frame_time: f32 = 1.0 / 100.0;
+  let desired_network_time: f32 = 1.0 / 30.0;
 
   // Whether in keyboard or controller mode.
   // Ignore mouse pos in controller mode for example.
@@ -592,6 +597,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   let mut toggle_time: Instant = Instant::now();
 
   loop {
+
+    let delta_time = frame_counter.elapsed().as_secs_f32();
+    frame_counter = Instant::now();
+
     //println!("Shit");
     let kill_this_thread: MutexGuard<bool> = kill.lock().unwrap();
     if *kill_this_thread {
@@ -612,8 +621,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
         let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
         // if we sent an illegal position, and server does a position override:
         if recieved_server_info.player_packet_is_sent_to.override_position {
-          // gain access to the player mutex
           player.position = recieved_server_info.player_packet_is_sent_to.position_override;
+          println!("Recieved position override.");
         }
 
         // handle camera position upon death
@@ -868,46 +877,48 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // println!("{:?}", movement_vector_raw);
     // println!("{:?}", keyboard_mode);
 
-    // (vscode) MARK: send packet
-
-    // create the packet to be sent to server.
-    let client_packet: ClientPacket = ClientPacket {
-      position:      player.position,
-      movement:      movement_vector_raw,
-      aim_direction: player.aim_direction,
-      shooting_primary,
-      shooting_secondary,
-      packet_interval: delta_time,
-      dashing,
-      character: player.character,
-      port: port,
-      timestamp: SystemTime::now(), // ping!
-    };
-
     // update player info
     player.shooting_primary = shooting_primary;
     player.dashing = dashing;
     player.shooting_secondary = shooting_secondary;
-    
+
+
+    // (vscode) MARK: send packet
+    let network_elapsed = network_counter.elapsed().as_secs_f32();
+    if network_elapsed > desired_network_time {
+      // reset counter
+      network_counter = Instant::now();
+
+      // create the packet to be sent to server.
+      let client_packet: ClientPacket = ClientPacket {
+        position:      player.position,
+        movement:      movement_vector_raw,
+        aim_direction: player.aim_direction,
+        shooting_primary,
+        shooting_secondary,
+        packet_interval: network_elapsed,
+        dashing,
+        character: player.character,
+        port: port,
+        timestamp: SystemTime::now(), // ping!
+      };
+
+      // send data to server
+      let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
+      socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server. Is your IP address correct?");
+    }
     // drop mutexguard ASAP so other threads can use player ASAP.
     drop(player);
-    
-    // send data to server
-    let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
-    socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server. Is your IP address correct?");
 
     let mut update_keyboard_mode: MutexGuard<bool> = global_keyboard_mode.lock().unwrap();
     *update_keyboard_mode = keyboard_mode;
     drop(update_keyboard_mode);
     
     // update delta_time and reset counter.
-    let delta_time_difference: f32 = desired_delta_time - delta_time_counter.elapsed().as_secs_f32();
-    if delta_time_difference > 0.0 {
+    let delta_time_difference: f32 = desired_frame_time - delta_time;
+    if delta_time_difference > 0.0 && frame_time_locked /* only if input fps is limited */ {
       std::thread::sleep(Duration::from_secs_f32(delta_time_difference));
     }
-
-    delta_time = delta_time_counter.elapsed().as_secs_f32();
-    delta_time_counter = Instant::now();
 
     let mut sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
     *sender_fps = (1.0 / delta_time).round();

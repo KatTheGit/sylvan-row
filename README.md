@@ -76,14 +76,14 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
       - [x] Landmine
 - [x] Disconnect players after inactivity
   - [x] Fix indexing issue (If a player quits, previously assigned "owner index" values become wrong.) Replace with port number?
+- [x] Client network and input have separate target Hz
+- [ ] Server keeps sending override packets?????? lil bros a little too trigger happy
 
 ### After every playtest:
 
 - [ ] Balance characters
 - [ ] Change sizes and whatnot
 - [ ] Other feedback
-- [ ] Maybe increase health 100->255 for higher precision, still display 0-100 clientside.
-  - [ ] Or just use floats atp
 
 ## Find fun gamemode + a bit of polish
 
@@ -110,7 +110,6 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 
 ## Polish
 
-- [ ] Clean up code if necessary
 - [ ] Good sound design
   - [ ] One sound for every action, etc...
 - [ ] Main menu and matchmaking server
@@ -135,7 +134,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Publish on steam
 - [ ] Advertise
   - [ ] Reddit?
-  - [ ] Tiktok
+  - [ ] Tiktok?
   - [ ] Youtube?
 
 ## Independent of playtests

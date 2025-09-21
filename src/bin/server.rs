@@ -228,6 +228,7 @@ fn main() {
             if movement_legal {
               // Apply the movement that the server calculated, which should be similar to the client's.
               player.position = new_position;
+              player.had_illegal_position = false;
             } else {
               // Inform the network sender it needs to send a correction packet (position override packet).
               player.had_illegal_position = true;
@@ -244,9 +245,11 @@ fn main() {
             break;
           }
 
-          if player.last_packet_time.elapsed().as_secs_f64() < MAX_PACKET_INTERVAL {
-            // do nothing
-          } else {
+          //// this stupid SHIT somehow fixes the bug where ping keeps increasing
+          //if player.last_packet_time.elapsed().as_secs_f64() < MAX_PACKET_INTERVAL {
+          //  // do nothing
+          //} else
+          {
             player.last_packet_time = Instant::now();
 
 
