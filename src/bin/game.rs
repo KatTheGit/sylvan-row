@@ -292,17 +292,15 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // Do camera logic
     //camera_offset = Vector2::difference( player_copy.camera.position, player_copy.position);
     if !player_copy.is_dead {
-      let camera_speed: f32 = 9.0;
+      let camera_speed: f32 = 0.0;
       let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
       let camera_distance_mag = camera_distance.magnitude();
-      let camera_movement = f32::max(camera_speed, camera_distance_mag/1.35);
-      //if camera_movement < camera_distance_mag {
-      //  camera_movement = camera_distance_mag
-      //}
+      let camera_smoothing: f32 = 1.0;
+      let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*7.0, f32::exp2(camera_distance_mag)*camera_smoothing*4.0);
+      let camera_movement = f32::max(camera_speed, safe_quadratic);
 
-
-      player.camera.position.x += camera_movement * delta_time * camera_distance.x;
-      player.camera.position.y += camera_movement * delta_time * camera_distance.y;
+      player.camera.position.x += camera_movement * delta_time * camera_distance.normalize().x; // * mul;
+      player.camera.position.y += camera_movement * delta_time * camera_distance.normalize().y; // * mul;
     }
     // (vscode) MARK: update mouse pos
     // update mouse position for the input thread to handle.
@@ -378,18 +376,22 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       if range_limited > range {
         range_limited = range;
       }
+      let low_limit = 10.0;
+      if range_limited < low_limit {
+        range_limited = low_limit;
+      }
       // full line
       draw_line(
-        (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
-        (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
+        (aim_direction.normalize().x * low_limit * vh) + relative_position_x * vh,
+        (aim_direction.normalize().y * low_limit * vh) + relative_position_y * vh,
         (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
         (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
-        0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 0.2 }
+        0.6 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 0.2 }
       );
-      // shoter line
+      // shorter, matte line
       draw_line(
-        (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
-        (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
+        (aim_direction.normalize().x * low_limit * vh) + relative_position_x * vh,
+        (aim_direction.normalize().y * low_limit * vh) + relative_position_y * vh,
         (aim_direction.normalize().x * range_limited * vh) + (relative_position_x * vh),
         (aim_direction.normalize().y * range_limited * vh) + (relative_position_y * vh),
         0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 1.0 }
@@ -663,8 +665,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         if !player.is_dead && recieved_server_info.player_packet_is_sent_to.is_dead {
           // we just died rn, so set the camera pos (which is now a freecam) to current position
           // no clue why i have to do this, but for some reason upon death the camera moves "randomly"
-          //player.camera.position = player.position;
           // IDK SEEMS TO WORK WITHOUT
+          //player.camera.position = player.position;
         }
 
         let ping = match recieved_server_info.timestamp.elapsed() {
@@ -903,7 +905,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         character_properties[&player.character].dash_speed,
         character_properties[&player.character].dash_distance,
         game_objects,
-        player.position,
         player.position,
       );
     } else {

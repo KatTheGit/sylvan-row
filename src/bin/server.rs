@@ -158,7 +158,6 @@ fn main() {
               characters[&player.character].dash_speed, 
               characters[&player.character].dash_distance, 
               listener_game_objects.clone(), 
-              previous_position, 
               player.position
             );
           }
