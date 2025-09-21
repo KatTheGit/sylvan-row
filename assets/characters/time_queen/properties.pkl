@@ -1,8 +1,8 @@
 health = 100
 
-speed = 50.0
+speed = 47.5
 
-primary_damage = 8
+primary_damage = 7
 primary_heal = 0
 primary_damage_2 = 0
 primary_heal_2 = 0
@@ -23,7 +23,7 @@ secondary_range = 0.0
 secondary_charge_use = 100
 secondary_cooldown = 2.5
 
-dash_distance = 60.0
+dash_distance = 49.1
 dash_cooldown = 3.0
 dash_damage_multiplier = 0.5
-dash_speed = 400.0
+dash_speed = 350.0

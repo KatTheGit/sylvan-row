@@ -374,17 +374,19 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     //let relative_position_x = main_camera.position.x;
     //let relative_position_y = main_camera.position.y;
     if !player_copy.is_dead {
-      let mut range_limited: f32 = Vector2::distance(player_copy.camera.position, Vector2::from(mouse_position.clone()));
+      let mut range_limited: f32 = Vector2::distance(player_copy.position, Vector2::from(mouse_position.clone()));
       if range_limited > range {
         range_limited = range;
       }
+      // full line
       draw_line(
         (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
         (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
         (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
         (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
-        0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 0.3 }
+        0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 0.2 }
       );
+      // shoter line
       draw_line(
         (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
         (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,

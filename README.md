@@ -120,6 +120,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [ ] Proper art
   - [ ] Good font
 - [ ] Interpolation
+  - [ ] Remove clientside dash and interpolate that too.
 - [ ] Map editor
 - [ ] Fix anticheat
 - [ ] Canvas flipping

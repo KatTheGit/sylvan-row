@@ -4,17 +4,17 @@ All design guidelines for this videogame.
 
 - [1. Game design document](#1-game-design-document)
   - [1.1. Basic game description](#11-basic-game-description)
-- [2. Base mechanics](#2-base-mechanics)
+- [2. Basic mechanics](#2-basic-mechanics)
   - [2.1. Controls and Movement](#21-controls-and-movement)
   - [2.2. Stunning and Control](#22-stunning-and-control)
-  - [2.3. Vision and Feedback](#23-vision-and-feedback)
+  - [2.3. Combat Visuals and Feedback](#23-combat-visuals-and-feedback)
   - [2.4. Map](#24-map)
-- [3. Classes](#3-classes)
-  - [3.1. Assassin](#31-assassin)
-  - [3.2. Healer](#32-healer)
-  - [3.3. Ranger](#33-ranger)
+- [3. Character Classes](#3-character-classes)
+  - [3.1. Assassin / Brawler](#31-assassin--brawler)
+  - [3.2. Support (Healer, Shielder)](#32-support-healer-shielder)
+  - [3.3. Ranged / Controller](#33-ranged--controller)
 - [4. Characters](#4-characters)
-  - [4.1. Healers](#41-healers)
+  - [4.1. Supports](#41-supports)
     - [4.1.1. Raphaelle](#411-raphaelle)
   - [4.2. Assassins](#42-assassins)
     - [4.2.1. Cynewynn](#421-cynewynn)
@@ -23,16 +23,15 @@ All design guidelines for this videogame.
 
 ## 1.1. Basic game description
 
-A multiplayer arena fighting game where players fight with their pick amongst a cast of varied characters. It focuses on the following values:
-- Having balanced characters
-- Having relatively simple but unique characters (not many abilities but intricate)
-- Having snappy movement (WASD instead of click-to-move)
-- Being controller compatible and **friendly**
-- Being a top-down shooter
-- Having hand-drawn but 3D-looking graphics
+A multiplayer top-down shooter where players fight with their pick amongst a cast of varied characters. It focuses on the following values:
+- Having balanced characters that avoid hard-counter interactions, noob stomping, and unfair abilities.
 - Being easy to learn and hard to master
+  - Characters are relatively simple yet unique (not many abilities but intricate)
+  - Mastering this game means learning how to counter each hero's playstyle
+- Having snappy movement (WASD instead of click-to-move), and being controller compatible and **friendly**
+- Having hand-drawn but 3D-looking graphics
 
-# 2. Base mechanics
+# 2. Basic mechanics
 
 There are, independently of the picked character, three types of abilities. These differ by character.
 - Primary attack (on short cooldown, generally less than 1s)
@@ -55,7 +54,7 @@ The player has five game controls, which are independent of their picked charact
 A player may move freely if unobstructed by the map, aim and shoot freely at all times, and shoot their secondary
 once it is charged. These are the player's rights and may not be inhibited by other players and their abilities (i.e. stun, root).
 
-Characters must be designed to be playable on a controller.
+Furthermore, characters are designed to be playable on a controller.
 
 ## 2.2. Stunning and Control
 
@@ -73,13 +72,12 @@ However, they can:
 - Push enemies away slightly.
 - Slow them slightly for a short period of time.
 
-## 2.3. Vision and Feedback
+## 2.3. Combat Visuals and Feedback
 
 Absolutely everything has to be clear. Everything that is happening on the battlefield.
 - One sound effect for every action. A projectile being shot, hitting its target, flying by, someone moving, walls being placed, destroyed, an ability being available, etc...
 - As much visual feedback as possible. Show every relationship. Confusing mechanics that are difficult to track must have feedback.
 - However, only show partial informtion about opponent ability availability.
-- Invisibility, be it invisible players, traps or whatnot again requires a ridiculously cautious playstyle that is disfavoured in this game.
 - One colour for each projectile type depending on team:
   - Red team, healing: Orange
   - Red team, damage: Red duh
@@ -92,67 +90,66 @@ Maps contain walls. Walls are a major gameplay element. They can be added (by ab
 
 Maps can contains holes or water. These can be shot through but cannot be moved through. No exceptions.
 
-# 3. Classes
+# 3. Character Classes
 
-These are three classes that create a ternary system. It creates a rock-paper-scissors style countering triangle. Of course all "counters" are soft-counters. There should be no hardcounter matchups. These classes are malleable, and should only be loosely followed.
+There are three classes that create a ternary system. It makes for a rock-paper-scissors style countering triangle. Of course all "counters" are soft-counters. There should be no hardcounter matchups. These classes are malleable, and should only be loosely followed.
 
-## 3.1. Assassin
+## 3.1. Assassin / Brawler
 
 The fastest class. They specialise in high "burst" mobility and have a higher damage output. They have the shortest range. They easily catch up to healers, but may have a bit more trouble with rangers.
 
 Assassins excel at supporting rangers by protecting them from threats like other assassins or healers.
 
-## 3.2. Healer
+## 3.2. Support (Healer, Shielder)
 
-The second fastest class. Are very evasive and can easily avoid big bullets but not enough to evade assassins. They "counter" rangers' defensive playstyles by simply healing when the ranger plays too defensively. They have the second longest range.
+The second fastest class. Are very evasive and can easily avoid big bullets but not enough to evade assassins. They "counter" rangers' defensive playstyles by healing during downtime. They have the second longest range.
 
 Healers excel at supporting assassins in battle.
 
-## 3.3. Ranger
+## 3.3. Ranged / Controller
 
 The slowest but most defensive class. They have a very long range and defensive abilities that make them harder to approach. Assassins have more trouble with them than healers, if the ranger plays carefully.
 
-They excel at helping healers in battle, as they can help defend  them from assassins.
+They excel at helping healers in battle, as they can help defend them from assassins.
 
 # 4. Characters
 
-## 4.1. Healers
+## 4.1. Supports
 
 ### 4.1.1. Raphaelle
 
-- Primary
+- **Primary** - Kindness in Blood
   - Raphaelle tethers to allies within a certain radius.
-  - She shoots a medium range piercing projectile, if it damages an opponent, her tethered allies will recieve some health. She recieves half the health her allies recieve.
-  - If empowered, her projectile will deal more damage but won't heal allies. If it lands, it will slightly reduce the cooldown on her dash ability.
-- Secondary
+  - She shoots a medium range piercing projectile, if it damages an opponent, her tethered allies will recieve some health. She recieves less health than her allies.
+  - If empowered, her projectile will deal more damage but won't heal allies or herself. If it lands, it will reduce the cooldown on her dash ability.
+- **Secondary** - Sanctum
   - Places down a circular healpool, which periodically heals allies and increases the fire rate of anyone inside.
-- Dash
+- **Dash** - Enpowering Leap
   - A short dash that empowers the next primary shot.
-  - Dashing through an ally will heal them. [NOT IMPLEMENTED, might add if her healing output is too low]
-- Passives
+- **Passive** - Flight
   - Gains a short temporary speed buff upon getting hit.
-  - Relatively fast base movement speed, should be able to keep up with most teammates.
-  - Marginally heal tethered allies [NOT IMPLEMENTED, might add if her healing output is too low]
 
 Intended playstyle:
 - Has to be able to play offensively so she can play defensively. She can only heal by attacking players.
 - Can be very evasive, especially if she lands her empowered shots.
+- Low DPS but good evasion, she's an underedog character.
 
 ## 4.2. Assassins
 
 ### 4.2.1. Cynewynn
 
-- Primary
-  - A piercing sword slash.
+- **Primary** - Wrath
+  - A piercing sword slash, with a relatively fast attack rate.
   - The higher her secondary charge, the faster her attack rate.
-- Secondary
-  - Teleport back to her previous position, a few seconds in the past.
+- **Secondary** - Rectify
+  - Passive: Leaves a visual trail behind herself.
+  - Teleport back to her previous position, a few seconds in the past, back to the beginning of the trail.
   - Gain a small amount of health doing so.
-- Movement
+- **Movement** - Combat Leap
   - A long dash on a moderately long cooldown.
   - Take reduced damage during the dash.
-- Passive
-  - Highest movement speed.
+- **Passive** - Assassin
+  - Faster movement speed.
 
 Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
@@ -162,16 +159,17 @@ Intended playstyle:
 
 ### 4.3.1. Hernani
 
-- Primary
+- **Primary** - Silver Bullet
   - Long range shot, with a relatively low fire rate.
-- Secondary
+- **Secondary** - Vine Wall
   - Place down a wall, using some secondary charge
-- Movement
+- **Movement** - Elusive Retreat
   - Dash far away, placing down a bear trap. The ability is on a relatively long cooldown.
   - The bear trap arms after half a second, and harms anyone touching it. It lasts until Hernani regains his dash cooldown, or until someone steps on it.
-- Passive
+- **Passive** - Destructive Weaponry
   - Has an easier time destroying walls.
-  - Slowest movement speed.
+- **Passive** - Ranger
+  - Slower movement speed.
 
 Intended playstyle:
 - Easy to play, tutorial character.

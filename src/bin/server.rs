@@ -827,7 +827,7 @@ fn main() {
           if hit {
             // restore dash charge (0.5s)
             let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
-            main_loop_players[owner_index].last_dash_time -= Duration::from_millis(500);
+            main_loop_players[owner_index].last_dash_time -= Duration::from_millis(450);
           }
         }
 
@@ -945,7 +945,7 @@ impl ServerPlayer {
     match self.character {
       Character::HealerGirl => {
         self.buffs.push(
-          Buff { value: 12.0, duration: 0.5, buff_type: BuffType::Speed }
+          Buff { value: 6.0, duration: 0.5, buff_type: BuffType::Speed }
         );
       }
       _ => {}

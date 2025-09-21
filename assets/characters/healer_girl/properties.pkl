@@ -4,7 +4,7 @@ speed = 45.0
 
 primary_damage = 5
 primary_heal = 0
-primary_damage_2 = 7
+primary_damage_2 = 8
 primary_heal_2 = 3
 primary_lifesteal = 1
 primary_lifesteal_2 = 0
