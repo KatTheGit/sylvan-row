@@ -275,8 +275,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     }
     // for players
     for player in other_players.iter_mut() {
-      player.position.x += character_properties[&player.character].speed * player.movement_direction.x * get_frame_time() / 2.0;
-      player.position.y += character_properties[&player.character].speed * player.movement_direction.y * get_frame_time() / 2.0;
+      player.position.x += character_properties[&player.character].speed * player.movement_direction.x * get_frame_time() / 1.0;
+      player.position.y += character_properties[&player.character].speed * player.movement_direction.y * get_frame_time() / 1.0;
     }
 
     

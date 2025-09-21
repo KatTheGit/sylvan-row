@@ -568,8 +568,10 @@ fn main() {
           let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
           if f32::abs(difference.x) < TILE_SIZE && f32::abs(difference.y) < TILE_SIZE {
             // push out the necessary amount
-            main_loop_players[player_index].position.x -= TILE_SIZE - difference.x;
-            main_loop_players[player_index].position.y -= TILE_SIZE - difference.y;
+            main_loop_players[player_index].position.x -= TILE_SIZE + 0.1;
+            main_loop_players[player_index].position.y -= TILE_SIZE + 0.1;
+            main_loop_players[player_index].had_illegal_position = true;
+            break;
           }
         }
       }
