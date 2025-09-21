@@ -33,6 +33,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [x] Methods for server player for taking damage, healing, and secondary charge, to ease special logic.
 - [x] Client also dashes accordingly
   - [x] Somewhat fixed, new networking makes it smoother.
+  - [x] Fully fixed.
 - [x] Finish gamemode
   - [x] Round restarts
 - [x] Character picker before joining
@@ -77,7 +78,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [x] Disconnect players after inactivity
   - [x] Fix indexing issue (If a player quits, previously assigned "owner index" values become wrong.) Replace with port number?
 - [x] Client network and input have separate target Hz
-- [ ] Server keeps sending override packets?????? lil bros a little too trigger happy
+- [x] Server keeps sending override packets?????? lil bros a little too trigger happy
 
 ### After every playtest:
 

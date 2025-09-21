@@ -193,7 +193,7 @@ pub fn parse_pkl_string(pkl_string: &str) -> Result<PklValue, String> {
 // MARK: Client
 
 /// Information held by client about self and other players.
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ClientPlayer {
   pub health: u8,
   pub position: Vector2,
@@ -211,7 +211,11 @@ pub struct ClientPlayer {
   pub previous_positions: Vec<Vector2>,
   pub ping: u16,
   pub last_shot_time: f32,
+  /// wants to dash
   pub dashing: bool,
+  /// is currently dashing
+  pub is_dashing: bool,
+  pub dashed_distance: f32,
 }
 /// Information sent by server to client about other players.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -250,6 +254,8 @@ impl ClientPlayer {
       ping: 0,
       last_shot_time: 0.0,
       dashing: false,
+      is_dashing: false,
+      dashed_distance: 0.0,
     }
   }
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties) {
@@ -332,6 +338,8 @@ impl ClientPlayer {
       ping: 0,
       last_shot_time: 0.0,
       dashing: false,
+      is_dashing: false,
+      dashed_distance: 0.0,
     };
   }
 }
@@ -367,13 +375,13 @@ pub struct ServerRecievingPlayerPacket {
   pub shooting_primary:   bool,
   pub shooting_secondary: bool,
   pub secondary_charge:   u8,
-  pub last_dash_time:     f32,
   pub character:          Character,
   pub is_dead:            bool,
   pub buffs:              Vec<Buff>,
   pub previous_positions: Vec<Vector2>,
   pub team:               Team,
   pub time_since_last_primary: f32,
+  pub time_since_last_dash: f32,
 }
 
 /// information sent by server to client
@@ -656,7 +664,7 @@ pub enum BuffType {
   Speed,
 }
 
-pub fn dashing(mut is_dashing: bool, mut dashed_distance: f32, dash_direction: Vector2, delta_time: f64, char_dash_speed: f32, char_dash_distance: f32, game_objects: Vec<GameObject>, previous_position: Vector2, current_position: Vector2) -> (Vector2, f32, bool) {
+pub fn dashing_logic(mut is_dashing: bool, mut dashed_distance: f32, dash_direction: Vector2, delta_time: f64, char_dash_speed: f32, char_dash_distance: f32, game_objects: Vec<GameObject>, previous_position: Vector2, current_position: Vector2) -> (Vector2, f32, bool) {
   let mut new_position = Vector2::new();
   let player_dashing_speed: f32 = char_dash_speed;
   let player_max_dash_distance: f32 = char_dash_distance;
@@ -689,7 +697,7 @@ pub fn dashing(mut is_dashing: bool, mut dashed_distance: f32, dash_direction: V
     is_dashing = false;
     // The final frame of the dash new_position isn't updated, if not
     // for this line the player would get sent back to 0.0-0.0
-    new_position = current_position;
+    new_position = current_position; // idk why this is like this, whatever
   }
   return (new_position, dashed_distance, is_dashing);
 }

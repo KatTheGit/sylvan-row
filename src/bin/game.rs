@@ -411,7 +411,6 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       }
     }
 
-    
     // draw players and optionally their trails
     let trail_y_offset: f32 = 4.5;
     for player in other_players_copy.clone() {
@@ -674,13 +673,13 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         player.ping = ping as u16;
         player.health = recieved_server_info.player_packet_is_sent_to.health;
         player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
-        player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.last_dash_time;
         player.character = recieved_server_info.player_packet_is_sent_to.character;
         player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
         player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
         player.previous_positions = recieved_server_info.player_packet_is_sent_to.previous_positions;
         player.team = recieved_server_info.player_packet_is_sent_to.team;
         player.last_shot_time = recieved_server_info.player_packet_is_sent_to.time_since_last_primary;
+        player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.time_since_last_dash;
         drop(player); // free mutex guard ASAP for other thread to access player.
         
 
@@ -860,11 +859,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       shooting_secondary = true;
       keyboard_mode = true;
     }
-    
-    // println!("{}", dashing);
-    // println!("{} {}", shooting_primary, shooting_secondary);
+  
 
-    // MARK: Idk figure shit out
+    // MARK: Movement calc
+    // calc = slang for calculator
 
     // janky but good enough to correct controllers that give weird inputs.
     // should not happen on normal controllers anyways.
@@ -888,13 +886,33 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
     movement_vector.x *= (movement_speed + extra_speed) * delta_time;
     movement_vector.y *= (movement_speed + extra_speed) * delta_time;
 
-    if player.is_dead == false {  
-      (movement_vector_raw, movement_vector) = object_aware_movement(player.position, movement_vector_raw, movement_vector, game_objects.clone());
-      player.position.x += movement_vector.x;
-      player.position.y += movement_vector.y;
-    } if player.is_dead {
-      player.camera.position.x += movement_vector.x;
-      player.camera.position.y += movement_vector.y;
+    if dashing && !player.is_dashing && !player.is_dead && movement_vector_raw.magnitude() != 0.0 {
+      if player.time_since_last_dash > character_properties[&player.character].dash_cooldown {
+        player.is_dashing = true;
+      }
+    }
+
+    if player.is_dashing {
+      (player.position, player.dashed_distance, player.is_dashing) = dashing_logic(
+        player.is_dashing,
+        player.dashed_distance,
+        movement_vector_raw,
+        delta_time as f64,
+        character_properties[&player.character].dash_speed,
+        character_properties[&player.character].dash_distance,
+        game_objects,
+        player.position,
+        player.position,
+      );
+    } else {
+      if player.is_dead == false {  
+        (movement_vector_raw, movement_vector) = object_aware_movement(player.position, movement_vector_raw, movement_vector, game_objects.clone());
+        player.position.x += movement_vector.x;
+        player.position.y += movement_vector.y;
+      } if player.is_dead {
+        player.camera.position.x += movement_vector.x;
+        player.camera.position.y += movement_vector.y;
+      }
     }
 
     // println!("{:?}", player.position);

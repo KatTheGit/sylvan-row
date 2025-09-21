@@ -150,7 +150,7 @@ fn main() {
           }
           // (vscode) MARK: Dashing
           if player.is_dashing && !player.is_dead {
-            (new_position, player.dashed_distance, player.is_dashing) = dashing(
+            (new_position, player.dashed_distance, player.is_dashing) = dashing_logic(
               player.is_dashing,
               player.dashed_distance, 
               player.dash_direction, 
@@ -263,7 +263,6 @@ fn main() {
                 shooting_primary: player.shooting,
                 shooting_secondary: player.shooting_secondary,
                 secondary_charge: player.secondary_charge,
-                last_dash_time: player.last_dash_time.elapsed().as_secs_f32(),
                 character: player.character,
                 is_dead: player.is_dead,
                 buffs: player.buffs.clone(),
@@ -273,6 +272,7 @@ fn main() {
                 },
                 team: player.team,
                 time_since_last_primary: player.last_shot_time.elapsed().as_secs_f32(),
+                time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
               },
               players: other_players,
               game_objects: listener_game_objects.clone(),
