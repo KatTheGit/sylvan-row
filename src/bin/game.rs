@@ -154,8 +154,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
   // since only the main thread is allowed to read mouse position using macroquad,
   // main thread will have to modify it, and input thread will read it.
-  let mouse_position: Vec2 = Vec2::new(0.0, 0.0);
-  let mouse_position: Arc<Mutex<Vec2>> = Arc::new(Mutex::new(mouse_position));
+  let mut mouse_position: Vec2 = Vec2::new(0.0, 0.0);
 
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
@@ -191,7 +190,6 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   // start the input listener and network sender thread.
   // give it all necessary references to shared mutexes
   let input_thread_player = Arc::clone(&player);
-  let input_thread_mouse_position = Arc::clone(&mouse_position);
   let input_thread_game_objects = Arc::clone(&game_objects);
   let input_thread_sender_fps = Arc::clone(&sender_fps);
   let input_thread_killall = Arc::clone(&kill_all_threads);
@@ -199,7 +197,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_mouse_position, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -214,8 +212,15 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   let mut slow_draw_fps = 0;
   let mut slow_ping = 0;
 
+  let mut connected_to_server = false;
+
+  // Camera offset from player.
+  // let mut camera_offset: Vector2 = Vector2::new();
+
   // Main thread
   loop {
+
+    let delta_time: f32 = 1.0 / get_fps() as f32;
 
     // SUPER MEGA TEMPORARY
     let device_state: DeviceState = DeviceState::new();
@@ -243,7 +248,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
     // access and lock all necessary mutexes
     let player: Arc<Mutex<ClientPlayer>> = Arc::clone(&player);
-    let player: MutexGuard<ClientPlayer> = player.lock().unwrap();
+    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::clone(&game_objects);
     let mut game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
     let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::clone(&other_players);
@@ -274,27 +279,32 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       player.position.y += character_properties[&player.character].speed * player.movement_direction.y * get_frame_time() / 2.0;
     }
 
-    // readonly
-    let mut player_copy = player.clone();
-    drop(player);
-
+    
     let mut game_objects_copy = game_objects.clone();
     drop(game_objects);
-
+    
     let other_players_copy = other_players.clone();
     drop(other_players);
+        
+    // readonly
+    let player_copy = player.clone();
     
-    let mut camera_offset: Vector2 = Vector2::new();
-    // Set camera offset (lock to player, freecam if dead)
+    // Do camera logic
+    //camera_offset = Vector2::difference( player_copy.camera.position, player_copy.position);
     if !player_copy.is_dead {
-      camera_offset = Vector2 { x: 0.0, y: 0.0 };
-      player_copy.camera.position.x = player_copy.position.x + camera_offset.x;
-      player_copy.camera.position.y = player_copy.position.y + camera_offset.y;
-    }
+      let camera_speed: f32 = 9.0;
+      let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
+      let camera_distance_mag = camera_distance.magnitude();
+      let camera_movement = f32::max(camera_speed, camera_distance_mag/1.35);
+      //if camera_movement < camera_distance_mag {
+      //  camera_movement = camera_distance_mag
+      //}
 
+
+      player.camera.position.x += camera_movement * delta_time * camera_distance.x;
+      player.camera.position.y += camera_movement * delta_time * camera_distance.y;
+    }
     // (vscode) MARK: update mouse pos
-    let mouse_position: Arc<Mutex<Vec2>> = Arc::clone(&mouse_position);
-    let mut mouse_position: MutexGuard<Vec2> = mouse_position.lock().unwrap();
     // update mouse position for the input thread to handle.
     // This hot garbage WILL be removed once camera is implemented correctly. Mayhaps.
     // But what this does is turn the mouse's screen coordinates into game coordinates,
@@ -302,15 +312,18 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related         center
     //                        conversion.                           coords     ratio       to cropping.
     //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.   ,-------'----------,
-    mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0) + camera_offset.x; 
-    mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0                + camera_offset.y;
+    mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width() - 50.0 * (16.0 / 9.0) + player_copy.camera.position.x; 
+    mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height()- 50.0                + player_copy.camera.position.y;
     let keyboard_mode: MutexGuard<bool> = keyboard_mode.lock().unwrap();
-    let mut aim_direction: Vector2 = Vector2::difference(Vector2::new(), Vector2::from(mouse_position.clone()));
+    let mut aim_direction: Vector2 = Vector2::difference(player_copy.position, Vector2::from(mouse_position.clone()));
     if !*keyboard_mode {
       aim_direction = player_copy.aim_direction;
     }
+    if *keyboard_mode {
+      player.aim_direction = aim_direction;
+    }
+    drop(player);
     drop(keyboard_mode);
-    drop(mouse_position);
 
     // (vscode) MARK: Draw
 
@@ -355,21 +368,32 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
     // draw player and aim laser
     let range = character_properties[&player_copy.character].primary_range;
-    let relative_position_x = 50.0 * (16.0/9.0) - camera_offset.x; //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-    let relative_position_y = 50.0 - camera_offset.y; //+ (vh * 100.0) / 2.0;
+    let relative_position_x = 50.0 * (16.0/9.0) + player_copy.position.x - player_copy.camera.position.x; //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+    let relative_position_y = 50.0              + player_copy.position.y - player_copy.camera.position.y; //+ (vh * 100.0) / 2.0;
     // test
     //let relative_position_x = main_camera.position.x;
     //let relative_position_y = main_camera.position.y;
     if !player_copy.is_dead {
+      let mut range_limited: f32 = Vector2::distance(player_copy.camera.position, Vector2::from(mouse_position.clone()));
+      if range_limited > range {
+        range_limited = range;
+      }
       draw_line(
         (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
         (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
         (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
         (aim_direction.normalize().y * range * vh) + (relative_position_y * vh),
+        0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 0.3 }
+      );
+      draw_line(
+        (aim_direction.normalize().x * 10.0 * vh) + relative_position_x * vh,
+        (aim_direction.normalize().y * 10.0 * vh) + relative_position_y * vh,
+        (aim_direction.normalize().x * range_limited * vh) + (relative_position_x * vh),
+        (aim_direction.normalize().y * range_limited * vh) + (relative_position_y * vh),
         0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 1.0 }
       );
       if player_copy.character == Character::SniperWolf {
-        let range: f32 = character_properties[&Character::SniperWolf].secondary_range - TILE_SIZE/2.0;
+        let range: f32 = character_properties[&Character::SniperWolf].secondary_range;
         let aim_dir = aim_direction.normalize();
         // perpendicular direction 1
         let aim_dir_alpha = Vector2 {x:   aim_dir.y, y: - aim_dir.x};
@@ -383,9 +407,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         (aim_dir.x * range + aim_dir_gamma.x * width) * vh + relative_position_x * vh,
         (aim_dir.y * range + aim_dir_gamma.y * width) * vh + relative_position_y * vh,
         0.4 * vh, Color { r: 1.0, g: 0.5, b: 0.0, a: 1.0 }
-      );
+        );
       }
     }
+
     
     // draw players and optionally their trails
     let trail_y_offset: f32 = 4.5;
@@ -480,7 +505,6 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
           draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh);
         }
       }
-
     }
 
     // Draw fps, etc
@@ -499,6 +523,13 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
     draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
     draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
+
+    if player_copy.ping != 0 {
+      connected_to_server = true;
+    }
+    if !connected_to_server {
+      draw_text(format!("Not connected to server").as_str(), 20.0, 80.0, 40.0, RED);
+    }
     next_frame().await;
   }
 }
@@ -511,7 +542,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_position: Arc<Mutex<Vec2>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>) -> () {
 
   let mut server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
@@ -585,8 +616,10 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
   let mut network_counter: Instant = Instant::now();
 
   // whether to enforce the frame time limit
-  let frame_time_locked: bool = false;
-  let desired_frame_time: f32 = 1.0 / 100.0;
+  let frame_time_locked: bool = true;
+  // applies to movement and network listen
+  let desired_frame_time: f32 = 1.0 / 500.0;
+  // only applies to network sending rate.
   let desired_network_time: f32 = 1.0 / 30.0;
 
   // Whether in keyboard or controller mode.
@@ -832,14 +865,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, mouse_positio
     // println!("{} {}", shooting_primary, shooting_secondary);
 
     // MARK: Idk figure shit out
-
-    if keyboard_mode { 
-      let mouse_position = Arc::clone(&mouse_position);
-      let mouse_position = mouse_position.lock().unwrap();
-      let aim_direction = Vector2::from(*mouse_position);
-      drop(mouse_position);
-      player.aim_direction = aim_direction;
-    }
 
     // janky but good enough to correct controllers that give weird inputs.
     // should not happen on normal controllers anyways.

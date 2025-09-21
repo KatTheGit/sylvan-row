@@ -655,3 +655,41 @@ pub enum BuffType {
   FireRate,
   Speed,
 }
+
+pub fn dashing(mut is_dashing: bool, mut dashed_distance: f32, dash_direction: Vector2, delta_time: f64, char_dash_speed: f32, char_dash_distance: f32, game_objects: Vec<GameObject>, previous_position: Vector2, current_position: Vector2) -> (Vector2, f32, bool) {
+  let mut new_position = Vector2::new();
+  let player_dashing_speed: f32 = char_dash_speed;
+  let player_max_dash_distance: f32 = char_dash_distance;
+  
+  let mut dash_movement = Vector2::new();
+  dash_movement.x = dash_direction.x * player_dashing_speed * delta_time as f32;
+  dash_movement.y = dash_direction.y * player_dashing_speed * delta_time as f32;
+  
+  // calculate current expected position based on input
+  let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
+    previous_position,
+    dash_direction,
+    dash_movement,
+    game_objects,
+  );
+  
+  if dashed_distance < player_max_dash_distance {
+    new_position.x = previous_position.x + new_movement_raw.x * player_dashing_speed * delta_time as f32;
+    new_position.y = previous_position.y + new_movement_raw.y * player_dashing_speed * delta_time as f32;
+    let dashed_distance_this_frame = Vector2::distance(new_position, previous_position);
+    if dashed_distance_this_frame > 0.0 {
+      dashed_distance += Vector2::distance(new_position, previous_position);
+    }
+    else {
+      is_dashing = false;
+    }
+  }
+  else {
+    dashed_distance = 0.0;
+    is_dashing = false;
+    // The final frame of the dash new_position isn't updated, if not
+    // for this line the player would get sent back to 0.0-0.0
+    new_position = current_position;
+  }
+  return (new_position, dashed_distance, is_dashing);
+}

@@ -110,7 +110,7 @@ fn main() {
           
           // (vscode) MARK: Dashing Legality
           // If player wants to dash and isn't dashing...
-          if recieved_player_info.dashing && !player.is_dashing && !player.is_dead && player.move_direction.magnitude() != 0.0{
+          if recieved_player_info.dashing && !player.is_dashing && !player.is_dead && recieved_player_info.movement.magnitude() != 0.0 {
             let player_dash_cooldown = characters[&player.character].dash_cooldown;
             // And we're past the cooldown...
             if player.last_dash_time.elapsed().as_secs_f32() > player_dash_cooldown {
@@ -119,75 +119,48 @@ fn main() {
               // set dashing to true
               player.is_dashing = true;
               // set the dashing direction
-              if recieved_player_info.movement.magnitude() > 0.0 {
-                player.dash_direction = recieved_player_info.movement;
+              player.dash_direction = recieved_player_info.movement;
 
-                // (vscode) MARK: Special dashes
-                match player.character {
-                  Character::HealerGirl => {
-                    player.next_shot_empowered = true;
-                  }
-                  Character::SniperWolf => {
-                    // Place down a bomb
-                    listener_game_objects.push(
-                      GameObject {
-                        object_type: GameObjectType::HernaniLandmine,
-                        size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-                        position: player.position,
-                        direction: Vector2::new(),
-                        to_be_deleted: false,
-                        owner_port: listener_players[player_index].port,
-                        hitpoints: 1,
-                        lifetime: characters[&Character::SniperWolf].dash_cooldown,
-                        players: Vec::new(),
-                        traveled_distance: 0.0,
-                      }
-                    );
-                  }
-                  Character::TimeQueen => {}
-                  Character::Dummy => {}
+              // (vscode) MARK: Special dashes
+              match player.character {
+                Character::HealerGirl => {
+                  player.next_shot_empowered = true;
                 }
-              }
-              else {
-                player.is_dashing = false;
+                Character::SniperWolf => {
+                  // Place down a bomb
+                  listener_game_objects.push(
+                    GameObject {
+                      object_type: GameObjectType::HernaniLandmine,
+                      size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                      position: player.position,
+                      direction: Vector2::new(),
+                      to_be_deleted: false,
+                      owner_port: listener_players[player_index].port,
+                      hitpoints: 1,
+                      lifetime: characters[&Character::SniperWolf].dash_cooldown,
+                      players: Vec::new(),
+                      traveled_distance: 0.0,
+                    }
+                  );
+                }
+                Character::TimeQueen => {}
+                Character::Dummy => {}
               }
             }
           }
           // (vscode) MARK: Dashing
           if player.is_dashing && !player.is_dead {
-            let player_dashing_speed: f32 = characters[&player.character].dash_speed;
-            let player_max_dash_distance: f32 = characters[&player.character].dash_distance;
-            
-            let mut dash_movement = Vector2::new();
-            dash_movement.x = player.dash_direction.x * player_dashing_speed * time_since_last_packet as f32;
-            dash_movement.y = player.dash_direction.y * player_dashing_speed * time_since_last_packet as f32;
-            
-            // calculate current expected position based on input
-            let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
-              previous_position,
-              player.dash_direction,
-              dash_movement,
-              listener_game_objects.clone(),
+            (new_position, player.dashed_distance, player.is_dashing) = dashing(
+              player.is_dashing,
+              player.dashed_distance, 
+              player.dash_direction, 
+              time_since_last_packet, 
+              characters[&player.character].dash_speed, 
+              characters[&player.character].dash_distance, 
+              listener_game_objects.clone(), 
+              previous_position, 
+              player.position
             );
-            
-            if player.dashed_distance < player_max_dash_distance {
-              new_position.x = previous_position.x + new_movement_raw.x * player_dashing_speed * time_since_last_packet as f32;
-              new_position.y = previous_position.y + new_movement_raw.y * player_dashing_speed * time_since_last_packet as f32;
-              let dashed_distance_this_frame = Vector2::distance(new_position, previous_position);
-              if dashed_distance_this_frame > 0.0 {
-                player.dashed_distance += Vector2::distance(new_position, previous_position);
-              }
-              else {
-                player.is_dashing = false;
-              }
-            }
-            else {
-              player.dashed_distance = 0.0;
-              player.is_dashing = false;
-              // The final frame of the dash new_position isn't updated, if not
-              // for this line the player would get sent back to 0.0-0.0
-              new_position = player.position;
-            }
           }
 
           else {
@@ -226,8 +199,9 @@ fn main() {
             }
             
             if movement_legal {
-              // Apply the movement that the server calculated, which should be similar to the client's.
-              player.position = new_position;
+              // Since the client had correct movement, let's comply with theirs, to avoid desync.
+              player.position = recieved_position;
+              // inform the rest of the code we're all good.
               player.had_illegal_position = false;
             } else {
               // Inform the network sender it needs to send a correction packet (position override packet).
@@ -1167,5 +1141,5 @@ fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
       return player_index;
     }
   }
-  return 999999; // Make DAMN sure this causes an issue if we don't find a player.
+  panic!("index_by_port function error - data race condition, mayhaps?");
 }

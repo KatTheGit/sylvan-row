@@ -26,4 +26,4 @@ secondary_cooldown = 0.0
 dash_distance = 40.0
 dash_cooldown = 4.0
 dash_damage_multiplier = 1.0
-dash_speed = 200.0
+dash_speed = 300.0
