@@ -124,7 +124,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Map editor
 - [ ] Fix anticheat
 - [ ] Canvas flipping
-- [ ] Smooth camera
+- [x] Smooth camera
 - [ ] Find vulnerabilities
   - [ ] Big packets and false packets can crash
 - [ ] Optimise size of network packets
@@ -145,7 +145,6 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Make a better looking UI
   - [x] Ability cooldowns
   - [ ] Teammates, opponents, etc.
-  - [ ] Font that looks ok
 
 ## Issues that won't be solved
 
@@ -162,4 +161,3 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
 
 - MylesDeGreat on deviantart for inspiration on the sword slash sprite
 - posemy.art for reference images
-- playit.gg for tunnels

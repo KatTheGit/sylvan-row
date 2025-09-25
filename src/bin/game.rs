@@ -292,15 +292,14 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // Do camera logic
     //camera_offset = Vector2::difference( player_copy.camera.position, player_copy.position);
     if !player_copy.is_dead {
-      let camera_speed: f32 = 0.0;
       let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
       let camera_distance_mag = camera_distance.magnitude();
-      let camera_smoothing: f32 = 1.0;
-      let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*7.0, f32::exp2(camera_distance_mag)*camera_smoothing*4.0);
-      let camera_movement = f32::max(camera_speed, safe_quadratic);
+      let camera_smoothing: f32 = 1.0; // higher = less smoothing
+      let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, f32::exp2(camera_distance_mag)*camera_smoothing*5.0);
+      let camera_movement_speed = safe_quadratic;
 
-      player.camera.position.x += camera_movement * delta_time * camera_distance.normalize().x; // * mul;
-      player.camera.position.y += camera_movement * delta_time * camera_distance.normalize().y; // * mul;
+      player.camera.position.x += camera_movement_speed * delta_time * camera_distance.normalize().x; // * mul;
+      player.camera.position.y += camera_movement_speed * delta_time * camera_distance.normalize().y; // * mul;
     }
     // (vscode) MARK: update mouse pos
     // update mouse position for the input thread to handle.
