@@ -136,6 +136,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::Grass5Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-5-b.png"), None),
         GameObjectType::Grass6Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-6-b.png"), None),
         GameObjectType::Grass7Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-7-b.png"), None),
+        GameObjectType::Water1              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-edge.png"), None),
+        GameObjectType::Water2              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-full.png"), None),
       }
     );
   }
@@ -1008,17 +1010,22 @@ fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile
                                                GameObjectType::Grass5,
                                                GameObjectType::Grass6,
                                                GameObjectType::Grass7, ];
-
-  for x in 0..map_size_x {
-    for y in 0..map_size_y {
+  let extra_offset_x: u16 = 9;
+  let extra_offset_y: u16 = 5;
+  for x in 0..map_size_x + (extra_offset_x*2) {
+    for y in 0..map_size_y + (extra_offset_y*2) {
       let random_num_raw = rand();
       let mut random_num_f = (random_num_raw as f64) / u32::MAX as f64;
       random_num_f *= 6.0;
       let random_num = random_num_f.round() as usize;
+      let pos_x: i16 = x.try_into().unwrap();
+      let pos_x: f32 = (pos_x - extra_offset_x as i16) as f32 * TILE_SIZE;
+      let pos_y: i16 = y.try_into().unwrap();
+      let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 * TILE_SIZE + TILE_SIZE*0.5;
       if (x + y) % 2 == 1 {
-        tiles.push(BackGroundTile { position: Vector2 { x: x as f32 * TILE_SIZE, y: y as f32 * TILE_SIZE + TILE_SIZE*0.5 }, object_type: bright_tiles[random_num] });
+        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num] });
       } else {
-        tiles.push(BackGroundTile { position: Vector2 { x: x as f32 * TILE_SIZE, y: y as f32 * TILE_SIZE + TILE_SIZE*0.5 }, object_type: dark_tiles[random_num] });
+        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: dark_tiles[random_num] });
       }
     }
   }
@@ -1048,6 +1055,8 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
     }
     match unsorted_objects[current_lowest_index].object_type {
       GameObjectType::HealerAura      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::Water1      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::Water2      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
       GameObjectType::HernaniLandmine => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }
       _                               => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }
     }

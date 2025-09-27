@@ -7,6 +7,7 @@ use bincode;
 use std::{thread, time::*};
 
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
+const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall, GameObjectType::Water1, GameObjectType::Water2];
 static mut SPAWN_RED: Vector2 = Vector2 {x: 300.0, y: 110.0};
 static mut SPAWN_BLUE: Vector2 = Vector2 {x: 20.0, y: 120.0};
 
@@ -371,7 +372,7 @@ fn main() {
   let mut delta_time: f64 = server_counter.elapsed().as_secs_f64();
   // Server logic frequency in Hertz. Doesn't need to be much higher than 120.
   // Higher frequency = higher precission with computation trade-off
-  let desired_delta_time: f64 = 1.0 / 120.0;
+  let desired_delta_time: f64 = 1.0 / 1000.0; // This needs to be limited otherwise it hogs the mutexess
 
   let main_game_objects = Arc::clone(&game_objects);
 
@@ -563,12 +564,12 @@ fn main() {
       let unstucker_game_objects = main_game_objects.lock().unwrap();
       for game_object_index in 0..unstucker_game_objects.len() {
         
-        if WALL_TYPES.contains(&unstucker_game_objects[game_object_index].object_type) {
+        if WALL_TYPES_ALL.contains(&unstucker_game_objects[game_object_index].object_type) {
           let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
           if f32::abs(difference.x) < TILE_SIZE && f32::abs(difference.y) < TILE_SIZE {
             // push out the necessary amount
-            main_loop_players[player_index].position.x -= TILE_SIZE + 0.1;
-            main_loop_players[player_index].position.y -= TILE_SIZE + 0.1;
+            main_loop_players[player_index].position.x += (TILE_SIZE + 0.1 )* difference.normalize().x;
+            main_loop_players[player_index].position.y += (TILE_SIZE + 0.1 )* difference.normalize().y;
             main_loop_players[player_index].had_illegal_position = true;
             break;
           }

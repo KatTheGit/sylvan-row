@@ -104,6 +104,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
     - [ ] One way password hash
     - [ ] User database
     - [ ] Login window and allat
+- [ ] Redo that shitass physics engine
 
 ### After every playtest:
 

@@ -138,9 +138,8 @@ Intended playstyle:
 
 ### 4.2.1. Cynewynn
 
-- **Primary** - Wrath
+- **Primary** - Wrath of a Righteous Queen
   - A piercing sword slash, with a relatively fast attack rate.
-  - The higher her secondary charge, the faster her attack rate.
 - **Secondary** - Rectify
   - Passive: Leaves a visual trail behind herself.
   - Teleport back to her previous position, a few seconds in the past, back to the beginning of the trail.
@@ -148,8 +147,8 @@ Intended playstyle:
 - **Movement** - Combat Leap
   - A long dash on a moderately long cooldown.
   - Take reduced damage during the dash.
-- **Passive** - Assassin
-  - Faster movement speed.
+- **Passive** - Dedication
+  - The higher her secondary charge, the faster her attack rate.
 
 Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
@@ -168,8 +167,6 @@ Intended playstyle:
   - The bear trap arms after half a second, and harms anyone touching it. It lasts until Hernani regains his dash cooldown, or until someone steps on it.
 - **Passive** - Destructive Weaponry
   - Has an easier time destroying walls.
-- **Passive** - Ranger
-  - Slower movement speed.
 
 Intended playstyle:
 - Easy to play, tutorial character.

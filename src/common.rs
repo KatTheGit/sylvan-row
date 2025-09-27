@@ -439,6 +439,10 @@ pub enum GameObjectType {
   Grass5Bright,
   Grass6Bright,
   Grass7Bright,
+  /// Currently, an edge water tile
+  Water1,
+  /// Currently, a full water tile
+  Water2,
 }
 // MARK: Vectors
 // utility
@@ -558,11 +562,15 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
       object_type: match gameobject_type {
         "wall"            => {GameObjectType::Wall},
         "unbreakablewall" => {GameObjectType::UnbreakableWall},
+        "water1" => {GameObjectType::Water1},
+        "water2" => {GameObjectType::Water2},
         _                 => {panic!("Unexpected ojbect in map file.")},
       },
       size: match gameobject_type {
         "wall" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
         "unbreakablewall" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
+        "water1" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
+        "water2" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
          _ => {panic!("Unexpected ojbect in map file.")},
       },
       position: Vector2 { x: pos_x, y: pos_y },
@@ -595,8 +603,10 @@ pub fn object_aware_movement(
   desired_position.y += movement.y;
 
   for game_object in game_objects.clone() {
-    if game_object.object_type == GameObjectType::Wall            ||
-       game_object.object_type == GameObjectType::SniperWall            ||
+    if game_object.object_type == GameObjectType::Wall           ||
+       game_object.object_type == GameObjectType::SniperWall     ||
+       game_object.object_type == GameObjectType::Water1         ||
+       game_object.object_type == GameObjectType::Water2         ||
        game_object.object_type == GameObjectType::UnbreakableWall {
       let difference = Vector2::difference(desired_position, game_object.position);
 
