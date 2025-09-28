@@ -16,6 +16,7 @@ All design guidelines for this videogame.
 - [4. Characters](#4-characters)
   - [4.1. Supports](#41-supports)
     - [4.1.1. Raphaelle](#411-raphaelle)
+    - [4.1.2 Randolf \[IDEA\]](#412-randolf-idea)
   - [4.2. Assassins](#42-assassins)
     - [4.2.1. Cynewynn](#421-cynewynn)
   - [4.3. Rangers](#43-rangers)
@@ -134,11 +135,30 @@ Intended playstyle:
 - Can be very evasive, especially if she lands her empowered shots.
 - Low DPS but good evasion, she's an underedog character.
 
+Intended playstyle:
+- Tanks for allies and needs to frontline to be able to heal adequately.
+
+### 4.1.2 Randolf [IDEA]
+
+- **Primary** - 
+  - A medium range projectile.
+  - If it hits an opponent, it adds a stack to **Dash**.
+- **Secondary** - Guardian Angel
+  - Holds a shield in front of himself, that absorbs damage.
+  - If damage is absorbed, secondary charge is decreased accodingly.
+  - If his shield is raised, **Passive** no longer applies.
+- **Dash** - Combat Medic
+  - Dashes forward.
+  - Heals any allies that are dashed through. Heals more if he has more stacks.
+  - Always has one stack, can go up to three.
+- **Passive** - Frontliner
+  - Any nearby allies are given a small speed boost, including himself.
+
 ## 4.2. Assassins
 
 ### 4.2.1. Cynewynn
 
-- **Primary** - Wrath of a Righteous Queen
+- **Primary** - Righteous Wrath of an Honourable Queen
   - A piercing sword slash, with a relatively fast attack rate.
 - **Secondary** - Rectify
   - Passive: Leaves a visual trail behind herself.
