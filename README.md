@@ -28,124 +28,34 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 
 # To do
 
-## Playtestable game
-
-- [x] Methods for server player for taking damage, healing, and secondary charge, to ease special logic.
-- [x] Client also dashes accordingly
-  - [x] Somewhat fixed, new networking makes it smoother.
-  - [x] Fully fixed.
-- [x] Finish gamemode
-  - [x] Round restarts
-- [x] Character picker before joining
-  - [x] UI "library"
-    - [x] Character picker
-    - [x] Client directly connects with a desired character specified in each packet sent, since all packets are identical.
-- [x] Buff system
-- [x] Finish Characters
-  - [x] The bunny
-    - [x] Primary
-    - [x] Secondary
-    - [x] Dash
-    - [x] Passives
-  - [x] The wolf
-    - [x] Primary
-    - [x] Secondary
-    - [x] Dash
-    - [x] Passives
-  - [x] The queen
-    - [x] Secondary has a trail
-- [x] Improve map
-- [x] Simple background tile system
-- [x] Sort gameobjects by height
-- [x] Arbitrarily balance characters
-  - [x] Raphaelle
-  - [x] Cynewynn
-  - [x] Hernani
-- [x] Basic drawings
-  - [x] Bullets
-    - [x] R
-      - [x] Normal
-      - [x] Empowered
-    - [x] C
-    - [x] H
-    - [x] Rotation
-  - [x] Characters
-    - [x] Raphaelle
-    - [x] Cynewynn
-    - [x] Hernani
-      - [x] Wall
-      - [x] Landmine
-- [x] Disconnect players after inactivity
-  - [x] Fix indexing issue (If a player quits, previously assigned "owner index" values become wrong.) Replace with port number?
-- [x] Client network and input have separate target Hz
-- [x] Server keeps sending override packets?????? lil bros a little too trigger happy
-
-### After every playtest:
-
-- [ ] Balance characters
-- [ ] Change sizes and whatnot
-- [ ] Other feedback
-
-## Find fun gamemode + a bit of polish
-
-- [ ] Clean up code if necessary
-- [ ] Elliptic FOW instead of aspect ratio shenanigans
-- [ ] Sounds
-- [ ] Decent art for the characters now that they're playtest cleared.
-- [ ] Custom controls
-- [ ] Matchmaking server
-  - [ ] Client sends request to play
-  - [ ] Server put player in queue
-  - [ ] Server sends player information about game server
-  - [ ] Server launches Game Server
-  - [ ] Client connects to Game Server
-  - [ ] Profit
-  - [ ] Account system
-    - [ ] One way password hash
-    - [ ] User database
-    - [ ] Login window and allat
-- [ ] Redo that shitass physics engine
-
-### After every playtest:
-
-- [ ] Update gamemode
-
-## Polish
-
-- [ ] Good sound design
-  - [ ] One sound for every action, etc...
-- [ ] Main menu and matchmaking server
-- [ ] Account system
-- [ ] Better graphics
+- [ ] Implement feedback
+- [ ] New characters
+- [ ] Gamemode
+- [ ] Menus
+  - [ ] Pause menu, always accessible
+  - [ ] Home menu and game
+- [ ] Sound
+  - [ ] 3D sound (get direction sound game from)
+  - [ ] Volume sliders in settings screen, etc
+  - [ ] Music
+- [ ] Art
   - [ ] Animation system
-  - [ ] Proper art
-  - [ ] Good font
+  - [ ] Scenery & prettier backgrounds
+    - [ ] Background loader from file
+  - [ ] Mirror the map
 - [ ] Interpolation
-  - [ ] Remove clientside dash and interpolate that too.
-- [ ] Map editor
-- [ ] Fix anticheat
-- [ ] Canvas flipping
-- [x] Smooth camera
-- [ ] Find vulnerabilities
-  - [ ] Big packets and false packets can crash
-- [ ] Optimise size of network packets
-
-## Publish
-
-- [ ] Decide whether to fully host on cloud or use a VPS for tunneling
-  - [ ] Find an adequate provider
-- [ ] Publish on steam
-- [ ] Advertise
-  - [ ] Reddit?
-  - [ ] Tiktok?
-  - [ ] Youtube?
-
-## Independent of playtests
-
-- [ ] Clean up code
-- [ ] Make a better looking UI
-  - [x] Ability cooldowns
-  - [ ] Teammates, opponents, etc.
+  - [ ] Keep extrapolation for SIMPLE objects.
+  - [ ] Remove clientside dash, make it interpolate instead
+- [ ] Clean code
+  - [ ] New game engine
+    - [ ] Android compatible
+  - [ ] Server vulnerabilities
+  - [ ] Variable names, readability
+  - [ ] Organisation
+  - [ ] Packet size
+- [ ] Anticheat
+  - [ ] Packet averaging
+  - [ ] Hide certain information from client
 
 ## Issues that won't be solved
 

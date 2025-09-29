@@ -8,8 +8,8 @@ use std::{thread, time::*};
 
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
 const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall, GameObjectType::Water1, GameObjectType::Water2];
-static mut SPAWN_RED: Vector2 = Vector2 {x: 300.0, y: 110.0};
-static mut SPAWN_BLUE: Vector2 = Vector2 {x: 20.0, y: 120.0};
+static mut SPAWN_RED: Vector2 = Vector2 {x: 30.0 * TILE_SIZE, y: 11.0 * TILE_SIZE};
+static mut SPAWN_BLUE: Vector2 = Vector2 {x: 2.0 * TILE_SIZE, y: 12.0 * TILE_SIZE};
 
 fn main() {
   // set the gamemode (temporary)
@@ -391,7 +391,7 @@ fn main() {
   
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = true;
+  let mut dummy_summoned: bool = false;
   
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);

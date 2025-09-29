@@ -8,7 +8,7 @@ use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
 use std::time::SystemTime;
 
-pub const TILE_SIZE: f32 = 10.0;
+pub const TILE_SIZE: f32 = 8.0;
 
 // this is bs
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
@@ -557,6 +557,8 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
     let gameobject_type = gameobject_type.as_str();
     let pos_x: f32 = opcodes[1].parse().unwrap();
     let pos_y: f32 = opcodes[2].parse().unwrap();
+    let pos_x = pos_x * TILE_SIZE;
+    let pos_y = pos_y * TILE_SIZE;
 
     map_to_return.push(GameObject {
       object_type: match gameobject_type {

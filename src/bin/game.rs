@@ -222,6 +222,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   // Main thread
   loop {
 
+    let camera_zoom = 2.0;
+
     let delta_time: f32 = 1.0 / get_fps() as f32;
 
     // SUPER MEGA TEMPORARY
@@ -296,7 +298,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     if !player_copy.is_dead {
       let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
       let camera_distance_mag = camera_distance.magnitude();
-      let camera_smoothing: f32 = 1.0; // higher = less smoothing
+      let camera_smoothing: f32 = 1.5; // higher = less smoothing
       let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, f32::exp2(camera_distance_mag)*camera_smoothing*5.0);
       let camera_movement_speed = safe_quadratic;
 

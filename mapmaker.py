@@ -1,7 +1,7 @@
 import io
 import random
 
-tile_size = 10
+tile_size = 1 # Dont change this
 map_path = "assets/maps/map_maker.map"
 # W = wall
 # U = unbreakable_wall
@@ -70,13 +70,13 @@ ILLLLLL..............................
 .LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 """
 
-map_y_offset = -40
-map_x_offset = -40
+map_y_offset = -4
+map_x_offset = -4
 
 map_file = ""
 for y, line in enumerate(io.StringIO(map_drawing)):
     for x, char in enumerate(repr(line)):
-        position = f"{x*tile_size + map_x_offset}.0 {y*tile_size + map_y_offset}.0\n"
+        position = f"{(x+ map_x_offset)*tile_size}.0 {(y + map_y_offset)*tile_size}.0\n"
         if char == 'W':
             map_file += "wall " + position
         if char == 'U':
