@@ -11,16 +11,20 @@ All design guidelines for this videogame.
   - [2.4. Map](#24-map)
 - [3. Character Classes](#3-character-classes)
   - [3.1. Assassin / Brawler](#31-assassin--brawler)
-  - [3.2. Support (Healer, Shielder)](#32-support-healer-shielder)
+  - [3.2. Healer / Tank](#32-healer--tank)
   - [3.3. Ranged / Controller](#33-ranged--controller)
 - [4. Characters](#4-characters)
   - [4.1. Supports](#41-supports)
     - [4.1.1. Raphaelle](#411-raphaelle)
-    - [4.1.2 Randolf \[IDEA\]](#412-randolf-idea)
+    - [4.1.2. Wiro \[IDEA\]](#412-wiro-idea)
+    - [4.1.3. Alita \[IDEA\]](#413-alita-idea)
   - [4.2. Assassins](#42-assassins)
     - [4.2.1. Cynewynn](#421-cynewynn)
-  - [4.3. Rangers](#43-rangers)
+    - [4.2.2. Ginna \[IDEA\]](#422-ginna-idea)
+  - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
+    - [4.3.2. Elizabeth \[IDEA\]](#432-elizabeth-idea)
+- [5. Gameplay](#5-gameplay)
 
 ## 1.1. Basic game description
 
@@ -97,11 +101,11 @@ There are three classes that create a ternary system. It makes for a rock-paper-
 
 ## 3.1. Assassin / Brawler
 
-The fastest class. They specialise in high "burst" mobility and have a higher damage output. They have the shortest range. They easily catch up to healers, but may have a bit more trouble with rangers.
+The fastest class. They specialise in high "burst" mobility and have a higher damage output. They have the shortest range. They easily catch up to healers, but may have a bit more trouble with ranged characters.
 
-Assassins excel at supporting rangers by protecting them from threats like other assassins or healers.
+Assassins excel at supporting ranged characters by protecting them from threats like other assassins or healers.
 
-## 3.2. Support (Healer, Shielder)
+## 3.2. Healer / Tank
 
 The second fastest class. Are very evasive and can easily avoid big bullets but not enough to evade assassins. They "counter" rangers' defensive playstyles by healing during downtime. They have the second longest range.
 
@@ -134,13 +138,12 @@ Intended playstyle:
 - Has to be able to play offensively so she can play defensively. She can only heal by attacking players.
 - Can be very evasive, especially if she lands her empowered shots.
 - Low DPS but good evasion, she's an underedog character.
+- Countered by keeping her away and outranging or by smartly outrunning her
 
-Intended playstyle:
-- Tanks for allies and needs to frontline to be able to heal adequately.
 
-### 4.1.2 Randolf [IDEA]
+### 4.1.2. Wiro [IDEA]
 
-- **Primary** - 
+- **Primary** - Defend
   - A medium range projectile.
   - If it hits an opponent, it adds a stack to **Dash**.
 - **Secondary** - Guardian Angel
@@ -153,6 +156,31 @@ Intended playstyle:
   - Always has one stack, can go up to three.
 - **Passive** - Frontliner
   - Any nearby allies are given a small speed boost, including himself.
+
+### 4.1.3. Alita [IDEA]
+
+- **Primary - Form 1**
+  - A long range projectile which can heal allies or damage opponents.
+- **Primary - Form 2**
+  - A fast short range projectile that either damages an opponent, or heals an ally.
+  - If an ally is healed, you are also healed.
+- **Secondary** 
+  - Alternate between the first and second form.
+  - Heal yourself slightly.
+  - Charges relatively fast.
+  - Form 1 is ranged.
+  - Form 2 is an assassin.
+- **Dash - Form 1**
+  - A medium dash on a medium cooldown.
+- **Dash - Form 2**
+  - A long dash on a long cooldown.
+- **Passive - Form 2**
+  - Marginally higher movement speed
+
+Intended playstyle:
+- The health gained from the secondary is an incentive to change forms.
+- You must therefore adapt to two playstyles.
+- Countered by punishing bad positioning and forcing out **Secondary**.
 
 ## 4.2. Assassins
 
@@ -174,7 +202,21 @@ Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
 - She has to be careful. Her dash is on a long cooldown and her secondary reduces her fire rate. Her actions must be planned and she significantly weakens from a hesitant player. Her mobility is her downfall, a smart player might be able to bait out a dash and play around her cooldowns.
 
-## 4.3. Rangers
+### 4.2.2. Ginna [IDEA]
+
+- **Primary** - Dagger throw
+  - A short range piercing projectile
+- **Secondary** - holy crap theres 2 of them
+  - Creates a clone of himself a few tiles away.
+  - The clone copies movement and attacks, but has a smaller healthbar, and lasts for a few seconds.
+  - While **Secondary** is active, **Dash** swaps the positions of the player and the clone instead, and has a higher cooldown.
+- **Dash**
+  - A short dash on a short cooldown.
+
+Intended playstyle
+- Confuse and outplay people.
+
+## 4.3. Ranged/Control
 
 ### 4.3.1. Hernani
 
@@ -191,3 +233,26 @@ Intended playstyle:
 Intended playstyle:
 - Easy to play, tutorial character.
 - Stand back and fire from a distance, while keeping people away with walls and making sure to manage your long cooldown dash adequately.
+
+### 4.3.2. Elizabeth [IDEA]
+
+- **Primary** - Thorns
+  - Throw a mid-to-long range projectile.
+  - If the projectile does damage to anything that isn't a wall, it stays on the ground after being thrown. Only 3 projectiles can be on the floor at all times, and they disappear after a little while.
+- **Secondary** - Call for Grace
+  - Place down a tree. The tree provides, to anyone near it:
+    - A small speed boost
+    - A fire rate boost
+  - If you are inside the range of this tree, up to 5 of your **Primary**'s projectiles will remain on the floor unconiditionally.
+- **Dash** - Recall
+  - Dash forward, pulling towards yourself all projectiles that were on the ground.
+  - Returning projectiles deal damage to opponents caught in their path.
+  - Opponents caught by multiple projectiles are marginally slowed.
+
+Intended playstyle:
+- A character that likes to stand back and control chokeholds.
+- Countered by fast characters or widening chokeholds by destroying walls.
+
+# 5. Gameplay
+
+Similar to Battlerite's *current* gamemode.
