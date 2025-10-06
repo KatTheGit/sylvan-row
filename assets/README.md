@@ -14,16 +14,17 @@ All design guidelines for this videogame.
   - [3.2. Healer / Tank](#32-healer--tank)
   - [3.3. Ranged / Controller](#33-ranged--controller)
 - [4. Characters](#4-characters)
-  - [4.1. Supports](#41-supports)
+  - [4.1. Support/Tank](#41-supporttank)
     - [4.1.1. Raphaelle](#411-raphaelle)
     - [4.1.2. Wiro \[IDEA\]](#412-wiro-idea)
     - [4.1.3. Alita \[IDEA\]](#413-alita-idea)
-  - [4.2. Assassins](#42-assassins)
+  - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
     - [4.2.2. Ginna \[IDEA\]](#422-ginna-idea)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
-    - [4.3.2. Elizabeth \[IDEA\]](#432-elizabeth-idea)
+    - [4.3.2. Elizabeth](#432-elizabeth)
+    - [4.3.3. Mandy from Brawl Stars or something idk](#433-mandy-from-brawl-stars-or-something-idk)
 - [5. Gameplay](#5-gameplay)
 
 ## 1.1. Basic game description
@@ -119,7 +120,7 @@ They excel at helping healers in battle, as they can help defend them from assas
 
 # 4. Characters
 
-## 4.1. Supports
+## 4.1. Support/Tank
 
 ### 4.1.1. Raphaelle
 
@@ -182,7 +183,7 @@ Intended playstyle:
 - You must therefore adapt to two playstyles.
 - Countered by punishing bad positioning and forcing out **Secondary**.
 
-## 4.2. Assassins
+## 4.2. Assassin/Brawler
 
 ### 4.2.1. Cynewynn
 
@@ -234,25 +235,39 @@ Intended playstyle:
 - Easy to play, tutorial character.
 - Stand back and fire from a distance, while keeping people away with walls and making sure to manage your long cooldown dash adequately.
 
-### 4.3.2. Elizabeth [IDEA]
+### 4.3.2. Elizabeth
 
 - **Primary** - Thorns
-  - Throw a mid-to-long range projectile.
-  - If the projectile does damage to anything that isn't a wall, it stays on the ground after being thrown. Only 3 projectiles can be on the floor at all times, and they disappear after a little while.
+  - Throw a mid-to-long range dagger.
+  - If the dagger does damage to anything that isn't a wall, it stays on the ground after being thrown.
+  - [not implemented] Only 3 daggers can be on the floor at all times
+  - They disappear after a little while.
 - **Secondary** - Call for Grace
-  - Place down a tree. The tree provides, to anyone near it:
-    - A small speed boost
-    - A fire rate boost
-  - If you are inside the range of this tree, up to 5 of your **Primary**'s projectiles will remain on the floor unconiditionally.
+  - Place down a tree. The tree provides a speed boost to anyone near it.
+  - If you are inside the range of this tree, your **Primary**'s projectiles will remain on the floor unconiditionally.
 - **Dash** - Recall
-  - Dash forward, pulling towards yourself all projectiles that were on the ground.
-  - Returning projectiles deal damage to opponents caught in their path.
-  - Opponents caught by multiple projectiles are marginally slowed.
+  - Dash forward, pulling towards yourself all daggers that were on the ground.
+  - Returning daggers deal damage to opponents caught in their path.
+  - Opponents caught by multiple daggers are marginally slowed.
 
 Intended playstyle:
 - A character that likes to stand back and control chokeholds.
 - Countered by fast characters or widening chokeholds by destroying walls.
 
+### 4.3.3. Mandy from Brawl Stars or something idk
+
+- **Primary**
+  - Fire a long range projectile
+- **Secondary**
+- **Dash**
+- **Passive** - Take aim
+  - Standing still increases the range of **Primary**
+  
 # 5. Gameplay
 
 Similar to Battlerite's *current* gamemode.
+- 1v1 or 2v2 (3v3 if we're feeling freaky)
+- Players fight until the last team stands in the arena, with the fight lasting
+between 30seconds and one minute.
+- Health can't be fully healed back.
+- Best of 3

@@ -76,9 +76,10 @@ impl GameModeInfo {
 pub enum Character {
   /// Used for testing. Has lots of health, and that's it.
   Dummy,
-  SniperWolf,
-  HealerGirl,
-  TimeQueen,
+  Hernani,
+  Raphaelle,
+  Cynewynn,
+  Elizabeth,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
@@ -128,9 +129,10 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
   for character in Character::iter() {
     let character_properties: CharacterProperties = match character {
       Character::Dummy      => CharacterProperties::from_pkl(include_str!("../assets/characters/dummy/properties.pkl")),
-      Character::SniperWolf => CharacterProperties::from_pkl(include_str!("../assets/characters/sniper_girl/properties.pkl")),
-      Character::HealerGirl => CharacterProperties::from_pkl(include_str!("../assets/characters/healer_girl/properties.pkl")),
-      Character::TimeQueen =>  CharacterProperties::from_pkl(include_str!("../assets/characters/time_queen/properties.pkl")),
+      Character::Hernani => CharacterProperties::from_pkl(include_str!("../assets/characters/hernani/properties.pkl")),
+      Character::Raphaelle => CharacterProperties::from_pkl(include_str!("../assets/characters/raphaelle/properties.pkl")),
+      Character::Cynewynn =>  CharacterProperties::from_pkl(include_str!("../assets/characters/cynewynn/properties.pkl")),
+      Character::Elizabeth =>  CharacterProperties::from_pkl(include_str!("../assets/characters/elizabeth/properties.pkl")),
     };
 
     characters.insert(character, character_properties);
@@ -315,7 +317,7 @@ impl ClientPlayer {
 
     let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
     for buff in self.buffs.clone() {
-      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::HealerFireRate => "+ fire rate", BuffType::Speed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::ElizabethSpeed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
       buff_offset.y -= 3.0;
     }
   }
@@ -324,7 +326,7 @@ impl ClientPlayer {
       health: 100,
       position: Vector2::new(),
       aim_direction: Vector2::new(),
-      character: Character::SniperWolf,
+      character: Character::Hernani,
       secondary_charge: 100,
       movement_direction: Vector2::new(),
       shooting_primary: false,
@@ -417,14 +419,21 @@ pub struct GameObject {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Hash, Eq)]
 pub enum GameObjectType {
   Wall,
-  SniperWall,
-  HealerAura,
+  HernaniWall,
+  RaphaelleAura,
   UnbreakableWall,
-  SniperWolfBullet,
-  HealerGirlBullet,
-  HealerGirlBulletEmpowered,
-  TimeQueenSword,
+  HernaniBullet,
+  RaphaelleBullet,
+  RaphaelleBulletEmpowered,
+  CynewynnSword,
   HernaniLandmine,
+  /// Elizabeth's projectile, as it's just been fired and is still flying.
+  ElizabethProjectile,
+  /// Elizabeth's projectile, once it's on the ground.
+  ElizabethProjectileGround,
+  /// Elizabeth's projectile, once it's returning to her.
+  ElizabethProjectileGroundRecalled,
+  ElizabethTree,
   Grass1,
   Grass2,
   Grass3,
@@ -606,7 +615,7 @@ pub fn object_aware_movement(
 
   for game_object in game_objects.clone() {
     if game_object.object_type == GameObjectType::Wall           ||
-       game_object.object_type == GameObjectType::SniperWall     ||
+       game_object.object_type == GameObjectType::HernaniWall     ||
        game_object.object_type == GameObjectType::Water1         ||
        game_object.object_type == GameObjectType::Water2         ||
        game_object.object_type == GameObjectType::UnbreakableWall {
@@ -661,7 +670,7 @@ pub trait Extras {
 /// Stores information about any buff.
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct Buff {
-  /// Numerical value associated with buff, like speed gained, or fire rate percentage increase.
+  /// Numerical value associated with buff, like speed gained, or fire rate increase.
   pub value: f32,
   /// Time left in seconds
   pub duration: f32,
@@ -671,7 +680,8 @@ pub struct Buff {
 /// Every possible type of buff or nerf
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
 pub enum BuffType {
-  HealerFireRate,
+  RaphaelleFireRate,
+  ElizabethSpeed,
   FireRate,
   Speed,
 }

@@ -4,10 +4,10 @@ use std::collections::HashMap;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex, MutexGuard};
 use bincode;
-use std::{thread, time::*};
+use std::{thread, time::*, vec};
 
-const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall];
-const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::SniperWall, GameObjectType::Water1, GameObjectType::Water2];
+const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall];
+const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall, GameObjectType::Water1, GameObjectType::Water2];
 static mut SPAWN_RED: Vector2 = Vector2 {x: 30.0 * TILE_SIZE, y: 11.0 * TILE_SIZE};
 static mut SPAWN_BLUE: Vector2 = Vector2 {x: 2.0 * TILE_SIZE, y: 12.0 * TILE_SIZE};
 
@@ -124,10 +124,10 @@ fn main() {
 
               // (vscode) MARK: Special dashes
               match player.character {
-                Character::HealerGirl => {
+                Character::Raphaelle => {
                   player.next_shot_empowered = true;
                 }
-                Character::SniperWolf => {
+                Character::Hernani => {
                   // Place down a bomb
                   listener_game_objects.push(
                     GameObject {
@@ -138,13 +138,37 @@ fn main() {
                       to_be_deleted: false,
                       owner_port: listener_players[player_index].port,
                       hitpoints: 1,
-                      lifetime: characters[&Character::SniperWolf].dash_cooldown,
+                      lifetime: characters[&Character::Hernani].dash_cooldown,
                       players: Vec::new(),
                       traveled_distance: 0.0,
                     }
                   );
                 }
-                Character::TimeQueen => {}
+                Character::Cynewynn => {}
+                Character::Elizabeth => {
+                  // Change the type of all her current static projectiles to the type
+                  // that follows her.
+                  for index in 0..listener_game_objects.len() {
+                    if listener_game_objects[index].object_type == GameObjectType::ElizabethProjectileGround {
+                      listener_game_objects[index].to_be_deleted = true;
+                      let object_clone = listener_game_objects[index].clone();
+                      listener_game_objects.push(
+                        GameObject {
+                          object_type: GameObjectType::ElizabethProjectileGroundRecalled,
+                          size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                          position: object_clone.position,
+                          direction: Vector2::new(),
+                          to_be_deleted: false,
+                          owner_port: object_clone.owner_port,
+                          hitpoints: 0,
+                          lifetime: 15.0,
+                          players: Vec::new(),
+                          traveled_distance: 0.0,
+                        }
+                      );
+                    }
+                  }
+                }
                 Character::Dummy => {}
               }
             }
@@ -161,6 +185,7 @@ fn main() {
               listener_game_objects.clone(), 
               player.position
             );
+            movement_legal = false; // force a correction
           }
 
           else {
@@ -171,8 +196,9 @@ fn main() {
             let player_movement_speed: f32 = characters[&player.character].speed;
             let mut extra_speed: f32 = 0.0;
             for buff in player.buffs.clone() {
-              if buff.buff_type == BuffType::Speed {
+              if vec![BuffType::Speed, BuffType::ElizabethSpeed].contains(&buff.buff_type) {
                 extra_speed += buff.value;
+                println!("shit");
               }
             }
 
@@ -246,7 +272,7 @@ fn main() {
                   camera: Camera::new(),  
                   buffs: player.buffs.clone(),
                   previous_positions: match player.character {
-                    Character::TimeQueen => player.previous_positions.clone(),
+                    Character::Cynewynn => player.previous_positions.clone(),
                     _ => Vec::new(),
                   },
                 })
@@ -267,7 +293,7 @@ fn main() {
                 is_dead: player.is_dead,
                 buffs: player.buffs.clone(),
                 previous_positions: match player.character {
-                  Character::TimeQueen => player.previous_positions.clone(),
+                  Character::Cynewynn => player.previous_positions.clone(),
                   _ => Vec::new(),
                 },
                 team: player.team,
@@ -540,7 +566,7 @@ fn main() {
       main_loop_players[player_index].buffs = buffs_to_keep;
 
       // Handling of time queen flashsback ability - keep a buffer of positions for the flashback
-      if main_loop_players[player_index].character == Character::TimeQueen {
+      if main_loop_players[player_index].character == Character::Cynewynn {
         // Update once per decisecond
         if tenth_tick {
           // update buffer of positions when secondary isnt active
@@ -580,12 +606,12 @@ fn main() {
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.
       let mut cooldown: f32 = character.primary_cooldown;
-      if main_loop_players[player_index].character == Character::TimeQueen {
+      if main_loop_players[player_index].character == Character::Cynewynn {
         cooldown -= cooldown * ((secondary_charge as f32 / 100.0) * 0.10)
       }
 
       for buff in main_loop_players[player_index].buffs.clone() {
-        if buff.buff_type == BuffType::FireRate || buff.buff_type == BuffType::HealerFireRate {
+        if buff.buff_type == BuffType::FireRate || buff.buff_type == BuffType::RaphaelleFireRate {
           cooldown -= cooldown * buff.value;
         }
       }
@@ -598,9 +624,9 @@ fn main() {
         let mut game_objects = main_game_objects.lock().unwrap();
         // Do primary shooting logic
         match main_loop_players[player_index].character {
-          Character::SniperWolf => {
+          Character::Hernani => {
             game_objects.push(GameObject {
-              object_type: GameObjectType::SniperWolfBullet,
+              object_type: GameObjectType::HernaniBullet,
               size: Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
@@ -612,11 +638,11 @@ fn main() {
               traveled_distance: 0.0,
             });
           }
-          Character::HealerGirl => {
+          Character::Raphaelle => {
             game_objects.push(GameObject {
               object_type: match main_loop_players[player_index].next_shot_empowered {
-                true  => {GameObjectType::HealerGirlBulletEmpowered},
-                false => {GameObjectType::HealerGirlBullet},
+                true  => {GameObjectType::RaphaelleBulletEmpowered},
+                false => {GameObjectType::RaphaelleBullet},
               },
               size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
               position: main_loop_players[player_index].position,
@@ -632,9 +658,9 @@ fn main() {
               main_loop_players[player_index].next_shot_empowered = false;
             }
           }
-          Character::TimeQueen => {
+          Character::Cynewynn => {
             game_objects.push(GameObject {
-              object_type: GameObjectType::TimeQueenSword,
+              object_type: GameObjectType::CynewynnSword,
               size: Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
               position: Vector2 {
                 x: main_loop_players[player_index].position.x + main_loop_players[player_index].aim_direction.x * 5.0 ,
@@ -648,9 +674,35 @@ fn main() {
               traveled_distance: 0.0,
             });
           }
+          Character::Elizabeth => {
+            // If we are near the tree, we will put a fake value in the `players`
+            // vector so that the projectile unconditionally drops
+            let mut jibberish = Vec::new();
+            for game_object in game_objects.clone() {
+              if game_object.object_type == GameObjectType::ElizabethTree
+              && game_object.owner_port == main_loop_players[player_index].port {
+                let distance = Vector2::distance(main_loop_players[player_index].position, game_object.position);
+                if distance < characters[&main_loop_players[player_index].character].secondary_range {
+                  jibberish = vec![99]; // put a bogus value so the rest of the code thinks we hit someone
+                }
+              }
+            }
+            game_objects.push(GameObject {
+              object_type: GameObjectType::ElizabethProjectile,
+              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+              position: main_loop_players[player_index].position,
+              direction: main_loop_players[player_index].aim_direction,
+              to_be_deleted: false,
+              hitpoints: 0,
+              owner_port: main_loop_players[player_index].port,
+              lifetime: character.primary_range / character.primary_shot_speed,
+              players: jibberish,
+              traveled_distance: 0.0,
+            });
+          }
           Character::Dummy => {
             game_objects.push(GameObject {
-              object_type: GameObjectType::SniperWolfBullet,
+              object_type: GameObjectType::HernaniBullet,
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: main_loop_players[player_index].position,
               direction: main_loop_players[player_index].aim_direction,
@@ -674,11 +726,11 @@ fn main() {
         match main_loop_players[player_index].character {
           
           // Create a healing aura
-          Character::HealerGirl => {
+          Character::Raphaelle => {
             // Create a bullet type and then define its actions in the next loop that handles bullets
             let mut game_objects = main_game_objects.lock().unwrap();
             game_objects.push(GameObject {
-              object_type: GameObjectType::HealerAura,
+              object_type: GameObjectType::RaphaelleAura,
               size: Vector2 { x: 60.0, y: 60.0 },
               position: player_info.position,
               direction: Vector2::new(),
@@ -693,7 +745,7 @@ fn main() {
             secondary_used_successfully = true;
           },
           // Place walls
-          Character::SniperWolf => {
+          Character::Hernani => {
             // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
             let wall_place_distance = character.secondary_range;
             let mut desired_placement_position: Vector2 = player_info.position;
@@ -705,7 +757,7 @@ fn main() {
             let mut game_objects = main_game_objects.lock().unwrap();
             for game_object in game_objects.clone() {
               match game_object.object_type {
-                GameObjectType::SniperWall | GameObjectType::UnbreakableWall | GameObjectType::Wall => {
+                GameObjectType::HernaniWall | GameObjectType::UnbreakableWall | GameObjectType::Wall => {
                   if game_object.position.x == desired_placement_position.x && game_object.position.y == desired_placement_position.y {
                     wall_can_be_placed = false;
                   }
@@ -715,7 +767,7 @@ fn main() {
             }
             if wall_can_be_placed {
               game_objects.push(GameObject {
-                object_type: GameObjectType::SniperWall,
+                object_type: GameObjectType::HernaniWall,
                 size: Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
                 position: desired_placement_position,
                 direction: Vector2::new(),
@@ -731,7 +783,7 @@ fn main() {
             drop(game_objects);
           },
           // position revert
-          Character::TimeQueen => {
+          Character::Cynewynn => {
             let flashback_length = (character.secondary_cooldown * 10.0) as usize; // deciseconds
             if player_info.previous_positions.len() >= flashback_length
             && main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() >= character.secondary_cooldown {
@@ -744,6 +796,24 @@ fn main() {
               main_loop_players[player_index].heal(10, characters.clone());
             }
           },
+
+          Character::Elizabeth => {
+            let mut game_objects = main_game_objects.lock().unwrap();
+            game_objects.push(GameObject {
+              object_type: GameObjectType::ElizabethTree,
+              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+              position: main_loop_players[player_index].position,
+              direction: Vector2::new(),
+              to_be_deleted: false,
+              owner_port: main_loop_players[player_index].port,
+              hitpoints: 30,
+              lifetime: 10.0,
+              players: vec![],
+              traveled_distance: 0.0,
+            });
+            drop(game_objects);
+            secondary_used_successfully = true;
+          }
 
           Character::Dummy => {}
         }
@@ -765,20 +835,20 @@ fn main() {
       match game_object_type {
 
         // WOLF primary
-        GameObjectType::SniperWolfBullet => {
+        GameObjectType::HernaniBullet => {
           (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
         }
         // WOLF dash special
         GameObjectType::HernaniLandmine => {
           // if the landmine has existed for long enough...
-          if game_objects[game_object_index].lifetime < (characters[&Character::SniperWolf].dash_cooldown - 0.5) {
+          if game_objects[game_object_index].lifetime < (characters[&Character::Hernani].dash_cooldown - 0.5) {
             for player_index in 0..main_loop_players.len() {
               // if not on same team
               if main_loop_players[player_index].team != main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
                 // if within range
                 if Vector2::distance(game_objects[game_object_index].position, main_loop_players[player_index].position)
                 < (game_objects[game_object_index].size.x / 2.0) {
-                  main_loop_players[player_index].damage(characters[&Character::SniperWolf].primary_damage_2, characters.clone());
+                  main_loop_players[player_index].damage(characters[&Character::Hernani].primary_damage_2, characters.clone());
                   game_objects[game_object_index].to_be_deleted = true;
                   break;
                 }
@@ -788,14 +858,14 @@ fn main() {
         }
 
         // HEALER GIRL primary
-        GameObjectType::HealerGirlBullet => {
+        GameObjectType::RaphaelleBullet => {
           let hit: bool;
           (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
           
           // Restore nearby ally health
           if hit {
             for player_index in 0..main_loop_players.len() {
-              let range: f32 = characters[&Character::HealerGirl].primary_range;
+              let range: f32 = characters[&Character::Raphaelle].primary_range;
               if Vector2::distance(
                 main_loop_players[player_index].position,
                 main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].position
@@ -804,12 +874,12 @@ fn main() {
                 // Anyone within range
                 if player_index == index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone()) {
                   // if self, heal less
-                  let heal_self: u8 = characters[&Character::HealerGirl].primary_lifesteal;
+                  let heal_self: u8 = characters[&Character::Raphaelle].primary_lifesteal;
                   main_loop_players[player_index].heal(heal_self, characters.clone());
                 }
                 else {
                   // otherwise, apply normal heal
-                  let heal: u8 = characters[&Character::HealerGirl].primary_heal_2;
+                  let heal: u8 = characters[&Character::Raphaelle].primary_heal_2;
                   main_loop_players[player_index].heal(heal, characters.clone());
                 }
                   // restore dash charge (0.2s)
@@ -819,11 +889,11 @@ fn main() {
           }
         }
         // HEALER GIRL primary, EMPOWERED
-        GameObjectType::HealerGirlBulletEmpowered => {
+        GameObjectType::RaphaelleBulletEmpowered => {
           let hit: bool;
           (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic_extra(
             main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true,
-            characters[&Character::HealerGirl].primary_damage_2, 255);
+            characters[&Character::Raphaelle].primary_damage_2, 255);
           if hit {
             // restore dash charge (0.5s)
             let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
@@ -832,7 +902,7 @@ fn main() {
         }
 
         // HEALER GIRL secondary
-        GameObjectType::HealerAura => {
+        GameObjectType::RaphaelleAura => {
           // game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
           // every second apply heal
           for player_index in 0..main_loop_players.len() {
@@ -849,30 +919,113 @@ fn main() {
                 // provide fire rate buff, if not present
                 let mut buff_found = false;
                 for buff_index in 0..main_loop_players[player_index].buffs.len() {
-                  if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::HealerFireRate {
+                  if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::RaphaelleFireRate {
                     buff_found = true;
                     break; // exit early
                   }
                 }
                 if !buff_found {                                 //        2  0%  <- find way to source this from properties file sometime idk
-                  main_loop_players[player_index].buffs.push(Buff { value: 0.2, duration: 0.1, buff_type: BuffType::HealerFireRate });
-                }
-              } else {
-                for buff_index in 0..main_loop_players[player_index].buffs.len() {
-                  if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::HealerFireRate {
-                    main_loop_players[player_index].buffs.remove(buff_index);
-                    break; // exit early
-                  }
+                  main_loop_players[player_index].buffs.push(Buff { value: 0.2, duration: 0.1, buff_type: BuffType::RaphaelleFireRate });
                 }
               }
+              // not actually necessary
+              //else {
+              //  for buff_index in 0..main_loop_players[player_index].buffs.len() {
+              //    if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::RaphaelleFireRate {
+              //      main_loop_players[player_index].buffs.remove(buff_index);
+              //      break; // exit early
+              //    }
+              //  }
+              //}
             }
           }
         }
 
         // QUEEN primary
-        GameObjectType::TimeQueenSword => {
+        GameObjectType::CynewynnSword => {
           (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
         }
+        // ELIZABETH primary normal
+        GameObjectType::ElizabethProjectile => {
+          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
+        }
+        // ELIZABETH primary but recalled
+        GameObjectType::ElizabethProjectileGroundRecalled => {
+          // needs to move towards owner
+          let owner_port = game_objects[game_object_index].owner_port;
+          let owner_index = index_by_port(owner_port, main_loop_players.clone());
+          let target_position: Vector2 = main_loop_players[owner_index].position;
+          let object_position: Vector2 = game_objects[game_object_index].position;
+          let speed = characters[&main_loop_players[owner_index].character].primary_shot_speed;
+          // You are a promise, abolish hatred,
+          // Child of the Sanctum, you are beloved,
+          // You know to fathom, how I'm suffering,
+          // Yourself to release, out in this clearing,
+          let direction: Vector2 = Vector2::difference(object_position, target_position);
+          // update position
+          game_objects[game_object_index].position.x += direction.normalize().x * speed * true_delta_time as f32;
+          game_objects[game_object_index].position.y += direction.normalize().y * speed * true_delta_time as f32;
+          // If the projectiles are close enough to us, delete them, since their trip is over.
+          if direction.magnitude() < TILE_SIZE /* arbitrary value */ {
+            game_objects[game_object_index].to_be_deleted = true;
+          }
+          let hit_radius = characters[&main_loop_players[owner_index].character].primary_hit_radius;
+          let damage = characters[&main_loop_players[owner_index].character].primary_damage_2;
+          for player_index in 0..main_loop_players.len() {
+            let player_position = main_loop_players[player_index].position;
+            // if we hit a player
+            if Vector2::distance(player_position, object_position) < hit_radius
+            // and we haven't already
+            && !game_objects[game_object_index].players.contains(&player_index) {
+              // damage them
+              main_loop_players[player_index].damage(damage, characters.clone());
+              // and check if they were already hit by a projectile.
+              let mut was_already_hit: bool = false;
+              for game_object_index_2 in 0..game_objects.len() {
+                if game_objects[game_object_index_2].players.contains(&player_index)
+                && game_object_index_2 != game_object_index {
+                  was_already_hit = true;
+                  break;
+                }
+              }
+              if was_already_hit {
+                // apply a debuff
+                main_loop_players[player_index].buffs.push(
+                  Buff {
+                    value: -2.5 ,
+                    duration: 0.25,
+                    buff_type: BuffType::Speed,
+                  }
+                );
+              }
+              // Finally, update the game object to know this player was already hit
+              game_objects[game_object_index].players.push(player_index);
+            }
+          }
+        }
+        GameObjectType::ElizabethTree => {
+          for player_index in 0..main_loop_players.len() {
+            let distance = Vector2::distance(main_loop_players[player_index].position, game_objects[game_object_index].position);
+            let object_team = main_loop_players[index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone())].clone().team;
+            let player_team = main_loop_players[player_index].team;
+            if player_team == object_team
+            && distance < characters[&Character::Elizabeth].secondary_range {
+              // apply some buffs or something
+              // provide fire rate buff, if not present
+              let mut buff_found = false;
+              for buff_index in 0..main_loop_players[player_index].buffs.len() {
+                if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::ElizabethSpeed {
+                  buff_found = true;
+                  break; // exit early
+                }
+              }
+              if !buff_found {
+                main_loop_players[player_index].buffs.push(Buff { value: 5.0, duration: 0.1, buff_type: BuffType::ElizabethSpeed });
+              }
+            }
+          }
+        }
+        
         _ => {}
       }
       game_objects[game_object_index].lifetime -= true_delta_time as f32;
@@ -881,9 +1034,36 @@ fn main() {
       }
     }
 
+    // (vscode) MARK: Object Deletion
     let mut cleansed_game_objects: Vec<GameObject> = Vec::new();
     for game_object in game_objects.clone() {
-      if game_object.to_be_deleted == false {
+      if game_object.to_be_deleted == true {
+        // EXTRA LOGIC
+        match game_object.object_type.clone() {
+          // Elizabeth's projectile needs to drop on deletion,
+          // if it hit somebody,
+          GameObjectType::ElizabethProjectile => {
+            // if somebody was hit
+            if !game_object.players.is_empty() {
+              cleansed_game_objects.push(
+                GameObject {
+                  object_type: GameObjectType::ElizabethProjectileGround,
+                  size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                  position: game_object.position,
+                  direction: Vector2::new(),
+                  to_be_deleted: false,
+                  owner_port: game_object.owner_port,
+                  hitpoints: 0,
+                  lifetime: 5.0,
+                  players: Vec::new(),
+                  traveled_distance: 0.0,
+                }
+              );
+            }
+          },
+          _ => {},
+        }
+      } else {
         cleansed_game_objects.push(game_object);
       }
     }
@@ -943,7 +1123,7 @@ impl ServerPlayer {
     }
     // Special per-character handling
     match self.character {
-      Character::HealerGirl => {
+      Character::Raphaelle => {
         self.buffs.push(
           Buff { value: 6.0, duration: 0.5, buff_type: BuffType::Speed }
         );

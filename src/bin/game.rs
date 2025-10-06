@@ -55,7 +55,7 @@ async fn main() {
   set_window_size(800, 450);
 
   // Find a random free port and use it
-  let min_port: u16 = 49152;
+  let min_port: u16 = 49152; // start of dynamic port range
   let max_port: u16 = 65535;
   let mut port: u16;
   let mut rng = thread_rng();
@@ -86,11 +86,13 @@ async fn main() {
       let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
       let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn");
       let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani");
+      let elizabeth: bool = ui::button(Vector2 { x: 30.0, y: 330.0 }, Vector2 { x: 200.0, y: 70.0 },  "Elizabeth");
       // println!("{:?}", healer);
       
-      if healer { game(Character::HealerGirl, port).await; timer = Instant::now() }
-      if queen  { game(Character::TimeQueen, port).await;  timer = Instant::now() }
-      if wolf   { game(Character::SniperWolf, port).await; timer = Instant::now() }
+      if healer { game(Character::Raphaelle, port).await; timer = Instant::now() }
+      if queen  { game(Character::Cynewynn, port).await;  timer = Instant::now() }
+      if wolf   { game(Character::Hernani, port).await; timer = Instant::now() }
+      if elizabeth   { game(Character::Elizabeth, port).await; timer = Instant::now() }
     } else {
       draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
     }
@@ -98,7 +100,7 @@ async fn main() {
     next_frame().await;
   }
 
-  //game(Character::HealerGirl).await;
+  //game(Character::Raphaelle).await;
 }
 // (vscode) MARK: main()
 /// In the future this function will be called by main once the user starts the game
@@ -114,14 +116,18 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       game_object_type,
       match game_object_type {
         GameObjectType::Wall                      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::SniperWall                => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/wall.png"), None),
-        GameObjectType::HealerAura                => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/secondary.png"), None),
+        GameObjectType::HernaniWall               => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/wall.png"), None),
+        GameObjectType::RaphaelleAura             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/secondary.png"), None),
         GameObjectType::UnbreakableWall           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
-        GameObjectType::SniperWolfBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/bullet.png"), None),
-        GameObjectType::HealerGirlBullet          => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/bullet.png"), None),
-        GameObjectType::HealerGirlBulletEmpowered => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/bullet-empowered.png"), None),
-        GameObjectType::TimeQueenSword            => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/bullet.png"), None),
-        GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/trap.png"), None),
+        GameObjectType::HernaniBullet             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/bullet.png"), None),
+        GameObjectType::RaphaelleBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/bullet.png"), None),
+        GameObjectType::RaphaelleBulletEmpowered  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/bullet-empowered.png"), None),
+        GameObjectType::CynewynnSword             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/cynewynn/textures/bullet.png"), None),
+        GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
+        GameObjectType::ElizabethProjectile       => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/bullet.png"), None),
+        GameObjectType::ElizabethProjectileGround => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
+        GameObjectType::ElizabethProjectileGroundRecalled => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
+        GameObjectType::ElizabethTree             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
         GameObjectType::Grass1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1.png"), None),
         GameObjectType::Grass2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-2.png"), None),
         GameObjectType::Grass3                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-3.png"), None),
@@ -136,8 +142,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::Grass5Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-5-b.png"), None),
         GameObjectType::Grass6Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-6-b.png"), None),
         GameObjectType::Grass7Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-7-b.png"), None),
-        GameObjectType::Water1              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-edge.png"), None),
-        GameObjectType::Water2              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-full.png"), None),
+        GameObjectType::Water1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-edge.png"), None),
+        GameObjectType::Water2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-full.png"), None),
       }
     );
   }
@@ -169,10 +175,11 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     player_textures.insert(
       character,
       match character {
-        Character::TimeQueen  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/time_queen/textures/main.png"), None),
-        Character::HealerGirl => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/healer_girl/textures/main.png"), None),
-        Character::SniperWolf => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/main.png"), None),
-        Character::Dummy      => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/sniper_girl/textures/main.png"), None),
+        Character::Cynewynn  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/cynewynn/textures/main.png"), None),
+        Character::Raphaelle => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/main.png"), None),
+        Character::Hernani => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/main.png"), None),
+        Character::Elizabeth => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/dummy/textures/template.png"), None),
+        Character::Dummy      => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/dummy/textures/template.png"), None),
       }
     );
   }
@@ -222,8 +229,6 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   // Main thread
   loop {
 
-    let camera_zoom = 2.0;
-
     let delta_time: f32 = 1.0 / get_fps() as f32;
 
     // SUPER MEGA TEMPORARY
@@ -263,12 +268,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // for game objects
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
-        GameObjectType::HealerGirlBullet | GameObjectType::TimeQueenSword | GameObjectType::SniperWolfBullet | GameObjectType::HealerGirlBulletEmpowered => {
+        GameObjectType::RaphaelleBullet | GameObjectType::CynewynnSword | GameObjectType::HernaniBullet | GameObjectType::RaphaelleBulletEmpowered => {
           let speed: f32 = character_properties[&(match game_object.object_type {
-            GameObjectType::HealerGirlBullet => Character::HealerGirl,
-            GameObjectType::HealerGirlBulletEmpowered => Character::HealerGirl,
-            GameObjectType::SniperWolfBullet => Character::SniperWolf,
-            GameObjectType::TimeQueenSword => Character::TimeQueen,
+            GameObjectType::RaphaelleBullet => Character::Raphaelle,
+            GameObjectType::RaphaelleBulletEmpowered => Character::Raphaelle,
+            GameObjectType::HernaniBullet => Character::Hernani,
+            GameObjectType::CynewynnSword => Character::Cynewynn,
             _ => panic!()
           })].primary_shot_speed;
           game_object.position.x += speed * game_object.direction.x * get_frame_time();
@@ -346,10 +351,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       let shadow_offset: f32 = 5.0;
 
       // Draw shadows on certain objects
-      let shaded_objects = vec![GameObjectType::HealerGirlBullet,
-                                                     GameObjectType::HealerGirlBulletEmpowered,
-                                                     GameObjectType::SniperWolfBullet,
-                                                     GameObjectType::TimeQueenSword,
+      let shaded_objects = vec![GameObjectType::RaphaelleBullet,
+                                                     GameObjectType::RaphaelleBulletEmpowered,
+                                                     GameObjectType::HernaniBullet,
+                                                     GameObjectType::CynewynnSword,
                                                     ];
       if shaded_objects.contains(&game_object.object_type) {
         draw_image_relative(
@@ -399,8 +404,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         (aim_direction.normalize().y * range_limited * vh) + (relative_position_y * vh),
         0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 1.0 }
       );
-      if player_copy.character == Character::SniperWolf {
-        let range: f32 = character_properties[&Character::SniperWolf].secondary_range;
+      if player_copy.character == Character::Hernani {
+        let range: f32 = character_properties[&Character::Hernani].secondary_range;
         let aim_dir = aim_direction.normalize();
         // perpendicular direction 1
         let aim_dir_alpha = Vector2 {x:   aim_dir.y, y: - aim_dir.x};
@@ -421,13 +426,13 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // draw players and optionally their trails
     let trail_y_offset: f32 = 4.5;
     for player in other_players_copy.clone() {
-      if player.character == Character::TimeQueen && !player.is_dead {
+      if player.character == Character::Cynewynn && !player.is_dead {
         draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.0, 1.0);
         draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.3, 0.5);
         draw_lines(player.previous_positions,         player_copy.camera.position, vh, player.team, trail_y_offset-0.6, 0.25);
       }
     }
-    if player_copy.character == Character::TimeQueen && !player_copy.is_dead {
+    if player_copy.character == Character::Cynewynn && !player_copy.is_dead {
       draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.0, 0.6);
       draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.3, 0.4);
       draw_lines(player_copy.previous_positions.clone(),         player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.6, 0.2);
@@ -437,9 +442,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     let mut all_players_copy: Vec<ClientPlayer> = other_players_copy.clone();
     all_players_copy.push(player_copy.clone());
     for player in all_players_copy.clone() {
-      if player.character == Character::HealerGirl {
+      if player.character == Character::Raphaelle {
         for player_2 in all_players_copy.clone() {
-          if Vector2::distance(player.position, player_2.position) < character_properties[&Character::HealerGirl].primary_range
+          if Vector2::distance(player.position, player_2.position) < character_properties[&Character::Raphaelle].primary_range
           && player.team == player_2.team {
             // if on same team, green. If on enemy team, orange.
             let color = match player.team == player_copy.team {
@@ -885,7 +890,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 
     let mut extra_speed: f32 = 0.0;
     for buff in player.buffs.clone() {
-      if buff.buff_type == BuffType::Speed {
+      if vec![BuffType::Speed, BuffType::ElizabethSpeed].contains(&buff.buff_type) {
         extra_speed += buff.value;
       }
     }
@@ -1056,7 +1061,7 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
       }
     }
     match unsorted_objects[current_lowest_index].object_type {
-      GameObjectType::HealerAura      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::RaphaelleAura      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
       GameObjectType::Water1      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
       GameObjectType::Water2      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
       GameObjectType::HernaniLandmine => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }

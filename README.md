@@ -26,10 +26,15 @@ When you run the game, a file called `moba_ip.txt` will be created in the same d
 
 On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-config` (apt package names).
 
-# To do
+# To do (not ordered)
 
 - [ ] Implement feedback
+- [ ] Health u8 -> f16
 - [ ] New characters
+  - [ ] Elizabeth
+    - [x] Primary
+    - [ ] Secondary
+    - [ ] Dash
 - [ ] Gamemode
 - [ ] Menus
   - [ ] Pause menu, always accessible
@@ -38,7 +43,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [ ] 3D sound (get direction sound game from)
   - [ ] Volume sliders in settings screen, etc
   - [ ] Music
-- [ ] Art
+- [ ] Visual
   - [ ] Animation system
   - [ ] Scenery & prettier backgrounds
     - [ ] Background loader from file
