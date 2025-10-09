@@ -127,7 +127,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::ElizabethProjectile       => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/bullet.png"), None),
         GameObjectType::ElizabethProjectileGround => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
         GameObjectType::ElizabethProjectileGroundRecalled => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
-        GameObjectType::ElizabethTree             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
+        GameObjectType::ElizabethProjectileRicochet             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/bullet.png"), None),
         GameObjectType::Grass1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1.png"), None),
         GameObjectType::Grass2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-2.png"), None),
         GameObjectType::Grass3                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-3.png"), None),
@@ -268,12 +268,15 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // for game objects
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
-        GameObjectType::RaphaelleBullet | GameObjectType::CynewynnSword | GameObjectType::HernaniBullet | GameObjectType::RaphaelleBulletEmpowered => {
+        GameObjectType::RaphaelleBullet | GameObjectType::CynewynnSword | GameObjectType::HernaniBullet | GameObjectType::RaphaelleBulletEmpowered
+        | GameObjectType::ElizabethProjectile | GameObjectType::ElizabethProjectileRicochet => {
           let speed: f32 = character_properties[&(match game_object.object_type {
             GameObjectType::RaphaelleBullet => Character::Raphaelle,
             GameObjectType::RaphaelleBulletEmpowered => Character::Raphaelle,
             GameObjectType::HernaniBullet => Character::Hernani,
             GameObjectType::CynewynnSword => Character::Cynewynn,
+            GameObjectType::ElizabethProjectile => Character::Elizabeth,
+            GameObjectType::ElizabethProjectileRicochet => Character::Elizabeth,
             _ => panic!()
           })].primary_shot_speed;
           game_object.position.x += speed * game_object.direction.x * get_frame_time();

@@ -26,23 +26,31 @@ When you run the game, a file called `moba_ip.txt` will be created in the same d
 
 On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-config` (apt package names).
 
-# To do (not ordered)
+# To do
 
-- [ ] Implement feedback
-- [ ] Health u8 -> f16
-- [ ] New characters
-  - [ ] Elizabeth
-    - [x] Primary
-    - [ ] Secondary
-    - [ ] Dash
+## Minimal presentable game
+
+- [x] Implement feedback
+  - [x] Nerf Raph's self heal
+  - [x] Rework Elizabeth
+- [ ] New characters (6 total at least)
+  - [x] Elizabeth
 - [ ] Gamemode
+  - [ ] 1v1 and 2v2
+- [ ] Matchmaking server
 - [ ] Menus
   - [ ] Pause menu, always accessible
   - [ ] Home menu and game
 - [ ] Sound
-  - [ ] 3D sound (get direction sound game from)
+  - [ ] Directional sound (akira crate)
   - [ ] Volume sliders in settings screen, etc
   - [ ] Music
+    - [ ] beg Fancy or learn how to cook
+  -  [ ] Sound effects
+  -  [ ] Voicelines
+     -  [ ] Character picked
+     -  [ ] Character gets a kill
+     -  [ ] Character gets MVP
 - [ ] Visual
   - [ ] Animation system
   - [ ] Scenery & prettier backgrounds
@@ -51,16 +59,24 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Interpolation
   - [ ] Keep extrapolation for SIMPLE objects.
   - [ ] Remove clientside dash, make it interpolate instead
-- [ ] Clean code
-  - [ ] New game engine
-    - [ ] Android compatible
+- [ ] Anticheat
+  - [ ] Packet averaging
+  - [ ] Hide certain information from client
+- [ ] Publish game
+  - [ ] Steam
+  - [ ] Marketing
+  - [ ] Server hosting
+
+## Other
+
+- [ ] Android support
+  - [ ] Change game engines
+- [ ] Clean up code
+  - [ ] Health u8 -> f16
   - [ ] Server vulnerabilities
   - [ ] Variable names, readability
   - [ ] Organisation
   - [ ] Packet size
-- [ ] Anticheat
-  - [ ] Packet averaging
-  - [ ] Hide certain information from client
 
 ## Issues that won't be solved
 

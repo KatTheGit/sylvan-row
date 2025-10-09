@@ -433,7 +433,9 @@ pub enum GameObjectType {
   ElizabethProjectileGround,
   /// Elizabeth's projectile, once it's returning to her.
   ElizabethProjectileGroundRecalled,
-  ElizabethTree,
+  /// Elizabeth's projectile, as it has just been fired and is still flying,
+  /// but can ricochet.
+  ElizabethProjectileRicochet,
   Grass1,
   Grass2,
   Grass3,

@@ -24,7 +24,6 @@ All design guidelines for this videogame.
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Elizabeth](#432-elizabeth)
-    - [4.3.3. Mandy from Brawl Stars or something idk](#433-mandy-from-brawl-stars-or-something-idk)
 - [5. Gameplay](#5-gameplay)
 
 ## 1.1. Basic game description
@@ -129,7 +128,7 @@ They excel at helping healers in battle, as they can help defend them from assas
   - She shoots a medium range piercing projectile, if it damages an opponent, her tethered allies will recieve some health. She recieves less health than her allies.
   - If empowered, her projectile will deal more damage but won't heal allies or herself. If it lands, it will reduce the cooldown on her dash ability.
 - **Secondary** - Sanctum
-  - Places down a circular healpool, which periodically heals allies and increases the fire rate of anyone inside.
+  - Places down a tree, which periodically heals allies and increases the fire rate of anyone near it
 - **Dash** - Enpowering Leap
   - A short dash that empowers the next primary shot.
 - **Passive** - Flight
@@ -182,6 +181,9 @@ Intended playstyle:
 - The health gained from the secondary is an incentive to change forms.
 - You must therefore adapt to two playstyles.
 - Countered by punishing bad positioning and forcing out **Secondary**.
+
+Note
+- Might rework to be an assassin.
 
 ## 4.2. Assassin/Brawler
 
@@ -237,37 +239,27 @@ Intended playstyle:
 
 ### 4.3.2. Elizabeth
 
-- **Primary** - Thorns
-  - Throw a mid-to-long range dagger.
-  - If the dagger does damage to anything that isn't a wall, it stays on the ground after being thrown.
-  - [not implemented] Only 3 daggers can be on the floor at all times
-  - They disappear after a little while.
-- **Secondary** - Call for Grace
-  - Place down a tree. The tree provides a speed boost to anyone near it.
-  - If you are inside the range of this tree, your **Primary**'s projectiles will remain on the floor unconiditionally.
+- **Primary** - Knife throw
+  - Throw a mid-to-long range knife.
+  - At the end of its trajectory, the knife falls on the ground and stays there for a bit.
+  - There can only be 3 knives at a time on the ground
+- **Secondary** - Ricochet
+  - Throw a knife just like **Primary**
+  - This kinfe has increased range and slightly higher damage, and can bounce off walls once.
 - **Dash** - Recall
-  - Dash forward, pulling towards yourself all daggers that were on the ground.
-  - Returning daggers deal damage to opponents caught in their path.
-  - Opponents caught by multiple daggers are marginally slowed.
+  - Dash forward, pulling towards yourself all knives that were on the ground.
+  - Returning knives deal small damage to opponents caught in their path.
+  - Opponents caught by multiple knives are marginally slowed.
 
 Intended playstyle:
 - A character that likes to stand back and control chokeholds.
 - Countered by fast characters or widening chokeholds by destroying walls.
 
-### 4.3.3. Mandy from Brawl Stars or something idk
-
-- **Primary**
-  - Fire a long range projectile
-- **Secondary**
-- **Dash**
-- **Passive** - Take aim
-  - Standing still increases the range of **Primary**
-  
 # 5. Gameplay
 
 Similar to Battlerite's *current* gamemode.
-- 1v1 or 2v2 (3v3 if we're feeling freaky)
+- 1v1 or 2v2
 - Players fight until the last team stands in the arena, with the fight lasting
-between 30seconds and one minute.
+between 30 seconds and one minute.
 - Health can't be fully healed back.
 - Best of 3

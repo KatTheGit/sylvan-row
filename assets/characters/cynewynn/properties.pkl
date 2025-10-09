@@ -2,13 +2,13 @@ health = 100
 
 speed = 47.5
 
-primary_damage = 7
+primary_damage = 9
 primary_heal = 0
 primary_damage_2 = 0
 primary_heal_2 = 0
 primary_lifesteal = 0
 primary_cooldown = 0.6
-primary_range = 20.0
+primary_range = 25.0
 primary_shot_speed = 150.0
 primary_wall_hit_radius = 3.0
 primary_hit_radius = 10.0

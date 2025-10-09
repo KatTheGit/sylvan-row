@@ -675,18 +675,7 @@ fn main() {
             });
           }
           Character::Elizabeth => {
-            // If we are near the tree, we will put a fake value in the `players`
-            // vector so that the projectile unconditionally drops
-            let mut jibberish = Vec::new();
-            for game_object in game_objects.clone() {
-              if game_object.object_type == GameObjectType::ElizabethTree
-              && game_object.owner_port == main_loop_players[player_index].port {
-                let distance = Vector2::distance(main_loop_players[player_index].position, game_object.position);
-                if distance < characters[&main_loop_players[player_index].character].secondary_range {
-                  jibberish = vec![99]; // put a bogus value so the rest of the code thinks we hit someone
-                }
-              }
-            }
+
             game_objects.push(GameObject {
               object_type: GameObjectType::ElizabethProjectile,
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
@@ -696,7 +685,7 @@ fn main() {
               hitpoints: 0,
               owner_port: main_loop_players[player_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
-              players: jibberish,
+              players: Vec::new(),
               traveled_distance: 0.0,
             });
           }
@@ -787,9 +776,7 @@ fn main() {
             let flashback_length = (character.secondary_cooldown * 10.0) as usize; // deciseconds
             if player_info.previous_positions.len() >= flashback_length
             && main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() >= character.secondary_cooldown {
-              main_loop_players[player_index].secondary_cast_time = Instant::now();
               secondary_used_successfully = true;
-              main_loop_players[player_index].secondary_cast_time = Instant::now();
               // set position to beginning of buffer (where player was 3 seconds ago)
               main_loop_players[player_index].position = main_loop_players[player_index].previous_positions[0];
               main_loop_players[player_index].previous_positions = Vec::new();
@@ -798,27 +785,30 @@ fn main() {
           },
 
           Character::Elizabeth => {
-            let mut game_objects = main_game_objects.lock().unwrap();
-            game_objects.push(GameObject {
-              object_type: GameObjectType::ElizabethTree,
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-              position: main_loop_players[player_index].position,
-              direction: Vector2::new(),
-              to_be_deleted: false,
-              owner_port: main_loop_players[player_index].port,
-              hitpoints: 30,
-              lifetime: 10.0,
-              players: vec![],
-              traveled_distance: 0.0,
-            });
-            drop(game_objects);
-            secondary_used_successfully = true;
+            if main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() > characters[&Character::Elizabeth].primary_cooldown {
+              let mut game_objects = main_game_objects.lock().unwrap();
+              game_objects.push(GameObject {
+                object_type: GameObjectType::ElizabethProjectileRicochet,
+                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                position: main_loop_players[player_index].position,
+                direction: main_loop_players[player_index].aim_direction,
+                to_be_deleted: false,
+                owner_port: main_loop_players[player_index].port,
+                hitpoints: 1, // ricochet projectiles use hitpoints to keep track of wether they've already bounced
+                lifetime: character.secondary_range / character.primary_shot_speed,
+                players: vec![],
+                traveled_distance: 0.0,
+              });
+              drop(game_objects);
+              secondary_used_successfully = true;
+              main_loop_players[player_index].last_shot_time = Instant::now()
+            }
           }
-
           Character::Dummy => {}
         }
         if secondary_used_successfully {
           main_loop_players[player_index].secondary_charge -= character.secondary_charge_use;
+          main_loop_players[player_index].secondary_cast_time = Instant::now();
         }
       }
       
@@ -893,7 +883,7 @@ fn main() {
           let hit: bool;
           (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic_extra(
             main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true,
-            characters[&Character::Raphaelle].primary_damage_2, 255);
+            characters[&Character::Raphaelle].primary_damage_2, 255, false);
           if hit {
             // restore dash charge (0.5s)
             let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
@@ -949,6 +939,12 @@ fn main() {
         GameObjectType::ElizabethProjectile => {
           (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
         }
+        // Elizabeth's secondary projectile
+        GameObjectType::ElizabethProjectileRicochet => {
+          let damage = characters[&Character::Elizabeth].secondary_damage;
+          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic_extra(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true, 
+            damage, 255, true);
+        }
         // ELIZABETH primary but recalled
         GameObjectType::ElizabethProjectileGroundRecalled => {
           // needs to move towards owner
@@ -1003,29 +999,7 @@ fn main() {
             }
           }
         }
-        GameObjectType::ElizabethTree => {
-          for player_index in 0..main_loop_players.len() {
-            let distance = Vector2::distance(main_loop_players[player_index].position, game_objects[game_object_index].position);
-            let object_team = main_loop_players[index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone())].clone().team;
-            let player_team = main_loop_players[player_index].team;
-            if player_team == object_team
-            && distance < characters[&Character::Elizabeth].secondary_range {
-              // apply some buffs or something
-              // provide fire rate buff, if not present
-              let mut buff_found = false;
-              for buff_index in 0..main_loop_players[player_index].buffs.len() {
-                if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::ElizabethSpeed {
-                  buff_found = true;
-                  break; // exit early
-                }
-              }
-              if !buff_found {
-                main_loop_players[player_index].buffs.push(Buff { value: 5.0, duration: 0.1, buff_type: BuffType::ElizabethSpeed });
-              }
-            }
-          }
-        }
-        
+
         _ => {}
       }
       game_objects[game_object_index].lifetime -= true_delta_time as f32;
@@ -1042,24 +1016,22 @@ fn main() {
         match game_object.object_type.clone() {
           // Elizabeth's projectile needs to drop on deletion,
           // if it hit somebody,
-          GameObjectType::ElizabethProjectile => {
-            // if somebody was hit
-            if !game_object.players.is_empty() {
-              cleansed_game_objects.push(
-                GameObject {
-                  object_type: GameObjectType::ElizabethProjectileGround,
-                  size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-                  position: game_object.position,
-                  direction: Vector2::new(),
-                  to_be_deleted: false,
-                  owner_port: game_object.owner_port,
-                  hitpoints: 0,
-                  lifetime: 5.0,
-                  players: Vec::new(),
-                  traveled_distance: 0.0,
-                }
-              );
-            }
+          GameObjectType::ElizabethProjectile |
+          GameObjectType::ElizabethProjectileRicochet => {
+            cleansed_game_objects.push(
+              GameObject {
+                object_type: GameObjectType::ElizabethProjectileGround,
+                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                position: game_object.position,
+                direction: Vector2::new(),
+                to_be_deleted: false,
+                owner_port: game_object.owner_port,
+                hitpoints: 0,
+                lifetime: 5.0,
+                players: Vec::new(),
+                traveled_distance: 0.0,
+              }
+            );
           },
           _ => {},
         }
@@ -1214,7 +1186,7 @@ fn apply_simple_bullet_logic(
   true_delta_time:       f64,
   pierceing_shot:        bool,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
-  return apply_simple_bullet_logic_extra(main_loop_players, characters, game_objects, game_object_index, true_delta_time, pierceing_shot, 255, 255);
+  return apply_simple_bullet_logic_extra(main_loop_players, characters, game_objects, game_object_index, true_delta_time, pierceing_shot, 255, 255, false);
 }
 
 /// Applies modifications to players and game objects as a result of
@@ -1231,6 +1203,7 @@ fn apply_simple_bullet_logic_extra(
   pierceing_shot:        bool,
   special_damage:        u8,
   special_healing:       u8,
+  ricochet:              bool,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   let game_object = game_objects[game_object_index].clone();
   let owner_port = game_object.owner_port;
@@ -1258,19 +1231,40 @@ fn apply_simple_bullet_logic_extra(
     // if it's a wall
     if WALL_TYPES.contains(&game_objects[victim_object_index].object_type) {
       // if it's colliding
-      if Vector2::distance(game_object.position, game_objects[victim_object_index].position) < (5.0 + wall_hit_radius) {
+      let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
+      if distance < (5.0 + wall_hit_radius) {
         // delete the bullet
         game_objects[game_object_index].to_be_deleted = true;
         // damage the wall if it's not unbreakable
         if game_objects[victim_object_index].object_type != GameObjectType::UnbreakableWall {
-
+          
           if game_objects[victim_object_index].hitpoints < wall_damage {
             game_objects[victim_object_index].to_be_deleted = true;
           } else {
             game_objects[victim_object_index].hitpoints -= wall_damage;
           }
         }
-        return (main_loop_players, game_objects, false); // return early
+        if !ricochet || (ricochet && game_objects[game_object_index].hitpoints == 0) {
+          return (main_loop_players, game_objects, false); // return early
+        }
+        if ricochet && game_objects[game_object_index].hitpoints != 0 {
+          game_objects[game_object_index].hitpoints = 0;
+          // we need to flip x direction or flip y direction
+          // |distance.x| - |distance.y|
+          // negative => flip horizontal
+          let distance = Vector2::difference(game_object.position, game_objects[victim_object_index].position);
+          if f32::abs(distance.x) - f32::abs(distance.y) > 0.0 {
+            game_objects[game_object_index].direction.x *= -1.0;
+          } else {
+            game_objects[game_object_index].direction.y *= -1.0;
+          }
+          //game_objects[game_object_index].lifetime = characters[&character].primary_range / characters[&character].primary_shot_speed;
+          game_objects[game_object_index].position.x += game_objects[game_object_index].direction.x * (TILE_SIZE*0.3); // this might break at very low freq like 26Hz
+          game_objects[game_object_index].position.y += game_objects[game_object_index].direction.y * (TILE_SIZE*0.3);
+        }
+        if ricochet {
+          game_objects[game_object_index].to_be_deleted = false;
+        }
       }
     }
   }
@@ -1312,8 +1306,8 @@ fn apply_simple_bullet_logic_extra(
       }
     }
   }
-  game_objects[game_object_index].position.x += game_object.direction.x * true_delta_time as f32 * bullet_speed;
-  game_objects[game_object_index].position.y += game_object.direction.y * true_delta_time as f32 * bullet_speed;
+  game_objects[game_object_index].position.x += game_objects[game_object_index].direction.x * true_delta_time as f32 * bullet_speed;
+  game_objects[game_object_index].position.y += game_objects[game_object_index].direction.y * true_delta_time as f32 * bullet_speed;
   return (main_loop_players, game_objects, hit);
 }
 
