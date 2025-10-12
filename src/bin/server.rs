@@ -12,8 +12,10 @@ static mut SPAWN_RED: Vector2 = Vector2 {x: 30.0 * TILE_SIZE, y: 11.0 * TILE_SIZ
 static mut SPAWN_BLUE: Vector2 = Vector2 {x: 2.0 * TILE_SIZE, y: 12.0 * TILE_SIZE};
 
 fn main() {
+  game_server_instance(4, GameMode::Arena);
+}
+fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   // set the gamemode (temporary)
-  let selected_game_mode = GameMode::DeathMatchArena;
 
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
@@ -32,21 +34,12 @@ fn main() {
   println!("Sockets bound.");
   println!("Listening on: {}", server_address.clone());
 
-  let mut red_team_player_count = 0;
-  let mut blue_team_player_count = 0;
-
   // temporary, to be dictated by gamemode
-  let max_players = 100;
+  let max_players = max_players;
 
-   // holds game information, to be displayed by client, and modified when shit happens.
-  let general_gamemode_info: GameModeInfo = GameModeInfo {
-    time: 0,
-    rounds_won_red: 0,
-    rounds_won_blue: 0,
-    kills_red: 0,
-    kills_blue: 0,
-    death_timeout: 3.0,
-  };
+  // holds game information, to be displayed by client, and modified when shit happens.
+  let mut general_gamemode_info: GameModeInfo = GameModeInfo::new();
+  general_gamemode_info.death_timeout = 3.0;
   let general_gamemode_info = Arc::new(Mutex::new(general_gamemode_info));
   
   // (vscode) MARK: Networking - Listen
@@ -96,7 +89,7 @@ fn main() {
 
           if recieved_player_info.character != player.character {
             player.character = recieved_player_info.character;
-            player.kill(false, &GameModeInfo::new());
+            //player.kill(false, &GameModeInfo::new());
           }
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
@@ -198,7 +191,6 @@ fn main() {
             for buff in player.buffs.clone() {
               if vec![BuffType::Speed, BuffType::ElizabethSpeed].contains(&buff.buff_type) {
                 extra_speed += buff.value;
-                println!("shit");
               }
             }
 
@@ -332,15 +324,22 @@ fn main() {
       // otherwise, add the player
       // NOTE: In the future this entire chunk of code will be gone, the matchmaker will populate
       // the list of players beforehand.
-      if !player_found && (blue_team_player_count + red_team_player_count < max_players) {
+      let mut gamemode_info = listener_gamemode_info.lock().unwrap();
+      if !player_found && (gamemode_info.total_blue + gamemode_info.total_red < max_players as u8) {
         // decide the player's team (alternate for each player)
         let mut team: Team = Team::Blue;
-        if blue_team_player_count > red_team_player_count {
+
+        if gamemode_info.total_blue > gamemode_info.total_red {
           team = Team::Red;
-          red_team_player_count += 1;
+          println!("hello - red");
+          gamemode_info.total_red += 1;
+          gamemode_info.alive_red += 1;
         } else {
-          blue_team_player_count += 1;
+          println!("hello - blue");
+          gamemode_info.total_blue += 1;
+          gamemode_info.alive_blue += 1;
         }
+        drop(gamemode_info);
         // create server player data
         // this data is pretty irrelevant, we're just initialising the player.
         unsafe {
@@ -458,30 +457,32 @@ fn main() {
     // (vscode) MARK: Gamemode
     if tick {
       let mut gamemode_info = main_gamemode_info.lock().unwrap();
-      match selected_game_mode {
-        GameMode::DeathMatchArena => {
+      println!("gamemode info: {:?}", gamemode_info);
+      match selected_gamemode {
+        GameMode::Arena => {
           let mut round_restart = false;
-          if gamemode_info.kills_blue >= 5 {
-            gamemode_info.rounds_won_blue += 1;
+          if gamemode_info.alive_blue == 0
+          && (gamemode_info.total_blue + gamemode_info.total_red) > 1 {
+            gamemode_info.rounds_won_red += 1;
             round_restart = true;
           }
-          if gamemode_info.kills_red >= 5 {
-            gamemode_info.rounds_won_red += 1;
+          if gamemode_info.alive_red == 0
+          && (gamemode_info.total_blue + gamemode_info.total_red) > 1 {
+            gamemode_info.rounds_won_blue += 1;
             round_restart = true;
           }
           if round_restart {
             for player_index in 0..main_loop_players.len() {
               *gamemode_info = main_loop_players[player_index].kill(false, &gamemode_info.clone());
-              gamemode_info.kills_blue = 0;
-              gamemode_info.kills_red  = 0;
+              gamemode_info.alive_blue = gamemode_info.total_blue;
+              gamemode_info.alive_red  = gamemode_info.total_red;
             }
             let mut reset_game_objects = main_game_objects.lock().unwrap();
             *reset_game_objects = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
             drop(reset_game_objects);
           }
         }
-
-        _ => {}
+        // _ => {}
       }
       drop(gamemode_info);
     }
@@ -489,6 +490,11 @@ fn main() {
     // Summon a dummy for testing
     if !dummy_summoned {
       dummy_summoned = true;
+      let mut gamemode_info = main_gamemode_info.lock().unwrap();
+      gamemode_info.alive_red += 1;
+      gamemode_info.total_red += 1;
+      drop(gamemode_info);
+
       main_loop_players.push(
         ServerPlayer {
           ip: String::from("hello"),
@@ -496,8 +502,8 @@ fn main() {
           true_port: 12,
           team: Team::Red,
           character: Character::Dummy,
-          health: 0,
-          position: Vector2 { x: 10.0, y: 10.0 },
+          health: 100,
+          position: Vector2 { x: 100.0, y: 100.0 },
           shooting: true,
           last_dash_time: Instant::now(),
           last_shot_time: Instant::now(),
@@ -537,7 +543,7 @@ fn main() {
       // MARK: Handle death
 
       // if this player is at health 0
-      if main_loop_players[player_index].health == 0 {
+      if main_loop_players[player_index].health == 0 && !main_loop_players[player_index].is_dead {
         *gamemode_info = main_loop_players[player_index].kill(true, &gamemode_info.clone());
       }
       // If the death timer is over, unkill them
@@ -1138,6 +1144,7 @@ impl ServerPlayer {
     }
   }
   fn kill(&mut self, credit_other_team: bool, gamemode_info: &GameModeInfo) -> GameModeInfo{
+    println!("killing");
     let mut updated_gamemode_info: GameModeInfo = gamemode_info.clone();
     // remove all previous positions
     self.previous_positions = Vec::new();
@@ -1155,20 +1162,20 @@ impl ServerPlayer {
         // println!("Sending {} to blue spawn", self.ip);
         // Give a kill to the red team
         if credit_other_team {
-          updated_gamemode_info.kills_red += 1;
+          updated_gamemode_info.alive_blue -= 1;
         }
       }
     }
-      else {
-        unsafe {
-          self.position = SPAWN_RED;
-          // println!("Sending {} to red team spawn", self.ip);
-          // Give a kill to the blue team
-          if credit_other_team {
-            updated_gamemode_info.kills_blue += 1;
-          }
+    else {
+      unsafe {
+        self.position = SPAWN_RED;
+        // println!("Sending {} to red team spawn", self.ip);
+        // Give a kill to the blue team
+        if credit_other_team {
+          updated_gamemode_info.alive_red -= 1;
         }
       }
+    }
     return updated_gamemode_info;
   }
 }

@@ -37,10 +37,12 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [x] Elizabeth
 - [ ] Gamemode
   - [ ] 1v1 and 2v2
-- [ ] Matchmaking server
 - [ ] Menus
   - [ ] Pause menu, always accessible
   - [ ] Home menu and game
+- [ ] Matchmaking server
+  - [ ] Client enters queue
+  - [ ] If 2 players, Server launches an instance of a gameplay server
 - [ ] Sound
   - [ ] Directional sound (akira crate)
   - [ ] Volume sliders in settings screen, etc
@@ -70,7 +72,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 ## Other
 
 - [ ] Android support
-  - [ ] Change game engines
+  - [ ] Change game engine
 - [ ] Clean up code
   - [ ] Health u8 -> f16
   - [ ] Server vulnerabilities

@@ -476,10 +476,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // let timer_width: f32 = 5.0;
     draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.5 });
     draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);
-    draw_text_relative(format!("Blue Kills: {}", gamemode_info_main.kills_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
-    draw_text_relative(format!("Blue Wins : {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
-    draw_text_relative(format!("Red Kills : {}", gamemode_info_main.kills_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
-    draw_text_relative(format!("Red Wins  : {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
+    draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
+    draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
+    draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
+    draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
     // let bar_offsets = 5.0;
     // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
     drop(gamemode_info_main);

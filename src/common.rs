@@ -38,23 +38,27 @@ impl Camera {
 }
 
 pub enum GameMode {
-  /// Fast respawns, team with most kills wins
-  DeathMatch,
   /// Round-based fight
   Arena,
-  /// A mix of deathmatch and arena
-  DeathMatchArena,
 }
+/// This struct contains information related to the current match.
+/// It is sent over network.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct GameModeInfo {
-  /// time left in seconds
+  /// Length of the game in seconds
   pub time: u16,
+  /// How many rounds were won by the red team
   pub rounds_won_red: u8,
+  /// How many rounds were won by the blue team
   pub rounds_won_blue: u8,
-  /// number of kills from blue team this round
-  pub kills_red: u8,
-  /// number of kills from red team this round
-  pub kills_blue: u8,
+  /// Amount of players left on the red team
+  pub alive_red: u8,
+  /// Total amount of players on the team
+  pub total_red: u8,
+  /// Amount of players left on the blue team
+  pub alive_blue: u8,
+  /// Total amount of players on the team
+  pub total_blue: u8,
   /// How long to wait until a respawn after death
   pub death_timeout: f32,
 }
@@ -64,8 +68,10 @@ impl GameModeInfo {
       time: 0,
       rounds_won_blue: 0,
       rounds_won_red: 0,
-      kills_blue: 0,
-      kills_red: 0,
+      total_red: 0,
+      total_blue: 0,
+      alive_red: 0,
+      alive_blue: 0,
       death_timeout: 3.0,
     }
   }

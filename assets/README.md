@@ -20,7 +20,6 @@ All design guidelines for this videogame.
     - [4.1.3. Alita \[IDEA\]](#413-alita-idea)
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
-    - [4.2.2. Ginna \[IDEA\]](#422-ginna-idea)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Elizabeth](#432-elizabeth)
@@ -204,20 +203,6 @@ Note
 Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
 - She has to be careful. Her dash is on a long cooldown and her secondary reduces her fire rate. Her actions must be planned and she significantly weakens from a hesitant player. Her mobility is her downfall, a smart player might be able to bait out a dash and play around her cooldowns.
-
-### 4.2.2. Ginna [IDEA]
-
-- **Primary** - Dagger throw
-  - A short range piercing projectile
-- **Secondary** - holy crap theres 2 of them
-  - Creates a clone of himself a few tiles away.
-  - The clone copies movement and attacks, but has a smaller healthbar, and lasts for a few seconds.
-  - While **Secondary** is active, **Dash** swaps the positions of the player and the clone instead, and has a higher cooldown.
-- **Dash**
-  - A short dash on a short cooldown.
-
-Intended playstyle
-- Confuse and outplay people.
 
 ## 4.3. Ranged/Control
 

@@ -1,6 +1,7 @@
+# personal gitignore? Heh. I don't think so.
 target
 moba_ip.txt
 .DS_Store
-android
-assets/characters/.~lock.balance.ods#
+assets/characters/.~lock.balance.ods
 *~
+2client.sh
