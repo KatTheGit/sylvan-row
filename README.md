@@ -41,8 +41,10 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [ ] 1v1 and 2v2
     - [x] Kinda
 - [ ] Menus
-  - [ ] Pause menu, always accessible
+  - [x] Pause menu, always accessible
+    - [ ] Settings screen
   - [ ] Home menu and game
+    - Home menu comes with matchmaking server...
 - [ ] Matchmaking server
   - [ ] Client enters queue
   - [ ] If 2 players, Server launches an instance of a gameplay server

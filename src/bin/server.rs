@@ -12,7 +12,8 @@ static mut SPAWN_RED: Vector2 = Vector2 {x: 30.0 * TILE_SIZE, y: 11.0 * TILE_SIZ
 static mut SPAWN_BLUE: Vector2 = Vector2 {x: 2.0 * TILE_SIZE, y: 12.0 * TILE_SIZE};
 
 fn main() {
-  game_server_instance(4, GameMode::Arena);
+  // not exactly sure if `max_players` is really needed, but whatevs
+  game_server_instance(400, GameMode::Arena);
 }
 fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   // set the gamemode (temporary)
@@ -379,7 +380,19 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
       for player_index in 0..listener_players.len() {
         if (listener_players[player_index].last_packet_time.elapsed().as_secs_f32() > 10.0)
         && (listener_players[player_index].character != Character::Dummy                  ) {
-          println!("Player forecefully disconnected: {}", listener_players[player_index].ip);
+          println!("Player forcefully disconnected: {}", listener_players[player_index].ip);
+          let mut gamemode_info = listener_gamemode_info.lock().unwrap();
+          if listener_players[player_index].team == Team::Red {
+            gamemode_info.total_red -=1;
+            if !listener_players[player_index].is_dead {
+              gamemode_info.alive_red -=1;
+            }
+          } else {
+            gamemode_info.total_blue -=1;
+            if !listener_players[player_index].is_dead {
+              gamemode_info.alive_blue -=1;
+            }
+          }
           listener_players.remove(player_index);
           break;
         }

@@ -13,6 +13,7 @@ use miniquad::conf::Icon;
 use gilrs::*;
 use bincode;
 use sylvan_row::ui::draw_ability_icon;
+use sylvan_row::ui::draw_pause_menu;
 use sylvan_row::ui::draw_player_info;
 use sylvan_row::ui::DivBox;
 use std::{net::UdpSocket, sync::MutexGuard};
@@ -83,12 +84,12 @@ async fn main() {
     clear_background(WHITE);
     
     if timer.elapsed().as_secs_f32() > 0.5 {
-      let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle");
-      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn");
-      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani");
-      let elizabeth: bool = ui::button(Vector2 { x: 30.0, y: 330.0 }, Vector2 { x: 200.0, y: 70.0 },  "Elizabeth");
+      let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle", 40.0, 10.0);
+      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn", 40.0, 10.0);
+      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani", 40.0, 10.0);
+      let elizabeth: bool = ui::button(Vector2 { x: 30.0, y: 330.0 }, Vector2 { x: 200.0, y: 70.0 },  "Elizabeth", 40.0, 10.0);
       // println!("{:?}", healer);
-      
+
       if healer { game(Character::Raphaelle, port).await; timer = Instant::now() }
       if queen  { game(Character::Cynewynn, port).await;  timer = Instant::now() }
       if wolf   { game(Character::Hernani, port).await; timer = Instant::now() }
@@ -164,6 +165,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   // main thread will have to modify it, and input thread will read it.
   let mut mouse_position: Vec2 = Vec2::new(0.0, 0.0);
 
+  let menu_paused = false;
+  let menu_paused: Arc<Mutex<bool>> = Arc::new(Mutex::new(menu_paused));
+
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
@@ -205,8 +209,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   let input_thread_keyboard_mode = Arc::clone(&keyboard_mode);
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
+  let input_thread_menu_paused = Arc::clone(&menu_paused);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, input_thread_menu_paused);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -223,6 +228,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
   let mut connected_to_server = false;
 
+  // for menus. don't press escape again if it was already pressed. avoids
+  // toggling the menu every frame
+  let mut escape_already_pressed: bool = false;
+
   // Camera offset from player.
   // let mut camera_offset: Vector2 = Vector2::new();
 
@@ -235,13 +244,25 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     let device_state: DeviceState = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
     if keys.contains(&Keycode::Escape) {
-      // return; // Exit the game, go back to character picker menu // THIS WONT KILL ALL THREADS
-      let mut killall: MutexGuard<bool> = kill_all_threads.lock().unwrap();
-      *killall = true;
-      return;
+      //let mut killall: MutexGuard<bool> = kill_all_threads.lock().unwrap();
+      //*killall = true;
+      if !escape_already_pressed {
+        let mut menu_paused = menu_paused.lock().unwrap();
+        *menu_paused = !*menu_paused;
+        drop(menu_paused);
+      }
+      escape_already_pressed = true;
+      //return;
+    } else {
+      escape_already_pressed = false;
     }
     drop(device_state);
     drop(keys);
+    let killall: MutexGuard<bool> = kill_all_threads.lock().unwrap();
+    if *killall {
+      return;
+    }
+    drop(killall);
 
     // update vw and vh, used to correctly draw things scale to the screen.
     // one vh for example is 1% of screen height.
@@ -521,29 +542,38 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       }
     }
 
-    // Draw fps, etc
-    if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
-      timer_for_text_update = Instant::now();
-
-      let sender_fps: Arc<Mutex<f32>> = Arc::clone(&sender_fps);
-      let sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
-      slow_sender_fps = *sender_fps;
-      drop(sender_fps);
-
-      slow_draw_fps = get_fps();
-
-      slow_ping = player_copy.ping;
-    }
-    draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 20.0, DARKGRAY);
-    draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 40.0, 20.0, DARKGRAY);
-    draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 60.0, 20.0, DARKGRAY);
-
     if player_copy.ping != 0 {
       connected_to_server = true;
     }
     if !connected_to_server {
       draw_text(format!("Not connected to server").as_str(), 20.0, 80.0, 40.0, RED);
     }
+
+    // Draw pause menu
+    let mut menu_paused = menu_paused.lock().unwrap();
+    if *menu_paused {
+      let mut kill_all_threads = kill_all_threads.lock().unwrap();
+      (*menu_paused, *kill_all_threads) = draw_pause_menu(vh, vw);
+      drop(kill_all_threads);
+      // Draw fps, etc
+      if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
+        timer_for_text_update = Instant::now();
+
+        let sender_fps: Arc<Mutex<f32>> = Arc::clone(&sender_fps);
+        let sender_fps: MutexGuard<f32> = sender_fps.lock().unwrap();
+        slow_sender_fps = *sender_fps;
+        drop(sender_fps);
+
+        slow_draw_fps = get_fps();
+
+        slow_ping = player_copy.ping;
+      }
+      draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 32.0, WHITE);
+      draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 45.0, 32.0, WHITE);
+      draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 70.0, 32.0, WHITE);
+    }
+    drop(menu_paused);
+
     next_frame().await;
   }
 }
@@ -556,7 +586,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, menu_paused_listener: Arc<Mutex<bool>>) -> () {
 
   let mut server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";
@@ -648,7 +678,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
     let delta_time = frame_counter.elapsed().as_secs_f32();
     frame_counter = Instant::now();
 
-    //println!("Shit");
     let kill_this_thread: MutexGuard<bool> = kill.lock().unwrap();
     if *kill_this_thread {
       drop(socket);
