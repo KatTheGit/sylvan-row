@@ -20,6 +20,7 @@ All design guidelines for this videogame.
     - [4.1.3. Alita \[IDEA\]](#413-alita-idea)
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
+    - [4.2.2. IDK \[IDEA\]](#422-idk-idea)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Elizabeth](#432-elizabeth)
@@ -203,6 +204,10 @@ Note
 Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
 - She has to be careful. Her dash is on a long cooldown and her secondary reduces her fire rate. Her actions must be planned and she significantly weakens from a hesitant player. Her mobility is her downfall, a smart player might be able to bait out a dash and play around her cooldowns.
+
+### 4.2.2. IDK [IDEA]
+
+- Man we really need another assassin
 
 ## 4.3. Ranged/Control
 

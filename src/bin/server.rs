@@ -39,7 +39,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
   // holds game information, to be displayed by client, and modified when shit happens.
   let mut general_gamemode_info: GameModeInfo = GameModeInfo::new();
-  general_gamemode_info.death_timeout = 3.0;
+  general_gamemode_info.death_timeout = 300.0; // basically longer than any round could last
   let general_gamemode_info = Arc::new(Mutex::new(general_gamemode_info));
   
   // (vscode) MARK: Networking - Listen
@@ -331,11 +331,9 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
         if gamemode_info.total_blue > gamemode_info.total_red {
           team = Team::Red;
-          println!("hello - red");
           gamemode_info.total_red += 1;
           gamemode_info.alive_red += 1;
         } else {
-          println!("hello - blue");
           gamemode_info.total_blue += 1;
           gamemode_info.alive_blue += 1;
         }
@@ -457,7 +455,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
     // (vscode) MARK: Gamemode
     if tick {
       let mut gamemode_info = main_gamemode_info.lock().unwrap();
-      println!("gamemode info: {:?}", gamemode_info);
       match selected_gamemode {
         GameMode::Arena => {
           let mut round_restart = false;
@@ -476,6 +473,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               *gamemode_info = main_loop_players[player_index].kill(false, &gamemode_info.clone());
               gamemode_info.alive_blue = gamemode_info.total_blue;
               gamemode_info.alive_red  = gamemode_info.total_red;
+              main_loop_players[player_index].is_dead = false;
             }
             let mut reset_game_objects = main_game_objects.lock().unwrap();
             *reset_game_objects = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
@@ -1144,7 +1142,7 @@ impl ServerPlayer {
     }
   }
   fn kill(&mut self, credit_other_team: bool, gamemode_info: &GameModeInfo) -> GameModeInfo{
-    println!("killing");
+    //println!("killing");
     let mut updated_gamemode_info: GameModeInfo = gamemode_info.clone();
     // remove all previous positions
     self.previous_positions = Vec::new();

@@ -35,8 +35,11 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [x] Rework Elizabeth
 - [ ] New characters (6 total at least)
   - [x] Elizabeth
-- [ ] Gamemode
+  - [ ] An assassin
+  - [ ] A support
+- [x] Gamemode
   - [ ] 1v1 and 2v2
+    - [x] Kinda
 - [ ] Menus
   - [ ] Pause menu, always accessible
   - [ ] Home menu and game
