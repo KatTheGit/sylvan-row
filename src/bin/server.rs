@@ -604,7 +604,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
       }
 
       // Get stuck player out of walls
-      let unstucker_game_objects = main_game_objects.lock().unwrap();
+      let mut unstucker_game_objects = main_game_objects.lock().unwrap();
       for game_object_index in 0..unstucker_game_objects.len() {
         
         if WALL_TYPES_ALL.contains(&unstucker_game_objects[game_object_index].object_type) {
@@ -618,7 +618,33 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           }
         }
       }
+      // Delete extra Elizabeth ground daggers
+      if main_loop_players[player_index].character == Character::Elizabeth {
+
+        let mut objects_to_consider: Vec<usize> = Vec::new();
+        for game_object_index in 0..unstucker_game_objects.len() {
+          if unstucker_game_objects[game_object_index].object_type == GameObjectType::ElizabethProjectileGround {
+            if index_by_port(unstucker_game_objects[game_object_index].owner_port, main_loop_players.clone())
+            == player_index {
+              objects_to_consider.push(game_object_index);
+            }
+          }
+        }
+        if objects_to_consider.len() > 2 {
+          // selection sort is by far the best sorting algorithm
+          let mut lowest_val: f32 = f32::MAX;
+          let mut lowest_index: usize = 0;
+          for object_to_consider in objects_to_consider {
+            if unstucker_game_objects[object_to_consider].lifetime < lowest_val {
+              lowest_val = unstucker_game_objects[object_to_consider].lifetime;
+              lowest_index = object_to_consider;
+            }
+          }
+          unstucker_game_objects[lowest_index].to_be_deleted = true;
+        }
+      }
       drop(unstucker_game_objects);
+
 
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.
@@ -1335,5 +1361,5 @@ fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
       return player_index;
     }
   }
-  panic!("index_by_port function error - data race condition, mayhaps?");
+  panic!("index_by_port function error - data race condition, mayhaps?\nAlternatively, there's just no players at all");
 }
