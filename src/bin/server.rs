@@ -40,7 +40,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
   // holds game information, to be displayed by client, and modified when shit happens.
   let mut general_gamemode_info: GameModeInfo = GameModeInfo::new();
-  general_gamemode_info.death_timeout = 300.0; // basically longer than any round could last
+  general_gamemode_info.death_timeout = 1.0; // basically longer than any round could last
   let general_gamemode_info = Arc::new(Mutex::new(general_gamemode_info));
   
   // (vscode) MARK: Networking - Listen
@@ -427,7 +427,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = false;
+  let mut dummy_summoned: bool = true;
   
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);
