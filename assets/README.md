@@ -232,7 +232,7 @@ Intended playstyle:
 - **Primary** - Knife throw
   - Throw a mid-to-long range knife.
   - At the end of its trajectory, the knife falls on the ground and stays there for a bit.
-  - There can only be 3 knives at a time on the ground
+  - There can only be 2 knives at a time on the ground
 - **Secondary** - Ricochet
   - Throw a knife just like **Primary**
   - This kinfe has increased range and slightly higher damage, and can bounce off walls once.
