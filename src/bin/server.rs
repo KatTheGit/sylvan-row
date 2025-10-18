@@ -1365,6 +1365,7 @@ fn apply_simple_bullet_logic_extra(
         }
         let mut direction: Vector2 = game_object.direction;
         direction.x *= damage as f32 / 2.0;
+        direction.y *= damage as f32 / 2.0;
 
         if game_objects[victim_object_index].hitpoints > damage {
           // hurt the orb :(
