@@ -34,12 +34,16 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [x] Nerf Raph's self heal
   - [x] Rework Elizabeth
 - [ ] New characters (6 total at least)
-  - [x] Elizabeth
+  - [x] Elizabeth (rename tho)
   - [ ] An assassin
-  - [ ] A support
+  - [ ] Wiro (rename tho)
 - [x] Gamemode
   - [ ] 1v1 and 2v2
     - [x] Kinda
+  - [ ] Orb
+    - [ ] Spawns every 30sec, if one's not already in the game
+    - [ ] Can be knocked back
+    - [ ] Whoever gets the final blow gets some HP
 - [ ] Menus
   - [x] Pause menu, always accessible
     - [ ] Settings screen
@@ -79,6 +83,8 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [ ] Android support
   - [ ] Change game engine
 - [ ] Clean up code
+  - [ ] IMPORTANT: Reorganise mutexes to avoid deadlocks
+    - Current implementation is silly
   - [ ] Health u8 -> f16
   - [ ] Server vulnerabilities
   - [ ] Variable names, readability

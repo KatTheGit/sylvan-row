@@ -69,9 +69,40 @@ ILLLLLL..............................
 .LLLLLLLLLLLIIILLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLI
 .LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 """
+map_drawing = """
+UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+U...................W.............U
+U...................W.............U
+U...................W.............U
+U.............UWW...WWWWWU........U
+U.................................U
+U.................................U
+U.................................U
+U..........W......................U
+U..........UWW....W....UWW........U
+U......................U..........U
+U.................................U
+U.................................U
+U....W.......................U....U
+U....U...........O...........U....U
+U....U.......................W....U
+U.................................U
+U.................................U
+U..........U......................U
+U........WWU....W....WWU..........U
+U......................W..........U
+U.................................U
+U.................................U
+U.................................U
+U........UWWWWW...WWU.............U
+U.............W...................U
+U.............W...................U
+U.............W...................U
+UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+"""
 
-map_y_offset = -4
-map_x_offset = -4
+map_y_offset = -1
+map_x_offset = -1
 
 map_file = ""
 for y, line in enumerate(io.StringIO(map_drawing)):
@@ -85,6 +116,8 @@ for y, line in enumerate(io.StringIO(map_drawing)):
             map_file += "water1 " + position
         if char == 'L':
             map_file += "water2 " + position
+        if char == 'O':
+            map_file += "orb " + position
 
         #bg_tiles = ["grass-1", "grass-2", "grass-3", "grass-4", "grass-5"]
         #bg_tile = random.choice(bg_tiles)

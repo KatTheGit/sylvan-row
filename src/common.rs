@@ -9,6 +9,7 @@ use strum::IntoEnumIterator;
 use std::time::SystemTime;
 
 pub const TILE_SIZE: f32 = 8.0;
+pub const ORB_HEALING: u8 = 20;
 
 // this is bs
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
@@ -460,6 +461,9 @@ pub enum GameObjectType {
   Water1,
   /// Currently, a full water tile
   Water2,
+  /// The orb in the middle of the map
+  CenterOrb,
+  CenterOrbSpawnPoint,
 }
 // MARK: Vectors
 // utility
@@ -564,7 +568,7 @@ pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16
 /// wall 20.0 10.0
 /// wall 30.0 10.0
 /// wall 40.0 10.0
-/// wall 50.0 10.0
+/// unbreakablewall 50.0 10.0
 /// ```
 pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
   let mut map_to_return: Vec<GameObject> = Vec::new();
@@ -583,6 +587,7 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
         "unbreakablewall" => {GameObjectType::UnbreakableWall},
         "water1" => {GameObjectType::Water1},
         "water2" => {GameObjectType::Water2},
+        "orb"    => {GameObjectType::CenterOrbSpawnPoint},
         _                 => {panic!("Unexpected ojbect in map file.")},
       },
       size: match gameobject_type {
@@ -590,7 +595,8 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
         "unbreakablewall" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
         "water1" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
         "water2" => Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
-         _ => {panic!("Unexpected ojbect in map file.")},
+        "orb"    => Vector2 { x: TILE_SIZE*1.0, y: TILE_SIZE*1.0 },
+        _        => {panic!("Unexpected ojbect in map file.")},
       },
       position: Vector2 { x: pos_x, y: pos_y },
       direction: Vector2::new(),

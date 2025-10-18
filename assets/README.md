@@ -247,9 +247,13 @@ Intended playstyle:
 
 # 5. Gameplay
 
-Similar to Battlerite's *current* gamemode.
-- 1v1 or 2v2
-- Players fight until the last team stands in the arena, with the fight lasting
-between 30 seconds and one minute.
-- Health can't be fully healed back.
-- Best of 3
+- Format
+  - 1v1 or 2v2
+  - Both teams fight until only one team remains.
+  - Best of 3
+  - 1min intended length for rounds 
+- Gameplay
+  - There is little healing overall
+  - Every 30s or so, an orb spawns in the middle of the map.
+    - Whoever gets the last hit on the orb gives their whole team a bit of health.
+    - Shooting the orb knocks it back a little.

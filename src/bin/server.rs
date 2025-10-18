@@ -376,28 +376,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         println!("Player connected: {}: {} - {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port);
       }
 
-      // Occasionally check for goners
-      for player_index in 0..listener_players.len() {
-        if (listener_players[player_index].last_packet_time.elapsed().as_secs_f32() > 10.0)
-        && (listener_players[player_index].character != Character::Dummy                  ) {
-          println!("Player forcefully disconnected: {}", listener_players[player_index].ip);
-          let mut gamemode_info = listener_gamemode_info.lock().unwrap();
-          if listener_players[player_index].team == Team::Red {
-            gamemode_info.total_red -=1;
-            if !listener_players[player_index].is_dead {
-              gamemode_info.alive_red -=1;
-            }
-          } else {
-            gamemode_info.total_blue -=1;
-            if !listener_players[player_index].is_dead {
-              gamemode_info.alive_blue -=1;
-            }
-          }
-          listener_players.remove(player_index);
-          break;
-        }
-      }
-
       drop(listener_players);
     }
   });
@@ -411,6 +389,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   let desired_delta_time: f64 = 1.0 / 1000.0; // This needs to be limited otherwise it hogs the mutexess
 
   let main_game_objects = Arc::clone(&game_objects);
+
+  // start the game with an orb
+  let orb_spawn_interval: f32 = 20.0; //seconds
+  let mut orb_timer: f32 = orb_spawn_interval;
 
   // for once-per-second operations, called ticks
   let mut tick_counter = Instant::now();
@@ -461,8 +443,9 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
       let mut gamemode_info = main_gamemode_info.lock().unwrap();
       gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
       drop(gamemode_info);
+      // println!("{}", 1.0/delta_time);
     }
-  
+
     let mut main_loop_players = main_loop_players.lock().unwrap();
 
     // (vscode) MARK: Gamemode
@@ -472,12 +455,12 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         GameMode::Arena => {
           let mut round_restart = false;
           if gamemode_info.alive_blue == 0
-          && (gamemode_info.total_blue + gamemode_info.total_red) > 1 {
+          && (gamemode_info.total_blue > 1 && gamemode_info.total_red > 1) {
             gamemode_info.rounds_won_red += 1;
             round_restart = true;
           }
           if gamemode_info.alive_red == 0
-          && (gamemode_info.total_blue + gamemode_info.total_red) > 1 {
+          && (gamemode_info.total_blue > 1 && gamemode_info.total_red > 1) {
             gamemode_info.rounds_won_blue += 1;
             round_restart = true;
           }
@@ -494,6 +477,26 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           }
         }
         // _ => {}
+      }
+      // Occasionally check for goners
+      for player_index in 0..main_loop_players.len() {
+        if (main_loop_players[player_index].last_packet_time.elapsed().as_secs_f32() > 3.0)
+        && (main_loop_players[player_index].character != Character::Dummy                  ) {
+          println!("Player forcefully disconnected: {}", main_loop_players[player_index].ip);
+          if main_loop_players[player_index].team == Team::Red {
+            gamemode_info.total_red -=1;
+            if !main_loop_players[player_index].is_dead {
+              gamemode_info.alive_red -=1;
+            }
+          } else {
+            gamemode_info.total_blue -=1;
+            if !main_loop_players[player_index].is_dead {
+              gamemode_info.alive_blue -=1;
+            }
+          }
+          main_loop_players.remove(player_index);
+          break;
+        }
       }
       drop(gamemode_info);
     }
@@ -863,6 +866,45 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
     // (vscode) MARK: Object Handling
     // Do all logic related to game objects
     let mut game_objects = main_game_objects.lock().unwrap();
+
+    // contemplating my orb
+    if tick {
+      orb_timer += 1.0 as f32;
+      let mut orb_found = false;
+      for game_object in game_objects.clone() {
+        if game_object.object_type == GameObjectType::CenterOrb {
+          orb_found = true;
+          orb_timer = 0.0;
+          break;
+        }
+      }
+      if orb_timer > orb_spawn_interval && !orb_found {
+        let mut orb_position: Vector2 = Vector2::new();
+        // check if there's already an orb
+        // get the position of the spawner
+        for game_object in game_objects.clone() {
+          if game_object.object_type == GameObjectType::CenterOrbSpawnPoint {
+            orb_position = game_object.position;
+            break;
+          }
+        }
+        game_objects.push(
+          GameObject {
+            object_type: GameObjectType::CenterOrb,
+            size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+            position: orb_position,
+            direction: Vector2::new(),
+            to_be_deleted: false,
+            owner_port: 0,
+            hitpoints: 60,
+            lifetime: f32::INFINITY,
+            players: Vec::new(),
+            traveled_distance: 0.0
+          }
+        );
+      }
+    }
+
     for game_object_index in 0..game_objects.len() {
       let game_object_type = game_objects[game_object_index].object_type;
       match game_object_type {
@@ -1308,6 +1350,49 @@ fn apply_simple_bullet_logic_extra(
         }
         if ricochet {
           game_objects[game_object_index].to_be_deleted = false;
+        }
+      }
+    }
+  }
+  // orb
+  for victim_object_index in 0..game_objects.len() {
+    if game_objects[victim_object_index].object_type == GameObjectType::CenterOrb {
+      // if it's colliding
+      let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
+      if distance < (5.0 + wall_hit_radius) {
+        if game_objects[game_object_index].players.contains(&548) {
+          continue;
+        }
+        let mut direction: Vector2 = game_object.direction;
+        direction.x *= damage as f32 / 2.0;
+
+        if game_objects[victim_object_index].hitpoints > damage {
+          // hurt the orb :(
+          game_objects[victim_object_index].hitpoints -= damage
+        } else {
+          // KILL THE ORB
+          game_objects[victim_object_index].hitpoints = 0;
+          game_objects[victim_object_index].to_be_deleted = true;
+        }
+        // apply knockback to the orb
+        game_objects[victim_object_index].position.y += direction.y;
+        game_objects[victim_object_index].position.x += direction.x;
+        // apply orb healing
+        if game_objects[victim_object_index].hitpoints == 0 {
+          let team = player.team;
+          for player_index in 0..main_loop_players.len() {
+            if main_loop_players[player_index].team == team {
+              main_loop_players[player_index].health += ORB_HEALING;
+              if main_loop_players[player_index].health > 100 {
+                main_loop_players[player_index].health = 100;
+              }
+            }
+          }
+        }
+        // 548 IS THE NUMBER OF THE ORB
+        game_objects[game_object_index].players.push(548);
+        if !pierceing_shot {
+          game_objects[game_object_index].to_be_deleted = true;
         }
       }
     }

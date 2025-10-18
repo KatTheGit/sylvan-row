@@ -145,6 +145,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::Grass7Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-7-b.png"), None),
         GameObjectType::Water1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-edge.png"), None),
         GameObjectType::Water2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-full.png"), None),
+        GameObjectType::CenterOrb                 => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/orb.png"), None),
+        GameObjectType::CenterOrbSpawnPoint       => Texture2D::from_file_with_format(include_bytes!("../../assets/empty.png"), None),
       }
     );
   }
