@@ -167,8 +167,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   // main thread will have to modify it, and input thread will read it.
   let mut mouse_position: Vec2 = Vec2::new(0.0, 0.0);
 
-  let menu_paused = false;
-  let menu_paused: Arc<Mutex<bool>> = Arc::new(Mutex::new(menu_paused));
+  let mut menu_paused = false;
 
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
@@ -211,9 +210,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   let input_thread_keyboard_mode = Arc::clone(&keyboard_mode);
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
-  let input_thread_menu_paused = Arc::clone(&menu_paused);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, input_thread_menu_paused);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -249,9 +247,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       //let mut killall: MutexGuard<bool> = kill_all_threads.lock().unwrap();
       //*killall = true;
       if !escape_already_pressed {
-        let mut menu_paused = menu_paused.lock().unwrap();
-        *menu_paused = !*menu_paused;
-        drop(menu_paused);
+        menu_paused = !menu_paused;
       }
       escape_already_pressed = true;
       //return;
@@ -381,6 +377,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
                                                      GameObjectType::RaphaelleBulletEmpowered,
                                                      GameObjectType::HernaniBullet,
                                                      GameObjectType::CynewynnSword,
+                                                     GameObjectType::CenterOrb,
+                                                     GameObjectType::ElizabethProjectile,
                                                     ];
       if shaded_objects.contains(&game_object.object_type) {
         draw_image_relative(
@@ -552,10 +550,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     }
 
     // Draw pause menu
-    let mut menu_paused = menu_paused.lock().unwrap();
-    if *menu_paused {
+    if menu_paused {
       let mut kill_all_threads = kill_all_threads.lock().unwrap();
-      (*menu_paused, *kill_all_threads) = draw_pause_menu(vh, vw);
+      (menu_paused, *kill_all_threads) = draw_pause_menu(vh, vw);
       drop(kill_all_threads);
       // Draw fps, etc
       if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
@@ -574,8 +571,6 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 45.0, 32.0, WHITE);
       draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 70.0, 32.0, WHITE);
     }
-    drop(menu_paused);
-
     next_frame().await;
   }
 }
@@ -588,7 +583,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, menu_paused_listener: Arc<Mutex<bool>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>) -> () {
 
   let mut server_ip: String; // immutable binding. cool.
   let ip_file_name = "moba_ip.txt";

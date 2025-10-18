@@ -8,8 +8,8 @@ use std::{thread, time::*, vec};
 
 const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall];
 const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall, GameObjectType::Water1, GameObjectType::Water2];
-static mut SPAWN_RED: Vector2 = Vector2 {x: 30.0 * TILE_SIZE, y: 11.0 * TILE_SIZE};
-static mut SPAWN_BLUE: Vector2 = Vector2 {x: 2.0 * TILE_SIZE, y: 12.0 * TILE_SIZE};
+static mut SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
+static mut SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
 fn main() {
   // not exactly sure if `max_players` is really needed, but whatevs

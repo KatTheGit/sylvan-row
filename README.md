@@ -40,10 +40,10 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 - [x] Gamemode
   - [ ] 1v1 and 2v2
     - [x] Kinda
-  - [ ] Orb
-    - [ ] Spawns every 30sec, if one's not already in the game
-    - [ ] Can be knocked back
-    - [ ] Whoever gets the final blow gets some HP
+  - [x] Orb
+    - [x] Spawns every 20sec, if one's not already in the game
+    - [x] Can be knocked back
+    - [x] Whoever gets the final blow gets some HP
 - [ ] Menus
   - [x] Pause menu, always accessible
     - [ ] Settings screen
