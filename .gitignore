@@ -2,7 +2,7 @@
 target
 moba_ip.txt
 .DS_Store
-assets/characters/.~lock.balance.ods
-*~
+*~*
+*.~*
 2client.sh
 yap.md

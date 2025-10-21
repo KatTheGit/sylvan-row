@@ -88,19 +88,20 @@ async fn main() {
       let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn", 40.0, 10.0);
       let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani", 40.0, 10.0);
       let elizabeth: bool = ui::button(Vector2 { x: 30.0, y: 330.0 }, Vector2 { x: 200.0, y: 70.0 },  "Elizabeth", 40.0, 10.0);
+      let wiro: bool = ui::button(Vector2 { x: 30.0, y: 430.0 }, Vector2 { x: 200.0, y: 70.0 },  "Wiro", 40.0, 10.0);
       // println!("{:?}", healer);
 
-      if healer { game(Character::Raphaelle, port).await; timer = Instant::now() }
-      if queen  { game(Character::Cynewynn, port).await;  timer = Instant::now() }
-      if wolf   { game(Character::Hernani, port).await; timer = Instant::now() }
+      if healer      { game(Character::Raphaelle, port).await; timer = Instant::now() }
+      if queen       { game(Character::Cynewynn, port).await;  timer = Instant::now() }
+      if wolf        { game(Character::Hernani, port).await;   timer = Instant::now() }
       if elizabeth   { game(Character::Elizabeth, port).await; timer = Instant::now() }
+      if wiro        { game(Character::Wiro, port).await;      timer = Instant::now() }
     } else {
       draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
     }
 
     next_frame().await;
   }
-
   //game(Character::Raphaelle).await;
 }
 // (vscode) MARK: main()
@@ -112,41 +113,55 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
   let mut game_object_tetures: HashMap<GameObjectType, Texture2D> = HashMap::new();
+
+  /// You made this macro, dummy.
+  /// 
+  /// "Returns" a Texture2D
+  /// 
+  /// Takes a path as "parameter", relative from the `assets` directory.
+  macro_rules! load {
+    ($file:expr $(,)?) => {
+      Texture2D::from_file_with_format(include_bytes!(concat!("../../assets/", $file)), None)
+    };
+  }
   for game_object_type in GameObjectType::iter() {
     game_object_tetures.insert(
       game_object_type,
       match game_object_type {
-        GameObjectType::Wall                      => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/wall.png"), None),
-        GameObjectType::HernaniWall               => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/wall.png"), None),
-        GameObjectType::RaphaelleAura             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/secondary.png"), None),
-        GameObjectType::UnbreakableWall           => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/unbreakable_wall.png"), None),
-        GameObjectType::HernaniBullet             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/bullet.png"), None),
-        GameObjectType::RaphaelleBullet           => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/bullet.png"), None),
-        GameObjectType::RaphaelleBulletEmpowered  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/bullet-empowered.png"), None),
-        GameObjectType::CynewynnSword             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/cynewynn/textures/bullet.png"), None),
-        GameObjectType::HernaniLandmine           => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
-        GameObjectType::ElizabethProjectile       => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/bullet.png"), None),
-        GameObjectType::ElizabethProjectileGround => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
-        GameObjectType::ElizabethProjectileGroundRecalled => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/trap.png"), None),
-        GameObjectType::ElizabethProjectileRicochet             => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/bullet.png"), None),
-        GameObjectType::Grass1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1.png"), None),
-        GameObjectType::Grass2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-2.png"), None),
-        GameObjectType::Grass3                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-3.png"), None),
-        GameObjectType::Grass4                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-4.png"), None),
-        GameObjectType::Grass5                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-5.png"), None),
-        GameObjectType::Grass6                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-6.png"), None),
-        GameObjectType::Grass7                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-7.png"), None),
-        GameObjectType::Grass1Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-1-b.png"), None),
-        GameObjectType::Grass2Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-2-b.png"), None),
-        GameObjectType::Grass3Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-3-b.png"), None),
-        GameObjectType::Grass4Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-4-b.png"), None),
-        GameObjectType::Grass5Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-5-b.png"), None),
-        GameObjectType::Grass6Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-6-b.png"), None),
-        GameObjectType::Grass7Bright              => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/grass-7-b.png"), None),
-        GameObjectType::Water1                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-edge.png"), None),
-        GameObjectType::Water2                    => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/water-full.png"), None),
-        GameObjectType::CenterOrb                 => Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/orb.png"), None),
-        GameObjectType::CenterOrbSpawnPoint       => Texture2D::from_file_with_format(include_bytes!("../../assets/empty.png"), None),
+        GameObjectType::Wall                              => load!("gameobjects/wall.png"),
+        GameObjectType::HernaniWall                       => load!("characters/hernani/textures/wall.png"),
+        GameObjectType::RaphaelleAura                     => load!("characters/raphaelle/textures/secondary.png"),
+        GameObjectType::UnbreakableWall                   => load!("gameobjects/unbreakable_wall.png"),
+        GameObjectType::HernaniBullet                     => load!("characters/hernani/textures/bullet.png"),
+        GameObjectType::RaphaelleBullet                   => load!("characters/raphaelle/textures/bullet.png"),
+        GameObjectType::RaphaelleBulletEmpowered          => load!("characters/raphaelle/textures/bullet-empowered.png"),
+        GameObjectType::CynewynnSword                     => load!("characters/cynewynn/textures/bullet.png"),
+        GameObjectType::HernaniLandmine                   => load!("characters/hernani/textures/trap.png"),
+        GameObjectType::ElizabethProjectile               => load!("characters/hernani/textures/bullet.png"),
+        GameObjectType::ElizabethProjectileGround         => load!("characters/hernani/textures/trap.png"),
+        GameObjectType::ElizabethProjectileGroundRecalled => load!("characters/hernani/textures/trap.png"),
+        GameObjectType::ElizabethProjectileRicochet       => load!("characters/hernani/textures/bullet.png"),
+        GameObjectType::Grass1                            => load!("gameobjects/grass-1.png"),
+        GameObjectType::Grass2                            => load!("gameobjects/grass-2.png"),
+        GameObjectType::Grass3                            => load!("gameobjects/grass-3.png"),
+        GameObjectType::Grass4                            => load!("gameobjects/grass-4.png"),
+        GameObjectType::Grass5                            => load!("gameobjects/grass-5.png"),
+        GameObjectType::Grass6                            => load!("gameobjects/grass-6.png"),
+        GameObjectType::Grass7                            => load!("gameobjects/grass-7.png"),
+        GameObjectType::Grass1Bright                      => load!("gameobjects/grass-1-b.png"),
+        GameObjectType::Grass2Bright                      => load!("gameobjects/grass-2-b.png"),
+        GameObjectType::Grass3Bright                      => load!("gameobjects/grass-3-b.png"),
+        GameObjectType::Grass4Bright                      => load!("gameobjects/grass-4-b.png"),
+        GameObjectType::Grass5Bright                      => load!("gameobjects/grass-5-b.png"),
+        GameObjectType::Grass6Bright                      => load!("gameobjects/grass-6-b.png"),
+        GameObjectType::Grass7Bright                      => load!("gameobjects/grass-7-b.png"),
+        GameObjectType::Water1                            => load!("gameobjects/water-edge.png"),
+        GameObjectType::Water2                            => load!("gameobjects/water-full.png"),
+        GameObjectType::CenterOrb                         => load!("gameobjects/orb.png"),
+        GameObjectType::CenterOrbSpawnPoint               => load!("empty.png"),
+        GameObjectType::WiroShield                        => load!("ui/temp_ability_1.png"),
+        GameObjectType::WiroGunShot                       => load!("ui/temp_ability_1.png"),
+        GameObjectType::WiroDashProjectile                => load!("ui/temp_ability_1.png"),
       }
     );
   }
@@ -180,11 +195,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     player_textures.insert(
       character,
       match character {
-        Character::Cynewynn  => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/cynewynn/textures/main.png"), None),
-        Character::Raphaelle => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/main.png"), None),
-        Character::Hernani => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/main.png"), None),
-        Character::Elizabeth => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/dummy/textures/template.png"), None),
-        Character::Dummy      => Texture2D::from_file_with_format(include_bytes!("../../assets/characters/dummy/textures/template.png"), None),
+        Character::Cynewynn  => load!("characters/cynewynn/textures/main.png"),
+        Character::Raphaelle => load!("characters/raphaelle/textures/main.png"),
+        Character::Hernani => load!("characters/hernani/textures/main.png"),
+        Character::Elizabeth => load!("characters/dummy/textures/template.png"),
+        Character::Wiro      => load!("characters/dummy/textures/template.png"),
+        Character::Dummy      => load!("characters/dummy/textures/template.png"),
       }
     );
   }
@@ -316,7 +332,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     
     let other_players_copy = other_players.clone();
     drop(other_players);
-        
+
     // readonly
     let player_copy = player.clone();
     
@@ -367,7 +383,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
     // draw all gameobjects
     game_objects_copy = sort_by_depth(game_objects_copy);
-    for game_object in game_objects_copy {
+    for game_object in game_objects_copy.clone() {
       let texture = &game_object_tetures[&game_object.object_type];
       let size = game_object.size;
       let shadow_offset: f32 = 5.0;
@@ -919,7 +935,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 
     let mut extra_speed: f32 = 0.0;
     for buff in player.buffs.clone() {
-      if vec![BuffType::Speed, BuffType::ElizabethSpeed].contains(&buff.buff_type) {
+      if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
         extra_speed += buff.value;
       }
     }

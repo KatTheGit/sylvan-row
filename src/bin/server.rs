@@ -119,7 +119,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               // (vscode) MARK: Special dashes
               match player.character {
                 Character::Raphaelle => {
-                  player.next_shot_empowered = true;
+                  player.stacks = 1;
                 }
                 Character::Hernani => {
                   // Place down a bomb
@@ -139,6 +139,26 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                   );
                 }
                 Character::Cynewynn => {}
+                Character::Wiro => {
+                  if player.stacks == 1{
+                    // Spawn the projectile that applies the mid-dash logic.
+                    listener_game_objects.push(
+                      GameObject {
+                        object_type: GameObjectType::WiroDashProjectile,
+                        size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                        position: player.position,
+                        direction: Vector2::new(),
+                        to_be_deleted: false,
+                        owner_port: listener_players[player_index].port,
+                        hitpoints: 0,
+                        lifetime: characters[&Character::Hernani].dash_distance / characters[&Character::Hernani].dash_speed + 0.25, // give it a "grace" period because I'm bored
+                        players: Vec::new(),
+                        traveled_distance: 0.0,
+                      }
+                    );
+                  }
+                  player.stacks = 0;
+                }
                 Character::Elizabeth => {
                   // Change the type of all her current static projectiles to the type
                   // that follows her.
@@ -190,7 +210,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             let player_movement_speed: f32 = characters[&player.character].speed;
             let mut extra_speed: f32 = 0.0;
             for buff in player.buffs.clone() {
-              if vec![BuffType::Speed, BuffType::ElizabethSpeed].contains(&buff.buff_type) {
+              if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
                 extra_speed += buff.value;
               }
             }
@@ -368,7 +388,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             previous_positions:   Vec::new(),
             is_dead:              false,
             death_timer_start:    Instant::now(),
-            next_shot_empowered:  false,
+            stacks:               0,
             buffs:                Vec::new(),
             last_packet_time: Instant::now(),
           });
@@ -386,7 +406,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   let mut delta_time: f64 = server_counter.elapsed().as_secs_f64();
   // Server logic frequency in Hertz. Doesn't need to be much higher than 120.
   // Higher frequency = higher precission with computation trade-off
-  let desired_delta_time: f64 = 1.0 / 1000.0; // This needs to be limited otherwise it hogs the mutexess
+  let desired_delta_time: f64 = 1.0 / 240.0; // This needs to be limited otherwise it hogs the mutexess
 
   let main_game_objects = Arc::clone(&game_objects);
 
@@ -409,7 +429,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = true;
+  let mut dummy_summoned: bool = false;
   
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);
@@ -533,7 +553,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           previous_positions: vec![],
           is_dead: false,
           death_timer_start: Instant::now(),
-          next_shot_empowered: false,
+          stacks: 0,
           buffs: Vec::new(),
           last_packet_time: Instant::now(),
         }
@@ -646,6 +666,32 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           unstucker_game_objects[lowest_index].to_be_deleted = true;
         }
       }
+
+      // Apply wiro's speed boost
+      if main_loop_players[player_index].character == Character::Wiro {
+        if !main_loop_players[player_index].shooting_secondary
+        || main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
+          for victim_index in 0..main_loop_players.len() {
+            if main_loop_players[victim_index].team == main_loop_players[player_index].team
+            && Vector2::distance(main_loop_players[victim_index].position, main_loop_players[player_index].position) < character.passive_range{
+              // provide speed buff, if not present
+              let mut buff_found = false;
+              for buff_index in 0..main_loop_players[victim_index].buffs.len() {
+                if main_loop_players[victim_index].buffs[buff_index].buff_type == BuffType::WiroSpeed {
+                  buff_found = true;
+                  main_loop_players[victim_index].buffs.remove(buff_index);
+                  main_loop_players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed });
+                  break; // exit early
+                }
+              }
+              if !buff_found {
+                main_loop_players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed });
+              }
+            }
+          }
+        }
+      }
+
       drop(unstucker_game_objects);
 
 
@@ -666,7 +712,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
       if shooting /*&& !shooting_secondary*/  && last_shot_time.elapsed().as_secs_f32() > cooldown && main_loop_players[player_index].aim_direction.magnitude() != 0.0 {
         // main_loop_players[player_index].buffs.push(Buff { value: 0.1, duration: 2.2, buff_type: BuffType::FireRate });
         // main_loop_players[player_index].buffs.push(Buff { value: 20.0, duration: 2.2, buff_type: BuffType::Speed });
-        main_loop_players[player_index].last_shot_time = Instant::now();
+        let mut shot_successful: bool = false;
         let mut game_objects = main_game_objects.lock().unwrap();
         // Do primary shooting logic
         match main_loop_players[player_index].character {
@@ -683,12 +729,14 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               players: Vec::new(),
               traveled_distance: 0.0,
             });
+            shot_successful = true;
           }
           Character::Raphaelle => {
             game_objects.push(GameObject {
-              object_type: match main_loop_players[player_index].next_shot_empowered {
-                true  => {GameObjectType::RaphaelleBulletEmpowered},
-                false => {GameObjectType::RaphaelleBullet},
+              object_type: match main_loop_players[player_index].stacks {
+                1  => {GameObjectType::RaphaelleBulletEmpowered},
+                0 => {GameObjectType::RaphaelleBullet},
+                _ => panic!()
               },
               size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
               position: main_loop_players[player_index].position,
@@ -700,9 +748,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               players: Vec::new(),
               traveled_distance: 0.0,
             });
-            if main_loop_players[player_index].next_shot_empowered {
-              main_loop_players[player_index].next_shot_empowered = false;
+            if main_loop_players[player_index].stacks == 1 {
+              main_loop_players[player_index].stacks = 0;
             }
+            shot_successful = true;
           }
           Character::Cynewynn => {
             game_objects.push(GameObject {
@@ -719,9 +768,9 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               players: Vec::new(),
               traveled_distance: 0.0,
             });
+            shot_successful = true;
           }
           Character::Elizabeth => {
-
             game_objects.push(GameObject {
               object_type: GameObjectType::ElizabethProjectile,
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
@@ -734,6 +783,25 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               players: Vec::new(),
               traveled_distance: 0.0,
             });
+            shot_successful = true;
+          }
+          Character::Wiro => {
+            if !main_loop_players[player_index].shooting_secondary
+            || main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
+              game_objects.push(GameObject {
+                object_type: GameObjectType::WiroGunShot,
+                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                position: main_loop_players[player_index].position,
+                direction: main_loop_players[player_index].aim_direction,
+                to_be_deleted: false,
+                hitpoints: 0,
+                owner_port: main_loop_players[player_index].port,
+                lifetime: character.primary_range / character.primary_shot_speed,
+                players: Vec::new(),
+                traveled_distance: 0.0,
+              });
+              shot_successful = true;
+            }
           }
           Character::Dummy => {
             game_objects.push(GameObject {
@@ -748,14 +816,18 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               players: Vec::new(),
               traveled_distance: 0.0,
             });
+            shot_successful = true;
           }
+        }
+        if shot_successful {
+          main_loop_players[player_index].last_shot_time = Instant::now();
         }
         drop(game_objects);
       }
       // (vscode) MARK: Secondaries
       // If a player is trying to use their secondary and they have enough charge to do so, apply custom logic.
+      let mut game_objects = main_game_objects.lock().unwrap();
       if shooting_secondary && secondary_charge >= character.secondary_charge_use {
-        main_loop_players[player_index].shooting_secondary = false;
         let mut secondary_used_successfully = false;
         
         match main_loop_players[player_index].character {
@@ -763,7 +835,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           // Create a healing aura
           Character::Raphaelle => {
             // Create a bullet type and then define its actions in the next loop that handles bullets
-            let mut game_objects = main_game_objects.lock().unwrap();
             game_objects.push(GameObject {
               object_type: GameObjectType::RaphaelleAura,
               size: Vector2 { x: 60.0, y: 60.0 },
@@ -776,7 +847,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               players: vec![],
               traveled_distance: 0.0,
             });
-            drop(game_objects);
             secondary_used_successfully = true;
           },
           // Place walls
@@ -789,7 +859,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             desired_placement_position.y = ((((desired_placement_position.y + player_info.aim_direction.y * wall_place_distance + TILE_SIZE/2.0) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
 
             let mut wall_can_be_placed = true;
-            let mut game_objects = main_game_objects.lock().unwrap();
             for game_object in game_objects.clone() {
               match game_object.object_type {
                 GameObjectType::HernaniWall | GameObjectType::UnbreakableWall | GameObjectType::Wall => {
@@ -815,7 +884,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               });
               secondary_used_successfully = true;
             }
-            drop(game_objects);
           },
           // position revert
           Character::Cynewynn => {
@@ -832,7 +900,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
           Character::Elizabeth => {
             if main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() > characters[&Character::Elizabeth].primary_cooldown {
-              let mut game_objects = main_game_objects.lock().unwrap();
               game_objects.push(GameObject {
                 object_type: GameObjectType::ElizabethProjectileRicochet,
                 size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
@@ -845,19 +912,85 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 players: vec![],
                 traveled_distance: 0.0,
               });
-              drop(game_objects);
               secondary_used_successfully = true;
               main_loop_players[player_index].last_shot_time = Instant::now()
             }
           }
-          Character::Dummy => {}
+          Character::Wiro => {
+            if main_loop_players[player_index].secondary_charge > 0 
+            && main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
+
+                // spawn a shield object, if one can't be found already.
+                
+                // look for a shield
+                let position: Vector2 = Vector2 {
+                  x: main_loop_players[player_index].position.x + main_loop_players[player_index].aim_direction.x * TILE_SIZE,
+                  y: main_loop_players[player_index].position.y + main_loop_players[player_index].aim_direction.y * TILE_SIZE,
+                };
+                let mut shield_found = false;
+                for object_index in 0..game_objects.len() {
+                  // if it's a shield, and it's ours
+                  if game_objects[object_index].object_type == GameObjectType::WiroShield
+                  && index_by_port(game_objects[object_index].owner_port, main_loop_players.clone()) == player_index {
+                    
+                    game_objects[object_index].direction = main_loop_players[player_index].aim_direction;
+                    game_objects[object_index].position = position;
+                    shield_found = true;
+                    break;
+                  }
+                }
+                if !shield_found {
+                  game_objects.push(GameObject {
+                    object_type: GameObjectType::WiroShield,
+                    size: Vector2 { x: TILE_SIZE*0.5, y: characters[&Character::Wiro].secondary_range },
+                    position: position,
+                    direction: main_loop_players[player_index].aim_direction,
+                    to_be_deleted: false,
+                    owner_port: main_loop_players[player_index].port,
+                    hitpoints: 0,
+                    lifetime: f32::INFINITY,
+                    players: vec![],
+                    traveled_distance: 0.0,
+                  });
+                
+              }
+            } else {
+              // delete the shield, if it exists.
+              for object_index in 0..game_objects.len() {
+                // if it's a shield, and it's ours
+                if game_objects[object_index].object_type == GameObjectType::WiroShield
+                && index_by_port(game_objects[object_index].owner_port, main_loop_players.clone()) == player_index {
+                  game_objects[object_index].to_be_deleted = true;
+                  break;
+                }
+              }
+            }
+          }
+          Character::Dummy => {}  
         }
         if secondary_used_successfully {
           main_loop_players[player_index].secondary_charge -= character.secondary_charge_use;
           main_loop_players[player_index].secondary_cast_time = Instant::now();
         }
       }
-      
+      // if the secondary button is released..
+      else {
+        match main_loop_players[player_index].character {
+          Character::Wiro => {
+            for object_index in 0..game_objects.len() {
+              // if it's a shield, and it's ours
+              if game_objects[object_index].object_type == GameObjectType::WiroShield
+              && index_by_port(game_objects[object_index].owner_port, main_loop_players.clone()) == player_index {
+                game_objects[object_index].to_be_deleted = true;
+                main_loop_players[player_index].secondary_cast_time = Instant::now();
+                break;
+              }
+            }
+          }
+          _ => {}
+        }
+      }
+      drop(game_objects);
     }
 
     // println!("{:?}", game_objects);
@@ -963,7 +1096,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             }
           }
         }
-        // HEALER GIRL primary, EMPOWERED
+        // RAPHAELLE primary, EMPOWERED
         GameObjectType::RaphaelleBulletEmpowered => {
           let hit: bool;
           (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic_extra(
@@ -976,7 +1109,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           }
         }
 
-        // HEALER GIRL secondary
+        // RAPHAELLE secondary
         GameObjectType::RaphaelleAura => {
           // game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
           // every second apply heal
@@ -1084,7 +1217,95 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             }
           }
         }
-
+        // WIRO'S SHIELD
+        GameObjectType::WiroShield => {
+          // delete any projectiles that have come into contact
+          let countered_projectiles: Vec<GameObjectType> = vec![
+            GameObjectType::HernaniBullet,
+            GameObjectType::RaphaelleBullet,
+            GameObjectType::RaphaelleBulletEmpowered,
+            GameObjectType::CynewynnSword,
+            GameObjectType::ElizabethProjectile,
+            GameObjectType::ElizabethProjectileRicochet,
+            GameObjectType::ElizabethProjectileGroundRecalled,
+          ];
+          for victim_object_index in 0..game_objects.len() {
+            let object_type = game_objects[victim_object_index].object_type;
+            // if one of these objects is one we can counter...
+            if countered_projectiles.contains(&object_type) {
+              let obj1_owner_team = main_loop_players[index_by_port(game_objects[game_object_index  ].owner_port, main_loop_players.clone())].team;
+              let obj1_owner_index = index_by_port(game_objects[game_object_index  ].owner_port, main_loop_players.clone());
+              let obj2_owner_team = main_loop_players[index_by_port(game_objects[victim_object_index].owner_port, main_loop_players.clone())].team;
+              let obj2_owner_character = main_loop_players[index_by_port(game_objects[victim_object_index].owner_port, main_loop_players.clone())].character;
+              if obj1_owner_team != obj2_owner_team {
+                let hits_shield = hits_shield(
+                  game_objects[game_object_index].position,
+                  game_objects[game_object_index].direction,
+                  game_objects[victim_object_index].position,
+                  characters[&Character::Wiro].secondary_range,
+                  5.0, // temporary
+                );
+                if hits_shield {
+                  let damage_multiplier: f32 = 2.0;
+                  let damage = (damage_multiplier * match game_objects[victim_object_index].object_type {
+                    GameObjectType::HernaniBullet
+                    | GameObjectType::CynewynnSword
+                    | GameObjectType::ElizabethProjectile
+                    | GameObjectType::RaphaelleBullet           => { characters[&obj2_owner_character].primary_damage }
+                    GameObjectType::ElizabethProjectileGroundRecalled
+                    | GameObjectType::RaphaelleBulletEmpowered  => { characters[&obj2_owner_character].primary_damage_2 }
+                    GameObjectType::ElizabethProjectileRicochet => { characters[&obj2_owner_character].secondary_damage }
+                    _ => {panic!()}
+                  } as f32) as u8;
+                  if main_loop_players[obj1_owner_index].secondary_charge > damage{
+                    main_loop_players[obj1_owner_index].secondary_charge -= damage;
+                  } else {
+                    main_loop_players[obj1_owner_index].secondary_charge = 0;
+                  }
+                  game_objects[victim_object_index].to_be_deleted = true;
+                }
+              }
+            }
+          }
+        }
+        // WIRO'S PRIMARY FIRE
+        GameObjectType::WiroGunShot => {
+          let distance_traveled = game_objects[game_object_index].traveled_distance;
+          let damage: u8;
+          if distance_traveled > characters[&Character::Wiro].primary_range_2 {
+            damage = characters[&Character::Wiro].primary_damage_2;
+          } else {
+            damage = characters[&Character::Wiro].primary_damage;
+          }
+          let hit: bool;
+          (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic_extra(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true, 
+            damage, 255, false);
+          if hit {
+            let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
+            main_loop_players[owner_index].stacks = 1;
+          }
+        }
+        // WIRO'S DASH
+        GameObjectType::WiroDashProjectile => {
+          // lock it to wiro's position
+          let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
+          let range = characters[&Character::Wiro].primary_range_3;
+          let heal = characters[&Character::Wiro].secondary_heal;
+          let damage = characters[&Character::Wiro].secondary_damage;
+          game_objects[game_object_index].position = main_loop_players[index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone())].position;
+          for victim_index in 0..main_loop_players.len() {
+            // if we get a hit, and we didn't already hit
+            if Vector2::distance(main_loop_players[victim_index].position, game_objects[game_object_index].position) < range
+            && !game_objects[game_object_index].players.contains(&victim_index) {
+              if main_loop_players[victim_index].team == main_loop_players[owner_index].team {
+                main_loop_players[victim_index].heal(heal, characters.clone());
+              } else {
+                main_loop_players[victim_index].damage(damage, characters.clone());
+              }
+              game_objects[game_object_index].players.push(victim_index);
+            }
+          }
+        }
         _ => {}
       }
       game_objects[game_object_index].lifetime -= true_delta_time as f32;
@@ -1166,9 +1387,13 @@ struct ServerPlayer {
   previous_positions:   Vec<Vector2>,
   /// bro forgor to live
   is_dead:              bool,
-  death_timer_start:    Instant,
-  /// Must be disabled after check.
-  next_shot_empowered:  bool,
+  death_timer_start:    Instant,  
+  /// Remember to apply appropriate logic after check.
+  /// 
+  /// General counter to keep track of ability stacks. Helps determine things
+  /// like whether the next shot is empowered, or how powerful an ability
+  /// should be after being charged up.
+  stacks:  u8,
   /// list of buffs
   buffs:                Vec<Buff>,
   last_packet_time:     Instant,
@@ -1438,6 +1663,7 @@ fn apply_simple_bullet_logic_extra(
   }
   game_objects[game_object_index].position.x += game_objects[game_object_index].direction.x * true_delta_time as f32 * bullet_speed;
   game_objects[game_object_index].position.y += game_objects[game_object_index].direction.y * true_delta_time as f32 * bullet_speed;
+  game_objects[game_object_index].traveled_distance += true_delta_time as f32 * bullet_speed;
   return (main_loop_players, game_objects, hit);
 }
 
@@ -1448,4 +1674,54 @@ fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
     }
   }
   panic!("index_by_port function error - data race condition, mayhaps?\nAlternatively, there's just no players at all");
+}
+
+/// ## Checks whether a projectile hits a shield
+/// ### Math:
+///- We have the direction the shield is facing as a vector (x, y),
+///  i.e. (1, 2), a vector of slope 2/1
+///  - To express it as a line in cartesian space, we can have ay = bx, where
+///    in our example, a=1 and b=2, to have 2y = 1x, or 2y - 1x = 0
+///    - Therefore, a vector (a, b) becomes the equation (by - ax = 0). 
+///      - This is an equation of the form Ax + By + C = 0,
+///        - A = -a
+///        - B = b
+///        - C = 0
+///    - This line will always cross the origin (0, 0)
+///- To get the distance of a point (c, d) from the line, we get its position
+///  relative to the line's origin (and not the world origin),
+///  and apply the equation:
+///  - $dist = \frac{|Ac + Bd|}{\sqrt{b^2 + a^2}}
+///          = \frac{|bd - ac|}{\sqrt{b^2 + a^2}}$
+///  - **if $dist < hit\_radius$, we've got a hit on the shield.**
+///- HOWEVER all of this logic assumes the shield is an infinite line. To apply
+///  this to a finite line, we can add an additional distance check between the
+///  origin of the shield and the projectile, once we've detected a collision:
+///  - if dist(projectile_pos, shield_pos) < shield_width/2
+///    - NOW we've got a hit.
+///      - The only issue with this, is that, at the edge of the shield, it will
+///        look like only the center of the projectile has a collision with the
+///        shield, *which is good enough*.
+/// - The direction vector is perpendicular to the shield's representative line.
+///   - To obtain this perpendicular line, we can simply swap the coordinates.
+fn hits_shield(shield_position: Vector2, shield_direction: Vector2, projectile_position: Vector2, shield_width: f32, projectile_hit_radius: f32) -> bool {
+  // get the position of the projectile relative to the shield's origin
+  let relative_projectile_pos: Vector2 = Vector2::difference(shield_position, projectile_position);
+  // check that the relative distance is shorter than the shield's width/2.
+  // if it is, we're in range to check for hits
+  if relative_projectile_pos.magnitude() < shield_width/2.0 {
+    // get the perpendicular line that represents our shield.
+    // this was originally (x, y) = (-y, x), but that didn't work, for some reason.
+    // This seems to work however. Why? Don't know, don't care.
+    let shield_line: Vector2 = Vector2 { x: -shield_direction.x, y: shield_direction.y }.normalize();
+    // calculate the perpendicular distance between the shield line and the projectile
+    let perpendicular_distance =
+      (f32::abs(shield_line.y * relative_projectile_pos.y - shield_line.x * relative_projectile_pos.x)) /
+      (f32::sqrt(f32::powi(shield_line.x, 2) + f32::powi(shield_line.y, 2)));
+
+    if perpendicular_distance < projectile_hit_radius {
+      return true
+    }
+  }
+  return false;
 }

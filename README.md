@@ -5,7 +5,13 @@ A twin-stick hero shooter, with the ambition of avoiding hard-counter interactio
 
 ## Play
 
-The game is currently having scheduled playtests at https://discord.gg/4SbwGZeYcx. There is a playable release, and its default IP is set to a random AWS server.
+The game's development highly relies on player feedback, and the game is currently having scheduled playtests on [discord](https://discord.gg/4SbwGZeYcx).
+
+There is a playable release, but you'll need to host your own server if you want to try the game.
+
+When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP address in there.
+
+## Compile and run it yourself
 
 Run the game:
 ```sh
@@ -13,37 +19,51 @@ cargo run --bin game --release # or ./client.sh
 ```
 Run the server:
 ```sh
-cargo run --bin server --release # or ./server.sh
+cargo run --bin server # or ./server.sh
 ```
-Or yk just build the binaries
+Or build the binaries
 ```
 cargo build --release
 ```
 
-When you run the game, a file called `moba_ip.txt` will be created in the same directory. It contains the default IP address to the current game server. You can change it to your own server, or change the default address in `common.rs`.
+### Dependencies
 
-## Dependencies
+On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-config` (apt package names) to compile the code.
 
-On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-config` (apt package names).
+## Other info
+
+The GDD is in `assets/README.md`.
+
+There is no documentation for the code yet.
+
+Maps are made through `mapmaker.py`.
 
 # To do
+
+This is just for me.
 
 ## Minimal presentable game
 
 - [x] Implement feedback
   - [x] Nerf Raph's self heal
   - [x] Rework Elizabeth
-- [ ] New characters (6 total at least)
+- [ ] Characters
+  - [ ] Rework Hernani secondary
   - [x] Elizabeth (rename tho)
+  - [ ] Wiro
+    - [x] Shield (secondary)
+    - [x] Primary
+    - [x] Dash
+    - [x] Passive
   - [ ] An assassin
-  - [ ] Wiro (rename tho)
 - [x] Gamemode
-  - [ ] 1v1 and 2v2
+  - [x] 1v1 and 2v2
     - [x] Kinda
   - [x] Orb
     - [x] Spawns every 20sec, if one's not already in the game
     - [x] Can be knocked back
     - [x] Whoever gets the final blow gets some HP
+  - [ ] AFTER MM-SERVER: a bit of time before the game starts
 - [ ] Menus
   - [x] Pause menu, always accessible
     - [ ] Settings screen
@@ -77,6 +97,7 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
   - [ ] Steam
   - [ ] Marketing
   - [ ] Server hosting
+    - AWS sucks
 
 ## Other
 

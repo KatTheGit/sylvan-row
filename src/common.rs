@@ -81,13 +81,17 @@ impl GameModeInfo {
 // MARK: Characters
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Character {
-  /// Used for testing. Has lots of health, and that's it.
+  /// Used for testing.
   Dummy,
   Hernani,
   Raphaelle,
   Cynewynn,
   Elizabeth,
+  Wiro,
 }
+/// Struct that contains the properties for each character. These are stored
+/// in the respective characters' `properties.pkl` files. This data structure
+/// can be as large as we want it to be, since we never send it over network.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct CharacterProperties {
   /// Maximum (default) health. Standard is 100, but can be more or less.
@@ -108,6 +112,8 @@ pub struct CharacterProperties {
   pub primary_lifesteal:  u8,
   pub primary_cooldown:   f32,
   pub primary_range:      f32,
+  pub primary_range_2:    f32,
+  pub primary_range_3:    f32,
   pub primary_shot_speed: f32,
   /// Girth of the bullet
   pub primary_hit_radius: f32,
@@ -129,6 +135,8 @@ pub struct CharacterProperties {
   pub dash_cooldown:                f32,
   pub dash_damage_multiplier:       f32,
   pub dash_speed:                   f32,
+
+  pub passive_range:                f32,
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
@@ -140,6 +148,7 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
       Character::Raphaelle => CharacterProperties::from_pkl(include_str!("../assets/characters/raphaelle/properties.pkl")),
       Character::Cynewynn =>  CharacterProperties::from_pkl(include_str!("../assets/characters/cynewynn/properties.pkl")),
       Character::Elizabeth =>  CharacterProperties::from_pkl(include_str!("../assets/characters/elizabeth/properties.pkl")),
+      Character::Wiro =>  CharacterProperties::from_pkl(include_str!("../assets/characters/wiro/properties.pkl")),
     };
 
     characters.insert(character, character_properties);
@@ -152,17 +161,19 @@ impl CharacterProperties {
     let pkl: PklValue = parse_pkl_string(pkl_data).expect("could not parse pkl");
     return CharacterProperties {
       health:                   pkl_u8( find_parameter(&pkl, "health"                   ).unwrap()),
-      speed:                    pkl_f32(find_parameter(&pkl, "speed"                    ).unwrap()),
+      speed:                    pkl_f32(find_parameter(&pkl, "speed"                    ).unwrap())*TILE_SIZE,
       primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage"           ).unwrap()),
       primary_damage_2:         pkl_u8( find_parameter(&pkl, "primary_damage_2"         ).unwrap()),
       primary_heal:             pkl_u8( find_parameter(&pkl, "primary_heal"             ).unwrap()),
       primary_heal_2:           pkl_u8( find_parameter(&pkl, "primary_heal_2"           ).unwrap()),
       primary_lifesteal:        pkl_u8( find_parameter(&pkl, "primary_lifesteal"        ).unwrap()),
       primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown"         ).unwrap()),
-      primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap()),
-      primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap()),
-      primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap()),
-      primary_wall_hit_radius:  pkl_f32(find_parameter(&pkl, "primary_wall_hit_radius"  ).unwrap()),
+      primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap())*TILE_SIZE,
+      primary_range_2:          pkl_f32(find_parameter(&pkl, "primary_range_2"          ).unwrap())*TILE_SIZE,
+      primary_range_3:          pkl_f32(find_parameter(&pkl, "primary_range_3"          ).unwrap())*TILE_SIZE,
+      primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap())*TILE_SIZE,
+      primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap())*TILE_SIZE,
+      primary_wall_hit_radius:  pkl_f32(find_parameter(&pkl, "primary_wall_hit_radius"  ).unwrap())*TILE_SIZE,
       wall_damage_multiplier:   pkl_f32(find_parameter(&pkl, "wall_damage_multiplier"   ).unwrap()),
       secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage"         ).unwrap()),
       secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal"           ).unwrap()),
@@ -170,12 +181,13 @@ impl CharacterProperties {
       secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge"    ).unwrap()),
       secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge" ).unwrap()),
       secondary_cooldown:       pkl_f32(find_parameter(&pkl, "secondary_cooldown"       ).unwrap()),
-      secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range"          ).unwrap()),
+      secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range"          ).unwrap())*TILE_SIZE,
       secondary_charge_use:     pkl_u8( find_parameter(&pkl, "secondary_charge_use"     ).unwrap()),
-      dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance"            ).unwrap()),
+      dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance"            ).unwrap())*TILE_SIZE,
       dash_cooldown:            pkl_f32(find_parameter(&pkl, "dash_cooldown"            ).unwrap()),
       dash_damage_multiplier:   pkl_f32(find_parameter(&pkl, "dash_damage_multiplier"   ).unwrap()),
-      dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed"               ).unwrap()),
+      dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed"               ).unwrap())*TILE_SIZE,
+      passive_range:            pkl_f32(find_parameter(&pkl, "passive_range"            ).unwrap())*TILE_SIZE,
     }
   }
 }
@@ -324,7 +336,7 @@ impl ClientPlayer {
 
     let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
     for buff in self.buffs.clone() {
-      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::ElizabethSpeed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
       buff_offset.y -= 3.0;
     }
   }
@@ -464,6 +476,12 @@ pub enum GameObjectType {
   /// The orb in the middle of the map
   CenterOrb,
   CenterOrbSpawnPoint,
+  WiroShield,
+  /// Wiro's damaging projectile. Size is constant, but hit_radius is proportional to speed.
+  WiroGunShot,
+  /// When wiro dashes, this projectile copies his position and is used for
+  /// the healing/damaging logic
+  WiroDashProjectile,
 }
 // MARK: Vectors
 // utility
@@ -495,6 +513,7 @@ impl Vector2 {
   pub fn distance(vec1: Vector2, vec2: Vector2) -> f32 {
     return f32::sqrt(f32::powi(vec1.x - vec2.x, 2) + f32::powi(vec1.y - vec2.y, 2))
   }
+  /// vec2 - vec1
   pub fn difference(vec1: Vector2, vec2: Vector2) -> Vector2 {
     return Vector2 {
       x: vec2.x - vec1.x,
@@ -695,7 +714,7 @@ pub struct Buff {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
 pub enum BuffType {
   RaphaelleFireRate,
-  ElizabethSpeed,
+  WiroSpeed,
   FireRate,
   Speed,
 }
