@@ -429,7 +429,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = false;
+  let mut dummy_summoned: bool = true;
   
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);
