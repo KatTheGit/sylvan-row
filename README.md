@@ -43,7 +43,9 @@ Maps are made through `mapmaker.py`.
 This is just for me.
 
 ## Minimal presentable game
-
+- [ ] Fix bugs
+  - [ ] Elizabeth
+  - [ ] `thread 'main' panicked at src/bin/server.rs:1479:11` and `thread 'main' panicked at src/bin/server.rs:514:15:`
 - [x] Implement feedback
   - [x] Nerf Raph's self heal
   - [x] Rework Elizabeth
