@@ -1584,7 +1584,7 @@ fn apply_simple_bullet_logic_extra(
     if game_objects[victim_object_index].object_type == GameObjectType::CenterOrb {
       // if it's colliding
       let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
-      if distance < (5.0 + wall_hit_radius) {
+      if distance < (0.5 * TILE_SIZE + wall_hit_radius) {
         if game_objects[game_object_index].players.contains(&548) {
           continue;
         }

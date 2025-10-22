@@ -50,7 +50,7 @@ This is just for me.
 - [ ] Characters
   - [ ] Rework Hernani secondary
   - [x] Elizabeth (rename tho)
-  - [ ] Wiro
+  - [x] Wiro
     - [x] Shield (secondary)
     - [x] Primary
     - [x] Dash
@@ -73,7 +73,7 @@ This is just for me.
   - [ ] Client enters queue
   - [ ] If 2 players, Server launches an instance of a gameplay server
 - [ ] Sound
-  - [ ] Directional sound (akira crate)
+  - [ ] Directional sound (kira crate)
   - [ ] Volume sliders in settings screen, etc
   - [ ] Music
     - [ ] beg Fancy or learn how to cook

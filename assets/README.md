@@ -20,10 +20,10 @@ This document specifies guidelines to aid with the development of this game from
     - [4.1.3. Alita \[IDEA\]](#413-alita-idea)
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
-    - [4.2.2. Wallriding character \[IDEA\]](#422-wallriding-character-idea)
+    - [4.2.2. Temerity \[IDEA\]](#422-temerity-idea)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
-    - [4.3.2. Elizabeth](#432-elizabeth)
+    - [4.3.2. To be renamed...](#432-to-be-renamed)
 - [5. Gameplay](#5-gameplay)
 - [6. Lore](#6-lore)
   - [6.1. Setting](#61-setting)
@@ -214,21 +214,23 @@ Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
 - She has to be careful. Her dash is on a long cooldown and her secondary reduces her fire rate. Her actions must be planned and she significantly weakens from a hesitant player. Her mobility is her downfall, a smart player might be able to bait out a dash and play around her cooldowns.
 
-### 4.2.2. Wallriding character [IDEA]
+### 4.2.2. Temerity [IDEA]
 
-- **Primary**
+- **Primary** - Confident Strike
   - A three-hit combo:
     - A short range attack
     - A mid-range attack
     - A difficult to hit long-range attack
-  - If you hit an opponent, you switch to the next attack, unless you're already at the last attack, then you keep that one. Missing any attack resets it to the first one.
-- **Secondary**
-- **Dash** - Wallride
+  - If you hit an opponent, you switch to the next attack. Hitting an opponent with the last attack doesn't switch attacks. Missing any attack resets it to the first one.
+- **Secondary** - Create Order
+  - Fire a volley of three large rockets.
+  - These do significant damage but also easily destroy walls.
+- **Dash** - Hasty Dispatch
   - Holding **Dash** lets you wallride.
   - Wallriding makes you move alongside a wall, at an increased speed.
   - You carry momentum from your wallrides after releasing.
-- **Passive**
-  - Heal damaged walls around you
+- **Passive** - Save the City
+  - Heal damaged walls around you.
 
 ## 4.3. Ranged/Control
 
@@ -248,7 +250,7 @@ Intended playstyle:
 - Easy to play, tutorial character.
 - Stand back and fire from a distance, while keeping people away with walls and making sure to manage your long cooldown dash adequately.
 
-### 4.3.2. Elizabeth
+### 4.3.2. To be renamed...
 
 - **Primary** - Knife throw
   - Throw a mid-to-long range knife.

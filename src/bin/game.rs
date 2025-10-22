@@ -304,7 +304,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
         GameObjectType::RaphaelleBullet | GameObjectType::CynewynnSword | GameObjectType::HernaniBullet | GameObjectType::RaphaelleBulletEmpowered
-        | GameObjectType::ElizabethProjectile | GameObjectType::ElizabethProjectileRicochet => {
+        | GameObjectType::ElizabethProjectile | GameObjectType::ElizabethProjectileRicochet | GameObjectType::WiroGunShot => {
           let speed: f32 = character_properties[&(match game_object.object_type {
             GameObjectType::RaphaelleBullet => Character::Raphaelle,
             GameObjectType::RaphaelleBulletEmpowered => Character::Raphaelle,
@@ -312,6 +312,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
             GameObjectType::CynewynnSword => Character::Cynewynn,
             GameObjectType::ElizabethProjectile => Character::Elizabeth,
             GameObjectType::ElizabethProjectileRicochet => Character::Elizabeth,
+            GameObjectType::WiroGunShot => Character::Wiro,
             _ => panic!()
           })].primary_shot_speed;
           game_object.position.x += speed * game_object.direction.x * get_frame_time();
