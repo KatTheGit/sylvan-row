@@ -161,7 +161,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::CenterOrbSpawnPoint               => load!("empty.png"),
         GameObjectType::WiroShield                        => load!("ui/temp_ability_1.png"),
         GameObjectType::WiroGunShot                       => load!("ui/temp_ability_1.png"),
-        GameObjectType::WiroDashProjectile                => load!("ui/temp_ability_1.png"),
+        GameObjectType::WiroDashProjectile                => load!("empty.png"),
       }
     );
   }
