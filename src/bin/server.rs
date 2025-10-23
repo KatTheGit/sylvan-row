@@ -13,7 +13,7 @@ static mut SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZ
 
 fn main() {
   // not exactly sure if `max_players` is really needed, but whatevs
-  game_server_instance(400, GameMode::Arena);
+  game_server_instance(400, GameMode::DeathMatch);
 }
 fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   // set the gamemode (temporary)
@@ -40,7 +40,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
   // holds game information, to be displayed by client, and modified when shit happens.
   let mut general_gamemode_info: GameModeInfo = GameModeInfo::new();
-  general_gamemode_info.death_timeout = 1.0; // basically longer than any round could last
+  general_gamemode_info.death_timeout = 1.0;
   let general_gamemode_info = Arc::new(Mutex::new(general_gamemode_info));
   
   // (vscode) MARK: Networking - Listen
@@ -163,7 +163,8 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                   // Change the type of all her current static projectiles to the type
                   // that follows her.
                   for index in 0..listener_game_objects.len() {
-                    if listener_game_objects[index].object_type == GameObjectType::ElizabethProjectileGround {
+                    if listener_game_objects[index].object_type == GameObjectType::ElizabethProjectileGround
+                    && listener_game_objects[index].owner_port == player.port {
                       listener_game_objects[index].to_be_deleted = true;
                       let object_clone = listener_game_objects[index].clone();
                       listener_game_objects.push(
@@ -312,6 +313,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 team: player.team,
                 time_since_last_primary: player.last_shot_time.elapsed().as_secs_f32(),
                 time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
+                time_since_last_secondary: player.secondary_cast_time.elapsed().as_secs_f32(),
               },
               players: other_players,
               game_objects: listener_game_objects.clone(),
@@ -429,8 +431,8 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = true;
-  
+  let mut dummy_summoned: bool = !DEBUG;
+
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);
   loop {
@@ -471,6 +473,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
     // (vscode) MARK: Gamemode
     if tick {
       let mut gamemode_info = main_gamemode_info.lock().unwrap();
+      // println!("{:?}", gamemode_info);
       match selected_gamemode {
         GameMode::Arena => {
           let mut round_restart = false;
@@ -496,7 +499,15 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             drop(reset_game_objects);
           }
         }
-        // _ => {}
+        GameMode::DeathMatch => {
+          // don't care
+          if gamemode_info.alive_blue == 0 {
+            gamemode_info.alive_blue = 200;
+          }
+          if gamemode_info.alive_red == 0 {
+            gamemode_info.alive_red = 200;
+          }
+        }
       }
       // Occasionally check for goners
       for player_index in 0..main_loop_players.len() {
@@ -1049,20 +1060,21 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         // WOLF dash special
         GameObjectType::HernaniLandmine => {
           // if the landmine has existed for long enough...
-          if game_objects[game_object_index].lifetime < (characters[&Character::Hernani].dash_cooldown - 0.5) {
+          //if game_objects[game_object_index].lifetime < (characters[&Character::Hernani].dash_cooldown - 0.5) {
             for player_index in 0..main_loop_players.len() {
               // if not on same team
               if main_loop_players[player_index].team != main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
                 // if within range
+                let landmine_range = characters[&Character::Hernani].primary_range_2;
                 if Vector2::distance(game_objects[game_object_index].position, main_loop_players[player_index].position)
-                < (game_objects[game_object_index].size.x / 2.0) {
+                < landmine_range {
                   main_loop_players[player_index].damage(characters[&Character::Hernani].primary_damage_2, characters.clone());
                   game_objects[game_object_index].to_be_deleted = true;
                   break;
                 }
               }
             }
-          }
+          //}
         }
 
         // HEALER GIRL primary
@@ -1246,7 +1258,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                   5.0, // temporary
                 );
                 if hits_shield {
-                  let damage_multiplier: f32 = 2.0;
+                  let damage_multiplier: f32 = 1.0;
                   let damage = (damage_multiplier * match game_objects[victim_object_index].object_type {
                     GameObjectType::HernaniBullet
                     | GameObjectType::CynewynnSword
@@ -1469,7 +1481,7 @@ impl ServerPlayer {
           updated_gamemode_info.alive_blue -= 1;
         }
       }
-    }
+    } 
     else {
       unsafe {
         self.position = SPAWN_RED;
@@ -1673,7 +1685,8 @@ fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
       return player_index;
     }
   }
-  panic!("index_by_port function error - data race condition, mayhaps?\nAlternatively, there's just no players at all");
+  println!("index_by_port function error - data race condition, mayhaps?\nAlternatively, there's just no players at all");
+  return 0;
 }
 
 /// ## Checks whether a projectile hits a shield

@@ -130,12 +130,12 @@ They excel at helping healers in battle, as they can help defend them from assas
 
 - **Primary** - Kindness in Blood
   - Raphaelle tethers to allies within a certain radius.
-  - She shoots a medium range piercing projectile, if it damages an opponent, her tethered allies will recieve some health. She recieves less health than her allies.
-  - If empowered, her projectile will deal more damage but won't heal allies or herself. If it lands, it will reduce the cooldown on her dash ability.
+  - She shoots a medium range piercing projectile, if it damages an opponent, her tethered allies will recieve some health. She recieves health, but less.
+  - If empowered, her projectile will deal more damage but won't heal allies or herself. If it lands, it will reduce the cooldown of **Dash**.
 - **Secondary** - Sanctum
-  - Places down a tree, which periodically heals allies and increases the fire rate of anyone near it
+  - Places down a healpool, which periodically heals allies and increases the fire rate of anyone near it
 - **Dash** - Enpowering Leap
-  - A short dash that empowers the next primary shot.
+  - A short dash that empowers the next **Primary**.
 - **Passive** - Flight
   - Gains a short temporary speed buff upon getting hit.
 
@@ -148,12 +148,12 @@ Intended playstyle:
 ### 4.1.2. Wiro
 
 - **Primary** - Buck-Shot
-  - A shotgun with a tight spread and damage falloff.
+  - A shotgun with a tight spread. Does more damage up close.
   - If he damages an opponent, it empowers the next **Dash**.
 - **Secondary** - Guardian
-  - Holds a shield in front of himself that absorbs damage. If damage is absorbed, secondary charge is decreased accodingly.
+  - Holds a shield in front of himself that absorbs damage. If damage is absorbed, secondary charge is decreased.
   - Raising his shield disables **Primary** and **Passive**.
-  - After raising his shield, he cannot raise it again for a short cooldown duration.
+  - After raising his shield, he cannot raise it again for a few seconds.
 - **Dash** - Intervene
   - A long-ish dash on a medium cooldown.
   - If empowered, heals the allies he passes through and damages the opponents he passes through.
@@ -198,10 +198,10 @@ Note
 
 ### 4.2.1. Cynewynn
 
-- **Primary** - Righteous Wrath of an Honourable Queen
-  - A piercing sword slash, with a relatively fast attack rate.
+- **Primary** - Wrath
+  - A sword slash, with a relatively fast attack rate.
 - **Secondary** - Rectify
-  - Passive: Leaves a visual trail behind herself.
+  - Leaves a trail behind herself.
   - Teleport back to her previous position, a few seconds in the past, back to the beginning of the trail.
   - Gain a small amount of health doing so.
 - **Dash** - Combat Leap
@@ -222,9 +222,8 @@ Intended playstyle:
     - A mid-range attack
     - A difficult to hit long-range attack
   - If you hit an opponent, you switch to the next attack. Hitting an opponent with the last attack doesn't switch attacks. Missing any attack resets it to the first one.
-- **Secondary** - Create Order
-  - Fire a volley of three large rockets.
-  - These do significant damage but also easily destroy walls.
+- **Secondary** - Rocket Jump
+  - Launch a rocket under yourself, that damages opponents in an AOE and boosts you forward.
 - **Dash** - Hasty Dispatch
   - Holding **Dash** lets you wallride.
   - Wallriding makes you move alongside a wall, at an increased speed.

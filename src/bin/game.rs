@@ -87,8 +87,8 @@ async fn main() {
       let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle", 40.0, 10.0);
       let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn", 40.0, 10.0);
       let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani", 40.0, 10.0);
-      let elizabeth: bool = ui::button(Vector2 { x: 30.0, y: 330.0 }, Vector2 { x: 200.0, y: 70.0 },  "Elizabeth", 40.0, 10.0);
-      let wiro: bool = ui::button(Vector2 { x: 30.0, y: 430.0 }, Vector2 { x: 200.0, y: 70.0 },  "Wiro", 40.0, 10.0);
+      let elizabeth: bool = ui::button(Vector2 { x: 300.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 },  "Elizabeth", 40.0, 10.0);
+      let wiro: bool = ui::button(Vector2 { x: 300.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 },  "Wiro", 40.0, 10.0);
       // println!("{:?}", healer);
 
       if healer      { game(Character::Raphaelle, port).await; timer = Instant::now() }
@@ -340,14 +340,17 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // Do camera logic
     //camera_offset = Vector2::difference( player_copy.camera.position, player_copy.position);
     if !player_copy.is_dead {
+      // if delta_time is too long, the camera behaves very weirdly, so let's arficially assume
+      // framerate never goes below 20fps.
+      let safe_delta_time = f32::min(delta_time, 1.0/20.0);
       let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
       let camera_distance_mag = camera_distance.magnitude();
       let camera_smoothing: f32 = 1.5; // higher = less smoothing
       let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, f32::exp2(camera_distance_mag)*camera_smoothing*5.0);
       let camera_movement_speed = safe_quadratic;
 
-      player.camera.position.x += camera_movement_speed * delta_time * camera_distance.normalize().x; // * mul;
-      player.camera.position.y += camera_movement_speed * delta_time * camera_distance.normalize().y; // * mul;
+      player.camera.position.x += camera_movement_speed * safe_delta_time * camera_distance.normalize().x; // * mul;
+      player.camera.position.y += camera_movement_speed * safe_delta_time * camera_distance.normalize().y; // * mul;
     }
     // (vscode) MARK: update mouse pos
     // update mouse position for the input thread to handle.
@@ -382,6 +385,23 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, Vector2::new(), WHITE);
     }
 
+    // adjust certain positions.
+    // adjust the location of Wiro's shield.
+    for game_object_index in 0..game_objects_copy.len() {
+      if game_objects_copy[game_object_index].object_type == GameObjectType::WiroShield {
+        // if it's ours...
+        if game_objects_copy[game_object_index].owner_port == port {
+          let position: Vector2 = Vector2 {
+            x: player_copy.position.x + player_copy.aim_direction.normalize().x * TILE_SIZE,
+            y: player_copy.position.y + player_copy.aim_direction.normalize().y * TILE_SIZE,
+          };
+
+          game_objects_copy[game_object_index].position = position;
+          game_objects_copy[game_object_index].direction = player_copy.aim_direction.normalize();
+        }
+      }
+    }
+    
     // draw all gameobjects
     game_objects_copy = sort_by_depth(game_objects_copy);
     for game_object in game_objects_copy.clone() {
@@ -529,7 +549,13 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     } else {
       1.0
     };
-    let secondary_cooldown: f32 = player_copy.secondary_charge as f32 / 100.0;
+    let mut secondary_cooldown: f32 = player_copy.secondary_charge as f32 / 100.0;
+    if character == Character::Wiro {
+      if player_copy.last_secondary_time < character_properties[&Character::Wiro].secondary_cooldown {
+        secondary_cooldown = player_copy.last_secondary_time / character_properties[&Character::Wiro].secondary_cooldown;
+      }
+    }
+
     let dash_cooldown: f32 = if player_copy.time_since_last_dash < character_properties[&player_copy.character].dash_cooldown {
       player_copy.time_since_last_dash / character_properties[&player_copy.character].dash_cooldown
     } else {
@@ -738,6 +764,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         player.team = recieved_server_info.player_packet_is_sent_to.team;
         player.last_shot_time = recieved_server_info.player_packet_is_sent_to.time_since_last_primary;
         player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.time_since_last_dash;
+        player.last_secondary_time = recieved_server_info.player_packet_is_sent_to.time_since_last_secondary;
         drop(player); // free mutex guard ASAP for other thread to access player.
         
 

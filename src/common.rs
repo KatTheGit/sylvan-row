@@ -11,6 +11,9 @@ use std::time::SystemTime;
 pub const TILE_SIZE: f32 = 8.0;
 pub const ORB_HEALING: u8 = 20;
 
+/// Disable this for release builds.
+pub const DEBUG: bool = false;
+
 // this is bs
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
 pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 30.0;
@@ -41,6 +44,8 @@ impl Camera {
 pub enum GameMode {
   /// Round-based fight
   Arena,
+  /// Instant respawns, no rounds, chaos.
+  DeathMatch,
 }
 /// This struct contains information related to the current match.
 /// It is sent over network.
@@ -232,6 +237,7 @@ pub struct ClientPlayer {
   pub previous_positions: Vec<Vector2>,
   pub ping: u16,
   pub last_shot_time: f32,
+  pub last_secondary_time: f32,
   /// wants to dash
   pub dashing: bool,
   /// is currently dashing
@@ -274,6 +280,7 @@ impl ClientPlayer {
       previous_positions: other_player.previous_positions,
       ping: 0,
       last_shot_time: 0.0,
+      last_secondary_time: 0.0,
       dashing: false,
       is_dashing: false,
       dashed_distance: 0.0,
@@ -358,6 +365,7 @@ impl ClientPlayer {
       previous_positions: Vec::new(),
       ping: 0,
       last_shot_time: 0.0,
+      last_secondary_time: 0.0,
       dashing: false,
       is_dashing: false,
       dashed_distance: 0.0,
@@ -403,6 +411,7 @@ pub struct ServerRecievingPlayerPacket {
   pub team:               Team,
   pub time_since_last_primary: f32,
   pub time_since_last_dash: f32,
+  pub time_since_last_secondary: f32,
 }
 
 /// information sent by server to client
