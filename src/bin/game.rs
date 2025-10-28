@@ -87,15 +87,16 @@ async fn main() {
       let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle", 40.0, 10.0);
       let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn", 40.0, 10.0);
       let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani", 40.0, 10.0);
-      let elizabeth: bool = ui::button(Vector2 { x: 300.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 },  "Elizabeth", 40.0, 10.0);
+      let elizabeth: bool = ui::button(Vector2 { x: 300.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 },  "Josey", 40.0, 10.0);
       let wiro: bool = ui::button(Vector2 { x: 300.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 },  "Wiro", 40.0, 10.0);
-      // println!("{:?}", healer);
+      let temerity: bool = ui::button(Vector2 { x: 300.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Temerity", 40.0, 10.0);
 
       if healer      { game(Character::Raphaelle, port).await; timer = Instant::now() }
       if queen       { game(Character::Cynewynn, port).await;  timer = Instant::now() }
       if wolf        { game(Character::Hernani, port).await;   timer = Instant::now() }
       if elizabeth   { game(Character::Elizabeth, port).await; timer = Instant::now() }
       if wiro        { game(Character::Wiro, port).await;      timer = Instant::now() }
+      if temerity        { game(Character::Temerity, port).await;      timer = Instant::now() }
     } else {
       draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
     }
@@ -137,10 +138,11 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::RaphaelleBulletEmpowered          => load!("characters/raphaelle/textures/bullet-empowered.png"),
         GameObjectType::CynewynnSword                     => load!("characters/cynewynn/textures/bullet.png"),
         GameObjectType::HernaniLandmine                   => load!("characters/hernani/textures/trap.png"),
-        GameObjectType::ElizabethProjectile               => load!("characters/hernani/textures/bullet.png"),
+        GameObjectType::ElizabethProjectileRicochet       => load!("characters/hernani/textures/bullet.png"),
         GameObjectType::ElizabethProjectileGround         => load!("characters/hernani/textures/trap.png"),
         GameObjectType::ElizabethProjectileGroundRecalled => load!("characters/hernani/textures/trap.png"),
-        GameObjectType::ElizabethProjectileRicochet       => load!("characters/hernani/textures/bullet.png"),
+        GameObjectType::ElizabethTurret                   => load!("ui/temp_ability_1.png"),
+        GameObjectType::ElizabethTurretProjectile         => load!("characters/hernani/textures/bullet.png"),
         GameObjectType::Grass1                            => load!("gameobjects/grass-1.png"),
         GameObjectType::Grass2                            => load!("gameobjects/grass-2.png"),
         GameObjectType::Grass3                            => load!("gameobjects/grass-3.png"),
@@ -188,6 +190,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   let mut player: ClientPlayer = ClientPlayer::new();
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
   player.character = character;
+  player.position = Vector2 { x: 10.0, y: 10.0 };
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
   let mut player_textures: HashMap<Character, Texture2D> = HashMap::new();
@@ -201,6 +204,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         Character::Elizabeth => load!("characters/dummy/textures/template.png"),
         Character::Wiro      => load!("characters/dummy/textures/template.png"),
         Character::Dummy      => load!("characters/dummy/textures/template.png"),
+        Character::Temerity      => load!("characters/dummy/textures/template.png"),
       }
     );
   }
@@ -304,14 +308,14 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
         GameObjectType::RaphaelleBullet | GameObjectType::CynewynnSword | GameObjectType::HernaniBullet | GameObjectType::RaphaelleBulletEmpowered
-        | GameObjectType::ElizabethProjectile | GameObjectType::ElizabethProjectileRicochet | GameObjectType::WiroGunShot => {
+        | GameObjectType::ElizabethProjectileGroundRecalled | GameObjectType::ElizabethProjectileRicochet | GameObjectType::WiroGunShot => {
           let speed: f32 = character_properties[&(match game_object.object_type {
             GameObjectType::RaphaelleBullet => Character::Raphaelle,
             GameObjectType::RaphaelleBulletEmpowered => Character::Raphaelle,
             GameObjectType::HernaniBullet => Character::Hernani,
             GameObjectType::CynewynnSword => Character::Cynewynn,
-            GameObjectType::ElizabethProjectile => Character::Elizabeth,
             GameObjectType::ElizabethProjectileRicochet => Character::Elizabeth,
+            GameObjectType::ElizabethProjectileGroundRecalled => Character::Elizabeth,
             GameObjectType::WiroGunShot => Character::Wiro,
             _ => panic!()
           })].primary_shot_speed;
@@ -415,7 +419,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
                                                      GameObjectType::HernaniBullet,
                                                      GameObjectType::CynewynnSword,
                                                      GameObjectType::CenterOrb,
-                                                     GameObjectType::ElizabethProjectile,
+                                                     GameObjectType::ElizabethProjectileRicochet,
                                                     ];
       if shaded_objects.contains(&game_object.object_type) {
         draw_image_relative(
@@ -957,6 +961,17 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       movement_vector = movement_vector.normalize();
     }
 
+
+    if dashing {
+      match player.character {
+        Character::Temerity => {
+          movement_vector =
+            apply_wallride_force(movement_vector, game_objects.clone(), player.position);
+        }
+        _ => {}
+      }
+    }
+
     // expresses the player's movement without the multiplication
     // by delta time and speed. Sent to the server.
     let mut movement_vector_raw: Vector2 = movement_vector;
@@ -973,7 +988,13 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 
     if dashing && !player.is_dashing && !player.is_dead && movement_vector_raw.magnitude() != 0.0 {
       if player.time_since_last_dash > character_properties[&player.character].dash_cooldown {
-        player.is_dashing = true;
+        match player.character {
+          Character::Temerity => {
+          }
+          _ => {
+            player.is_dashing = true;
+          }
+        }
       }
     }
 

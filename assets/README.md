@@ -6,7 +6,7 @@ This document specifies guidelines to aid with the development of this game from
   - [1.1. Basic game description](#11-basic-game-description)
 - [2. Basic mechanics](#2-basic-mechanics)
   - [2.1. Abilities and Controls](#21-abilities-and-controls)
-  - [2.2. Stunning and Control](#22-stunning-and-control)
+  - [2.2. Crowd Control and Punishing.](#22-crowd-control-and-punishing)
   - [2.3. Combat Visuals and Feedback](#23-combat-visuals-and-feedback)
   - [2.4. Map](#24-map)
 - [3. Character Classes](#3-character-classes)
@@ -17,13 +17,13 @@ This document specifies guidelines to aid with the development of this game from
   - [4.1. Support/Tank](#41-supporttank)
     - [4.1.1. Raphaelle](#411-raphaelle)
     - [4.1.2. Wiro](#412-wiro)
-    - [4.1.3. Alita \[IDEA\]](#413-alita-idea)
+    - [4.1.3. Alita \[not implemented\]](#413-alita-not-implemented)
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
-    - [4.2.2. Temerity \[IDEA\]](#422-temerity-idea)
+    - [4.2.2. Temerity \[semi-implemented\]](#422-temerity-semi-implemented)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
-    - [4.3.2. To be renamed...](#432-to-be-renamed)
+    - [4.3.2. Josey](#432-josey)
 - [5. Gameplay](#5-gameplay)
 - [6. Lore](#6-lore)
   - [6.1. Setting](#61-setting)
@@ -59,7 +59,7 @@ This results in only 5 game controls:
 
 This makes the game controller-friendly and simple to learn.
 
-## 2.2. Stunning and Control
+## 2.2. Crowd Control and Punishing.
 
 A player may move freely if unobstructed by the map, aim and shoot freely at all times, and shoot their secondary
 once it is charged. These are the player's rights and may not be inhibited by other players and their abilities (i.e. stun, root).
@@ -67,29 +67,20 @@ once it is charged. These are the player's rights and may not be inhibited by ot
 The concept of stunning, of inhibiting movement and actions, is unpleasant, and requires to be approached with an
 uncomfortable playstyle consisting of extreme cautiousness, disfavouring dynamic combat and boldness, and excessively punishes beginners, a fragile playerbase.
 In light of this, any control character should not:
-- Cancel abilities
+- Cancel/inhibit abilities
 - Inhibit movement for long periods of time
-- Inhibit the use of an ability
-- Be annoying (subjective, will depend on player feedback)
 
-However, they can:
-- Modify the map (kind of a workaround  , to be done with caution)
-- Place visible damaging traps.
-- Push enemies away slightly.
-- Slow them slightly for a short period of time.
-
-Nevertheless, CC should still exist to an extent, as it can still be interesting.
+"Light" crowd control like small slows are tolerated. While CC only exists to an extent, this doesn't mean players can't be punished; it's just done in other ways (mostly through damage). Bad positioning might for example be punished by taking useless damage.
 
 ## 2.3. Combat Visuals and Feedback
 
 Absolutely everything has to be clear. Everything that is happening on the battlefield.
-- One sound effect for every action. A projectile being shot, hitting its target, flying by, someone moving, walls being placed, destroyed, an ability being available, etc...
+- Sounds have different identities depending on the type of action they represent. Hitting an opponent might make a "pop"-like sound, while firing your primary might make a "whoosh"-like sound, and taking damage might make a "ping"-like sound.
 - As much visual feedback as possible. Show every relationship. Confusing mechanics that are difficult to track must have feedback.
-- However, only show partial informtion about opponent ability availability.
 - One colour for each projectile type depending on team:
   - Red team, healing: Orange
-  - Red team, damage: Red duh
   - Blue team, heal: Green
+  - Red team, damage: Red duh
   - Blue team, damage: Have a guess
 
 ## 2.4. Map
@@ -99,6 +90,8 @@ Maps contain walls. Walls are a major gameplay element. They can be added (by ab
 Maps can contains holes or water. These can be shot through but cannot be moved through. No exceptions.
 
 Maps should also have a relatively open center, to force players to fight eachother instead of hiding behind walls.
+
+The objective at the center of the map should also help with wall camping.
 
 # 3. Character Classes
 
@@ -169,7 +162,7 @@ Intended playstyle:
   - Ganked
   - Ignored
 
-### 4.1.3. Alita [IDEA]
+### 4.1.3. Alita [not implemented]
 
 - **Primary - Form 1**
   - A long range projectile which can heal allies or damage opponents.
@@ -192,7 +185,7 @@ Intended playstyle:
 - Countered by punishing bad positioning and forcing out **Secondary**.
 
 Note
-- Might rework to be an assassin.
+- Might rework to be an assassin
 
 ## 4.2. Assassin/Brawler
 
@@ -214,7 +207,7 @@ Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
 - She has to be careful. Her dash is on a long cooldown and her secondary reduces her fire rate. Her actions must be planned and she significantly weakens from a hesitant player. Her mobility is her downfall, a smart player might be able to bait out a dash and play around her cooldowns.
 
-### 4.2.2. Temerity [IDEA]
+### 4.2.2. Temerity [semi-implemented]
 
 - **Primary** - Confident Strike
   - A three-hit combo:
@@ -249,23 +242,23 @@ Intended playstyle:
 - Easy to play, tutorial character.
 - Stand back and fire from a distance, while keeping people away with walls and making sure to manage your long cooldown dash adequately.
 
-### 4.3.2. To be renamed...
+### 4.3.2. Josey
 
-- **Primary** - Knife throw
-  - Throw a mid-to-long range knife.
-  - At the end of its trajectory, the knife falls on the ground and stays there for a bit.
-  - There can only be 2 knives at a time on the ground
-- **Secondary** - Ricochet
-  - Throw a knife just like **Primary**
-  - This kinfe has increased range and slightly higher damage, and can bounce off walls once.
+- **Primary** - Knifed
+  - Throw a mid-range knife tha can ricochet off walls once.
+  - If the knife bounces, its range increases.
+  - At the end of its trajectory, the knife falls on the ground and stays there for a bit. There can only be 2 knives at a time on the ground.
+- **Secondary** - Thingymajig
+  - Create a walking turret that moves in the direction it was cast.
+  - It pinballs around the map and shoots nearby opponents.
 - **Dash** - Recall
   - Dash forward, pulling towards yourself all knives that were on the ground.
   - Returning knives deal small damage to opponents caught in their path.
   - Opponents caught by multiple knives are marginally slowed.
 
 Intended playstyle:
-- A character that likes to stand back and control chokeholds.
-- Countered by fast characters or widening chokeholds by destroying walls.
+- Controls chokeholds and can force people around obstacles.
+- Countered by getting rid of walls and chasing.
 
 # 5. Gameplay
 

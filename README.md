@@ -46,20 +46,21 @@ This is just for me.
 - [ ] Fix bugs
   - [x] Elizabeth
   - [x] `thread 'main' panicked at src/bin/server.rs:1479:11` and `thread 'main' panicked at src/bin/server.rs:514:15:`
-    - [ ] temporary fix
+    - [x] temporary fix
   - [ ] Redo all the gamemode logic. All of it.
 - [x] Implement feedback
   - [x] Nerf Raph's self heal
   - [x] Rework Elizabeth
 - [ ] Characters
   - [ ] Rework Hernani secondary
-  - [x] Elizabeth (rename tho)
+  - [ ] Rework Elizabeth
+    - [ ] Aim lazer shows ricochet
+  - [ ] Temerity
   - [x] Wiro
     - [x] Shield (secondary)
     - [x] Primary
     - [x] Dash
     - [x] Passive
-  - [ ] An assassin
 - [x] Gamemode
   - [x] 1v1 and 2v2
     - [x] Kinda
@@ -116,6 +117,10 @@ This is just for me.
   - [ ] Organisation
   - [ ] Packet size
 
+## Reminders
+- Update Wiro projectile list when new char
+- Update wall list when new wall
+
 ## Issues that won't be solved
 
 - Fullcreen issue on Linux (Macroquad issue)
@@ -123,7 +128,7 @@ This is just for me.
 - Icon doesn't show up on Linux (Macroquad issue)
   - [x] Holy guacamole they fixed it
 
-## Note
+# Notes
 
 This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the original repository](https://github.com/OrnitOnGithub/moba?tab=readme-ov-file#notice)
 
@@ -131,3 +136,6 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
 
 - MylesDeGreat on deviantart for inspiration on the sword slash sprite
 - posemy.art for reference images
+- Inspiration
+  - Assault Android Cactus
+  - Battlerite

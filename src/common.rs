@@ -11,8 +11,11 @@ use std::time::SystemTime;
 pub const TILE_SIZE: f32 = 8.0;
 pub const ORB_HEALING: u8 = 20;
 
+pub const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall];
+pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall, GameObjectType::Water1, GameObjectType::Water2];
+
 /// Disable this for release builds.
-pub const DEBUG: bool = false;
+pub const DEBUG: bool = true;
 
 // this is bs
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
@@ -93,6 +96,7 @@ pub enum Character {
   Cynewynn,
   Elizabeth,
   Wiro,
+  Temerity,
 }
 /// Struct that contains the properties for each character. These are stored
 /// in the respective characters' `properties.pkl` files. This data structure
@@ -116,10 +120,12 @@ pub struct CharacterProperties {
   /// Amount of healing after a hit. Currently only used by the bunny, who sends the health to allies.
   pub primary_lifesteal:  u8,
   pub primary_cooldown:   f32,
+  pub primary_cooldown_2: f32,
   pub primary_range:      f32,
   pub primary_range_2:    f32,
   pub primary_range_3:    f32,
   pub primary_shot_speed: f32,
+  pub primary_shot_speed_2: f32,
   /// Girth of the bullet
   pub primary_hit_radius: f32,
   pub primary_wall_hit_radius: f32,
@@ -154,6 +160,7 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
       Character::Cynewynn =>  CharacterProperties::from_pkl(include_str!("../assets/characters/cynewynn/properties.pkl")),
       Character::Elizabeth =>  CharacterProperties::from_pkl(include_str!("../assets/characters/elizabeth/properties.pkl")),
       Character::Wiro =>  CharacterProperties::from_pkl(include_str!("../assets/characters/wiro/properties.pkl")),
+      Character::Temerity =>  CharacterProperties::from_pkl(include_str!("../assets/characters/temerity/properties.pkl")),
     };
 
     characters.insert(character, character_properties);
@@ -173,10 +180,12 @@ impl CharacterProperties {
       primary_heal_2:           pkl_u8( find_parameter(&pkl, "primary_heal_2"           ).unwrap()),
       primary_lifesteal:        pkl_u8( find_parameter(&pkl, "primary_lifesteal"        ).unwrap()),
       primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown"         ).unwrap()),
+      primary_cooldown_2:       pkl_f32(find_parameter(&pkl, "primary_cooldown_2"       ).unwrap()),
       primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap())*TILE_SIZE,
       primary_range_2:          pkl_f32(find_parameter(&pkl, "primary_range_2"          ).unwrap())*TILE_SIZE,
       primary_range_3:          pkl_f32(find_parameter(&pkl, "primary_range_3"          ).unwrap())*TILE_SIZE,
       primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap())*TILE_SIZE,
+      primary_shot_speed_2:     pkl_f32(find_parameter(&pkl, "primary_shot_speed_2"       ).unwrap())*TILE_SIZE,
       primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap())*TILE_SIZE,
       primary_wall_hit_radius:  pkl_f32(find_parameter(&pkl, "primary_wall_hit_radius"  ).unwrap())*TILE_SIZE,
       wall_damage_multiplier:   pkl_f32(find_parameter(&pkl, "wall_damage_multiplier"   ).unwrap()),
@@ -455,15 +464,14 @@ pub enum GameObjectType {
   RaphaelleBulletEmpowered,
   CynewynnSword,
   HernaniLandmine,
-  /// Elizabeth's projectile, as it's just been fired and is still flying.
-  ElizabethProjectile,
+  /// Elizabeth's projectile, as it has just been fired and is still flying.
+  ElizabethProjectileRicochet,
   /// Elizabeth's projectile, once it's on the ground.
   ElizabethProjectileGround,
   /// Elizabeth's projectile, once it's returning to her.
   ElizabethProjectileGroundRecalled,
-  /// Elizabeth's projectile, as it has just been fired and is still flying,
-  /// but can ricochet.
-  ElizabethProjectileRicochet,
+  ElizabethTurret,
+  ElizabethTurretProjectile,
   Grass1,
   Grass2,
   Grass3,
@@ -764,4 +772,27 @@ pub fn dashing_logic(mut is_dashing: bool, mut dashed_distance: f32, dash_direct
     new_position = current_position; // idk why this is like this, whatever
   }
   return (new_position, dashed_distance, is_dashing);
+}
+
+pub fn apply_wallride_force(movement_vector: Vector2, game_objects: Vec<GameObject>, player_pos: Vector2) -> Vector2 {
+  let mut new_mov_vector: Vector2 = movement_vector;
+
+  let constant: f32 = 1.0;
+  let constant_2: i32 = 1;
+  let cutoff: f32 = 3.0;
+
+  for game_object in game_objects {
+    // if the object is a wall
+    if WALL_TYPES.contains(&game_object.object_type){
+      let wall_pos = game_object.position;
+      let difference = Vector2::difference(player_pos, wall_pos);
+      if difference.magnitude() < TILE_SIZE * cutoff {
+        new_mov_vector.y += (1.0/(difference.magnitude())) * constant * difference.normalize().y;
+        new_mov_vector.x += (1.0/(difference.magnitude())) * constant * difference.normalize().x;
+      }
+
+    }
+  }
+
+  return new_mov_vector;
 }
