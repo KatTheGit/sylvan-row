@@ -663,22 +663,26 @@ pub fn object_aware_movement(
   desired_position.x += movement.x;
   desired_position.y += movement.y;
 
+  let player_size = TILE_SIZE/4.0;
+  let tile_size = TILE_SIZE/2.0;
+  let collision_size = tile_size + player_size;
+
   for game_object in game_objects.clone() {
     if game_object.object_type == GameObjectType::Wall           ||
-       game_object.object_type == GameObjectType::HernaniWall     ||
+       game_object.object_type == GameObjectType::HernaniWall    ||
        game_object.object_type == GameObjectType::Water1         ||
        game_object.object_type == GameObjectType::Water2         ||
        game_object.object_type == GameObjectType::UnbreakableWall {
       let difference = Vector2::difference(desired_position, game_object.position);
 
       // X axis collision prediction
-      if f32::abs(difference.x) <= TILE_SIZE && f32::abs(current_player_position.y - game_object.position.y) < TILE_SIZE {
+      if f32::abs(difference.x) <= collision_size && f32::abs(current_player_position.y - game_object.position.y) < collision_size {
         adjusted_movement.x = 0.0;
         adjusted_raw_movement.x = 0.0;
       }
 
       // Y axis
-      if f32::abs(difference.y) <= TILE_SIZE && f32::abs(current_player_position.x - game_object.position.x) < TILE_SIZE {
+      if f32::abs(difference.y) <= collision_size && f32::abs(current_player_position.x - game_object.position.x) < collision_size {
         adjusted_movement.y = 0.0;
         adjusted_raw_movement.y = 0.0;
       }

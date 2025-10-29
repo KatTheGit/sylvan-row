@@ -644,11 +644,14 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
       // Get stuck player out of walls
       let mut unstucker_game_objects = main_game_objects.lock().unwrap();
+      let player_size = TILE_SIZE/4.0;
+      let tile_size: f32 = TILE_SIZE/2.0;
+      let collision_size = tile_size + player_size;
       for game_object_index in 0..unstucker_game_objects.len() {
         
         if WALL_TYPES_ALL.contains(&unstucker_game_objects[game_object_index].object_type) {
           let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
-          if f32::abs(difference.x) < TILE_SIZE && f32::abs(difference.y) < TILE_SIZE {
+          if f32::abs(difference.x) < collision_size && f32::abs(difference.y) < collision_size {
             // push out the necessary amount
             main_loop_players[player_index].position.x += (TILE_SIZE + 0.1 )* difference.normalize().x;
             main_loop_players[player_index].position.y += (TILE_SIZE + 0.1 )* difference.normalize().y;
