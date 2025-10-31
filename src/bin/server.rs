@@ -112,26 +112,61 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           match player.character {
             Character::Temerity => {
               // INITIATE WALLRIDE
-              let terminate_wallride: bool = false;
-              let impulse_direction: Vector2 = Vector2::new();
+              let wallride_initiation_distance = 2.0 * TILE_SIZE;
               if recieved_player_info.dashing && !player.is_dashing
               && player.last_dash_time.elapsed().as_secs_f32() > characters[&player.character].dash_cooldown {
-                // inform the rest of the code we're wallriding
+                // inform the rest of the code we're wallriding.
                 player.is_dashing = true;
+                // we now want to determine in which direction we're dashing.
+                // find the closest object
+                let mut closest_pos: Vector2 = Vector2::new();
+                let mut shortest_distance: f32 = f32::INFINITY;
+                for game_object in game_objects.clone() {
+                  let distance = Vector2::distance(game_object.position, player.position);
+                  if distance < wallride_initiation_distance
+                  && WALL_TYPES.contains(&game_object.object_type) {
+                    if distance < shortest_distance {
+                      closest_pos = game_object.position;
+                      shortest_distance = distance;
+                    }
+                  }
+                }
+                // if we CAN wallride
+                if shortest_distance != f32::INFINITY {
+                  // "radius" vector
+                  let difference = Vector2::difference(closest_pos, player.position);
+                  // perpendicular vector (tangent vector)
+                  let difference_perpendicular: Vector2 = Vector2 { x: difference.y, y: -difference.x };
+                  let player_direction = player.move_direction;
+                  // use the dot product to get the direction as a rotation
+                  let dot_product: f32 = player_direction.x * difference_perpendicular.x + player_direction.y * difference_perpendicular.y;
+                  println!("{:?}", dot_product);
+                  // kinda lame that trigonometrical direction is the opposite of clockwise,
+                  // always gotta put an "anti" in my sentence ykwhatimean
+                  let clockwise = f32::signum(dot_product);
+                  // using dash_direction.x to store our direction, since this variable is unused on this character.
+                  player.dash_direction.x = clockwise;
+                }
+                // else, if we can't wallride (no nearby objects)
+                else {
+                  // just inform the code we're not wallriding.
+                  player.is_dashing = false;
+                }
 
                 
               }
               // TERMINATE WALLRIDE
-              if !recieved_player_info.dashing && player.is_dashing 
-              || terminate_wallride {
+              if !recieved_player_info.dashing && player.is_dashing {
                 // update variables to inform the code we're no longer wallriding
                 player.is_dashing = false;
                 player.last_dash_time = Instant::now();
 
                 // apply an impulse
                 println!("applying impulse NOW");
+                // player.aim_direction
               }
             }
+            // NORMAL DASHES
             _ => {
               // If player wants to dash and isn't dashing...
               if recieved_player_info.dashing && !player.is_dashing && !player.is_dead && recieved_player_info.movement.magnitude() != 0.0 {
@@ -225,14 +260,49 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           // (vscode) MARK: Dashing
           if player.is_dashing && !player.is_dead {
             match player.character {
+              // DURING WALLRIDE
               Character::Temerity => {
-                // DURING WALLRIDE
 
                 // Move around the nearest wall in the desired direction
                 // update new_position
 
+                // using dash_direction.x to store our direction, since this variable is unused on this character.
+                let clockwise: f32 = player.dash_direction.x;
+                println!("{:?}", clockwise);
 
+                // find the closest object
+                let mut closest_pos: Vector2 = Vector2::new();
+                let mut shortest_distance: f32 = f32::INFINITY;
+                for game_object in game_objects.clone() {
+                  let distance = Vector2::distance(game_object.position, player.position);
+                  if WALL_TYPES.contains(&game_object.object_type) {
+                    if distance < shortest_distance {
+                      closest_pos = game_object.position;
+                      shortest_distance = distance;
+                    }
+                  }
+                }
 
+                // now we pivot around closest_pos
+                // find the radius vector to the nearest wall
+                let difference = Vector2::difference(closest_pos, player.position).normalize();
+                // get the perpendicular tangent to the nearest wall circle thingy.
+                // also make sure it points in the right direction
+                let difference_perpendicular: Vector2 = Vector2 { x: difference.y * clockwise, y: -difference.x * clockwise };
+
+                let speed = characters[&player.character].dash_speed;
+                let wallride_distance = characters[&player.character].dash_distance;
+
+                // lock our position at the right distance.
+                new_position.x = closest_pos.x + wallride_distance * difference.x;
+                new_position.y = closest_pos.y + wallride_distance * difference.y;
+                
+                // now apply this movement as our new movement vector
+                new_position.x += difference_perpendicular.x * speed * time_since_last_packet as f32;
+                new_position.y += difference_perpendicular.y * speed * time_since_last_packet as f32;
+
+                // update player info. This will be used when giving the character an impulse
+                player.move_direction = difference_perpendicular;
                 // force out an override
                 movement_legal = false
               }
@@ -479,9 +549,9 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   loop {
 
     // claim all mutexes
-    let mut gamemode_info = main_gamemode_info.lock().unwrap();
     let mut players = main_loop_players.lock().unwrap();
     let mut game_objects = main_game_objects.lock().unwrap();
+    let mut gamemode_info = main_gamemode_info.lock().unwrap();
 
 
     let mut tick: bool = false;
@@ -1463,7 +1533,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
       if game_object.to_be_deleted == true {
         // EXTRA LOGIC
         match game_object.object_type.clone() {
-          // Elizabeth's projectile needs to drop on deletion,
+          // Elizabeth's projectile needs to fall down on deletion,
           // if it hit somebody,
           GameObjectType::ElizabethProjectileRicochet => {
             cleansed_game_objects.push(
@@ -1491,9 +1561,9 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
     *game_objects = cleansed_game_objects;
 
     // free the mutexes BEFORE we start the sleep.
+    drop(gamemode_info);
     drop(game_objects);
     drop(players);
-    drop(gamemode_info);
     // println!("Server Hz: {}", 1.0 / delta_time);
     delta_time = server_counter.elapsed().as_secs_f64();
     if delta_time < desired_delta_time {
@@ -1510,8 +1580,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 #[derive(Debug, Clone)]
 struct ServerPlayer {
   ip:                   String,
-  /// also used as an identifier
+  /// Reported network port, also used as an identifier (temporarily)
   port:                 u16,
+  /// Actual network port, sometimes different than the client's reported
+  /// network port because of shenanigans like CG-NAT (because God forbid we upgrade to ipv6)
   true_port:            u16,
   team:                 Team,
   character:            Character,

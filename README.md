@@ -115,6 +115,7 @@ This is just for me.
   - [ ] Server vulnerabilities
   - [ ] Variable names, readability
   - [ ] Organisation
+    - [ ] structure into proper modules, like networking, maths, players, ui, etc...
   - [ ] Packet size
 
 ## Reminders
