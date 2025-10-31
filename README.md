@@ -109,7 +109,7 @@ This is just for me.
 - [ ] Android support
   - [ ] Change game engine
 - [ ] Clean up code
-  - [ ] IMPORTANT: Reorganise mutexes to avoid deadlocks
+  - [x] IMPORTANT: Reorganise mutexes to avoid deadlocks
     - Current implementation is silly
   - [ ] Health u8 -> f16
   - [ ] Server vulnerabilities

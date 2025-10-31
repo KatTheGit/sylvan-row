@@ -89,14 +89,14 @@ async fn main() {
       let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani", 40.0, 10.0);
       let elizabeth: bool = ui::button(Vector2 { x: 300.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 },  "Josey", 40.0, 10.0);
       let wiro: bool = ui::button(Vector2 { x: 300.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 },  "Wiro", 40.0, 10.0);
-      //let temerity: bool = ui::button(Vector2 { x: 300.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Temerity", 40.0, 10.0);
+      let temerity: bool = ui::button(Vector2 { x: 300.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Temerity", 40.0, 10.0);
 
       if healer      { game(Character::Raphaelle, port).await; timer = Instant::now() }
       if queen       { game(Character::Cynewynn, port).await;  timer = Instant::now() }
       if wolf        { game(Character::Hernani, port).await;   timer = Instant::now() }
       if elizabeth   { game(Character::Elizabeth, port).await; timer = Instant::now() }
       if wiro        { game(Character::Wiro, port).await;      timer = Instant::now() }
-      //if temerity        { game(Character::Temerity, port).await;      timer = Instant::now() }
+      if temerity    { game(Character::Temerity, port).await;  timer = Instant::now() }
     } else {
       draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
     }
@@ -962,15 +962,15 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
     }
 
 
-    if dashing {
-      match player.character {
-        Character::Temerity => {
-          movement_vector =
-            apply_wallride_force(movement_vector, game_objects.clone(), player.position);
-        }
-        _ => {}
-      }
-    }
+    //if dashing {
+    //  match player.character {
+    //    Character::Temerity => {
+    //      movement_vector =
+    //        apply_wallride_force(movement_vector, game_objects.clone(), player.position);
+    //    }
+    //    _ => {}
+    //  }
+    //}
 
     // expresses the player's movement without the multiplication
     // by delta time and speed. Sent to the server.

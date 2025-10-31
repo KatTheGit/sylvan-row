@@ -83,6 +83,8 @@ Absolutely everything has to be clear. Everything that is happening on the battl
   - Red team, damage: Red duh
   - Blue team, damage: Have a guess
 
+If a character is mechanically simple, compensate visually.
+
 ## 2.4. Map
 
 Maps contain walls. Walls are a major gameplay element. They can be added (by abilities) or removed (shot down), but they cannot be easily shot or moved through, unless they are temporary.
@@ -209,7 +211,7 @@ Intended playstyle:
 
 ### 4.2.2. Temerity [semi-implemented]
 
-- **Primary** - Confident Strike
+- **Primary** - The Subtle Art of a Rocket Launcher
   - A three-hit combo:
     - A short range attack
     - A mid-range attack
@@ -218,11 +220,16 @@ Intended playstyle:
 - **Secondary** - Rocket Jump
   - Launch a rocket under yourself, that damages opponents in an AOE and boosts you forward.
 - **Dash** - Hasty Dispatch
-  - Holding **Dash** lets you wallride.
+  - Instead of a conventional dash, holding **Dash** lets ride a wall.
   - Wallriding makes you move alongside a wall, at an increased speed.
   - You carry momentum from your wallrides after releasing.
 - **Passive** - Save the City
   - Heal damaged walls around you.
+
+Intended playstyle:
+- zoop in and out weeee
+- Reward people for getting close by giving them two safe shots
+- ROCKET LAUNCHER RAHHHHHH
 
 ## 4.3. Ranged/Control
 
@@ -244,7 +251,7 @@ Intended playstyle:
 
 ### 4.3.2. Josey
 
-- **Primary** - Knifed
+- **Primary** - Cunning Knives
   - Throw a mid-range knife tha can ricochet off walls once.
   - If the knife bounces, its range increases.
   - At the end of its trajectory, the knife falls on the ground and stays there for a bit. There can only be 2 knives at a time on the ground.

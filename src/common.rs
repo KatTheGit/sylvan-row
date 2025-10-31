@@ -352,7 +352,7 @@ impl ClientPlayer {
 
     let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
     for buff in self.buffs.clone() {
-      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
       buff_offset.y -= 3.0;
     }
   }
@@ -502,7 +502,7 @@ pub enum GameObjectType {
 }
 // MARK: Vectors
 // utility
-#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct Vector2 {
   pub x: f32,
   pub y: f32,
@@ -730,6 +730,8 @@ pub struct Buff {
   pub duration: f32,
   /// Type of buff. Speed, Fire rate, etc...
   pub buff_type: BuffType,
+  /// Direction
+  pub direction: Vector2,
 }
 /// Every possible type of buff or nerf
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
@@ -737,6 +739,7 @@ pub enum BuffType {
   RaphaelleFireRate,
   WiroSpeed,
   FireRate,
+  Impulse,
   Speed,
 }
 
@@ -782,8 +785,7 @@ pub fn apply_wallride_force(movement_vector: Vector2, game_objects: Vec<GameObje
   let mut new_mov_vector: Vector2 = movement_vector;
 
   let constant: f32 = 1.0;
-  let constant_2: i32 = 1;
-  let cutoff: f32 = 3.0;
+  let cutoff: f32 = 2.0;
 
   for game_object in game_objects {
     // if the object is a wall

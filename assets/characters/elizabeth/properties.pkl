@@ -15,7 +15,7 @@ primary_cooldown = 0.75
 primary_cooldown_2 = 0.4
 primary_shot_speed = 20.0
 primary_shot_speed_2 = 15.0
-primary_wall_hit_radius = 0.1
+primary_wall_hit_radius = 0.05
 primary_hit_radius = 1.0
 wall_damage_multiplier = 1.0
 

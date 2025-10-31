@@ -1,4 +1,3 @@
-use gilrs::ff::DistanceModel;
 use sylvan_row::common::*;
 use core::f32;
 use std::collections::HashMap;
@@ -25,8 +24,13 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   let players: Vec<ServerPlayer> = Vec::new();
   let players = Arc::new(Mutex::new(players));
   let game_objects:Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
-  println!("Loaded game objects.");
+  println!("Loaded map game objects.");
   let game_objects = Arc::new(Mutex::new(game_objects));
+  // holds game information, to be displayed by client, and modified when shit happens.
+  let mut general_gamemode_info: GameModeInfo = GameModeInfo::new();
+  general_gamemode_info.death_timeout = 1.0;
+  let general_gamemode_info = Arc::new(Mutex::new(general_gamemode_info));
+  
 
   // initiate all networking sockets
   let server_address = format!("0.0.0.0:{}", SERVER_PORT);
@@ -38,12 +42,8 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   // temporary, to be dictated by gamemode
   let max_players = max_players;
 
-  // holds game information, to be displayed by client, and modified when shit happens.
-  let mut general_gamemode_info: GameModeInfo = GameModeInfo::new();
-  general_gamemode_info.death_timeout = 1.0;
-  let general_gamemode_info = Arc::new(Mutex::new(general_gamemode_info));
-  
   // (vscode) MARK: Networking - Listen
+  // and also return lol
   let listener_players = Arc::clone(&players);
   let listener_gamemode_info = Arc::clone(&general_gamemode_info);
   let listener_game_objects = Arc::clone(&game_objects);
@@ -63,17 +63,21 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
       recieved_player_info.packet_interval.clean();
       
       // update PLAYERS Vector with recieved information.
-      let mut listener_players = listener_players.lock().unwrap();
-      let mut listener_game_objects = listener_game_objects.lock().unwrap();
+
+
+      // claim all the mutexes
+      let mut players = listener_players.lock().unwrap();
+      let mut game_objects = listener_game_objects.lock().unwrap();
+      let mut gamemode_info = listener_gamemode_info.lock().unwrap();
 
       
       let mut player_found: bool = false;
       
       // iterate through players
-      for player_index in 0..listener_players.len() {
+      for p_index in 0..players.len() {
         
-        // THIS VALUE WILL THEN BE ASSIGNED BACK TO listener_players[player_index] !!!!
-        let mut player = listener_players[player_index].clone();
+        // THIS VALUE WILL THEN BE ASSIGNED BACK TO players[p_index] !!!!
+        let mut player = players[p_index].clone();
         
         // use IP as identifier, check if packet from sent player correlates to our player
         // Later on we might have an account system and use that as ID. For now, IP will do
@@ -104,108 +108,149 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           let previous_position = player.position.clone();
           
           // (vscode) MARK: Dashing Legality
-          // If player wants to dash and isn't dashing...
-          if recieved_player_info.dashing && !player.is_dashing && !player.is_dead && recieved_player_info.movement.magnitude() != 0.0 {
-            let player_dash_cooldown = characters[&player.character].dash_cooldown;
-            // And we're past the cooldown...
-            if player.last_dash_time.elapsed().as_secs_f32() >= player_dash_cooldown {
-              // reset the cooldown
-              player.last_dash_time = Instant::now();
-              // set dashing to true
-              player.is_dashing = true;
-              // set the dashing direction
-              player.dash_direction = recieved_player_info.movement;
 
-              // (vscode) MARK: Special dashes
-              match player.character {
-                Character::Raphaelle => {
-                  player.stacks = 1;
-                }
-                Character::Hernani => {
-                  // Place down a bomb
-                  listener_game_objects.push(
-                    GameObject {
-                      object_type: GameObjectType::HernaniLandmine,
-                      size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-                      position: player.position,
-                      direction: Vector2::new(),
-                      to_be_deleted: false,
-                      owner_port: listener_players[player_index].port,
-                      hitpoints: 1,
-                      lifetime: characters[&Character::Hernani].dash_cooldown,
-                      players: Vec::new(),
-                      traveled_distance: 0.0,
+          match player.character {
+            Character::Temerity => {
+              // INITIATE WALLRIDE
+              let terminate_wallride: bool = false;
+              let impulse_direction: Vector2 = Vector2::new();
+              if recieved_player_info.dashing && !player.is_dashing
+              && player.last_dash_time.elapsed().as_secs_f32() > characters[&player.character].dash_cooldown {
+                // inform the rest of the code we're wallriding
+                player.is_dashing = true;
+
+                
+              }
+              // TERMINATE WALLRIDE
+              if !recieved_player_info.dashing && player.is_dashing 
+              || terminate_wallride {
+                // update variables to inform the code we're no longer wallriding
+                player.is_dashing = false;
+                player.last_dash_time = Instant::now();
+
+                // apply an impulse
+                println!("applying impulse NOW");
+              }
+            }
+            _ => {
+              // If player wants to dash and isn't dashing...
+              if recieved_player_info.dashing && !player.is_dashing && !player.is_dead && recieved_player_info.movement.magnitude() != 0.0 {
+                let player_dash_cooldown = characters[&player.character].dash_cooldown;
+                // And we're past the cooldown...
+                if player.last_dash_time.elapsed().as_secs_f32() >= player_dash_cooldown {
+                  // reset the cooldown
+                  player.last_dash_time = Instant::now();
+                  // set dashing to true
+                  player.is_dashing = true;
+                  // set the dashing direction
+                  player.dash_direction = recieved_player_info.movement;
+
+                  // (vscode) MARK: Special dashes
+                  match player.character {
+                    Character::Raphaelle => {
+                      player.stacks = 1;
                     }
-                  );
-                }
-                Character::Cynewynn => {}
-                Character::Wiro => {
-                  if player.stacks == 1{
-                    // Spawn the projectile that applies the mid-dash logic.
-                    listener_game_objects.push(
-                      GameObject {
-                        object_type: GameObjectType::WiroDashProjectile,
-                        size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-                        position: player.position,
-                        direction: Vector2::new(),
-                        to_be_deleted: false,
-                        owner_port: listener_players[player_index].port,
-                        hitpoints: 0,
-                        lifetime: characters[&Character::Hernani].dash_distance / characters[&Character::Hernani].dash_speed + 0.25, // give it a "grace" period because I'm bored
-                        players: Vec::new(),
-                        traveled_distance: 0.0,
-                      }
-                    );
-                  }
-                  player.stacks = 0;
-                }
-                Character::Elizabeth => {
-                  // Change the type of all her current static projectiles to the type
-                  // that follows her.
-                  for index in 0..listener_game_objects.len() {
-                    if listener_game_objects[index].object_type == GameObjectType::ElizabethProjectileGround
-                    && listener_game_objects[index].owner_port == player.port {
-                      listener_game_objects[index].to_be_deleted = true;
-                      let object_clone = listener_game_objects[index].clone();
-                      listener_game_objects.push(
+                    Character::Hernani => {
+                      // Place down a bomb
+                      game_objects.push(
                         GameObject {
-                          object_type: GameObjectType::ElizabethProjectileGroundRecalled,
+                          object_type: GameObjectType::HernaniLandmine,
                           size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-                          position: object_clone.position,
+                          position: player.position,
                           direction: Vector2::new(),
                           to_be_deleted: false,
-                          owner_port: object_clone.owner_port,
-                          hitpoints: 0,
-                          lifetime: 15.0,
+                          owner_port: players[p_index].port,
+                          hitpoints: 1,
+                          lifetime: characters[&Character::Hernani].dash_cooldown,
                           players: Vec::new(),
                           traveled_distance: 0.0,
                         }
                       );
                     }
+                    Character::Cynewynn => {}
+                    Character::Wiro => {
+                      if player.stacks == 1 {
+                        // Spawn the projectile that applies the mid-dash logic.
+                        game_objects.push(
+                          GameObject {
+                            object_type: GameObjectType::WiroDashProjectile,
+                            size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                            position: player.position,
+                            direction: Vector2::new(),
+                            to_be_deleted: false,
+                            owner_port: players[p_index].port,
+                            hitpoints: 0,
+                            lifetime: characters[&Character::Hernani].dash_distance / characters[&Character::Hernani].dash_speed + 0.25, // give it a "grace" period because I'm bored
+                            players: Vec::new(),
+                            traveled_distance: 0.0,
+                          }
+                        );
+                      }
+                      player.stacks = 0;
+                    }
+                    Character::Elizabeth => {
+                      // Change the type of all her current static projectiles to the type
+                      // that follows her.
+                      for index in 0..game_objects.len() {
+                        if game_objects[index].object_type == GameObjectType::ElizabethProjectileGround
+                        && game_objects[index].owner_port == player.port {
+                          game_objects[index].to_be_deleted = true;
+                          let object_clone = game_objects[index].clone();
+                          game_objects.push(
+                            GameObject {
+                              object_type: GameObjectType::ElizabethProjectileGroundRecalled,
+                              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+                              position: object_clone.position,
+                              direction: Vector2::new(),
+                              to_be_deleted: false,
+                              owner_port: object_clone.owner_port,
+                              hitpoints: 0,
+                              lifetime: 15.0,
+                              players: Vec::new(),
+                              traveled_distance: 0.0,
+                            }
+                          );
+                        }
+                      }
+                    }
+                    Character::Temerity => {
+                      // technically this is redundant. She should never show up here.
+                    }
+                    Character::Dummy => {}
                   }
                 }
-                Character::Temerity => {
-                  player.is_dashing = false;
-                }
-                Character::Dummy => {}
               }
             }
           }
           // (vscode) MARK: Dashing
           if player.is_dashing && !player.is_dead {
-            (new_position, player.dashed_distance, player.is_dashing) = dashing_logic(
-              player.is_dashing,
-              player.dashed_distance, 
-              player.dash_direction, 
-              time_since_last_packet, 
-              characters[&player.character].dash_speed, 
-              characters[&player.character].dash_distance, 
-              listener_game_objects.clone(), 
-              player.position
-            );
-            movement_legal = false; // force a correction
-          }
+            match player.character {
+              Character::Temerity => {
+                // DURING WALLRIDE
 
+                // Move around the nearest wall in the desired direction
+                // update new_position
+
+
+
+                // force out an override
+                movement_legal = false
+              }
+              _ => {
+                (new_position, player.dashed_distance, player.is_dashing) = dashing_logic(
+                  player.is_dashing,
+                  player.dashed_distance, 
+                  player.dash_direction, 
+                  time_since_last_packet, 
+                  characters[&player.character].dash_speed, 
+                  characters[&player.character].dash_distance, 
+                  game_objects.clone(), 
+                  player.position
+                );
+                movement_legal = false; // force a correction
+              }
+            }
+          }
           else {
             // (vscode) MARK: Movement Legality
             // Movement legality calculations
@@ -227,7 +272,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               previous_position,
               raw_movement,
               movement,
-              listener_game_objects.clone()
+              game_objects.clone()
             );
 
             new_position.x = previous_position.x + new_movement_raw.x * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
@@ -272,8 +317,8 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
             // Gather info to send about other players
             let mut other_players: Vec<OtherPlayer> = Vec::new();
-            for (other_player_index, player) in listener_players.clone().iter().enumerate() {
-              if other_player_index != player_index {
+            for (other_player_index, player) in players.clone().iter().enumerate() {
+              if other_player_index != p_index {
                 other_players.push(OtherPlayer {
                   health: player.health,
                   position: player.position,
@@ -297,7 +342,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             }
 
             // packet sent to player with info about themselves and other players
-            let gamemode_info = listener_gamemode_info.lock().unwrap();
             let server_packet: ServerPacket = ServerPacket {
               player_packet_is_sent_to: ServerRecievingPlayerPacket {
                 health: player.health,
@@ -319,12 +363,11 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 time_since_last_secondary: player.secondary_cast_time.elapsed().as_secs_f32(),
               },
               players: other_players,
-              game_objects: listener_game_objects.clone(),
+              game_objects: game_objects.clone(),
               gamemode_info: gamemode_info.clone(),
               timestamp: recieved_player_info.timestamp, // pong!
             };
-            drop(gamemode_info);
-            listener_players[player_index].had_illegal_position = false;
+            players[p_index].had_illegal_position = false;
             
             let mut player_ip = player.ip.clone();
             let split_player_ip: Vec<&str> = player_ip.split(":").collect();
@@ -340,17 +383,15 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
           // println!("{:?}", player.position.clone());
-          listener_players[player_index] = player;
+          players[p_index] = player;
           break
         }
       }
-      drop(listener_game_objects);
 
       // (vscode) MARK: Instantiate Player
       // otherwise, add the player
       // NOTE: In the future this entire chunk of code will be gone, the matchmaker will populate
       // the list of players beforehand.
-      let mut gamemode_info = listener_gamemode_info.lock().unwrap();
       if !player_found && (gamemode_info.total_blue + gamemode_info.total_red < max_players as u8) {
         // decide the player's team (alternate for each player)
         let mut team: Team = Team::Blue;
@@ -363,11 +404,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           gamemode_info.total_blue += 1;
           gamemode_info.alive_blue += 1;
         }
-        drop(gamemode_info);
         // create server player data
         // this data is pretty irrelevant, we're just initialising the player.
         unsafe {
-          listener_players.push(ServerPlayer {
+          players.push(ServerPlayer {
             ip: src.ip().to_string(),
             port: recieved_player_info.port,
             true_port: src.port(),
@@ -396,13 +436,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             stacks:               0,
             buffs:                Vec::new(),
             last_packet_time:     Instant::now(),
-            is_wallriding:        false,
           });
         }
         println!("Player connected: {}: {} - {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port);
       }
-
-      drop(listener_players);
     }
   });
   
@@ -440,6 +477,13 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);
   loop {
+
+    // claim all mutexes
+    let mut gamemode_info = main_gamemode_info.lock().unwrap();
+    let mut players = main_loop_players.lock().unwrap();
+    let mut game_objects = main_game_objects.lock().unwrap();
+
+
     let mut tick: bool = false;
     let mut tenth_tick: bool = false;
     server_counter = Instant::now();
@@ -466,17 +510,13 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
     // update gamemode info
     if tick {
       // update game clock
-      let mut gamemode_info = main_gamemode_info.lock().unwrap();
       gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
-      drop(gamemode_info);
       // println!("{}", 1.0/delta_time);
     }
 
-    let mut main_loop_players = main_loop_players.lock().unwrap();
 
     // (vscode) MARK: Gamemode
     if tick {
-      let mut gamemode_info = main_gamemode_info.lock().unwrap();
       // println!("{:?}", gamemode_info);
       match selected_gamemode {
         GameMode::Arena => {
@@ -492,15 +532,13 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             round_restart = true;
           }
           if round_restart {
-            for player_index in 0..main_loop_players.len() {
-              *gamemode_info = main_loop_players[player_index].kill(false, &gamemode_info.clone());
+            for p_index in 0..players.len() {
+              *gamemode_info = players[p_index].kill(false, &gamemode_info.clone());
               gamemode_info.alive_blue = gamemode_info.total_blue;
               gamemode_info.alive_red  = gamemode_info.total_red;
-              main_loop_players[player_index].is_dead = false;
+              players[p_index].is_dead = false;
             }
-            let mut reset_game_objects = main_game_objects.lock().unwrap();
-            *reset_game_objects = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
-            drop(reset_game_objects);
+            *game_objects = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
           }
         }
         GameMode::DeathMatch => {
@@ -514,37 +552,34 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         }
       }
       // Occasionally check for goners
-      for player_index in 0..main_loop_players.len() {
-        if (main_loop_players[player_index].last_packet_time.elapsed().as_secs_f32() > 3.0)
-        && (main_loop_players[player_index].character != Character::Dummy                  ) {
-          println!("Player forcefully disconnected: {}", main_loop_players[player_index].ip);
-          if main_loop_players[player_index].team == Team::Red {
+      for p_index in 0..players.len() {
+        if (players[p_index].last_packet_time.elapsed().as_secs_f32() > 3.0)
+        && (players[p_index].character != Character::Dummy                  ) {
+          println!("Player forcefully disconnected: {}", players[p_index].ip);
+          if players[p_index].team == Team::Red {
             gamemode_info.total_red -=1;
-            if !main_loop_players[player_index].is_dead {
+            if !players[p_index].is_dead {
               gamemode_info.alive_red -=1;
             }
           } else {
             gamemode_info.total_blue -=1;
-            if !main_loop_players[player_index].is_dead {
+            if !players[p_index].is_dead {
               gamemode_info.alive_blue -=1;
             }
           }
-          main_loop_players.remove(player_index);
+          players.remove(p_index);
           break;
         }
       }
-      drop(gamemode_info);
     }
 
     // Summon a dummy for testing
     if !dummy_summoned {
       dummy_summoned = true;
-      let mut gamemode_info = main_gamemode_info.lock().unwrap();
       gamemode_info.alive_red += 1;
       gamemode_info.total_red += 1;
-      drop(gamemode_info);
 
-      main_loop_players.push(
+      players.push(
         ServerPlayer {
           ip: String::from("hello"),
           port: 12,
@@ -571,104 +606,100 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           stacks: 0,
           buffs: Vec::new(),
           last_packet_time: Instant::now(),
-          is_wallriding: false,
         }
       );
     }
     
     // (vscode) MARK: Player logic
-    for player_index in 0..main_loop_players.len() {
+    for p_index in 0..players.len() {
 
-      let mut gamemode_info = main_gamemode_info.lock().unwrap();
 
-      let shooting = main_loop_players[player_index].shooting;
-      let shooting_secondary = main_loop_players[player_index].shooting_secondary;
-      let last_shot_time = main_loop_players[player_index].last_shot_time;
-      let secondary_charge = main_loop_players[player_index].secondary_charge;
-      let player_info = main_loop_players[player_index].clone();
-      let character: CharacterProperties = characters[&main_loop_players[player_index].character].clone();
+      let shooting = players[p_index].shooting;
+      let shooting_secondary = players[p_index].shooting_secondary;
+      let last_shot_time = players[p_index].last_shot_time;
+      let secondary_charge = players[p_index].secondary_charge;
+      let player_info = players[p_index].clone();
+      let character: CharacterProperties = characters[&players[p_index].character].clone();
 
-      // println!("{:?}", main_loop_players[player_index].character);
+      // println!("{:?}", players[p_index].character);
 
       // MARK: Handle death
 
       // if this player is at health 0
-      if main_loop_players[player_index].health == 0 && !main_loop_players[player_index].is_dead {
-        *gamemode_info = main_loop_players[player_index].kill(true, &gamemode_info.clone());
+      if players[p_index].health == 0 && !players[p_index].is_dead {
+        *gamemode_info = players[p_index].kill(true, &gamemode_info.clone());
       }
       // If the death timer is over, unkill them
-      if (main_loop_players[player_index].is_dead) && (main_loop_players[player_index].death_timer_start.elapsed().as_secs_f32() > gamemode_info.death_timeout) {
-        main_loop_players[player_index].is_dead = false;
+      if (players[p_index].is_dead) && (players[p_index].death_timer_start.elapsed().as_secs_f32() > gamemode_info.death_timeout) {
+        players[p_index].is_dead = false;
       }
 
       // IGNORE ANYTHING BELOW IF PLAYER HAS DIED
-      if main_loop_players[player_index].is_dead {
+      if players[p_index].is_dead {
         continue;
       }
 
-      drop(gamemode_info);
 
       // (vscode) MARK: Passives & Other
       // Handling of passive abilities and anything else that may need to be run all the time.
 
       // Reduce buff durations according to time passed, and remove buffs that ended.
       let mut buffs_to_keep: Vec<Buff> = Vec::new();
-      for buff_index in 0..main_loop_players[player_index].buffs.len() {
-        main_loop_players[player_index].buffs[buff_index].duration -= true_delta_time as f32;
-        if main_loop_players[player_index].buffs[buff_index].duration > 0.0 {
-          buffs_to_keep.push(main_loop_players[player_index].buffs[buff_index].clone());
+      for buff_index in 0..players[p_index].buffs.len() {
+        players[p_index].buffs[buff_index].duration -= true_delta_time as f32;
+        if players[p_index].buffs[buff_index].duration > 0.0 {
+          buffs_to_keep.push(players[p_index].buffs[buff_index].clone());
         }
       }
-      main_loop_players[player_index].buffs = buffs_to_keep;
+      players[p_index].buffs = buffs_to_keep;
 
       // Handling of time queen flashsback ability - keep a buffer of positions for the flashback
-      if main_loop_players[player_index].character == Character::Cynewynn {
+      if players[p_index].character == Character::Cynewynn {
         // Update once per decisecond
         if tenth_tick {
           // update buffer of positions when secondary isnt active
-          let position: Vector2 = main_loop_players[player_index].position.clone();
-          main_loop_players[player_index].previous_positions.push(position);
+          let position: Vector2 = players[p_index].position.clone();
+          players[p_index].previous_positions.push(position);
           // cut the buffer to remain the correct size
           let position_buffer_length: usize = (character.secondary_cooldown * 10.0) as usize;
-          if main_loop_players[player_index].previous_positions.len() > position_buffer_length {
-            main_loop_players[player_index].previous_positions.remove(0);
+          if players[p_index].previous_positions.len() > position_buffer_length {
+            players[p_index].previous_positions.remove(0);
           }
         }
       }
 
       // increase secondary charge passively
       if tick {
-        let charge_amount = characters[&main_loop_players[player_index].character].secondary_passive_charge;
-        main_loop_players[player_index].add_charge(charge_amount);
+        let charge_amount = characters[&players[p_index].character].secondary_passive_charge;
+        players[p_index].add_charge(charge_amount);
       }
 
       // Get stuck player out of walls
-      let mut unstucker_game_objects = main_game_objects.lock().unwrap();
       let player_size = TILE_SIZE/4.0;
       let tile_size: f32 = TILE_SIZE/2.0;
       let collision_size = tile_size + player_size;
-      for game_object_index in 0..unstucker_game_objects.len() {
+      for o_index in 0..game_objects.len() {
         
-        if WALL_TYPES_ALL.contains(&unstucker_game_objects[game_object_index].object_type) {
-          let difference: Vector2 = Vector2::difference(unstucker_game_objects[game_object_index].position, main_loop_players[player_index].position);
+        if WALL_TYPES_ALL.contains(&game_objects[o_index].object_type) {
+          let difference: Vector2 = Vector2::difference(game_objects[o_index].position, players[p_index].position);
           if f32::abs(difference.x) < collision_size && f32::abs(difference.y) < collision_size {
             // push out the necessary amount
-            main_loop_players[player_index].position.x += (TILE_SIZE + 0.1 )* difference.normalize().x;
-            main_loop_players[player_index].position.y += (TILE_SIZE + 0.1 )* difference.normalize().y;
-            main_loop_players[player_index].had_illegal_position = true;
+            players[p_index].position.x += (TILE_SIZE + 0.1 )* difference.normalize().x;
+            players[p_index].position.y += (TILE_SIZE + 0.1 )* difference.normalize().y;
+            players[p_index].had_illegal_position = true;
             break;
           }
         }
       }
       // Delete extra Elizabeth ground daggers
-      if main_loop_players[player_index].character == Character::Elizabeth {
+      if players[p_index].character == Character::Elizabeth {
 
         let mut objects_to_consider: Vec<usize> = Vec::new();
-        for game_object_index in 0..unstucker_game_objects.len() {
-          if unstucker_game_objects[game_object_index].object_type == GameObjectType::ElizabethProjectileGround {
-            if index_by_port(unstucker_game_objects[game_object_index].owner_port, main_loop_players.clone())
-            == player_index {
-              objects_to_consider.push(game_object_index);
+        for o_index in 0..game_objects.len() {
+          if game_objects[o_index].object_type == GameObjectType::ElizabethProjectileGround {
+            if index_by_port(game_objects[o_index].owner_port, players.clone())
+            == p_index {
+              objects_to_consider.push(o_index);
             }
           }
         }
@@ -677,73 +708,70 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           let mut lowest_val: f32 = f32::MAX;
           let mut lowest_index: usize = 0;
           for object_to_consider in objects_to_consider {
-            if unstucker_game_objects[object_to_consider].lifetime < lowest_val {
-              lowest_val = unstucker_game_objects[object_to_consider].lifetime;
+            if game_objects[object_to_consider].lifetime < lowest_val {
+              lowest_val = game_objects[object_to_consider].lifetime;
               lowest_index = object_to_consider;
             }
           }
-          unstucker_game_objects[lowest_index].to_be_deleted = true;
+          game_objects[lowest_index].to_be_deleted = true;
         }
       }
 
       // Apply wiro's speed boost
-      if main_loop_players[player_index].character == Character::Wiro {
-        if !main_loop_players[player_index].shooting_secondary
-        || main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
-          for victim_index in 0..main_loop_players.len() {
-            if main_loop_players[victim_index].team == main_loop_players[player_index].team
-            && Vector2::distance(main_loop_players[victim_index].position, main_loop_players[player_index].position) < character.passive_range{
+      if players[p_index].character == Character::Wiro {
+        if !players[p_index].shooting_secondary
+        || players[p_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
+          for victim_index in 0..players.len() {
+            if players[victim_index].team == players[p_index].team
+            && Vector2::distance(players[victim_index].position, players[p_index].position) < character.passive_range{
               // provide speed buff, if not present
               let mut buff_found = false;
-              for buff_index in 0..main_loop_players[victim_index].buffs.len() {
-                if main_loop_players[victim_index].buffs[buff_index].buff_type == BuffType::WiroSpeed {
+              for buff_index in 0..players[victim_index].buffs.len() {
+                if players[victim_index].buffs[buff_index].buff_type == BuffType::WiroSpeed {
                   buff_found = true;
-                  main_loop_players[victim_index].buffs.remove(buff_index);
-                  main_loop_players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed });
+                  players[victim_index].buffs.remove(buff_index);
+                  players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed, direction: Vector2::new() });
                   break; // exit early
                 }
               }
               if !buff_found {
-                main_loop_players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed });
+                players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed, direction: Vector2::new() });
               }
             }
           }
         }
       }
-
-      drop(unstucker_game_objects);
 
 
       // (vscode) MARK: Primaries
       // If someone is shooting, spawn a bullet according to their character.
       let mut cooldown: f32 = character.primary_cooldown;
-      if main_loop_players[player_index].character == Character::Cynewynn {
+      if players[p_index].character == Character::Cynewynn {
         cooldown -= cooldown * ((secondary_charge as f32 / 100.0) * 0.10)
       }
 
-      for buff in main_loop_players[player_index].buffs.clone() {
+      for buff in players[p_index].buffs.clone() {
         if buff.buff_type == BuffType::FireRate || buff.buff_type == BuffType::RaphaelleFireRate {
           cooldown -= cooldown * buff.value;
         }
       }
       // not sure why this was here, nothing wrong with holding down both buttons
       //                      \/
-      if shooting /*&& !shooting_secondary*/  && last_shot_time.elapsed().as_secs_f32() > cooldown && main_loop_players[player_index].aim_direction.magnitude() != 0.0 {
-        // main_loop_players[player_index].buffs.push(Buff { value: 0.1, duration: 2.2, buff_type: BuffType::FireRate });
-        // main_loop_players[player_index].buffs.push(Buff { value: 20.0, duration: 2.2, buff_type: BuffType::Speed });
+      if shooting /*&& !shooting_secondary*/  && last_shot_time.elapsed().as_secs_f32() > cooldown && players[p_index].aim_direction.magnitude() != 0.0 {
+        // players[p_index].buffs.push(Buff { value: 0.1, duration: 2.2, buff_type: BuffType::FireRate });
+        // players[p_index].buffs.push(Buff { value: 20.0, duration: 2.2, buff_type: BuffType::Speed });
         let mut shot_successful: bool = false;
-        let mut game_objects = main_game_objects.lock().unwrap();
         // Do primary shooting logic
-        match main_loop_players[player_index].character {
+        match players[p_index].character {
           Character::Hernani => {
             game_objects.push(GameObject {
               object_type: GameObjectType::HernaniBullet,
               size: Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
-              position: main_loop_players[player_index].position,
-              direction: main_loop_players[player_index].aim_direction,
+              position: players[p_index].position,
+              direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: main_loop_players[player_index].port,
+              owner_port: players[p_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -752,23 +780,23 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           }
           Character::Raphaelle => {
             game_objects.push(GameObject {
-              object_type: match main_loop_players[player_index].stacks {
+              object_type: match players[p_index].stacks {
                 1  => {GameObjectType::RaphaelleBulletEmpowered},
                 0 => {GameObjectType::RaphaelleBullet},
                 _ => panic!()
               },
               size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              position: main_loop_players[player_index].position,
-              direction: main_loop_players[player_index].aim_direction,
+              position: players[p_index].position,
+              direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: main_loop_players[player_index].port,
+              owner_port: players[p_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
             });
-            if main_loop_players[player_index].stacks == 1 {
-              main_loop_players[player_index].stacks = 0;
+            if players[p_index].stacks == 1 {
+              players[p_index].stacks = 0;
             }
             shot_successful = true;
           }
@@ -777,12 +805,12 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               object_type: GameObjectType::CynewynnSword,
               size: Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
               position: Vector2 {
-                x: main_loop_players[player_index].position.x + main_loop_players[player_index].aim_direction.x * 5.0 ,
-                y: main_loop_players[player_index].position.y + main_loop_players[player_index].aim_direction.y * 5.0 },
-              direction: main_loop_players[player_index].aim_direction,
+                x: players[p_index].position.x + players[p_index].aim_direction.x * 5.0 ,
+                y: players[p_index].position.y + players[p_index].aim_direction.y * 5.0 },
+              direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: main_loop_players[player_index].port,
+              owner_port: players[p_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -793,10 +821,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             game_objects.push(GameObject {
               object_type: GameObjectType::ElizabethProjectileRicochet,
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-              position: main_loop_players[player_index].position,
-              direction: main_loop_players[player_index].aim_direction,
+              position: players[p_index].position,
+              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              owner_port: main_loop_players[player_index].port,
+              owner_port: players[p_index].port,
               hitpoints: 1, // ricochet projectiles use hitpoints to keep track of wether they've already bounced
               lifetime: character.primary_range / character.primary_shot_speed,
               players: vec![],
@@ -805,16 +833,16 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             shot_successful = true;
           }
           Character::Wiro => {
-            if !main_loop_players[player_index].shooting_secondary
-            || main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
+            if !players[p_index].shooting_secondary
+            || players[p_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
               game_objects.push(GameObject {
                 object_type: GameObjectType::WiroGunShot,
                 size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-                position: main_loop_players[player_index].position,
-                direction: main_loop_players[player_index].aim_direction,
+                position: players[p_index].position,
+                direction: players[p_index].aim_direction,
                 to_be_deleted: false,
                 hitpoints: 0,
-                owner_port: main_loop_players[player_index].port,
+                owner_port: players[p_index].port,
                 lifetime: character.primary_range / character.primary_shot_speed,
                 players: Vec::new(),
                 traveled_distance: 0.0,
@@ -829,11 +857,11 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             game_objects.push(GameObject {
               object_type: GameObjectType::HernaniBullet,
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-              position: main_loop_players[player_index].position,
-              direction: main_loop_players[player_index].aim_direction,
+              position: players[p_index].position,
+              direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: main_loop_players[player_index].port,
+              owner_port: players[p_index].port,
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -842,17 +870,15 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           }
         }
         if shot_successful {
-          main_loop_players[player_index].last_shot_time = Instant::now();
+          players[p_index].last_shot_time = Instant::now();
         }
-        drop(game_objects);
       }
       // (vscode) MARK: Secondaries
       // If a player is trying to use their secondary and they have enough charge to do so, apply custom logic.
-      let mut game_objects = main_game_objects.lock().unwrap();
       if shooting_secondary && secondary_charge >= character.secondary_charge_use {
         let mut secondary_used_successfully = false;
         
-        match main_loop_players[player_index].character {
+        match players[p_index].character {
           
           // Create a healing aura
           Character::Raphaelle => {
@@ -863,7 +889,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               position: player_info.position,
               direction: Vector2::new(),
               to_be_deleted: false,
-              owner_port: main_loop_players[player_index].port,
+              owner_port: players[p_index].port,
               hitpoints: 0,
               lifetime: 5.0,
               players: vec![],
@@ -898,7 +924,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 position: desired_placement_position,
                 direction: Vector2::new(),
                 to_be_deleted: false,
-                owner_port: main_loop_players[player_index].port,
+                owner_port: players[p_index].port,
                 hitpoints: 20,
                 lifetime: 5.0,
                 players: vec![],
@@ -911,12 +937,12 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           Character::Cynewynn => {
             let flashback_length = (character.secondary_cooldown * 10.0) as usize; // deciseconds
             if player_info.previous_positions.len() >= flashback_length
-            && main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() >= character.secondary_cooldown {
+            && players[p_index].secondary_cast_time.elapsed().as_secs_f32() >= character.secondary_cooldown {
               secondary_used_successfully = true;
               // set position to beginning of buffer (where player was 3 seconds ago)
-              main_loop_players[player_index].position = main_loop_players[player_index].previous_positions[0];
-              main_loop_players[player_index].previous_positions = Vec::new();
-              main_loop_players[player_index].heal(10, characters.clone());
+              players[p_index].position = players[p_index].previous_positions[0];
+              players[p_index].previous_positions = Vec::new();
+              players[p_index].heal(10, characters.clone());
             }
           },
 
@@ -926,7 +952,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
             // beforehand we need to check if there's already one in the game, and delete it.
             for index in 0..game_objects.len() {
-              if game_objects[index].owner_port == main_loop_players[player_index].port {
+              if game_objects[index].owner_port == players[p_index].port {
                 game_objects[index].to_be_deleted = true;
               }
             }
@@ -936,10 +962,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             game_objects.push(GameObject {
               object_type: GameObjectType::ElizabethTurret,
               size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
-              position: main_loop_players[player_index].position,
-              direction: main_loop_players[player_index].aim_direction,
+              position: players[p_index].position,
+              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              owner_port: main_loop_players[player_index].port,
+              owner_port: players[p_index].port,
               hitpoints: 0,
               lifetime: character.secondary_cooldown,
               players: vec![],
@@ -948,23 +974,23 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             secondary_used_successfully = true;
           }
           Character::Wiro => {
-            if main_loop_players[player_index].secondary_charge > 0 
-            && main_loop_players[player_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
+            if players[p_index].secondary_charge > 0 
+            && players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
 
                 // spawn a shield object, if one can't be found already.
                 
                 // look for a shield
                 let position: Vector2 = Vector2 {
-                  x: main_loop_players[player_index].position.x + main_loop_players[player_index].aim_direction.x * TILE_SIZE,
-                  y: main_loop_players[player_index].position.y + main_loop_players[player_index].aim_direction.y * TILE_SIZE,
+                  x: players[p_index].position.x + players[p_index].aim_direction.x * TILE_SIZE,
+                  y: players[p_index].position.y + players[p_index].aim_direction.y * TILE_SIZE,
                 };
                 let mut shield_found = false;
                 for object_index in 0..game_objects.len() {
                   // if it's a shield, and it's ours
                   if game_objects[object_index].object_type == GameObjectType::WiroShield
-                  && index_by_port(game_objects[object_index].owner_port, main_loop_players.clone()) == player_index {
+                  && index_by_port(game_objects[object_index].owner_port, players.clone()) == p_index {
                     
-                    game_objects[object_index].direction = main_loop_players[player_index].aim_direction;
+                    game_objects[object_index].direction = players[p_index].aim_direction;
                     game_objects[object_index].position = position;
                     shield_found = true;
                     break;
@@ -975,9 +1001,9 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                     object_type: GameObjectType::WiroShield,
                     size: Vector2 { x: TILE_SIZE*0.5, y: characters[&Character::Wiro].secondary_range },
                     position: position,
-                    direction: main_loop_players[player_index].aim_direction,
+                    direction: players[p_index].aim_direction,
                     to_be_deleted: false,
-                    owner_port: main_loop_players[player_index].port,
+                    owner_port: players[p_index].port,
                     hitpoints: 0,
                     lifetime: f32::INFINITY,
                     players: vec![],
@@ -990,11 +1016,11 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               for object_index in 0..game_objects.len() {
                 // if it's a shield, and it's ours
                 if game_objects[object_index].object_type == GameObjectType::WiroShield
-                && index_by_port(game_objects[object_index].owner_port, main_loop_players.clone()) == player_index {
+                && index_by_port(game_objects[object_index].owner_port, players.clone()) == p_index {
                   game_objects[object_index].to_be_deleted = true;
                   // if our secondary charge is 0, also set the cooldown
-                  if main_loop_players[player_index].secondary_charge == 0 {
-                    main_loop_players[player_index].secondary_cast_time = Instant::now();
+                  if players[p_index].secondary_charge == 0 {
+                    players[p_index].secondary_cast_time = Instant::now();
                   }
                   break;
                 }
@@ -1007,20 +1033,20 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           Character::Dummy => {}  
         }
         if secondary_used_successfully {
-          main_loop_players[player_index].secondary_charge -= character.secondary_charge_use;
-          main_loop_players[player_index].secondary_cast_time = Instant::now();
+          players[p_index].secondary_charge -= character.secondary_charge_use;
+          players[p_index].secondary_cast_time = Instant::now();
         }
       }
       // if the secondary button is released..
       else {
-        match main_loop_players[player_index].character {
+        match players[p_index].character {
           Character::Wiro => {
             for object_index in 0..game_objects.len() {
               // if it's a shield, and it's ours
               if game_objects[object_index].object_type == GameObjectType::WiroShield
-              && index_by_port(game_objects[object_index].owner_port, main_loop_players.clone()) == player_index {
+              && index_by_port(game_objects[object_index].owner_port, players.clone()) == p_index {
                 game_objects[object_index].to_be_deleted = true;
-                main_loop_players[player_index].secondary_cast_time = Instant::now();
+                players[p_index].secondary_cast_time = Instant::now();
                 break;
               }
             }
@@ -1028,7 +1054,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           _ => {}
         }
       }
-      drop(game_objects);
     }
 
     // println!("{:?}", game_objects);
@@ -1036,7 +1061,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
     // (vscode) MARK: Object Handlin'
     // Do all logic related to game objects
-    let mut game_objects = main_game_objects.lock().unwrap();
 
     // contemplating my orb
     if tick {
@@ -1076,27 +1100,27 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
       }
     }
 
-    for game_object_index in 0..game_objects.len() {
-      let game_object_type = game_objects[game_object_index].object_type;
+    for o_index in 0..game_objects.len() {
+      let game_object_type = game_objects[o_index].object_type;
       match game_object_type {
 
         // WOLF primary
         GameObjectType::HernaniBullet => {
-          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false);
+          (players, *game_objects, _) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false);
         }
         // WOLF dash special
         GameObjectType::HernaniLandmine => {
           // if the landmine has existed for long enough...
-          //if game_objects[game_object_index].lifetime < (characters[&Character::Hernani].dash_cooldown - 0.5) {
-            for player_index in 0..main_loop_players.len() {
+          //if game_objects[o_index].lifetime < (characters[&Character::Hernani].dash_cooldown - 0.5) {
+            for p_index in 0..players.len() {
               // if not on same team
-              if main_loop_players[player_index].team != main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
+              if players[p_index].team != players[index_by_port(game_objects[o_index].owner_port,players.clone())].team {
                 // if within range
                 let landmine_range = characters[&Character::Hernani].primary_range_2;
-                if Vector2::distance(game_objects[game_object_index].position, main_loop_players[player_index].position)
+                if Vector2::distance(game_objects[o_index].position, players[p_index].position)
                 < landmine_range {
-                  main_loop_players[player_index].damage(characters[&Character::Hernani].primary_damage_2, characters.clone());
-                  game_objects[game_object_index].to_be_deleted = true;
+                  players[p_index].damage(characters[&Character::Hernani].primary_damage_2, characters.clone());
+                  game_objects[o_index].to_be_deleted = true;
                   break;
                 }
               }
@@ -1107,30 +1131,30 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         // HEALER GIRL primary
         GameObjectType::RaphaelleBullet => {
           let hit: bool;
-          (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
+          (players, *game_objects, hit) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true);
           
           // Restore nearby ally health
           if hit {
-            for player_index in 0..main_loop_players.len() {
+            for p_index in 0..players.len() {
               let range: f32 = characters[&Character::Raphaelle].primary_range;
               if Vector2::distance(
-                main_loop_players[player_index].position,
-                main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].position
+                players[p_index].position,
+                players[index_by_port(game_objects[o_index].owner_port,players.clone())].position
               ) < range &&
-                main_loop_players[player_index].team == main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
+                players[p_index].team == players[index_by_port(game_objects[o_index].owner_port,players.clone())].team {
                 // Anyone within range
-                if player_index == index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone()) {
+                if p_index == index_by_port(game_objects[o_index].owner_port,players.clone()) {
                   // if self, heal less
                   let heal_self: u8 = characters[&Character::Raphaelle].primary_lifesteal;
-                  main_loop_players[player_index].heal(heal_self, characters.clone());
+                  players[p_index].heal(heal_self, characters.clone());
                 }
                 else {
                   // otherwise, apply normal heal
                   let heal: u8 = characters[&Character::Raphaelle].primary_heal_2;
-                  main_loop_players[player_index].heal(heal, characters.clone());
+                  players[p_index].heal(heal, characters.clone());
                 }
                   // restore dash charge (0.2s)
-                // main_loop_players[game_objects[game_object_index].owner_index].last_dash_time -= Duration::from_millis(200);
+                // players[game_objects[o_index].owner_index].last_dash_time -= Duration::from_millis(200);
               }
             }
           }
@@ -1138,48 +1162,48 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         // RAPHAELLE primary, EMPOWERED
         GameObjectType::RaphaelleBulletEmpowered => {
           let hit: bool;
-          (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic_extra(
-            main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true,
+          (players, *game_objects, hit) = apply_simple_bullet_logic_extra(
+            players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true,
             characters[&Character::Raphaelle].primary_damage_2, 255, false, f32::INFINITY);
           if hit {
             // restore dash charge (0.5s)
-            let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
-            main_loop_players[owner_index].last_dash_time -= Duration::from_millis(450);
+            let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
+            players[owner_index].last_dash_time -= Duration::from_millis(450);
           }
         }
 
         // RAPHAELLE secondary
         GameObjectType::RaphaelleAura => {
-          // game_objects[game_object_index].position = main_loop_players[game_objects[game_object_index].owner_index].position;
+          // game_objects[o_index].position = players[game_objects[o_index].owner_index].position;
           // every second apply heal
-          for player_index in 0..main_loop_players.len() {
+          for p_index in 0..players.len() {
             // if on same team
-            if main_loop_players[player_index].team == main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].team {
+            if players[p_index].team == players[index_by_port(game_objects[o_index].owner_port,players.clone())].team {
               // if within range
-              if Vector2::distance(game_objects[game_object_index].position, main_loop_players[index_by_port(game_objects[game_object_index].owner_port,main_loop_players.clone())].position)
-              < (game_objects[game_object_index].size.x / 2.0) {
+              if Vector2::distance(game_objects[o_index].position, players[index_by_port(game_objects[o_index].owner_port,players.clone())].position)
+              < (game_objects[o_index].size.x / 2.0) {
                 // heal up
                 if tick {
-                  let heal_amount = characters[&main_loop_players[player_index].character].secondary_heal;
-                  main_loop_players[player_index].heal(heal_amount, characters.clone());
+                  let heal_amount = characters[&players[p_index].character].secondary_heal;
+                  players[p_index].heal(heal_amount, characters.clone());
                 }
                 // provide fire rate buff, if not present
                 let mut buff_found = false;
-                for buff_index in 0..main_loop_players[player_index].buffs.len() {
-                  if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::RaphaelleFireRate {
+                for buff_index in 0..players[p_index].buffs.len() {
+                  if players[p_index].buffs[buff_index].buff_type == BuffType::RaphaelleFireRate {
                     buff_found = true;
                     break; // exit early
                   }
                 }
                 if !buff_found {                                 //        2  0%  <- find way to source this from properties file sometime idk
-                  main_loop_players[player_index].buffs.push(Buff { value: 0.2, duration: 0.1, buff_type: BuffType::RaphaelleFireRate });
+                  players[p_index].buffs.push(Buff { value: 0.2, duration: 0.1, buff_type: BuffType::RaphaelleFireRate, direction: Vector2::new() });
                 }
               }
               // not actually necessary
               //else {
-              //  for buff_index in 0..main_loop_players[player_index].buffs.len() {
-              //    if main_loop_players[player_index].buffs[buff_index].buff_type == BuffType::RaphaelleFireRate {
-              //      main_loop_players[player_index].buffs.remove(buff_index);
+              //  for buff_index in 0..players[p_index].buffs.len() {
+              //    if players[p_index].buffs[buff_index].buff_type == BuffType::RaphaelleFireRate {
+              //      players[p_index].buffs.remove(buff_index);
               //      break; // exit early
               //    }
               //  }
@@ -1190,64 +1214,65 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
         // QUEEN primary
         GameObjectType::CynewynnSword => {
-          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true);
+          (players, *game_objects, _) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true);
         }
         // ELIZABETH primary
         GameObjectType::ElizabethProjectileRicochet => {
-          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic_extra(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true, 
+          (players, *game_objects, _) = apply_simple_bullet_logic_extra(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true, 
             255, 255, true, f32::INFINITY);
         }
         // ELIZABETH primary but recalled
         GameObjectType::ElizabethProjectileGroundRecalled => {
           // needs to move towards owner
-          let owner_port = game_objects[game_object_index].owner_port;
-          let owner_index = index_by_port(owner_port, main_loop_players.clone());
-          let target_position: Vector2 = main_loop_players[owner_index].position;
-          let object_position: Vector2 = game_objects[game_object_index].position;
-          let speed = characters[&main_loop_players[owner_index].character].primary_shot_speed;
+          let owner_port = game_objects[o_index].owner_port;
+          let owner_index = index_by_port(owner_port, players.clone());
+          let target_position: Vector2 = players[owner_index].position;
+          let object_position: Vector2 = game_objects[o_index].position;
+          let speed = characters[&players[owner_index].character].primary_shot_speed;
           // You are a promise, abolish hatred,
           // Child of the Sanctum, you are beloved,
           // You know to fathom, how I'm suffering,
           // Yourself to release, out in this clearing,
           let direction: Vector2 = Vector2::difference(object_position, target_position);
           // update position
-          game_objects[game_object_index].position.x += direction.normalize().x * speed * true_delta_time as f32;
-          game_objects[game_object_index].position.y += direction.normalize().y * speed * true_delta_time as f32;
+          game_objects[o_index].position.x += direction.normalize().x * speed * true_delta_time as f32;
+          game_objects[o_index].position.y += direction.normalize().y * speed * true_delta_time as f32;
           // If the projectiles are close enough to us, delete them, since their trip is over.
           if direction.magnitude() < TILE_SIZE /* arbitrary value */ {
-            game_objects[game_object_index].to_be_deleted = true;
+            game_objects[o_index].to_be_deleted = true;
           }
-          let hit_radius = characters[&main_loop_players[owner_index].character].primary_hit_radius;
-          let damage = characters[&main_loop_players[owner_index].character].primary_damage_2;
-          for player_index in 0..main_loop_players.len() {
-            let player_position = main_loop_players[player_index].position;
+          let hit_radius = characters[&players[owner_index].character].primary_hit_radius;
+          let damage = characters[&players[owner_index].character].primary_damage_2;
+          for p_index in 0..players.len() {
+            let player_position = players[p_index].position;
             // if we hit a player
             if Vector2::distance(player_position, object_position) < hit_radius
             // and we haven't already
-            && !game_objects[game_object_index].players.contains(&player_index) {
+            && !game_objects[o_index].players.contains(&p_index) {
               // damage them
-              main_loop_players[player_index].damage(damage, characters.clone());
+              players[p_index].damage(damage, characters.clone());
               // and check if they were already hit by a projectile.
               let mut was_already_hit: bool = false;
-              for game_object_index_2 in 0..game_objects.len() {
-                if game_objects[game_object_index_2].players.contains(&player_index)
-                && game_object_index_2 != game_object_index {
+              for o_index_2 in 0..game_objects.len() {
+                if game_objects[o_index_2].players.contains(&p_index)
+                && o_index_2 != o_index {
                   was_already_hit = true;
                   break;
                 }
               }
               if was_already_hit {
                 // apply a debuff
-                main_loop_players[player_index].buffs.push(
+                players[p_index].buffs.push(
                   Buff {
                     value: -2.5 ,
                     duration: 0.25,
                     buff_type: BuffType::Speed,
+                    direction: Vector2::new(),
                   }
                 );
               }
               // Finally, update the game object to know this player was already hit
-              game_objects[game_object_index].players.push(player_index);
+              game_objects[o_index].players.push(p_index);
             }
           }
         }
@@ -1255,17 +1280,17 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         GameObjectType::ElizabethTurret => {
           // PROJECTILES
           // shoot projectiles. use secondary_cast_time as cooldown counter.
-          let owner = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
-          let owner_team = main_loop_players[owner].team;
-          let object_pos = game_objects[game_object_index].position;
+          let owner = index_by_port(game_objects[o_index].owner_port, players.clone());
+          let owner_team = players[owner].team;
+          let object_pos = game_objects[o_index].position;
           let range = characters[&Character::Elizabeth].secondary_range;
           let cooldown = characters[&Character::Elizabeth].primary_cooldown_2;
           let speed = characters[&Character::Elizabeth].primary_shot_speed_2;
 
-          for player in main_loop_players.clone() {
+          for player in players.clone() {
             if player.team != owner_team
             && Vector2::distance(object_pos, player.position) < range {
-              if main_loop_players[owner].secondary_cast_time.elapsed().as_secs_f32() > cooldown {
+              if players[owner].secondary_cast_time.elapsed().as_secs_f32() > cooldown {
                 // shoot
                 game_objects.push(GameObject {
                   object_type: GameObjectType::ElizabethTurretProjectile,
@@ -1273,7 +1298,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                   position: object_pos,
                   direction: Vector2::difference(object_pos, player.position).normalize(),
                   to_be_deleted: false,
-                  owner_port: main_loop_players[owner].port,
+                  owner_port: players[owner].port,
                   hitpoints: 0,
                   lifetime: range/speed,
                   players: vec![],
@@ -1281,7 +1306,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 });
 
                 // reset CD
-                main_loop_players[owner].secondary_cast_time = Instant::now();
+                players[owner].secondary_cast_time = Instant::now();
               }
             }
           }
@@ -1290,8 +1315,8 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           let speed = characters[&Character::Elizabeth].primary_range_3;
 
           // check for collisions with walls
-          let pos = game_objects[game_object_index].position;
-          let direction = game_objects[game_object_index].direction;
+          let pos = game_objects[o_index].position;
+          let direction = game_objects[o_index].direction;
 
           let check_distance = TILE_SIZE * 0.1;
           let buffer = 0.5 * 2.0;
@@ -1304,28 +1329,35 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             && Vector2::distance(game_object.position, check_position) < TILE_SIZE * buffer {
               // we have a collision. flip our direction.
               let distance: Vector2 = Vector2::difference(game_object.position, check_position);
+              let obj_distance = Vector2::difference(game_object.position, pos);
               // if distance.x is greater, it means we need to flip horizonrally.
               // otherwise, flip vertically.
               if f32::abs(distance.x) > f32::abs(distance.y) {
                 // flip horizontally
-                game_objects[game_object_index].direction.x *= -1.0;
+                // also check that we're going in opposing directions :)
+                if direction.x * obj_distance.x < 0.0 {
+                  game_objects[o_index].direction.x *= -1.0;
+                }
               } else {
-                game_objects[game_object_index].direction.y *= -1.0;
+                // also check that we're going in opposing directions :)
+                if direction.y * obj_distance.y < 0.0 {
+                  game_objects[o_index].direction.y *= -1.0;
+                }
               }
               break;
             }
           }
           // move
-          game_objects[game_object_index].position.x += game_objects[game_object_index].direction.x * speed * true_delta_time as f32;
-          game_objects[game_object_index].position.y += game_objects[game_object_index].direction.y * speed * true_delta_time as f32;
+          game_objects[o_index].position.x += game_objects[o_index].direction.x * speed * true_delta_time as f32;
+          game_objects[o_index].position.y += game_objects[o_index].direction.y * speed * true_delta_time as f32;
 
         }
         // ELIZABETH TURRET PROJECTILE
         GameObjectType::ElizabethTurretProjectile => {
           let damage = characters[&Character::Elizabeth].secondary_damage;
           let speed = characters[&Character::Elizabeth].primary_shot_speed_2;
-          (main_loop_players, *game_objects, _) = apply_simple_bullet_logic_extra(
-            main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, false,
+          (players, *game_objects, _) = apply_simple_bullet_logic_extra(
+            players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false,
             damage, 255, false, speed);
         }
         // WIRO'S SHIELD
@@ -1345,14 +1377,14 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             let object_type = game_objects[victim_object_index].object_type;
             // if one of these objects is one we can counter...
             if countered_projectiles.contains(&object_type) {
-              let obj1_owner_team = main_loop_players[index_by_port(game_objects[game_object_index  ].owner_port, main_loop_players.clone())].team;
-              let obj1_owner_index = index_by_port(game_objects[game_object_index  ].owner_port, main_loop_players.clone());
-              let obj2_owner_team = main_loop_players[index_by_port(game_objects[victim_object_index].owner_port, main_loop_players.clone())].team;
-              let obj2_owner_character = main_loop_players[index_by_port(game_objects[victim_object_index].owner_port, main_loop_players.clone())].character;
+              let obj1_owner_team = players[index_by_port(game_objects[o_index  ].owner_port, players.clone())].team;
+              let obj1_owner_index = index_by_port(game_objects[o_index  ].owner_port, players.clone());
+              let obj2_owner_team = players[index_by_port(game_objects[victim_object_index].owner_port, players.clone())].team;
+              let obj2_owner_character = players[index_by_port(game_objects[victim_object_index].owner_port, players.clone())].character;
               if obj1_owner_team != obj2_owner_team {
                 let hits_shield = hits_shield(
-                  game_objects[game_object_index].position,
-                  game_objects[game_object_index].direction,
+                  game_objects[o_index].position,
+                  game_objects[o_index].direction,
                   game_objects[victim_object_index].position,
                   characters[&Character::Wiro].secondary_range,
                   5.0, // temporary
@@ -1368,10 +1400,10 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                     | GameObjectType::RaphaelleBulletEmpowered  => { characters[&obj2_owner_character].primary_damage_2 }
                     _ => {panic!()}
                   } as f32) as u8;
-                  if main_loop_players[obj1_owner_index].secondary_charge > damage{
-                    main_loop_players[obj1_owner_index].secondary_charge -= damage;
+                  if players[obj1_owner_index].secondary_charge > damage{
+                    players[obj1_owner_index].secondary_charge -= damage;
                   } else {
-                    main_loop_players[obj1_owner_index].secondary_charge = 0;
+                    players[obj1_owner_index].secondary_charge = 0;
                   }
                   game_objects[victim_object_index].to_be_deleted = true;
                 }
@@ -1381,7 +1413,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         }
         // WIRO'S PRIMARY FIRE
         GameObjectType::WiroGunShot => {
-          let distance_traveled = game_objects[game_object_index].traveled_distance;
+          let distance_traveled = game_objects[o_index].traveled_distance;
           let damage: u8;
           if distance_traveled > characters[&Character::Wiro].primary_range_2 {
             damage = characters[&Character::Wiro].primary_damage_2;
@@ -1389,39 +1421,39 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             damage = characters[&Character::Wiro].primary_damage;
           }
           let hit: bool;
-          (main_loop_players, *game_objects, hit) = apply_simple_bullet_logic_extra(main_loop_players, characters.clone(), game_objects.clone(), game_object_index, true_delta_time, true, 
+          (players, *game_objects, hit) = apply_simple_bullet_logic_extra(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true, 
             damage, 255, false, f32::INFINITY);
           if hit {
-            let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
-            main_loop_players[owner_index].stacks = 1;
+            let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
+            players[owner_index].stacks = 1;
           }
         }
         // WIRO'S DASH
         GameObjectType::WiroDashProjectile => {
           // lock it to wiro's position
-          let owner_index = index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone());
+          let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
           let range = characters[&Character::Wiro].primary_range_3;
           let heal = characters[&Character::Wiro].secondary_heal;
           let damage = characters[&Character::Wiro].secondary_damage;
-          game_objects[game_object_index].position = main_loop_players[index_by_port(game_objects[game_object_index].owner_port, main_loop_players.clone())].position;
-          for victim_index in 0..main_loop_players.len() {
+          game_objects[o_index].position = players[index_by_port(game_objects[o_index].owner_port, players.clone())].position;
+          for victim_index in 0..players.len() {
             // if we get a hit, and we didn't already hit
-            if Vector2::distance(main_loop_players[victim_index].position, game_objects[game_object_index].position) < range
-            && !game_objects[game_object_index].players.contains(&victim_index) {
-              if main_loop_players[victim_index].team == main_loop_players[owner_index].team {
-                main_loop_players[victim_index].heal(heal, characters.clone());
+            if Vector2::distance(players[victim_index].position, game_objects[o_index].position) < range
+            && !game_objects[o_index].players.contains(&victim_index) {
+              if players[victim_index].team == players[owner_index].team {
+                players[victim_index].heal(heal, characters.clone());
               } else {
-                main_loop_players[victim_index].damage(damage, characters.clone());
+                players[victim_index].damage(damage, characters.clone());
               }
-              game_objects[game_object_index].players.push(victim_index);
+              game_objects[o_index].players.push(victim_index);
             }
           }
         }
         _ => {}
       }
-      game_objects[game_object_index].lifetime -= true_delta_time as f32;
-      if game_objects[game_object_index].lifetime < 0.0 {
-        game_objects[game_object_index].to_be_deleted = true;
+      game_objects[o_index].lifetime -= true_delta_time as f32;
+      if game_objects[o_index].lifetime < 0.0 {
+        game_objects[o_index].to_be_deleted = true;
       }
     }
 
@@ -1457,7 +1489,11 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
     }
 
     *game_objects = cleansed_game_objects;
-    drop(main_loop_players);
+
+    // free the mutexes BEFORE we start the sleep.
+    drop(game_objects);
+    drop(players);
+    drop(gamemode_info);
     // println!("Server Hz: {}", 1.0 / delta_time);
     delta_time = server_counter.elapsed().as_secs_f64();
     if delta_time < desired_delta_time {
@@ -1507,8 +1543,6 @@ struct ServerPlayer {
   /// list of buffs
   buffs:                Vec<Buff>,
   last_packet_time:     Instant,
-  /// As of now only used by Temerity because standard dashing logic can't coexist with this.
-  is_wallriding:        bool,
 }
 impl ServerPlayer {
   fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
@@ -1519,7 +1553,7 @@ impl ServerPlayer {
     match self.character {
       Character::Raphaelle => {
         self.buffs.push(
-          Buff { value: 6.0, duration: 0.5, buff_type: BuffType::Speed }
+          Buff { value: 6.0, duration: 0.5, buff_type: BuffType::Speed, direction: Vector2::new() }
         );
       }
       _ => {}
@@ -1602,14 +1636,14 @@ impl ServerPlayer {
 /// This is a wrapper for `apply_simple_bullet_logic_extra`, with just
 /// the simplest parameters.
 fn apply_simple_bullet_logic(
-  main_loop_players:     MutexGuard<Vec<ServerPlayer>>,
+  players:     MutexGuard<Vec<ServerPlayer>>,
   characters:            HashMap<Character, CharacterProperties>,
   game_objects:          Vec<GameObject>,
-  game_object_index:     usize,
+  o_index:     usize,
   true_delta_time:       f64,
   pierceing_shot:        bool,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
-  return apply_simple_bullet_logic_extra(main_loop_players, characters, game_objects, game_object_index, true_delta_time, pierceing_shot, 255, 255, false, f32::INFINITY);
+  return apply_simple_bullet_logic_extra(players, characters, game_objects, o_index, true_delta_time, pierceing_shot, 255, 255, false, f32::INFINITY);
 }
 
 /// Applies modifications to players and game objects as a result of
@@ -1619,10 +1653,10 @@ fn apply_simple_bullet_logic(
 /// Same with `special_healing`. Setting it to 0 will nullify it.
 /// Set `special_speed` to f32::INFINITY to use default.
 fn apply_simple_bullet_logic_extra(
-  mut main_loop_players: MutexGuard<Vec<ServerPlayer>>,
+  mut players: MutexGuard<Vec<ServerPlayer>>,
   characters:            HashMap<Character, CharacterProperties>,
   mut game_objects:      Vec<GameObject>,
-  game_object_index:     usize,
+  o_index:     usize,
   true_delta_time:       f64,
   pierceing_shot:        bool,
   special_damage:        u8,
@@ -1630,9 +1664,9 @@ fn apply_simple_bullet_logic_extra(
   ricochet:              bool,
   special_speed:         f32,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
-  let game_object = game_objects[game_object_index].clone();
+  let game_object = game_objects[o_index].clone();
   let owner_port = game_object.owner_port;
-  let player = main_loop_players[index_by_port(owner_port, main_loop_players.clone())].clone();
+  let player = players[index_by_port(owner_port, players.clone())].clone();
   let character = player.character;
   let character_properties = characters[&character].clone();
   let hit_radius: f32 = character_properties.primary_hit_radius;
@@ -1665,7 +1699,7 @@ fn apply_simple_bullet_logic_extra(
         let buffer = 0.5 * 1.2;
         if distance < (TILE_SIZE*buffer + wall_hit_radius) {
           // delete the bullet
-          game_objects[game_object_index].to_be_deleted = true;
+          game_objects[o_index].to_be_deleted = true;
           // damage the wall if it's not unbreakable
           if game_objects[victim_object_index].object_type != GameObjectType::UnbreakableWall {
             
@@ -1675,7 +1709,7 @@ fn apply_simple_bullet_logic_extra(
               game_objects[victim_object_index].hitpoints -= wall_damage;
             }
           }
-          return (main_loop_players, game_objects, false); // return early
+          return (players, game_objects, false); // return early
         }
       }
 
@@ -1691,29 +1725,37 @@ fn apply_simple_bullet_logic_extra(
         let distance = Vector2::distance(check_position, game_objects[victim_object_index].position);
         if distance < (TILE_SIZE*buffer + wall_hit_radius) {
           
-          if game_objects[game_object_index].hitpoints == 0 {
-            return (main_loop_players, game_objects, false);
+          if game_objects[o_index].hitpoints == 0 {
+            return (players, game_objects, false);
           }
-          if game_objects[game_object_index].hitpoints != 0 {
-            game_objects[game_object_index].hitpoints = 0;
+          if game_objects[o_index].hitpoints != 0 {
+            game_objects[o_index].hitpoints = 0;
             // we need to flip x direction or flip y direction
             // |distance.x| - |distance.y|
             // negative => flip horizontal
             let distance = Vector2::difference(game_object.position, game_objects[victim_object_index].position);
             if f32::abs(distance.x) - f32::abs(distance.y) > 0.0 {
-              game_objects[game_object_index].direction.x *= -1.0;
+              // flip horizontal
+              // also check that we're going in opposing directions :)
+              if game_object.direction.x * -distance.x < 0.0 {
+                game_objects[o_index].direction.x *= -1.0;
+              }
             } else {
-              game_objects[game_object_index].direction.y *= -1.0;
+              // flip vertical
+              // also check that we're going in opposing directions :)
+              if game_object.direction.y * -distance.y < 0.0 {
+                game_objects[o_index].direction.y *= -1.0;
+              }
             }
-            //game_objects[game_object_index].lifetime = characters[&character].primary_range / characters[&character].primary_shot_speed;
-            game_objects[game_object_index].position.x += game_objects[game_object_index].direction.x * (TILE_SIZE*0.3); // this might break at very low freq like 26Hz
-            game_objects[game_object_index].position.y += game_objects[game_object_index].direction.y * (TILE_SIZE*0.3);
+            //game_objects[o_index].lifetime = characters[&character].primary_range / characters[&character].primary_shot_speed;
+            game_objects[o_index].position.x += game_objects[o_index].direction.x * (TILE_SIZE*0.3); // this might break at very low freq like 26Hz
+            game_objects[o_index].position.y += game_objects[o_index].direction.y * (TILE_SIZE*0.3);
 
             // reset the lifetime (which in turn resets its range)
             let distance = characters[&character].primary_range;
             let speed = bullet_speed;
-            game_objects[game_object_index].lifetime = distance / speed;
-            game_objects[game_object_index].to_be_deleted = false;
+            game_objects[o_index].lifetime = distance / speed;
+            game_objects[o_index].to_be_deleted = false;
           }
         }
       }
@@ -1725,7 +1767,7 @@ fn apply_simple_bullet_logic_extra(
       // if it's colliding
       let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
       if distance < (0.5 * TILE_SIZE + wall_hit_radius) {
-        if game_objects[game_object_index].players.contains(&548) {
+        if game_objects[o_index].players.contains(&548) {
           continue;
         }
         let mut direction: Vector2 = game_object.direction;
@@ -1746,19 +1788,19 @@ fn apply_simple_bullet_logic_extra(
         // apply orb healing
         if game_objects[victim_object_index].hitpoints == 0 {
           let team = player.team;
-          for player_index in 0..main_loop_players.len() {
-            if main_loop_players[player_index].team == team {
-              main_loop_players[player_index].health += ORB_HEALING;
-              if main_loop_players[player_index].health > 100 {
-                main_loop_players[player_index].health = 100;
+          for p_index in 0..players.len() {
+            if players[p_index].team == team {
+              players[p_index].health += ORB_HEALING;
+              if players[p_index].health > 100 {
+                players[p_index].health = 100;
               }
             }
           }
         }
         // 548 IS THE NUMBER OF THE ORB
-        game_objects[game_object_index].players.push(548);
+        game_objects[o_index].players.push(548);
         if !pierceing_shot {
-          game_objects[game_object_index].to_be_deleted = true;
+          game_objects[o_index].to_be_deleted = true;
         }
       }
     }
@@ -1766,51 +1808,51 @@ fn apply_simple_bullet_logic_extra(
 
   // Calculate collisions with players
   let mut hit: bool = false; // whether we've hit a player
-  for player_index in 0..main_loop_players.len() {
-    if main_loop_players[player_index].is_dead {
+  for p_index in 0..players.len() {
+    if players[p_index].is_dead {
       continue; // skip dead player
     }
     // If we hit a bloke
-    if Vector2::distance(game_object.position, main_loop_players[player_index].position) < hit_radius &&
-    owner_port != main_loop_players[player_index].port {
+    if Vector2::distance(game_object.position, players[p_index].position) < hit_radius &&
+    owner_port != players[p_index].port {
       // And if we didn't hit this bloke before
-      if !(game_object.players.contains(&player_index)) {
+      if !(game_object.players.contains(&p_index)) {
         // Apply bullet damage
-        if main_loop_players[player_index].team != player.team {
+        if players[p_index].team != player.team {
           // Confirmed hit.
           hit = true;
-          main_loop_players[player_index].damage(damage, characters.clone());
-          game_objects[game_object_index].players.push(player_index);
+          players[p_index].damage(damage, characters.clone());
+          game_objects[o_index].players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
-            game_objects[game_object_index].to_be_deleted = true;
+            game_objects[o_index].to_be_deleted = true;
           }
         }
         // Apply bullet healing, only if in the same team
-        if main_loop_players[player_index].team == player.team && healing > 0 {
-          main_loop_players[player_index].heal(healing, characters.clone());
-          game_objects[game_object_index].players.push(player_index);
+        if players[p_index].team == player.team && healing > 0 {
+          players[p_index].heal(healing, characters.clone());
+          game_objects[o_index].players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
-            game_objects[game_object_index].to_be_deleted = true;
+            game_objects[o_index].to_be_deleted = true;
           }
         }
         // Apply appropriate secondary charge
-        let owner_index = index_by_port(owner_port, main_loop_players.clone());
-        main_loop_players[owner_index].add_charge(character_properties.secondary_hit_charge);
+        let owner_index = index_by_port(owner_port, players.clone());
+        players[owner_index].add_charge(character_properties.secondary_hit_charge);
       }
     }
   }
-  game_objects[game_object_index].position.x += game_objects[game_object_index].direction.x * true_delta_time as f32 * bullet_speed;
-  game_objects[game_object_index].position.y += game_objects[game_object_index].direction.y * true_delta_time as f32 * bullet_speed;
-  game_objects[game_object_index].traveled_distance += true_delta_time as f32 * bullet_speed;
-  return (main_loop_players, game_objects, hit);
+  game_objects[o_index].position.x += game_objects[o_index].direction.x * true_delta_time as f32 * bullet_speed;
+  game_objects[o_index].position.y += game_objects[o_index].direction.y * true_delta_time as f32 * bullet_speed;
+  game_objects[o_index].traveled_distance += true_delta_time as f32 * bullet_speed;
+  return (players, game_objects, hit);
 }
 
 fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
-  for player_index in 0..players.len() {
-    if players[player_index].port == port {
-      return player_index;
+  for p_index in 0..players.len() {
+    if players[p_index].port == port {
+      return p_index;
     }
   }
   println!("index_by_port function error - data race condition, mayhaps?\nAlternatively, there's just no players at all");
