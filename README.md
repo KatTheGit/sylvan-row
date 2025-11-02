@@ -50,12 +50,15 @@ This is just for me.
   - [ ] Redo all the gamemode logic. All of it.
 - [x] Implement feedback
   - [x] Nerf Raph's self heal
-  - [x] Rework Elizabeth
 - [ ] Characters
   - [ ] Rework Hernani secondary
-  - [ ] Rework Elizabeth
+  - [ ] ~~Elizabeth~~ Josey
     - [ ] Aim lazer shows ricochet
   - [ ] Temerity
+    - [ ] Primary
+    - [x] Dash (wallride)
+    - [ ] Secondary
+    - [ ] Passive
   - [x] Wiro
     - [x] Shield (secondary)
     - [x] Primary

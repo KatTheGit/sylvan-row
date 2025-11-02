@@ -161,9 +161,24 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 player.is_dashing = false;
                 player.last_dash_time = Instant::now();
 
+                // clear all other impulses
+                let mut cleaned_buffs: Vec<Buff> = Vec::new();
+                for buff in player.buffs.clone() {
+                  if buff.buff_type != BuffType::Impulse {
+                    cleaned_buffs.push(buff);
+                  }
+                }
+                player.buffs = cleaned_buffs;
+
                 // apply an impulse
-                println!("applying impulse NOW");
-                // player.aim_direction
+                player.buffs.push(
+                  Buff {
+                    value: 0.1 * TILE_SIZE,
+                    duration: 1.0,
+                    buff_type: BuffType::Impulse,
+                    direction: player.move_direction,
+                  }
+                );
               }
             }
             // NORMAL DASHES
@@ -324,18 +339,26 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           else {
             // (vscode) MARK: Movement Legality
             // Movement legality calculations
-            let raw_movement = recieved_player_info.movement;
+            let mut raw_movement = recieved_player_info.movement;
             let mut movement = Vector2::new();
             let player_movement_speed: f32 = characters[&player.character].speed;
             let mut extra_speed: f32 = 0.0;
-            for buff in player.buffs.clone() {
-              if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
-                extra_speed += buff.value;
+            for b_index in 0..player.buffs.len() {
+              if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&player.buffs[b_index].buff_type) {
+                extra_speed += player.buffs[b_index].value;
+              }
+              if player.buffs[b_index].buff_type == BuffType::Impulse {
+                // yeet
+                let direction = player.buffs[b_index].direction.normalize();
+                // time left serves as impulse decay
+                let time_left = player.buffs[b_index].duration;
+                let strength = player.buffs[b_index].value;
+                raw_movement += direction * f32::powi(time_left, 2) * strength;
+                movement_legal = false;
               }
             }
 
-            movement.x = raw_movement.x * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
-            movement.y = raw_movement.y * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
+            movement = raw_movement * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
 
             // calculate current expected position based on input
             let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
@@ -345,8 +368,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               game_objects.clone()
             );
 
-            new_position.x = previous_position.x + new_movement_raw.x * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
-            new_position.y = previous_position.y + new_movement_raw.y * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
+            new_position = previous_position + new_movement_raw * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
 
             player.move_direction = new_movement_raw;
 
@@ -1097,8 +1119,18 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               }
             }
           }
+          // TEMERITY
           Character::Temerity => {
+            if players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
 
+              // apply an impulse
+              let direction = players[p_index].aim_direction;
+              let yeet = 0.2 * TILE_SIZE;
+              players[p_index].buffs.push(
+                Buff { value: yeet, duration: 1.0, buff_type: BuffType::Impulse, direction }
+              );
+              secondary_used_successfully = true;
+            }
           }
           Character::Dummy => {}  
         }

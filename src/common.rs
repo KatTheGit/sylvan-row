@@ -531,6 +531,7 @@ impl Vector2 {
     return f32::sqrt(f32::powi(vec1.x - vec2.x, 2) + f32::powi(vec1.y - vec2.y, 2))
   }
   /// vec2 - vec1
+  /// TO DO: Phase out this function
   pub fn difference(vec1: Vector2, vec2: Vector2) -> Vector2 {
     return Vector2 {
       x: vec2.x - vec1.x,
@@ -543,6 +544,69 @@ impl Vector2 {
   pub fn clean(&mut self) {
     self.x.clean();
     self.y.clean();
+  }
+}
+use std::ops;
+// Add Vector2 to Vector2
+impl ops::Add<Vector2> for Vector2 {
+  type Output = Vector2;
+  fn add(self, other: Vector2) -> Vector2 {
+    let result: Vector2 = Vector2 {
+      x: self.x + other.x,
+      y: self.y + other.y,
+    };
+    result
+  }
+}
+// Add Vector2 to Vector2
+impl ops::AddAssign<Vector2> for Vector2 {
+  fn add_assign(&mut self, other: Vector2) -> () {
+    *self = Vector2 {
+      x: self.x + other.x,
+      y: self.y + other.y,
+    };
+  }
+}
+// Add Vector2 to Vector2
+impl ops::SubAssign<Vector2> for Vector2 {
+  fn sub_assign(&mut self, other: Vector2) -> () {
+    *self = Vector2 {
+      x: self.x - other.x,
+      y: self.y - other.y,
+    };
+  }
+}
+// Substract Vector2 to Vector2
+impl ops::Sub<Vector2> for Vector2 {
+  type Output = Vector2;
+  fn sub(self, other: Vector2) -> Vector2 {
+    let result: Vector2 = Vector2 {
+      x: self.x - other.x,
+      y: self.y - other.y,
+    };
+    result
+  }
+}
+// Multiply Vector2 by f32
+impl ops::Mul<f32> for Vector2 {
+  type Output = Vector2;
+  fn mul(self, other: f32) -> Vector2 {
+    let result: Vector2 = Vector2 {
+      x: self.x * other,
+      y: self.y * other,
+    };
+    result
+  }
+}
+// Divide Vector2 by f32
+impl ops::Div<f32> for Vector2 {
+  type Output = Vector2;
+  fn div(self, other: f32) -> Vector2 {
+    let result: Vector2 = Vector2 {
+      x: self.x / other,
+      y: self.y / other,
+    };
+    result
   }
 }
 
