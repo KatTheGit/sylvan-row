@@ -220,9 +220,8 @@ Intended playstyle:
 - **Secondary** - Rocket Jump
   - Launch a rocket under yourself, that damages opponents in an AOE and boosts you forward.
 - **Dash** - Hasty Dispatch
-  - Instead of a conventional dash, holding **Dash** lets ride a wall.
-  - Wallriding makes you move alongside a wall, at an increased speed.
-  - You carry momentum from your wallrides after releasing.
+  - Holding **Dash** lets you wallride, letting you move quickly alongside walls.
+  - You carry momentum from wallriding after after releasing.
 - **Passive** - Save the City
   - Heal damaged walls around you.
 

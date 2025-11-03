@@ -44,10 +44,7 @@ This is just for me.
 
 ## Minimal presentable game
 - [ ] Fix bugs
-  - [x] Elizabeth
-  - [x] `thread 'main' panicked at src/bin/server.rs:1479:11` and `thread 'main' panicked at src/bin/server.rs:514:15:`
-    - [x] temporary fix
-  - [ ] Redo all the gamemode logic. All of it.
+  - [ ] Redo all the gamemode logic.
 - [x] Implement feedback
   - [x] Nerf Raph's self heal
 - [ ] Characters
@@ -57,6 +54,7 @@ This is just for me.
   - [ ] Temerity
     - [ ] Primary
     - [x] Dash (wallride)
+      - serverside
     - [ ] Secondary
     - [ ] Passive
   - [x] Wiro
@@ -97,7 +95,8 @@ This is just for me.
   - [ ] Mirror the map
 - [ ] Interpolation
   - [ ] Keep extrapolation for SIMPLE objects.
-  - [ ] Remove clientside dash, make it interpolate instead
+  - [ ] Self-interpolation on dashes and wallrides
+  - [ ] Player interpolation for other players
 - [ ] Anticheat
   - [ ] Packet averaging
   - [ ] Hide certain information from client

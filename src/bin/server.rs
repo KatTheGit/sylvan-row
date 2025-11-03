@@ -103,7 +103,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           
           let mut new_position = Vector2::new();
           let recieved_position = recieved_player_info.position;
-          let movement_error_margin = 5.0;
+          let movement_error_margin = 3.0;
           let mut movement_legal = true;
           let previous_position = player.position.clone();
           
@@ -112,7 +112,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           match player.character {
             Character::Temerity => {
               // INITIATE WALLRIDE
-              let wallride_initiation_distance = 2.0 * TILE_SIZE;
+              let wallride_initiation_distance = characters[&player.character].dash_distance;
               if recieved_player_info.dashing && !player.is_dashing
               && player.last_dash_time.elapsed().as_secs_f32() > characters[&player.character].dash_cooldown {
                 // inform the rest of the code we're wallriding.
@@ -134,7 +134,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 // if we CAN wallride
                 if shortest_distance != f32::INFINITY {
                   // "radius" vector
-                  let difference = Vector2::difference(closest_pos, player.position);
+                  let difference = player.position - closest_pos;
                   // perpendicular vector (tangent vector)
                   let difference_perpendicular: Vector2 = Vector2 { x: difference.y, y: -difference.x };
                   let player_direction = player.move_direction;
@@ -152,8 +152,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                   // just inform the code we're not wallriding.
                   player.is_dashing = false;
                 }
-
-                
               }
               // TERMINATE WALLRIDE
               if !recieved_player_info.dashing && player.is_dashing {
@@ -283,7 +281,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
                 // using dash_direction.x to store our direction, since this variable is unused on this character.
                 let clockwise: f32 = player.dash_direction.x;
-                println!("{:?}", clockwise);
 
                 // find the closest object
                 let mut closest_pos: Vector2 = Vector2::new();
@@ -300,21 +297,40 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
 
                 // now we pivot around closest_pos
                 // find the radius vector to the nearest wall
-                let difference = Vector2::difference(closest_pos, player.position).normalize();
+                let difference = (player.position - closest_pos).normalize();
                 // get the perpendicular tangent to the nearest wall circle thingy.
                 // also make sure it points in the right direction
                 let difference_perpendicular: Vector2 = Vector2 { x: difference.y * clockwise, y: -difference.x * clockwise };
 
                 let speed = characters[&player.character].dash_speed;
                 let wallride_distance = characters[&player.character].dash_distance;
+                let pow = 8.0;
+                let scale: f32 = 0.7;
+                //let wallride_distance = scale * (TILE_SIZE/2.0) * f32::powf(f32::powf(difference.x, pow) + f32::powf(difference.y, pow), 1.0/pow);
+                //let wallride_distance = TILE_SIZE * scale * f32::powf(f32::powf(f32::abs(difference.x), pow) + f32::powf(f32::abs(difference.y), pow), 1.0/pow);
 
-                // lock our position at the right distance.
-                new_position.x = closest_pos.x + wallride_distance * difference.x;
-                new_position.y = closest_pos.y + wallride_distance * difference.y;
-                
+                println!("{:?}", difference);
+                println!("{:?}", wallride_distance);
+
                 // now apply this movement as our new movement vector
-                new_position.x += difference_perpendicular.x * speed * time_since_last_packet as f32;
-                new_position.y += difference_perpendicular.y * speed * time_since_last_packet as f32;
+                new_position = player.position + difference_perpendicular * speed * time_since_last_packet as f32;
+                
+                // lock our position at the right distance.
+                let mut diff: Vector2 = (new_position - closest_pos).normalize();
+
+                // we want the new vector (x2, y2) to satisfy the equation x^a + y^a = r^a
+                // we have its direction, (x1, y1), so (x2, y2) = z * (x1, y1), and we want
+                // to find the scalar z.
+                // We want (x2, y2) to satisfy the equation so just chuck it in there:
+                // x2^a + y2^a = r^a         <=>
+                // (zx1^)a + (zy1)^a = r^a   <=>
+                // (z^a)(x1^a + y1^a) = r^a  <=>
+                // z^a = r^a / (x1^a + y1^a) <=>
+                // z = (r^a / (x1^a + y1^a))^(1/a)
+                // look at that we found x.
+                diff = diff * (scale.powf(pow)/(diff.x.powf(pow) + diff.y.powf(pow))).powf(1.0/pow);
+
+                new_position = closest_pos + diff * wallride_distance;
 
                 // update player info. This will be used when giving the character an impulse
                 player.move_direction = difference_perpendicular;
@@ -353,7 +369,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 // time left serves as impulse decay
                 let time_left = player.buffs[b_index].duration;
                 let strength = player.buffs[b_index].value;
-                raw_movement += direction * f32::powi(time_left, 2) * strength;
+                raw_movement += direction * f32::powi(time_left, 1) * strength;
                 movement_legal = false;
               }
             }
