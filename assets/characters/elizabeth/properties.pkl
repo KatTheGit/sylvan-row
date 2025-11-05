@@ -33,4 +33,5 @@ dash_cooldown = 2.5
 dash_damage_multiplier = 1.0
 dash_speed = 20.0
 
+passive_value = 0
 passive_range = 0.0

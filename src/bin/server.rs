@@ -101,7 +101,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;
           
-          let mut new_position = Vector2::new();
+          let mut new_position: Vector2;
           let recieved_position = recieved_player_info.position;
           let movement_error_margin = 3.0;
           let mut movement_legal = true;
@@ -140,7 +140,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                   let player_direction = player.move_direction;
                   // use the dot product to get the direction as a rotation
                   let dot_product: f32 = player_direction.x * difference_perpendicular.x + player_direction.y * difference_perpendicular.y;
-                  println!("{:?}", dot_product);
                   // kinda lame that trigonometrical direction is the opposite of clockwise,
                   // always gotta put an "anti" in my sentence ykwhatimean
                   let clockwise = f32::signum(dot_product);
@@ -309,9 +308,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 //let wallride_distance = scale * (TILE_SIZE/2.0) * f32::powf(f32::powf(difference.x, pow) + f32::powf(difference.y, pow), 1.0/pow);
                 //let wallride_distance = TILE_SIZE * scale * f32::powf(f32::powf(f32::abs(difference.x), pow) + f32::powf(f32::abs(difference.y), pow), 1.0/pow);
 
-                println!("{:?}", difference);
-                println!("{:?}", wallride_distance);
-
                 // now apply this movement as our new movement vector
                 new_position = player.position + difference_perpendicular * speed * time_since_last_packet as f32;
                 
@@ -356,7 +352,6 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             // (vscode) MARK: Movement Legality
             // Movement legality calculations
             let mut raw_movement = recieved_player_info.movement;
-            let mut movement = Vector2::new();
             let player_movement_speed: f32 = characters[&player.character].speed;
             let mut extra_speed: f32 = 0.0;
             for b_index in 0..player.buffs.len() {
@@ -374,7 +369,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               }
             }
 
-            movement = raw_movement * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
+            let movement = raw_movement * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
 
             // calculate current expected position based on input
             let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
@@ -445,6 +440,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                     Character::Cynewynn => player.previous_positions.clone(),
                     _ => Vec::new(),
                   },
+                  stacks : player.stacks,
                 })
               }
             }
@@ -469,6 +465,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
                 time_since_last_primary: player.last_shot_time.elapsed().as_secs_f32(),
                 time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
                 time_since_last_secondary: player.secondary_cast_time.elapsed().as_secs_f32(),
+                stacks: player.stacks,
               },
               players: other_players,
               game_objects: game_objects.clone(),
@@ -775,6 +772,24 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           }
         }
       }
+      // TEMERITY - heal walls around her
+      if tick {
+        if players[p_index].character == Character::Temerity {
+          for o_index in 0..game_objects.len() {
+            if WALL_TYPES.contains(&game_objects[o_index].object_type) {
+              let range = characters[&Character::Temerity].passive_range;
+              if Vector2::distance(game_objects[o_index].position, players[p_index].position) < range {
+                let heal_value = characters[&Character::Temerity].passive_value;
+                if game_objects[o_index].hitpoints < WALL_HP - heal_value {
+                  game_objects[o_index].hitpoints += heal_value;
+                } else {
+                  game_objects[o_index].hitpoints = WALL_HP;
+                }
+              }
+            } 
+          }
+        }
+      }
 
       // increase secondary charge passively
       if tick {
@@ -959,7 +974,24 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
             }
           }
           Character::Temerity => {
-
+            game_objects.push(GameObject {
+              object_type: GameObjectType::TemerityRocket,
+              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
+              position: players[p_index].position,
+              direction: players[p_index].aim_direction,
+              to_be_deleted: false,
+              hitpoints: 0,
+              owner_port: players[p_index].port,
+              lifetime: match players[p_index].stacks {
+                0 => character.primary_range   / character.primary_shot_speed,
+                1 => character.primary_range_2 / character.primary_shot_speed,
+                2 => character.primary_range_3 / character.primary_shot_speed,
+                _ => panic!()
+              },
+              players: Vec::new(),
+              traveled_distance: 0.0,
+            });
+            shot_successful = true;
           }
           Character::Dummy => {
             game_objects.push(GameObject {
@@ -1138,13 +1170,25 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           // TEMERITY
           Character::Temerity => {
             if players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
-
               // apply an impulse
               let direction = players[p_index].aim_direction;
               let yeet = 0.2 * TILE_SIZE;
+              let lifetime = 0.2;
               players[p_index].buffs.push(
                 Buff { value: yeet, duration: 1.0, buff_type: BuffType::Impulse, direction }
               );
+              game_objects.push(GameObject {
+                object_type: GameObjectType::TemerityRocketSecondary,
+                size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                position: players[p_index].position + players[p_index].aim_direction * -characters[&Character::Temerity].secondary_range,
+                direction: players[p_index].aim_direction * -1.0,
+                to_be_deleted: false,
+                owner_port: players[p_index].port,
+                hitpoints: 0,
+                lifetime,
+                players: vec![],
+                traveled_distance: 0.0,
+              });
               secondary_used_successfully = true;
             }
           }
@@ -1282,7 +1326,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           let hit: bool;
           (players, *game_objects, hit) = apply_simple_bullet_logic_extra(
             players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true,
-            characters[&Character::Raphaelle].primary_damage_2, 255, false, f32::INFINITY);
+            characters[&Character::Raphaelle].primary_damage_2, 255, false, f32::INFINITY, f32::INFINITY);
           if hit {
             // restore dash charge (0.5s)
             let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
@@ -1337,7 +1381,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
         // ELIZABETH primary
         GameObjectType::ElizabethProjectileRicochet => {
           (players, *game_objects, _) = apply_simple_bullet_logic_extra(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true, 
-            255, 255, true, f32::INFINITY);
+            255, 255, true, f32::INFINITY, f32::INFINITY);
         }
         // ELIZABETH primary but recalled
         GameObjectType::ElizabethProjectileGroundRecalled => {
@@ -1476,7 +1520,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           let speed = characters[&Character::Elizabeth].primary_shot_speed_2;
           (players, *game_objects, _) = apply_simple_bullet_logic_extra(
             players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false,
-            damage, 255, false, speed);
+            damage, 255, false, speed, f32::INFINITY);
         }
         // WIRO'S SHIELD
         GameObjectType::WiroShield => {
@@ -1540,7 +1584,7 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
           }
           let hit: bool;
           (players, *game_objects, hit) = apply_simple_bullet_logic_extra(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true, 
-            damage, 255, false, f32::INFINITY);
+            damage, 255, false, f32::INFINITY, f32::INFINITY);
           if hit {
             let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
             players[owner_index].stacks = 1;
@@ -1566,6 +1610,29 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               game_objects[o_index].players.push(victim_index);
             }
           }
+        }
+        // TEMERITY ROCKET LAUNCHAAA
+        GameObjectType::TemerityRocket => {
+          let hit: bool;
+          (players, *game_objects, hit) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false);
+          let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
+          if hit && players[owner_index].stacks < 2 {
+            players[owner_index].stacks += 1;
+          }
+        }
+        GameObjectType::TemerityRocketSecondary => {
+          (players, *game_objects, _) = apply_simple_bullet_logic_extra(
+            players, characters.clone(),
+            game_objects.clone(),
+            o_index,
+            true_delta_time,
+            true,
+            characters[&Character::Temerity].secondary_damage,
+            255,
+            false,
+            characters[&Character::Temerity].primary_shot_speed_2,
+            characters[&Character::Temerity].secondary_range,
+          );
         }
         _ => {}
       }
@@ -1599,6 +1666,14 @@ fn game_server_instance(max_players: usize, selected_gamemode: GameMode) -> () {
               }
             );
           },
+          // If we didn't hit anybody, take away all stacks, to bring the combo
+          // back to its first projectile
+          GameObjectType::TemerityRocket => {
+            if game_object.players.is_empty() {
+              let owner_index = index_by_port(game_object.owner_port, players.clone());
+              players[owner_index].stacks = 0;
+            }
+          }
           _ => {},
         }
       } else {
@@ -1763,7 +1838,7 @@ fn apply_simple_bullet_logic(
   true_delta_time:       f64,
   pierceing_shot:        bool,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
-  return apply_simple_bullet_logic_extra(players, characters, game_objects, o_index, true_delta_time, pierceing_shot, 255, 255, false, f32::INFINITY);
+  return apply_simple_bullet_logic_extra(players, characters, game_objects, o_index, true_delta_time, pierceing_shot, 255, 255, false, f32::INFINITY, f32::INFINITY);
 }
 
 /// Applies modifications to players and game objects as a result of
@@ -1783,15 +1858,22 @@ fn apply_simple_bullet_logic_extra(
   special_healing:       u8,
   ricochet:              bool,
   special_speed:         f32,
+  special_hit_radius:    f32,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   let game_object = game_objects[o_index].clone();
   let owner_port = game_object.owner_port;
   let player = players[index_by_port(owner_port, players.clone())].clone();
   let character = player.character;
   let character_properties = characters[&character].clone();
-  let hit_radius: f32 = character_properties.primary_hit_radius;
   let wall_hit_radius: f32 = character_properties.primary_wall_hit_radius;
+  
+  let hit_radius: f32;
 
+  if special_hit_radius == f32::INFINITY {
+    hit_radius = character_properties.primary_hit_radius;
+  } else {
+    hit_radius = special_hit_radius;
+  }
 
   let bullet_speed: f32;
   if special_speed == f32::INFINITY { bullet_speed  = character_properties.primary_shot_speed}

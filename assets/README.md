@@ -20,7 +20,7 @@ This document specifies guidelines to aid with the development of this game from
     - [4.1.3. Alita \[not implemented\]](#413-alita-not-implemented)
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
-    - [4.2.2. Temerity \[semi-implemented\]](#422-temerity-semi-implemented)
+    - [4.2.2. Temerity](#422-temerity)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Josey](#432-josey)
@@ -209,7 +209,7 @@ Intended playstyle:
 - A balanced hit & run. She gains from not retreating.
 - She has to be careful. Her dash is on a long cooldown and her secondary reduces her fire rate. Her actions must be planned and she significantly weakens from a hesitant player. Her mobility is her downfall, a smart player might be able to bait out a dash and play around her cooldowns.
 
-### 4.2.2. Temerity [semi-implemented]
+### 4.2.2. Temerity
 
 - **Primary** - The Subtle Art of a Rocket Launcher
   - A three-hit combo:
@@ -218,7 +218,7 @@ Intended playstyle:
     - A difficult to hit long-range attack
   - If you hit an opponent, you switch to the next attack. Hitting an opponent with the last attack doesn't switch attacks. Missing any attack resets it to the first one.
 - **Secondary** - Rocket Jump
-  - Launch a rocket under yourself, that damages opponents in an AOE and boosts you forward.
+  - Launch a rocket under yourself that damages opponents in an AOE and boosts you forward.
 - **Dash** - Hasty Dispatch
   - Holding **Dash** lets you wallride, letting you move quickly alongside walls.
   - You carry momentum from wallriding after after releasing.
@@ -229,6 +229,7 @@ Intended playstyle:
 - zoop in and out weeee
 - Reward people for getting close by giving them two safe shots
 - ROCKET LAUNCHER RAHHHHHH
+- Combo heavy
 
 ## 4.3. Ranged/Control
 

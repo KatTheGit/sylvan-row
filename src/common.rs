@@ -11,6 +11,8 @@ use std::time::SystemTime;
 pub const TILE_SIZE: f32 = 8.0;
 pub const ORB_HEALING: u8 = 20;
 
+pub const WALL_HP: u8 = 30;
+
 pub const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall];
 pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall, GameObjectType::Water1, GameObjectType::Water2];
 
@@ -148,6 +150,7 @@ pub struct CharacterProperties {
   pub dash_speed:                   f32,
 
   pub passive_range:                f32,
+  pub passive_value:                u8,
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
@@ -202,6 +205,7 @@ impl CharacterProperties {
       dash_damage_multiplier:   pkl_f32(find_parameter(&pkl, "dash_damage_multiplier"   ).unwrap()),
       dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed"               ).unwrap())*TILE_SIZE,
       passive_range:            pkl_f32(find_parameter(&pkl, "passive_range"            ).unwrap())*TILE_SIZE,
+      passive_value:            pkl_u8( find_parameter(&pkl, "passive_value"            ).unwrap()),
     }
   }
 }
@@ -252,6 +256,11 @@ pub struct ClientPlayer {
   /// is currently dashing
   pub is_dashing: bool,
   pub dashed_distance: f32,
+  pub stacks: u8,
+  /// Used by client player. If true, lock movement and interpolate position
+  pub interpolating: bool,
+  pub interpol_prev: Vector2,
+  pub interpol_next: Vector2,
 }
 /// Information sent by server to client about other players.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -270,6 +279,7 @@ pub struct OtherPlayer {
   pub camera: Camera,
   pub buffs: Vec<Buff>,
   pub previous_positions: Vec<Vector2>,
+  pub stacks: u8,
 }
 impl ClientPlayer {
   pub fn from_otherplayer(other_player: OtherPlayer) -> ClientPlayer {
@@ -293,6 +303,10 @@ impl ClientPlayer {
       dashing: false,
       is_dashing: false,
       dashed_distance: 0.0,
+      stacks: other_player.stacks,
+      interpolating: false,
+      interpol_next: Vector2::new(),
+      interpol_prev: Vector2::new(),
     }
   }
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties) {
@@ -378,6 +392,10 @@ impl ClientPlayer {
       dashing: false,
       is_dashing: false,
       dashed_distance: 0.0,
+      stacks: 0,
+      interpolating: false,
+      interpol_next: Vector2::new(),
+      interpol_prev: Vector2::new(),
     };
   }
 }
@@ -421,6 +439,7 @@ pub struct ServerRecievingPlayerPacket {
   pub time_since_last_primary: f32,
   pub time_since_last_dash: f32,
   pub time_since_last_secondary: f32,
+  pub stacks: u8,
 }
 
 /// information sent by server to client
@@ -499,6 +518,9 @@ pub enum GameObjectType {
   /// When wiro dashes, this projectile copies his position and is used for
   /// the healing/damaging logic
   WiroDashProjectile,
+  /// ROCKET LAUNCHA
+  TemerityRocket,
+  TemerityRocketSecondary,
 }
 // MARK: Vectors
 // utility
@@ -702,7 +724,7 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
       direction: Vector2::new(),
       to_be_deleted: false,
       owner_port: 200,
-      hitpoints: 30,
+      hitpoints: WALL_HP,
       lifetime: f32::INFINITY,
       players: Vec::new(),
       traveled_distance: 0.0,
@@ -843,26 +865,4 @@ pub fn dashing_logic(mut is_dashing: bool, mut dashed_distance: f32, dash_direct
     new_position = current_position; // idk why this is like this, whatever
   }
   return (new_position, dashed_distance, is_dashing);
-}
-
-pub fn apply_wallride_force(movement_vector: Vector2, game_objects: Vec<GameObject>, player_pos: Vector2) -> Vector2 {
-  let mut new_mov_vector: Vector2 = movement_vector;
-
-  let constant: f32 = 1.0;
-  let cutoff: f32 = 2.0;
-
-  for game_object in game_objects {
-    // if the object is a wall
-    if WALL_TYPES.contains(&game_object.object_type){
-      let wall_pos = game_object.position;
-      let difference = Vector2::difference(player_pos, wall_pos);
-      if difference.magnitude() < TILE_SIZE * cutoff {
-        new_mov_vector.y += (1.0/(difference.magnitude())) * constant * difference.normalize().y;
-        new_mov_vector.x += (1.0/(difference.magnitude())) * constant * difference.normalize().x;
-      }
-
-    }
-  }
-
-  return new_mov_vector;
 }

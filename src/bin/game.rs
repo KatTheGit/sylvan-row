@@ -164,6 +164,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         GameObjectType::WiroShield                        => load!("ui/temp_ability_1.png"),
         GameObjectType::WiroGunShot                       => load!("ui/temp_ability_1.png"),
         GameObjectType::WiroDashProjectile                => load!("empty.png"),
+        GameObjectType::TemerityRocket                    => load!("ui/temp_ability_1.png"),
+        GameObjectType::TemerityRocketSecondary           => load!("ui/temp_ability_1.png"),
       }
     );
   }
@@ -438,7 +440,18 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
 
     // draw player and aim laser
-    let range = character_properties[&player_copy.character].primary_range;
+    let mut range = character_properties[&player_copy.character].primary_range;
+    if player_copy.character == Character::Temerity {
+      if player_copy.stacks == 0 {
+        range = character_properties[&player_copy.character].primary_range
+      }
+      if player_copy.stacks == 1 {
+        range = character_properties[&player_copy.character].primary_range_2
+      }
+      if player_copy.stacks == 2 {
+        range = character_properties[&player_copy.character].primary_range_3
+      }
+    }
     let relative_position_x = 50.0 * (16.0/9.0) + player_copy.position.x - player_copy.camera.position.x; //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
     let relative_position_y = 50.0              + player_copy.position.y - player_copy.camera.position.y; //+ (vh * 100.0) / 2.0;
     // test
@@ -769,6 +782,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         player.last_shot_time = recieved_server_info.player_packet_is_sent_to.time_since_last_primary;
         player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.time_since_last_dash;
         player.last_secondary_time = recieved_server_info.player_packet_is_sent_to.time_since_last_secondary;
+        player.stacks = recieved_server_info.player_packet_is_sent_to.stacks;
         drop(player); // free mutex guard ASAP for other thread to access player.
         
 
@@ -1155,9 +1169,9 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
       }
     }
     match unsorted_objects[current_lowest_index].object_type {
-      GameObjectType::RaphaelleAura      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
-      GameObjectType::Water1      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
-      GameObjectType::Water2      => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::RaphaelleAura   => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::Water1          => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
+      GameObjectType::Water2          => { sorted_objects_layer_1.push(unsorted_objects[current_lowest_index].clone()); }
       GameObjectType::HernaniLandmine => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }
       _                               => { sorted_objects_layer_2.push(unsorted_objects[current_lowest_index].clone()); }
     }
