@@ -282,11 +282,11 @@ Intended playstyle:
 
 # 6. Lore
 
-The lore serves as guidelines for creating characters. Do be kind enough to forgive my unpolished writing.
+The lore serves as guidelines for creating characters. In-game at least, the tidbits of lore should try to be funny and unserious. This is not the case here because I need to condense the world into this document, so do be kind enough to forgive my unpolished writing.
 
 ## 6.1. Setting
 
-The world of Sylvan Row is that of a huge forest, populated by little villages and only one remarkable landmark, the City, being the only urban setting of the world. Most species of this world are humanoid, but primates don't exist.
+The world of Sylvan Row is that of a huge forest, populated by little villages and only one remarkable landmark, the City, being the only urban setting of the world. Most animal species of the world are humanoid, but not too much thought should be put into things like evolution.
 
 The largest of the villages in the forest, and arguably the second most important landmark, is the Sanctum. It is home to a devoted group of religious animals, known as Angels. Their religion is widespread and accepted as truth (because it is). The religion consists of taking care of the Forest, which is a manifestation of God, in return of its shelter. This is done by the three ranks of Angels:
 - Seraphim are capable of understanding how God manifests herself in the flora. They are sometimes seen as insane but most of the time are not seen at all, and have specialised healing magic which can appease God.
@@ -305,12 +305,16 @@ The forest is also home to Eternals, a group of creatures of unknown origin to G
 
 All names are subject to change.
 
-Raphaelle is an Archangel. She served as a combat medic, but over her many battles has come to enjoy the "combat" part of medic, learning fighting skills and tieing them with her healing magic, creating a hybrid fighting style. Some Angels are concerned she's enjoying combat a little too much, but she remains a valuable asset.
+Raphaelle is an Archangel and a combat medic, but over her many battles had come to enjoy the "combat" part of medic, learning fighting skills and tying them with her healing magic, creating a hybrid fighting style. Some Angels are concerned she might be enjoying combat a bit more than a sworn pacifist should, but she remains a valuable asset.
 
-Hernani is a bandit and a member of the anarchists, convinced of being shunned by society. He is a very troubled person, at conflict with himself much more than he is with anybody else. He is very paranoid, which be seen in his cautious fighting style. Overall he is relatively ridiculous.
+Hernani is a bandit and a member of the anarchists, convinced of being shunned by society. He is a very troubled person, at conflict with himself much more than he is with anybody else. His paranoia led him to a very cautious fighting style, which he has nevertheless mastered, making him a feared musketeer.
 
 Cynewynn is the current ruler of the City. She is the one who has brought to fruition all the changes that made the city into its current utopia - but at a cost. To seize the throne, she had to kill many people in power, including her husband. This bloodshed was not reflected in her ruling and was a purely pragmatic act. Nowadays she feels gutting remorse for what she did, completely ignoring the new world she created. She's more proficient than anyone could even dream of being in the arcane art of manipulating time, but no matter how strong her magic may ever get, she cannot undo what she did. She refuses to recognise it, at the detriment of her sanity, entirely convinced this problem is still within her reach, after so, so many years. Regardless of this, she has somehow remained a pleasant ruler, and has been slowly dissipating her power to create a more open government - one where experts of various fields may one day help the city directly.
 
-Wiro is a Guardian Angel weilding a gigantic shield, dedicating his life to protect others by whatever means necessary (more often than not, the means being a gigantic shield). His dedication does concern his close firends; Sometimes, it's almost like he *wants* to sacrifice himself. Nevertheless, he is incredibly caring towards anyone, regardless of who they may be. He is among the Angels who like the City.
+Temerity used to be part of the City's police force, but after the changes brought by Cynewynn's reign she was fired due to her methods being too "old school". In fairness, her habit of solving every issue with rocket launchers and her proficiency at crashing police-issued jets was already somewhat frowned upon even in the "old days". However she still performs her duties as a law enforcement officer by stealing equipment from the headquarters, despite the entire task force dedicated to her.
+
+Wiro is a Guardian Angel weilding a gigantic shield and shotgun, dedicating his life to protect others by whatever means necessary (more often than not, the means being a gigantic shield). His dedication does concern his close firends; Sometimes, it's almost like he *wants* to sacrifice himself. Nevertheless, he is incredibly caring towards anyone, regardless of who they may be. He is among the Angels who like the City.
+
+Josey was born with the power to partially intuit coincidence, and manipulate it into deterministic outcomes. In his early years he used this power to make a living through his holistic assasination agency, whose main selling point was the lack of evidence left behind by his "coincidental" methods. As the world changed around him, he took the opportunity to stop his evil trade and become an engineer instead. His intuition made of him a great mechanic, and if he ever had to fight, he'd do it reluctantly, relying on his contraptions to do his bidding. Him and Hernani are rivals, and constantly try to assassinate eachother, but there's something about the way they do it... the hatred isn't sincere, but something else is...
 
 One of the eternals is an odd ornithoid creature which experiences constant, insufferable pain, and exists for the sole purpose of being in pain. Anyone who crosses their path is struck with a sickening feeling of empathy, scarring even the hardest of souls and most weathered of warriors. Nobody leaves the encounter unchanged. The eternal's reaction to pain varies, often being passive and defeated, but in other times erratic and agitated.

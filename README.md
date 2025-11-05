@@ -49,14 +49,14 @@ This is just for me.
   - [x] Nerf Raph's self heal
 - [ ] Characters
   - [ ] Rework Hernani secondary
-  - [ ] ~~Elizabeth~~ Josey
+  - [x] ~~Elizabeth~~ Josey
     - [ ] Aim lazer shows ricochet
-  - [ ] Temerity
-    - [ ] Primary
+  - [x] Temerity
+    - [x] Primary
     - [x] Dash (wallride)
       - serverside
-    - [ ] Secondary
-    - [ ] Passive
+    - [x] Secondary
+    - [x] Passive
   - [x] Wiro
     - [x] Shield (secondary)
     - [x] Primary
