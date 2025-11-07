@@ -212,7 +212,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   }
 
   // modified by network listener thread, accessed by input handler and game thread
-  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map_maker.map"));
+  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
   let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::new(Mutex::new(game_objects));
 
   // accessed by game thread, modified by network listener thread.
@@ -310,7 +310,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     for game_object in game_objects.iter_mut() {
       match game_object.object_type {
         GameObjectType::RaphaelleBullet | GameObjectType::CynewynnSword | GameObjectType::HernaniBullet | GameObjectType::RaphaelleBulletEmpowered
-        | GameObjectType::ElizabethProjectileGroundRecalled | GameObjectType::ElizabethProjectileRicochet | GameObjectType::WiroGunShot => {
+        | GameObjectType::ElizabethProjectileGroundRecalled | GameObjectType::ElizabethProjectileRicochet | GameObjectType::WiroGunShot
+        | GameObjectType::TemerityRocket => {
           let speed: f32 = character_properties[&(match game_object.object_type {
             GameObjectType::RaphaelleBullet => Character::Raphaelle,
             GameObjectType::RaphaelleBulletEmpowered => Character::Raphaelle,
@@ -319,6 +320,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
             GameObjectType::ElizabethProjectileRicochet => Character::Elizabeth,
             GameObjectType::ElizabethProjectileGroundRecalled => Character::Elizabeth,
             GameObjectType::WiroGunShot => Character::Wiro,
+            GameObjectType::TemerityRocket => Character::Temerity,
             _ => panic!()
           })].primary_shot_speed;
           game_object.position.x += speed * game_object.direction.x * get_frame_time();
@@ -501,6 +503,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       }
     }
 
+    // (vscode) MARK: Draw Players
+
     // draw players and optionally their trails
     let trail_y_offset: f32 = 4.5;
     for player in other_players_copy.clone() {
@@ -523,7 +527,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       if player.character == Character::Raphaelle {
         for player_2 in all_players_copy.clone() {
           if Vector2::distance(player.position, player_2.position) < character_properties[&Character::Raphaelle].primary_range
-          && player.team == player_2.team {
+          && player.team == player_2.team
+          && (player.is_dead & player_2.is_dead) == false {
             // if on same team, green. If on enemy team, orange.
             let color = match player.team == player_copy.team {
               true => GREEN,
@@ -540,7 +545,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
     }
     for player in other_players_copy.clone() {
-      player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone());
+      if !player.is_dead {
+        player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone());
+      }
     }
     if player_copy.is_dead {
       draw_text("You dead rip", 20.0*vh, 50.0*vh, 20.0*vh, RED);

@@ -43,8 +43,10 @@ Maps are made through `mapmaker.py`.
 This is just for me.
 
 ## Minimal presentable game
-- [ ] Fix bugs
-  - [ ] Redo all the gamemode logic.
+
+- [x] Redo gamemode logic
+  - [x] Knockout gamemode
+  - [x] Small wait time before rounds
 - [x] Implement feedback
   - [x] Nerf Raph's self heal
 - [ ] Characters
@@ -69,18 +71,17 @@ This is just for me.
     - [x] Spawns every 20sec, if one's not already in the game
     - [x] Can be knocked back
     - [x] Whoever gets the final blow gets some HP
-  - [ ] AFTER MM-SERVER: a bit of time before the game starts
 - [ ] Menus
   - [x] Pause menu, always accessible
     - [ ] Settings screen
-  - [ ] Home menu and game
-    - Home menu comes with matchmaking server...
+  - [ ] Home menu
 - [ ] Matchmaking server ![mindmap](mm-mindmap.png)
   - [ ] **Part 1** (for open beta)
     - [ ] Player data
       - [ ] Username
       - [ ] Password (hashed)
       - [ ] Friends
+      - [ ] Muted players is CLIENTSIDE
       - [ ] Ban status
     - [ ] Basic authentication system
       - [ ] Create account

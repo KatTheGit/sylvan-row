@@ -45,13 +45,6 @@ impl Camera {
     return Camera { position: Vector2::new() };
   }
 }
-
-pub enum GameMode {
-  /// Round-based fight
-  Arena,
-  /// Instant respawns, no rounds, chaos.
-  DeathMatch,
-}
 /// This struct contains information related to the current match.
 /// It is sent over network.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -70,8 +63,9 @@ pub struct GameModeInfo {
   pub alive_blue: u8,
   /// Total amount of players on the team
   pub total_blue: u8,
-  /// How long to wait until a respawn after death
-  pub death_timeout: f32,
+  /// Whether the game has started and is in aciton (true), or
+  /// we're waiting for a round;
+  pub game_active: bool
 }
 impl GameModeInfo {
   pub fn new() -> GameModeInfo {
@@ -83,7 +77,7 @@ impl GameModeInfo {
       total_blue: 0,
       alive_red: 0,
       alive_blue: 0,
-      death_timeout: 3.0,
+      game_active: false,
     }
   }
 }

@@ -1,74 +1,14 @@
 import io
 import random
 
+# just edit the python file itself
+
 tile_size = 1 # Dont change this
-map_path = "assets/maps/map_maker.map"
+map_path = "assets/maps/map1-cages.map"
 # W = wall
 # U = unbreakable_wall
 # I = Water, edge
 # L = Water, full
-map_drawing = """
-UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
-U.................................U
-U.................................U
-U..................WWWW...........U
-U.....................W...........U
-U.....................W...........U
-U..........W..........W...........U
-U..........W..........W...........U
-U..........WU......UWWW...........U
-U.................................U
-U.................................U
-U............................W....U
-U....UWW........WUW..........U....U
-U....U..........WUW........WWU....U
-U....W............................U
-U.................................U
-U.................................U
-U...........WWWU......UW..........U
-U...........W..........W..........U
-U...........W..........W..........U
-U...........W.....................U
-U...........W.....................U
-U...........WWWW..................U
-U.................................U
-U.................................U
-UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
-"""
-map_drawing = """
-.IIIII.......................II......
-ILLLLLL..............................
-.LLLLLUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
-..U.................................U
-..U.................................UU
-..U..............................UWWUU
-..U............WII..II..............UUW
-..U............WLL..LLW....WW.......UWW
-..U......W.....W...........WII......UU
-..U......WWU...U...........ILL......UU
-..U.................................U
-..U...................UW............U
-..U.................................UW
-..U.........U.......................UW
-..U....U....W....IIII.....W...WU....U
-..U....UW...W.....LLLI....W....U....U
-..U.......................U.........UU
-..U.................................UWW
-..U............WU...................UWW
-..U.................................UW
-..U......III...........U...UWW......UW
-..U......LLW...........W.....W......UU
-..U.......WW....WII..IIW............U
-..U..............LL..LLW............U
-..UWWU..............................U
-..U.................................U
-..U.................................U.III
-.IUUUUUUUIIIIIIIIIIIIIIIIIUUUUUUUUUUUILLLIII
-.LIIIIIIILLLLLLLLLLLUWLLLLIIIIIIIIIIILLLLLLLII
-.LLLLLLLLLLLUWULLLLLIILLLLLLLLLLLLLLLLLLLLLLLLI
-.LLLLLLLLLLLIIILLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLI
-.LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
-"""
 map_drawing = """
 .......UUUUUUUUUUUUUUUUUUUUUUUU....
 .......U............U.........U....
@@ -100,10 +40,39 @@ UUUUU....UWWWWW...WWU......UUUUU...
 ....U.........U............U.......
 ....UUUUUUUUUUUUUUUUUUUUUUUU.......
 """
-
+map_drawing = """
+.......UUUUUUUUUUUUUUUUUUUUUUUU....
+.......U............U.........U....
+.......U............W.........U....
+.......U............W.........U....
+...UUUUU......UWW...WWWWWU...WUUUUU
+...U.........................W....U
+...U.........................W....U
+...U.........................W....U
+UUUUWW.....W.................W....U
+U....W.....UWW....W....UWW...W....U
+U....W.................U.....W....U
+U....W.......................W....U
+U....W.......................W....U
+U....W.......................U....U
+U....U...........O...........U....U
+U....U.......................W....U
+U....W.......................W....U
+U....W.......................W....U
+U....W.....U.................W....U
+U....W...WWU....W....WWU.....W....U
+U....W.................W.....WWUUUU
+U....W.........................U...
+U....W.........................U...
+U....W.........................U...
+UUUUUW...UWWWWW...WWU......UUUUU...
+....U.........W............U.......
+....U.........W............U.......
+....U.........U............U.......
+....UUUUUUUUUUUUUUUUUUUUUUUU.......
+"""
 map_y_offset = -1
 map_x_offset = -1
-
 map_file = ""
 for y, line in enumerate(io.StringIO(map_drawing)):
     for x, char in enumerate(repr(line)):
