@@ -1,12 +1,12 @@
-# 1. Game design document
+# 1. Game Design Document
 
 This document specifies guidelines to aid with the development of this game from a design perspective. It is split in the following sections:
 
-- [1. Game design document](#1-game-design-document)
-  - [1.1. Basic game description](#11-basic-game-description)
-- [2. Basic mechanics](#2-basic-mechanics)
+- [1. Game Design Document](#1-game-design-document)
+  - [1.1. Game Description](#11-game-description)
+- [2. Basic Mechanics](#2-basic-mechanics)
   - [2.1. Abilities and Controls](#21-abilities-and-controls)
-  - [2.2. Crowd Control and Punishing.](#22-crowd-control-and-punishing)
+  - [2.2. Crowd Control and Punishing](#22-crowd-control-and-punishing)
   - [2.3. Combat Visuals and Feedback](#23-combat-visuals-and-feedback)
   - [2.4. Map](#24-map)
 - [3. Character Classes](#3-character-classes)
@@ -29,37 +29,37 @@ This document specifies guidelines to aid with the development of this game from
   - [6.1. Setting](#61-setting)
   - [6.2. Characters](#62-characters)
 
-## 1.1. Basic game description
+## 1.1. Game Description
 
 A multiplayer top-down shooter where players fight with their pick amongst a cast of varied characters. It focuses on the following values:
-- Having balanced characters that avoid hard-counter interactions, noob stomping, and unfair abilities.
+- Having balanced characters that avoid (to a certain extent) hard-counter interactions, noob stomping, and unfair abilities.
 - Being easy to learn and hard to master
   - Characters are relatively simple yet unique (not many abilities but intricate)
   - Mastering this game means learning how to counter each hero's playstyle
-- Having snappy movement (WASD instead of click-to-move), and being controller compatible and **friendly**
+- Having snappy movement (WASD instead of click-to-move), and being controller friendly.
 - Having hand-drawn but 3D-looking graphics
 
-# 2. Basic mechanics
+# 2. Basic Mechanics
 
 ## 2.1. Abilities and Controls
 
-Each character has 3 active abilities and optionally passive abilities.
-- **Primary** - on a short cooldown, and is usually the priamary means of damaging opponents.
-- **Secondary** -  requires charge to use. Charge can be built up either passively, by damaging opponents with certain abilities, or by healing allies with certain abilities. It goes up to 100. Characters usually require 100 charge to use their secondary, but there are exceptions.
-- **Movement** - on a longer cooldown, primarily provides mobility, often through the form of a dash.
+Each character has 3 active abilities and optionally passive abilities. This creates a simple structure, even if the abilities themselves can be complicated.
+- **Primary** - An ability on a short cooldown, and is usually the primary means of damaging opponents.
+- **Secondary** -  An ablity that needs to be charged. Charge can be built up either passively, by damaging opponents with certain abilities, or by healing allies with certain abilities. It goes up to 100. Characters usually require 100 charge to use their secondary, but there are many exceptions.
+- **Movement** - An ability on a longer cooldown and provides mobility, often through the form of a dash. Can also have other effects.
 - **Passive** - a character can have many of these, or none at all. They are either always active, or can be triggered by an event.
 - Characters also have independent movement speeds.
 
 This results in only 5 game controls:
 - move
-- aim in a direction
+- aim
 - shoot primary
 - shoot secondary
 - dash
 
 This makes the game controller-friendly and simple to learn.
 
-## 2.2. Crowd Control and Punishing.
+## 2.2. Crowd Control and Punishing
 
 A player may move freely if unobstructed by the map, aim and shoot freely at all times, and shoot their secondary
 once it is charged. These are the player's rights and may not be inhibited by other players and their abilities (i.e. stun, root).
@@ -240,7 +240,7 @@ Intended playstyle:
 - **Secondary** - Vine Wall
   - Place down a wall, using some secondary charge
 - **Dash** - Elusive Retreat
-  - Dash far away, placing down a bear trap. The ability is on a relatively long cooldown.
+  - Dash away, placing down a bear trap. The ability is on a relatively long cooldown.
   - The bear trap arms after half a second, and harms anyone touching it. It lasts until Hernani regains his dash cooldown, or until someone steps on it.
 - **Passive** - Destructive Weaponry
   - Has an easier time destroying walls.
@@ -286,16 +286,16 @@ The lore serves as guidelines for creating characters. In-game at least, the tid
 
 ## 6.1. Setting
 
-The world of Sylvan Row is that of a huge forest, populated by little villages and only one remarkable landmark, the City, being the only urban setting of the world. Most animal species of the world are humanoid, but not too much thought should be put into things like evolution.
+The world of Sylvan Row is that of a huge forest, populated by little villages and only one remarkable landmark, the City, being the only urban setting of the world. Most animal species of the world are humanoid, but not too much thought should be put into things like evolution and how they came to be or whatnot.
 
 The largest of the villages in the forest, and arguably the second most important landmark, is the Sanctum. It is home to a devoted group of religious animals, known as Angels. Their religion is widespread and accepted as truth (because it is). The religion consists of taking care of the Forest, which is a manifestation of God, in return of its shelter. This is done by the three ranks of Angels:
-- Seraphim are capable of understanding how God manifests herself in the flora. They are sometimes seen as insane but most of the time are not seen at all, and have specialised healing magic which can appease God.
-- Archangels are the only ones who can understand the Seraphim. One of their roles is to translate the findings of the latter and issue orders regarding whatever mission may help God. However they are primarily powerful healers who specialise in healing other animals. The kind of healing they specialise in differs from each Archangel. As a symbol of trust, they are veiled.
+- Seraphim are capable of understanding how God manifests herself in the flora. They are sometimes seen as insane, but most of the time are not seen at all, and have specialised healing magic which can appease God.
+- Archangels are the only ones who can understand the Seraphim. One of their roles is to translate the findings of the latter and issue orders regarding whatever mission may help God. However they are primarily powerful healers who specialise in healing other animals. The kind of healing they specialise in differs from each Archangel. As a symbol of trust, they are often veiled.
 - Guardian Angels may sometimes take orders from Archangels but their primary role is to protect people, whatever that may mean. Some are very proficient in combat, others are diplomats, and some are jacks-of-all-trades. They all share a unique connection to God and a strong sense of morality, much more than any other rank of Angel.
 
-The City is a civilisation of animals that decided to live without the assistance of the forest, but not necessarily out of a lack of faith. Certain Angels endorse this landmark while others dislike it, but God seems to have no issue with it. The City's history is troubled, but nowadays is a very pleasant place to live in. While electricity does not exist in this steampunk-retrofuturist world, it remains relaticely technologically advanced, with an omnipresent tramway network. As it focuses on the well-being of citizens primarily, it is full of gardens and the architecture is very deliberate, despite its high density. It is technologically on par with us, but by far surpasses us socially and in its economic structure.
+The City is a civilisation of animals that decided to live without the assistance of the forest, but not necessarily out of a lack of faith. Certain Angels endorse this landmark while others dislike it, but God seems to have no issue with it. The City's history is troubled, but nowadays is a very pleasant place to live in. While electricity does not exist in this steampunk-retrofuturist world, it remains relatively technologically advanced, with an enourmous tramway network. As it focuses on the well-being of citizens primarily, it is full of gardens and the architecture is very deliberate, despite its high density. It is technologically on par with us, but by far surpasses us socially and in its economic structure.
 
-The city's primary power source is nuclear power. Water is heated and pressurised, to be sent off to a grid of steam pipes. Most devices are steam-operated, and batteries are just canisters. The City's political-economic structure makes the existence of monopolies nearly impossible, however one prevails: the only toilet company in existence. As it turns out, toiletsmith is not the most popular of aspirations, and nobody seems to have noticed the megacorporation's reign.
+The city's primary power source is nuclear power. Water is heated and pressurised, to be sent off to a grid of steam pipes. Most devices are steam-operated, and "batteries" are just canisters. The City's political-economic structure makes the existence of monopolies nearly impossible, however one prevails: the only toilet company in existence. As it turns out, toiletsmith is not the most popular of aspirations, and nobody seems to have noticed the megacorporation's reign.
 
 Both the City and the forest are home to a group of anarchists. Some of them lack faith (trust in God), and see her mistakes as a liability, and despise the fact that the city tolerates this religion instead of being a "true refuge", while others are simply insane. The forest is victim of their ways, and defends itself without fighting back too much. The City is isn't fond of them either, but thanks to the advanced state of psychiatrical medicine, is capable of helping a few of them, and is generally a bit more sympathetic.
 
@@ -315,6 +315,6 @@ Temerity used to be part of the City's police force, but after the changes broug
 
 Wiro is a Guardian Angel weilding a gigantic shield and shotgun, dedicating his life to protect others by whatever means necessary (more often than not, the means being a gigantic shield). His dedication does concern his close firends; Sometimes, it's almost like he *wants* to sacrifice himself. Nevertheless, he is incredibly caring towards anyone, regardless of who they may be. He is among the Angels who like the City.
 
-Josey was born with the power to partially intuit coincidence, and manipulate it into deterministic outcomes. In his early years he used this power to make a living through his holistic assasination agency, whose main selling point was the lack of evidence left behind by his "coincidental" methods. As the world changed around him, he took the opportunity to stop his evil trade and become an engineer instead. His intuition made of him a great mechanic, and if he ever had to fight, he'd do it reluctantly, relying on his contraptions to do his bidding. Him and Hernani are rivals, and constantly try to assassinate eachother, but there's something about the way they do it... the hatred isn't sincere, but something else is...
+Josey was born with the power to partially intuit coincidence, and manipulate it into deterministic outcomes. In his early years he used this power to make a living through his holistic assasination agency, whose main selling point was the lack of evidence left behind by his "coincidental" methods. As the world changed around him, he took the opportunity to stop his evil trade and become an engineer instead. His intuition made of him a great mechanic, and if he ever had to fight, he'd do it semi-reluctantly, relying on his contraptions to do his bidding. Him and Hernani are rivals, and constantly try to assassinate eachother, but there's something about the way they do it... the hatred isn't sincere, but something else is...
 
 One of the eternals is an odd ornithoid creature which experiences constant, insufferable pain, and exists for the sole purpose of being in pain. Anyone who crosses their path is struck with a sickening feeling of empathy, scarring even the hardest of souls and most weathered of warriors. Nobody leaves the encounter unchanged. The eternal's reaction to pain varies, often being passive and defeated, but in other times erratic and agitated.

@@ -75,9 +75,36 @@ This is just for me.
     - [ ] Settings screen
   - [ ] Home menu and game
     - Home menu comes with matchmaking server...
-- [ ] Matchmaking server
-  - [ ] Client enters queue
-  - [ ] If 2 players, Server launches an instance of a gameplay server
+- [ ] Matchmaking server ![mindmap](mm-mindmap.png)
+  - [ ] **Part 1** (for open beta)
+    - [ ] Player data
+      - [ ] Username
+      - [ ] Password (hashed)
+      - [ ] Friends
+      - [ ] Ban status
+    - [ ] Basic authentication system
+      - [ ] Create account
+        - [ ] Profanity filter
+      - [ ] Log in
+    - [ ] Chat
+      - [ ] Channels
+      - [ ] Friends
+    - [ ] Game request
+      - [ ] Lobby
+      - [ ] Character
+    - [ ] Pre-game info
+    - [ ] Post-game info
+    - [ ] Fleet managment
+      - [ ] Error handling
+    - [ ] Logs
+      - [ ] Chat logs (for moderation)
+      - [ ] Server crash logs
+  - [ ] **Part 2** (for release)
+    - [ ] Steam integration
+      - [ ] Accounts
+      - [ ] In-game purchases
+        - [ ] Inform game request
+      - [ ] Display name & change display name
 - [ ] Sound
   - [ ] Directional sound (kira crate)
   - [ ] Volume sliders in settings screen, etc
