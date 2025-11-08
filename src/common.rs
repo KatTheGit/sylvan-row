@@ -860,3 +860,11 @@ pub fn dashing_logic(mut is_dashing: bool, mut dashed_distance: f32, dash_direct
   }
   return (new_position, dashed_distance, is_dashing);
 }
+
+/// A no dependency crappy random function that returns a random value between 1 and -1.
+pub fn crappy_random() -> f64 {
+  return f64::sin(SystemTime::now()
+    .duration_since(SystemTime::UNIX_EPOCH)
+    .expect("idk clock error").as_millis() as f64
+  );
+}

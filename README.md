@@ -133,11 +133,12 @@ This is just for me.
   - [ ] Marketing
   - [ ] Server hosting
     - AWS sucks
+- [ ] Android port
 
 ## Other
 
-- [ ] Android support
-  - [ ] Change game engine
+
+- [ ] Change game engine
 - [ ] Clean up code
   - [x] IMPORTANT: Reorganise mutexes to avoid deadlocks
     - Current implementation is silly

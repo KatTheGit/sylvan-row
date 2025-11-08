@@ -22,8 +22,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
 use std::fs::File;
-use ::rand::thread_rng;
-use ::rand::Rng;
 
 #[cfg(target_os = "macos")]
 fn rmb_index() -> usize {
@@ -50,6 +48,7 @@ fn window_conf() -> Conf {
     ..Default::default()
   }
 }
+
 /// In the future this function will host the game menu. As of now it just starts the game unconditoinally.
 #[macroquad::main(window_conf)]
 async fn main() {
@@ -59,9 +58,8 @@ async fn main() {
   let min_port: u16 = 49152; // start of dynamic port range
   let max_port: u16 = 65535;
   let mut port: u16;
-  let mut rng = thread_rng();
   loop {
-    let y: f64 = rng.gen(); // generates a float between 0 and 1
+    let y = crappy_random();
     port = min_port + (y * (max_port - min_port) as f64) as u16;
     print!("Attempted port: {}. Status: ", port);
     let dummy_ip: String = format!("0.0.0.0:{}", port);
