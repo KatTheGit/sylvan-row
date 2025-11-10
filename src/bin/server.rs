@@ -5,8 +5,11 @@ use std::net::UdpSocket;
 use std::sync::{Arc, Mutex, MutexGuard};
 use bincode;
 use std::{thread, time::*, vec};
+use sylvan_row::maths::*;
+use sylvan_row::const_params::*;
+use sylvan_row::gamedata::*;
 
-
+// these should probably be read by the map file
 static SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
@@ -71,7 +74,7 @@ fn game_server_instance(max_players: usize, min_players: u8) -> () {
       // claim all the mutexes
       let mut players = listener_players.lock().unwrap();
       let mut game_objects = listener_game_objects.lock().unwrap();
-      let mut gamemode_info = listener_gamemode_info.lock().unwrap();
+      let gamemode_info = listener_gamemode_info.lock().unwrap();
 
       
       let mut player_found: bool = false;
@@ -513,38 +516,36 @@ fn game_server_instance(max_players: usize, min_players: u8) -> () {
 
         // create server player data
         // this data is pretty irrelevant, we're just initialising the player.
-        unsafe {
-          players.push(ServerPlayer {
-            ip: src.ip().to_string(),
-            port: recieved_player_info.port,
-            true_port: src.port(),
-            team,
-            health: 100,
-            position: match team {
-              Team::Blue => SPAWN_BLUE,
-              Team::Red  => SPAWN_RED,
-            },
-            move_direction:       Vector2::new(),
-            aim_direction:        Vector2::new(),
-            shooting:             false,
-            shooting_secondary:   false,
-            secondary_cast_time:  Instant::now(),
-            secondary_charge:     100,
-            had_illegal_position: false,
-            character:            recieved_player_info.character,
-            last_shot_time:       Instant::now(),
-            is_dashing:           false,
-            last_dash_time:       Instant::now(),
-            dashed_distance:      0.0,
-            dash_direction:       Vector2::new(),
-            previous_positions:   Vec::new(),
-            is_dead:              false,
-            death_timer_start:    Instant::now(),
-            stacks:               0,
-            buffs:                Vec::new(),
-            last_packet_time:     Instant::now(),
-          });
-        }
+        players.push(ServerPlayer {
+          ip: src.ip().to_string(),
+          port: recieved_player_info.port,
+          true_port: src.port(),
+          team,
+          health: 100,
+          position: match team {
+            Team::Blue => SPAWN_BLUE,
+            Team::Red  => SPAWN_RED,
+          },
+          move_direction:       Vector2::new(),
+          aim_direction:        Vector2::new(),
+          shooting:             false,
+          shooting_secondary:   false,
+          secondary_cast_time:  Instant::now(),
+          secondary_charge:     100,
+          had_illegal_position: false,
+          character:            recieved_player_info.character,
+          last_shot_time:       Instant::now(),
+          is_dashing:           false,
+          last_dash_time:       Instant::now(),
+          dashed_distance:      0.0,
+          dash_direction:       Vector2::new(),
+          previous_positions:   Vec::new(),
+          is_dead:              false,
+          death_timer_start:    Instant::now(),
+          stacks:               0,
+          buffs:                Vec::new(),
+          last_packet_time:     Instant::now(),
+        });
         println!("Player connected: {}: {} - {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port);
       }
     }
@@ -1825,16 +1826,12 @@ impl ServerPlayer {
     self.death_timer_start = Instant::now();
     // send them to their respective spawn
     if self.team == Team::Blue {
-      unsafe {
-        self.position = SPAWN_BLUE;
-        // println!("Sending {} to blue spawn", self.ip);
-      }
+      self.position = SPAWN_BLUE;
+      // println!("Sending {} to blue spawn", self.ip);
     } 
     else {
-      unsafe {
-        self.position = SPAWN_RED;
-        // println!("Sending {} to red team spawn", self.ip);
-      }
+      self.position = SPAWN_RED;
+      // println!("Sending {} to red team spawn", self.ip);
     }
   }
 }

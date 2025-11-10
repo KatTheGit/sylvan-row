@@ -2,12 +2,17 @@
 #![windows_subsystem = "windows"]
 #![allow(unused_parens)]
 
+use sylvan_row::graphics::load_character_textures;
+use sylvan_row::graphics::load_game_object_textures;
+use sylvan_row::maths::*;
+use sylvan_row::const_params::*;
+use sylvan_row::gamedata::*;
+use sylvan_row::graphics::*;
 use macroquad::rand::rand;
 use miniquad::window::{set_mouse_cursor, set_window_size};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use sylvan_row::common::*;
 use sylvan_row::ui;
-use strum::IntoEnumIterator;
 use macroquad::prelude::*;
 use miniquad::conf::Icon;
 use gilrs::*;
@@ -208,62 +213,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
-  let mut game_object_tetures: HashMap<GameObjectType, Texture2D> = HashMap::new();
-
-  /// You made this macro, dummy.
-  /// 
-  /// "Returns" a Texture2D
-  /// 
-  /// Takes a path as "parameter", relative from the `assets` directory.
-  macro_rules! load {
-    ($file:expr $(,)?) => {
-      Texture2D::from_file_with_format(include_bytes!(concat!("../../assets/", $file)), None)
-    };
-  }
-  for game_object_type in GameObjectType::iter() {
-    game_object_tetures.insert(
-      game_object_type,
-      match game_object_type {
-        GameObjectType::Wall                              => load!("gameobjects/wall.png"),
-        GameObjectType::HernaniWall                       => load!("characters/hernani/textures/wall.png"),
-        GameObjectType::RaphaelleAura                     => load!("characters/raphaelle/textures/secondary.png"),
-        GameObjectType::UnbreakableWall                   => load!("gameobjects/unbreakable_wall.png"),
-        GameObjectType::HernaniBullet                     => load!("characters/hernani/textures/bullet.png"),
-        GameObjectType::RaphaelleBullet                   => load!("characters/raphaelle/textures/bullet.png"),
-        GameObjectType::RaphaelleBulletEmpowered          => load!("characters/raphaelle/textures/bullet-empowered.png"),
-        GameObjectType::CynewynnSword                     => load!("characters/cynewynn/textures/bullet.png"),
-        GameObjectType::HernaniLandmine                   => load!("characters/hernani/textures/trap.png"),
-        GameObjectType::ElizabethProjectileRicochet       => load!("characters/hernani/textures/bullet.png"),
-        GameObjectType::ElizabethProjectileGround         => load!("characters/hernani/textures/trap.png"),
-        GameObjectType::ElizabethProjectileGroundRecalled => load!("characters/hernani/textures/trap.png"),
-        GameObjectType::ElizabethTurret                   => load!("ui/temp_ability_1.png"),
-        GameObjectType::ElizabethTurretProjectile         => load!("characters/hernani/textures/bullet.png"),
-        GameObjectType::Grass1                            => load!("gameobjects/grass-1.png"),
-        GameObjectType::Grass2                            => load!("gameobjects/grass-2.png"),
-        GameObjectType::Grass3                            => load!("gameobjects/grass-3.png"),
-        GameObjectType::Grass4                            => load!("gameobjects/grass-4.png"),
-        GameObjectType::Grass5                            => load!("gameobjects/grass-5.png"),
-        GameObjectType::Grass6                            => load!("gameobjects/grass-6.png"),
-        GameObjectType::Grass7                            => load!("gameobjects/grass-7.png"),
-        GameObjectType::Grass1Bright                      => load!("gameobjects/grass-1-b.png"),
-        GameObjectType::Grass2Bright                      => load!("gameobjects/grass-2-b.png"),
-        GameObjectType::Grass3Bright                      => load!("gameobjects/grass-3-b.png"),
-        GameObjectType::Grass4Bright                      => load!("gameobjects/grass-4-b.png"),
-        GameObjectType::Grass5Bright                      => load!("gameobjects/grass-5-b.png"),
-        GameObjectType::Grass6Bright                      => load!("gameobjects/grass-6-b.png"),
-        GameObjectType::Grass7Bright                      => load!("gameobjects/grass-7-b.png"),
-        GameObjectType::Water1                            => load!("gameobjects/water-edge.png"),
-        GameObjectType::Water2                            => load!("gameobjects/water-full.png"),
-        GameObjectType::CenterOrb                         => load!("gameobjects/orb.png"),
-        GameObjectType::CenterOrbSpawnPoint               => load!("empty.png"),
-        GameObjectType::WiroShield                        => load!("ui/temp_ability_1.png"),
-        GameObjectType::WiroGunShot                       => load!("ui/temp_ability_1.png"),
-        GameObjectType::WiroDashProjectile                => load!("empty.png"),
-        GameObjectType::TemerityRocket                    => load!("ui/temp_ability_1.png"),
-        GameObjectType::TemerityRocketSecondary           => load!("ui/temp_ability_1.png"),
-      }
-    );
-  }
+  let game_object_tetures = load_game_object_textures();
 
   let kill_all_threads: bool = false;
   let kill_all_threads: Arc<Mutex<bool>> = Arc::new(Mutex::new(kill_all_threads));
@@ -290,21 +240,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   player.position = Vector2 { x: 10.0, y: 10.0 };
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
-  let mut player_textures: HashMap<Character, Texture2D> = HashMap::new();
-  for character in Character::iter() {
-    player_textures.insert(
-      character,
-      match character {
-        Character::Cynewynn  => load!("characters/cynewynn/textures/main.png"),
-        Character::Raphaelle => load!("characters/raphaelle/textures/main.png"),
-        Character::Hernani => load!("characters/hernani/textures/main.png"),
-        Character::Elizabeth => load!("characters/dummy/textures/template.png"),
-        Character::Wiro      => load!("characters/dummy/textures/template.png"),
-        Character::Dummy      => load!("characters/dummy/textures/template.png"),
-        Character::Temerity      => load!("characters/dummy/textures/template.png"),
-      }
-    );
-  }
+  let player_textures: HashMap<Character, Texture2D> = load_character_textures();
 
   // modified by network listener thread, accessed by input handler and game thread
   let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));

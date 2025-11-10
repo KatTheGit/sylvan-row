@@ -2,6 +2,8 @@ use core::panic;
 
 use macroquad::prelude::*;
 use crate::common::*;
+use crate::maths::*;
+use crate::graphics::*;
 
 pub fn button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32) -> bool {
   draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
