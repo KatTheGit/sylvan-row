@@ -3,7 +3,8 @@ use std::time::SystemTime;
 use crate::maths::*;
 use crate::gamedata::*;
 use crate::graphics::*;
-
+use std::time::Instant;
+use std::collections::HashMap;
 // MARK: Gamemodes
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -262,4 +263,128 @@ pub fn get_random_port() -> u16 {
     }
   }
   return port;
+}
+
+/// Information held by server about players.
+/// 
+/// This struct can be as hefty as we want, it stays here, doesn't get sent through network.
+#[derive(Debug, Clone)]
+pub struct ServerPlayer {
+  pub ip:                   String,
+  /// Reported network port, also used as an identifier (temporarily)
+  pub port:                 u16,
+  /// Actual network port, sometimes different than the client's reported
+  /// network port because of shenanigans like CG-NAT (because God forbid we upgrade to ipv6)
+  pub true_port:            u16,
+  pub team:                 Team,
+  pub character:            Character,
+  pub health:               u8,
+  pub position:             Vector2,
+  pub shooting:             bool,
+  /// To calculate cooldowns
+  pub last_shot_time:       Instant,
+  pub shooting_secondary:   bool,
+  pub secondary_cast_time:  Instant,
+  pub secondary_charge:     u8,
+  pub aim_direction:        Vector2,
+  pub move_direction:       Vector2,
+  pub had_illegal_position: bool,
+  pub is_dashing:           bool,
+  pub dash_direction:       Vector2,
+  pub dashed_distance:      f32,
+  pub last_dash_time:       Instant,
+  pub previous_positions:   Vec<Vector2>,
+  /// bro forgor to live
+  pub is_dead:              bool,
+  pub death_timer_start:    Instant,  
+  /// Remember to apply appropriate logic after check.
+  /// 
+  /// General counter to keep track of ability stacks. Helps determine things
+  /// like whether the next shot is empowered, or how powerful an ability
+  /// should be after being charged up.
+  pub stacks:  u8,
+  /// list of buffs
+  pub buffs:                Vec<Buff>,
+  pub last_packet_time:     Instant,
+}
+impl ServerPlayer {
+  pub fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
+    if self.is_dead {
+      return;
+    }
+    // Special per-character handling
+    match self.character {
+      Character::Raphaelle => {
+        self.buffs.push(
+          Buff { value: 6.0, duration: 0.5, buff_type: BuffType::Speed, direction: Vector2::new() }
+        );
+      }
+      _ => {}
+    }
+
+    // apply dashing damage reduction or increase.
+    if self.is_dashing {
+      dmg = (dmg as f32 * characters[&self.character].dash_damage_multiplier) as u8;
+    }
+
+    if self.health < dmg {
+      self.health = 0
+    } else {
+      self.health -= dmg;
+    }
+  }
+  pub fn heal(&mut self, heal: u8, characters: HashMap<Character, CharacterProperties>) -> () {
+    if self.is_dead {
+      return;
+    }
+
+    // this edge case crashes the server
+    if self.health as i16 + heal as i16 > characters[&self.character].health as i16 {
+      self.health = characters[&self.character].health;
+    } else {
+      self.health += heal;
+    }
+  }
+  pub fn add_charge(&mut self, charge: u8) -> () {
+    if self.is_dead {
+      return;
+    }
+
+    if self.secondary_charge + charge > 100 {
+      self.secondary_charge = 100;
+    } else {
+      self.secondary_charge += charge;
+    }
+  }
+  pub fn kill(&mut self, red_spawn: Vector2, blue_spawn: Vector2) {
+    //println!("killing");
+    // remove all previous positions
+    self.previous_positions = Vec::new();
+    self.secondary_charge = 0;
+    // set them back to 100
+    self.health = 100;
+    // set dead flag for other handling
+    self.is_dead = true;
+    // mark when they died so we know when to respawn them
+    self.death_timer_start = Instant::now();
+    // send them to their respective spawn
+    if self.team == Team::Blue {
+      self.position = blue_spawn;
+      // println!("Sending {} to blue spawn", self.ip);
+    } 
+    else {
+      self.position = red_spawn;
+      // println!("Sending {} to red team spawn", self.ip);
+    }
+  }
+}
+
+pub fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
+  for p_index in 0..players.len() {
+    if players[p_index].port == port {
+      return p_index;
+    }
+  }
+  println!("index_by_port function error - data race condition, mayhaps?\nAlternatively, there's just no players at all");
+  return 0;
 }

@@ -4,6 +4,9 @@ use macroquad::math::Vec2;
 use std::time::SystemTime;
 use crate::const_params::*;
 use crate::gamedata::*;
+use crate::common::*;
+use std::sync::MutexGuard;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct Vector2 {
@@ -226,6 +229,287 @@ pub fn dashing_logic(mut is_dashing: bool, mut dashed_distance: f32, dash_direct
   }
   return (new_position, dashed_distance, is_dashing);
 }
+
+/// ## Checks whether a projectile hits a shield
+/// ### Math:
+///- We have the direction the shield is facing as a vector (x, y),
+///  i.e. (1, 2), a vector of slope 2/1
+///  - To express it as a line in cartesian space, we can have ay = bx, where
+///    in our example, a=1 and b=2, to have 2y = 1x, or 2y - 1x = 0
+///    - Therefore, a vector (a, b) becomes the equation (by - ax = 0). 
+///      - This is an equation of the form Ax + By + C = 0,
+///        - A = -a
+///        - B = b
+///        - C = 0
+///    - This line will always cross the origin (0, 0)
+///- To get the distance of a point (c, d) from the line, we get its position
+///  relative to the line's origin (and not the world origin),
+///  and apply the equation:
+///  - $dist = \frac{|Ac + Bd|}{\sqrt{b^2 + a^2}}
+///          = \frac{|bd - ac|}{\sqrt{b^2 + a^2}}$
+///  - **if $dist < hit\_radius$, we've got a hit on the shield.**
+///- HOWEVER all of this logic assumes the shield is an infinite line. To apply
+///  this to a finite line, we can add an additional distance check between the
+///  origin of the shield and the projectile, once we've detected a collision:
+///  - if dist(projectile_pos, shield_pos) < shield_width/2
+///    - NOW we've got a hit.
+///      - The only issue with this, is that, at the edge of the shield, it will
+///        look like only the center of the projectile has a collision with the
+///        shield, *which is good enough*.
+/// - The direction vector is perpendicular to the shield's representative line.
+///   - To obtain this perpendicular line, we can simply swap the coordinates.
+pub fn hits_shield(shield_position: Vector2, shield_direction: Vector2, projectile_position: Vector2, shield_width: f32, projectile_hit_radius: f32) -> bool {
+  // get the position of the projectile relative to the shield's origin
+  let relative_projectile_pos: Vector2 = Vector2::difference(shield_position, projectile_position);
+  // check that the relative distance is shorter than the shield's width/2.
+  // if it is, we're in range to check for hits
+  if relative_projectile_pos.magnitude() < shield_width/2.0 {
+    // get the perpendicular line that represents our shield.
+    // this was originally (x, y) = (-y, x), but that didn't work, for some reason.
+    // This seems to work however. Why? Don't know, don't care.
+    let shield_line: Vector2 = Vector2 { x: -shield_direction.x, y: shield_direction.y }.normalize();
+    // calculate the perpendicular distance between the shield line and the projectile
+    let perpendicular_distance =
+      (f32::abs(shield_line.y * relative_projectile_pos.y - shield_line.x * relative_projectile_pos.x)) /
+      (f32::sqrt(f32::powi(shield_line.x, 2) + f32::powi(shield_line.y, 2)));
+
+    if perpendicular_distance < projectile_hit_radius {
+      return true
+    }
+  }
+  return false;
+}
+
+/// Applies modifications to players and game objects as a result of
+/// bullet behaviour this frame, for a specific bullet. This dumbed
+/// down version is only to be used for character primaries.
+/// 
+/// This is a wrapper for `apply_simple_bullet_logic_extra`, with just
+/// the simplest parameters.
+pub fn apply_simple_bullet_logic(
+  players:     MutexGuard<Vec<ServerPlayer>>,
+  characters:            HashMap<Character, CharacterProperties>,
+  game_objects:          Vec<GameObject>,
+  o_index:     usize,
+  true_delta_time:       f64,
+  pierceing_shot:        bool,
+) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
+  return apply_simple_bullet_logic_extra(players, characters, game_objects, o_index, true_delta_time, pierceing_shot, 255, 255, false, f32::INFINITY, f32::INFINITY);
+}
+
+/// Applies modifications to players and game objects as a result of
+/// bullet behaviour this frame, for a specific bullet.
+/// 
+/// Set `special_samage` to `255` to use default character damage number.
+/// Same with `special_healing`. Setting it to 0 will nullify it.
+/// Set `special_speed` to f32::INFINITY to use default.
+pub fn apply_simple_bullet_logic_extra(
+  mut players: MutexGuard<Vec<ServerPlayer>>,
+  characters:            HashMap<Character, CharacterProperties>,
+  mut game_objects:      Vec<GameObject>,
+  o_index:     usize,
+  true_delta_time:       f64,
+  pierceing_shot:        bool,
+  special_damage:        u8,
+  special_healing:       u8,
+  ricochet:              bool,
+  special_speed:         f32,
+  special_hit_radius:    f32,
+) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
+  let game_object = game_objects[o_index].clone();
+  let owner_port = game_object.owner_port;
+  let player = players[index_by_port(owner_port, players.clone())].clone();
+  let character = player.character;
+  let character_properties = characters[&character].clone();
+  let wall_hit_radius: f32 = character_properties.primary_wall_hit_radius;
+  
+  let hit_radius: f32;
+
+  if special_hit_radius == f32::INFINITY {
+    hit_radius = character_properties.primary_hit_radius;
+  } else {
+    hit_radius = special_hit_radius;
+  }
+
+  let bullet_speed: f32;
+  if special_speed == f32::INFINITY { bullet_speed  = character_properties.primary_shot_speed}
+  else                    {bullet_speed = special_speed}
+  
+  // Set special values
+  let damage: u8;
+  if special_damage == 255 { damage = character_properties.primary_damage; }
+  else                     { damage = special_damage; }
+  
+  let healing: u8;
+  if special_damage == 255 { healing = character_properties.primary_heal; }
+  else                     { healing = special_healing; }
+  
+  // Temporary. To be improved later.
+  let wall_damage = (damage as f32 * character_properties.wall_damage_multiplier) as u8;
+  
+  // Calculate collisions with walls
+  for victim_object_index in 0..game_objects.len() {
+    // if it's a wall
+    if WALL_TYPES.contains(&game_objects[victim_object_index].object_type) {
+      // if it's colliding
+      if !ricochet || (ricochet && game_object.hitpoints == 0){
+        let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
+        let buffer = 0.5 * 1.2;
+        if distance < (TILE_SIZE*buffer + wall_hit_radius) {
+          // delete the bullet
+          game_objects[o_index].to_be_deleted = true;
+          // damage the wall if it's not unbreakable
+          if game_objects[victim_object_index].object_type != GameObjectType::UnbreakableWall {
+            
+            if game_objects[victim_object_index].hitpoints < wall_damage {
+              game_objects[victim_object_index].to_be_deleted = true;
+            } else {
+              game_objects[victim_object_index].hitpoints -= wall_damage;
+            }
+          }
+          return (players, game_objects, false); // return early
+        }
+      }
+
+      if ricochet && game_object.hitpoints > 0 {
+        let pos = game_object.position;
+        let direction = game_object.direction;
+        let check_distance = TILE_SIZE * 0.1;
+        let buffer = 0.5 * 1.6;
+        let check_position: Vector2 = Vector2 {
+          x: pos.x + direction.x * check_distance ,
+          y: pos.y + direction.y * check_distance ,
+        };
+        let distance = Vector2::distance(check_position, game_objects[victim_object_index].position);
+        if distance < (TILE_SIZE*buffer + wall_hit_radius) {
+          
+          if game_objects[o_index].hitpoints == 0 {
+            return (players, game_objects, false);
+          }
+          if game_objects[o_index].hitpoints != 0 {
+            game_objects[o_index].hitpoints = 0;
+            // we need to flip x direction or flip y direction
+            // |distance.x| - |distance.y|
+            // negative => flip horizontal
+            let distance = Vector2::difference(game_object.position, game_objects[victim_object_index].position);
+            if f32::abs(distance.x) - f32::abs(distance.y) > 0.0 {
+              // flip horizontal
+              // also check that we're going in opposing directions :)
+              if game_object.direction.x * -distance.x < 0.0 {
+                game_objects[o_index].direction.x *= -1.0;
+              }
+            } else {
+              // flip vertical
+              // also check that we're going in opposing directions :)
+              if game_object.direction.y * -distance.y < 0.0 {
+                game_objects[o_index].direction.y *= -1.0;
+              }
+            }
+            //game_objects[o_index].lifetime = characters[&character].primary_range / characters[&character].primary_shot_speed;
+            game_objects[o_index].position.x += game_objects[o_index].direction.x * (TILE_SIZE*0.3); // this might break at very low freq like 26Hz
+            game_objects[o_index].position.y += game_objects[o_index].direction.y * (TILE_SIZE*0.3);
+
+            // reset the lifetime (which in turn resets its range)
+            let distance = characters[&character].primary_range;
+            let speed = bullet_speed;
+            game_objects[o_index].lifetime = distance / speed;
+            game_objects[o_index].to_be_deleted = false;
+          }
+        }
+      }
+    }
+  }
+
+  let mut hit: bool = false; // whether we've hit something
+
+  // orb
+  for victim_object_index in 0..game_objects.len() {
+    if game_objects[victim_object_index].object_type == GameObjectType::CenterOrb {
+      // if it's colliding
+      let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
+      if distance < (0.5 * TILE_SIZE + wall_hit_radius) {
+        if game_objects[o_index].players.contains(&548) {
+          continue;
+        }
+        let mut direction: Vector2 = game_object.direction;
+        direction.x *= damage as f32 / 2.0;
+        direction.y *= damage as f32 / 2.0;
+
+        if game_objects[victim_object_index].hitpoints > damage {
+          // hurt the orb :(
+          game_objects[victim_object_index].hitpoints -= damage
+        } else {
+          // KILL THE ORB
+          game_objects[victim_object_index].hitpoints = 0;
+          game_objects[victim_object_index].to_be_deleted = true;
+        }
+        // apply knockback to the orb
+        game_objects[victim_object_index].position.y += direction.y;
+        game_objects[victim_object_index].position.x += direction.x;
+        // apply orb healing
+        if game_objects[victim_object_index].hitpoints == 0 {
+          let team = player.team;
+          for p_index in 0..players.len() {
+            if players[p_index].team == team {
+              players[p_index].health += ORB_HEALING;
+              if players[p_index].health > 100 {
+                players[p_index].health = 100;
+              }
+            }
+          }
+        }
+        // 548 IS THE NUMBER OF THE ORB
+        game_objects[o_index].players.push(548);
+        if !pierceing_shot {
+          game_objects[o_index].to_be_deleted = true;
+        }
+        hit = true;
+      }
+    }
+  }
+
+  // Calculate collisions with players
+  for p_index in 0..players.len() {
+    if players[p_index].is_dead {
+      continue; // skip dead player
+    }
+    // If we hit a bloke
+    if Vector2::distance(game_object.position, players[p_index].position) < hit_radius &&
+    owner_port != players[p_index].port {
+      // And if we didn't hit this bloke before
+      if !(game_object.players.contains(&p_index)) {
+        // Apply bullet damage
+        if players[p_index].team != player.team {
+          // Confirmed hit.
+          hit = true;
+          players[p_index].damage(damage, characters.clone());
+          game_objects[o_index].players.push(p_index);
+          // Destroy the bullet if it doesn't pierce.
+          if !pierceing_shot {
+            game_objects[o_index].to_be_deleted = true;
+          }
+        }
+        // Apply bullet healing, only if in the same team
+        if players[p_index].team == player.team && healing > 0 {
+          players[p_index].heal(healing, characters.clone());
+          game_objects[o_index].players.push(p_index);
+          // Destroy the bullet if it doesn't pierce.
+          if !pierceing_shot {
+            game_objects[o_index].to_be_deleted = true;
+          }
+        }
+        // Apply appropriate secondary charge
+        let owner_index = index_by_port(owner_port, players.clone());
+        players[owner_index].add_charge(character_properties.secondary_hit_charge);
+      }
+    }
+  }
+  game_objects[o_index].position.x += game_objects[o_index].direction.x * true_delta_time as f32 * bullet_speed;
+  game_objects[o_index].position.y += game_objects[o_index].direction.y * true_delta_time as f32 * bullet_speed;
+  game_objects[o_index].traveled_distance += true_delta_time as f32 * bullet_speed;
+  return (players, game_objects, hit);
+}
+
 
 // (vscode) MARK: Other
 
