@@ -1,1 +1,14 @@
-A wolf
+A lone wolf. He's a bit weird but he's very
+good with his musket.
+
+PRIMARY - Silver Bullet
+  Fires a long range musket.
+
+SECONDARY - Vine Wall
+  Places a wall in front of himself.
+
+DASH - Elusive Retreat
+  Places a bear trap and performs a long dash,
+
+PASSIVE
+  Has an easier time destroying walls.

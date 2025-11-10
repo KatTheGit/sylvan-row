@@ -1,1 +1,21 @@
-A bunny who dashes around and heals people.
+A bunny combat medic who seems to enjoy
+the "combat" part a bit too much.
+
+PRIMARY - Kindness in Blood
+  Raphaelle is always tethered to allies nearby.
+  She shoots a piercing projectile, and if it
+  damages an opponent, her tethered allies
+  recieve health.
+  When empowered by DASH, her projectile doesn't
+  heal allies, does more damage, and reduces the
+  cooldown of DASH.
+
+SECONDARY - Sanctum
+  Places down a tree, healing nearby allies and
+  increasing their fire rate.
+
+DASH - Enpowering Leap
+  A short dash that empowers the next PRIMARY.
+
+PASSIVE - Flight
+  Gains a small speed buff after getting hit.

@@ -49,17 +49,19 @@ This is just for me.
   - [ ] Josey
     - [ ] Aim lazer shows ricochet
 - [ ] Innovate gamemode
-- [ ] Menus
+- [x] Rough menu
   - [x] Pause menu, always accessible
     - [ ] Settings screen
       - [ ] Text input field
       - [ ] Input bar
       - [ ] Checkbox
       - [ ] Drop-down menu
-  - [ ] Home menu
-    - [ ] Tabs
-      - [ ] Play
-      - [ ] Heroes
+      - [ ] Keybind input field
+  - [x] Home menu
+    - [x] Tabs
+      - [x] Play
+      - [x] Heroes
+      - [x] Tutorial
 - [ ] Matchmaking server ![mindmap](mm-mindmap.png)
   - [ ] **Part 1** (for open beta)
     - [ ] Player data
@@ -106,6 +108,7 @@ This is just for me.
   - [ ] Scenery & prettier backgrounds
     - [ ] Background loader from file
   - [ ] Mirror the map
+  - [ ] Revamp menu
 - [ ] Interpolation
   - [ ] Self-interpolation on dashes and wallrides
   - [ ] Player interpolation for other players

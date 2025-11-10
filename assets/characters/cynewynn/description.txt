@@ -1,1 +1,16 @@
-A lioness with time-manipulating ailities
+A lioness and a beloved queen, despite her past. No
+matter how powerful her time magic, she can't fix what she did.
+
+PRIMARY - Wrath
+  An AOE sword slash.
+
+SECONDARY - Rectify
+  Teleports a few seconds in the past, and gains
+  a small amount of health.
+
+DASH - Combat Leap
+  Dashes forward, taking reduced damage.
+
+PASSIVE - Dedication and Exhaustion
+  The higher her secondary charge, the faster
+  her attack rate.

@@ -59,15 +59,35 @@ async fn main() {
   let port = get_random_port();
   let mut vw: f32;
   let mut vh: f32;
-  let mut selected_char = Character::Hernani;
+  let mut selected_char = 0;
+  let characters: Vec<Character> = vec![
+    Character::Hernani,
+    Character::Raphaelle,
+    Character::Cynewynn,
+    Character::Wiro,
+    Character::Elizabeth,
+    Character::Temerity,
+  ];
+  let descriptions: Vec<&str> = vec![
+    include_str!("../../assets/characters/hernani/description.txt"),
+    include_str!("../../assets/characters/raphaelle/description.txt"),
+    include_str!("../../assets/characters/cynewynn/description.txt"),
+    include_str!("../../assets/characters/wiro/description.txt"),
+    include_str!("../../assets/characters/elizabeth/description.txt"),
+    include_str!("../../assets/characters/temerity/description.txt"),
+  ];
+
+  let mut fullscreen: bool = false;
+  let mut toggle_time: Instant = Instant::now();
   
   // tabs in the main menu
   let mut tab_play: bool = true;
   let mut tab_heroes: bool = false;
+  let mut tab_tutorial: bool = false;
   let mut menu_paused = false;
   let mut escape_already_pressed: bool = false;
   loop {
-
+    set_mouse_cursor(miniquad::CursorIcon::Default);
 
     vw = screen_width() / 100.0;
     vh = screen_height() / 100.0;
@@ -79,36 +99,45 @@ async fn main() {
 
 
     let play_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: 10.0*vh, y: 10.0*vh }, Vector2 { x: 30.0*vh, y: 8.0*vh }, "Play", 7.0*vh, vh, tab_play
+      tl_anchor + Vector2 { x: 5.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Play", 5.0*vh, vh, tab_play
     );
     let heroes_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: 45.0*vh, y: 10.0*vh }, Vector2 { x: 30.0*vh, y: 8.0*vh }, "Heroes", 7.0*vh, vh, tab_heroes
+      tl_anchor + Vector2 { x: 35.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Heroes", 5.0*vh, vh, tab_heroes
+    );
+    let tutorial_tab_button = ui::one_way_button(
+      tl_anchor + Vector2 { x: 65.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Tutorial", 5.0*vh, vh, tab_tutorial
     );
     if play_tab_button {
       tab_heroes = false;
       tab_play = true;
+      tab_tutorial = false;
     }
     if heroes_tab_button {
       tab_heroes = true;
       tab_play = false;
+      tab_tutorial = false;
+    }
+    if tutorial_tab_button {
+      tab_heroes = false;
+      tab_play = false;
+      tab_tutorial = true;
     }
 
-    
     if tab_play {
       let play_button = button(
         br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh, vh
       );
       if play_button {
-        game(selected_char, port).await;
+        game(characters[selected_char], port).await;
       }
     }
     if tab_heroes {
       let mut heroes: Vec<bool> = Vec::new();
-      let max = 6;
+      let max = characters.len();
       for x in 0..max {
         heroes.push(
-          button(
-            Vector2 { x: 10.0 * vw + (80.0/(max) as f32) * x as f32 * vw, y: 65.0*vh },
+          ui::one_way_button(
+            Vector2 { x: 10.0 * vw + (80.0/(max) as f32) * x as f32 * vw, y: 80.0*vh },
             Vector2 { x: 80.0/((max) as f32)*vw * 0.7, y: 15.0*vh },
             match x {
               0 => "Hernani",
@@ -118,23 +147,26 @@ async fn main() {
               4 => "Josey",
               5 => "Temerity",
               _ => panic!(),
-            }, 4.0*vh, vh
+            }, 4.0*vh, vh,
+            (selected_char == x)
           )
         );
       }
       for hero_index in 0..max {
         if heroes[hero_index] {
-          selected_char = match hero_index {
-            0 => Character::Hernani,
-            1 => Character::Raphaelle,
-            2 => Character::Cynewynn,
-            3 => Character::Wiro,
-            4 => Character::Elizabeth,
-            5 => Character::Temerity,
-            _ => panic!(),
-          }
+          selected_char = hero_index;
         }
       }
+      draw_multiline_text_ex(descriptions[selected_char],20.0*vh, 13.0*vh, Some(0.7), 
+        TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
+      );
+    }
+    if tab_tutorial {
+      let text: &str =
+        "(LMB)   PRIMARY   - Ability on short cooldown.\n(RMB)   SECONDARY - Ability that requires charge. Build charge by hitting opponents.\n(Space) DASH      - Cooldown ability.\n(WASD)  Move";
+      draw_multiline_text_ex(text,20.0*vh, 13.0*vh, Some(0.7), 
+        TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
+      );
     }
 
     // SUPER MEGA TEMPORARY
@@ -150,6 +182,12 @@ async fn main() {
       //return;
     } else {
       escape_already_pressed = false;
+    } if keys.contains(&Keycode::F11) {
+      if toggle_time.elapsed().as_secs_f32() > 0.05 {
+        fullscreen = !fullscreen;
+        set_fullscreen(fullscreen);
+      }
+      toggle_time = Instant::now();
     }
     drop(device_state);
     drop(keys);
