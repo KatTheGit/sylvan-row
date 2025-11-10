@@ -7,7 +7,28 @@ pub fn button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
   draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
   let inner_shrink: f32 = 1.0 * vh;
   draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
-  draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
+  draw_text(text, position.x + 1.0*vh, position.y + size.y / 2.0, font_size , BLACK);
+  let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
+  if mouse.x > position.x && mouse.x < (position.x + size.x) {
+    if mouse.y > position.y && mouse.y < (position.y + size.y) {
+      draw_rectangle(position.x, position.y, size.x, size.y,GRAY);
+      draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
+      if is_mouse_button_down(MouseButton::Left) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool) -> bool {
+  draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
+  let inner_shrink: f32 = 1.0 * vh;
+  draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
+  draw_text(text, position.x + 1.0*vh, position.y + size.y / 2.0, font_size , BLACK);
+  if selected {
+    draw_rectangle(position.x, position.y, size.x, size.y,GRAY);
+    draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
+  }
   let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
   if mouse.x > position.x && mouse.x < (position.x + size.x) {
     if mouse.y > position.y && mouse.y < (position.y + size.y) {

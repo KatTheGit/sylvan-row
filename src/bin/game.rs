@@ -12,10 +12,12 @@ use macroquad::prelude::*;
 use miniquad::conf::Icon;
 use gilrs::*;
 use bincode;
+use sylvan_row::ui::button;
 use sylvan_row::ui::draw_ability_icon;
 use sylvan_row::ui::draw_pause_menu;
 use sylvan_row::ui::draw_player_info;
 use sylvan_row::ui::DivBox;
+use std::process::exit;
 use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration, SystemTime};
 use std::collections::HashMap;
@@ -54,58 +56,115 @@ fn window_conf() -> Conf {
 async fn main() {
   set_window_size(800, 450);
 
-  // Find a random free port and use it
-  let min_port: u16 = 49152; // start of dynamic port range
-  let max_port: u16 = 65535;
-  let mut port: u16;
+  let port = get_random_port();
+  let mut vw: f32;
+  let mut vh: f32;
+  let mut selected_char = Character::Hernani;
+  
+  // tabs in the main menu
+  let mut tab_play: bool = true;
+  let mut tab_heroes: bool = false;
+  let mut menu_paused = false;
+  let mut escape_already_pressed: bool = false;
   loop {
-    let y = crappy_random();
-    port = min_port + (y * (max_port - min_port) as f64) as u16;
-    print!("Attempted port: {}. Status: ", port);
-    let dummy_ip: String = format!("0.0.0.0:{}", port);
-    match UdpSocket::bind(dummy_ip) {
-      Ok(_) => {
-        // PORT IS GOOD
-        println!("Good");
-        break;
-      }
-      Err(_) => {
-        // PORT IS BAD
-        // try again
-        println!("Bad. Trying again.");
-      }
-    }
-  }
 
-  let mut timer: Instant = Instant::now();
-  loop {
+
+    vw = screen_width() / 100.0;
+    vh = screen_height() / 100.0;
     clear_background(WHITE);
-    
-    if timer.elapsed().as_secs_f32() > 0.5 {
-      let healer = ui::button(Vector2 { x: 30.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 }, "Raphaelle", 40.0, 10.0);
-      let queen = ui::button(Vector2 { x: 30.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 }, "Cynewynn", 40.0, 10.0);
-      let wolf: bool = ui::button(Vector2 { x: 30.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Hernani", 40.0, 10.0);
-      let elizabeth: bool = ui::button(Vector2 { x: 300.0, y: 30.0 }, Vector2 { x: 200.0, y: 70.0 },  "Josey", 40.0, 10.0);
-      let wiro: bool = ui::button(Vector2 { x: 300.0, y: 130.0 }, Vector2 { x: 200.0, y: 70.0 },  "Wiro", 40.0, 10.0);
-      let temerity: bool = ui::button(Vector2 { x: 300.0, y: 230.0 }, Vector2 { x: 200.0, y: 70.0 },  "Temerity", 40.0, 10.0);
+    let br_anchor: Vector2 = Vector2 { x: screen_width(), y: screen_height() };
+    let tr_anchor: Vector2 = Vector2 { x: screen_width(), y: 0.0 };
+    let bl_anchor: Vector2 = Vector2 { x: 0.0,            y: screen_height() };
+    let tl_anchor: Vector2 = Vector2 { x: 0.0,            y: 0.0 };
 
-      if healer      { game(Character::Raphaelle, port).await; timer = Instant::now() }
-      if queen       { game(Character::Cynewynn, port).await;  timer = Instant::now() }
-      if wolf        { game(Character::Hernani, port).await;   timer = Instant::now() }
-      if elizabeth   { game(Character::Elizabeth, port).await; timer = Instant::now() }
-      if wiro        { game(Character::Wiro, port).await;      timer = Instant::now() }
-      if temerity    { game(Character::Temerity, port).await;  timer = Instant::now() }
-    } else {
-      draw_text("Stopping other threads...", 30.0, 100.0, 30.0, DARKGRAY);
+
+    let play_tab_button = ui::one_way_button(
+      tl_anchor + Vector2 { x: 10.0*vh, y: 10.0*vh }, Vector2 { x: 30.0*vh, y: 8.0*vh }, "Play", 7.0*vh, vh, tab_play
+    );
+    let heroes_tab_button = ui::one_way_button(
+      tl_anchor + Vector2 { x: 45.0*vh, y: 10.0*vh }, Vector2 { x: 30.0*vh, y: 8.0*vh }, "Heroes", 7.0*vh, vh, tab_heroes
+    );
+    if play_tab_button {
+      tab_heroes = false;
+      tab_play = true;
+    }
+    if heroes_tab_button {
+      tab_heroes = true;
+      tab_play = false;
     }
 
+    
+    if tab_play {
+      let play_button = button(
+        br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh, vh
+      );
+      if play_button {
+        game(selected_char, port).await;
+      }
+    }
+    if tab_heroes {
+      let mut heroes: Vec<bool> = Vec::new();
+      let max = 6;
+      for x in 0..max {
+        heroes.push(
+          button(
+            Vector2 { x: 10.0 * vw + (80.0/(max) as f32) * x as f32 * vw, y: 65.0*vh },
+            Vector2 { x: 80.0/((max) as f32)*vw * 0.7, y: 15.0*vh },
+            match x {
+              0 => "Hernani",
+              1 => "Raphaelle",
+              2 => "Cynewynn",
+              3 => "Wiro",
+              4 => "Josey",
+              5 => "Temerity",
+              _ => panic!(),
+            }, 4.0*vh, vh
+          )
+        );
+      }
+      for hero_index in 0..max {
+        if heroes[hero_index] {
+          selected_char = match hero_index {
+            0 => Character::Hernani,
+            1 => Character::Raphaelle,
+            2 => Character::Cynewynn,
+            3 => Character::Wiro,
+            4 => Character::Elizabeth,
+            5 => Character::Temerity,
+            _ => panic!(),
+          }
+        }
+      }
+    }
+
+    // SUPER MEGA TEMPORARY
+    let device_state: DeviceState = DeviceState::new();
+    let keys: Vec<Keycode> = device_state.get_keys();
+    if keys.contains(&Keycode::Escape) {
+      //let mut killall: MutexGuard<bool> = kill_all_threads.lock().unwrap();
+      //*killall = true;
+      if !escape_already_pressed {
+        menu_paused = !menu_paused;
+      }
+      escape_already_pressed = true;
+      //return;
+    } else {
+      escape_already_pressed = false;
+    }
+    drop(device_state);
+    drop(keys);
+    let mut quit: bool = false;
+    if menu_paused {
+      (menu_paused, quit) = draw_pause_menu(vh, vw);
+    }
+    if quit {
+      exit(0);
+    }
     next_frame().await;
   }
   //game(Character::Raphaelle).await;
 }
 // (vscode) MARK: main()
-/// In the future this function will be called by main once the user starts the game
-/// through the menu.a
 async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);

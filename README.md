@@ -44,37 +44,22 @@ This is just for me.
 
 ## Minimal presentable game
 
-- [x] Redo gamemode logic
-  - [x] Knockout gamemode
-  - [x] Small wait time before rounds
-- [x] Implement feedback
-  - [x] Nerf Raph's self heal
 - [ ] Characters
   - [ ] Rework Hernani secondary
-  - [x] ~~Elizabeth~~ Josey
+  - [ ] Josey
     - [ ] Aim lazer shows ricochet
-  - [x] Temerity
-    - [x] Primary
-    - [x] Dash (wallride)
-      - serverside
-    - [x] Secondary
-    - [x] Passive
-  - [x] Wiro
-    - [x] Shield (secondary)
-    - [x] Primary
-    - [x] Dash
-    - [x] Passive
-- [x] Gamemode
-  - [x] 1v1 and 2v2
-    - [x] Kinda
-  - [x] Orb
-    - [x] Spawns every 20sec, if one's not already in the game
-    - [x] Can be knocked back
-    - [x] Whoever gets the final blow gets some HP
+- [ ] Innovate gamemode
 - [ ] Menus
   - [x] Pause menu, always accessible
     - [ ] Settings screen
+      - [ ] Text input field
+      - [ ] Input bar
+      - [ ] Checkbox
+      - [ ] Drop-down menu
   - [ ] Home menu
+    - [ ] Tabs
+      - [ ] Play
+      - [ ] Heroes
 - [ ] Matchmaking server ![mindmap](mm-mindmap.png)
   - [ ] **Part 1** (for open beta)
     - [ ] Player data
@@ -113,16 +98,15 @@ This is just for me.
     - [ ] beg Fancy or learn how to cook
   -  [ ] Sound effects
   -  [ ] Voicelines
-     -  [ ] Character picked
-     -  [ ] Character gets a kill
-     -  [ ] Character gets MVP
+    -  [ ] Character picked
+    -  [ ] Character gets a kill
+    -  [ ] Character wins
 - [ ] Visual
   - [ ] Animation system
   - [ ] Scenery & prettier backgrounds
     - [ ] Background loader from file
   - [ ] Mirror the map
 - [ ] Interpolation
-  - [ ] Keep extrapolation for SIMPLE objects.
   - [ ] Self-interpolation on dashes and wallrides
   - [ ] Player interpolation for other players
 - [ ] Anticheat
@@ -134,6 +118,7 @@ This is just for me.
   - [ ] Server hosting
     - AWS sucks
 - [ ] Android port
+  - [ ] Android-specific controls (devicequery doesnt work)
 
 ## Other
 

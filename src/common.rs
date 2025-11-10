@@ -868,3 +868,29 @@ pub fn crappy_random() -> f64 {
     .expect("idk clock error").as_millis() as f64
   );
 }
+
+pub fn get_random_port() -> u16 {
+  // Find a random free port and use it
+  let min_port: u16 = 49152; // start of dynamic port range
+  let max_port: u16 = 65535;
+  let mut port: u16;
+  loop {
+    let y = crappy_random();
+    port = min_port + (y * (max_port - min_port) as f64) as u16;
+    print!("Attempted port: {}. Status: ", port);
+    let dummy_ip: String = format!("0.0.0.0:{}", port);
+    match std::net::UdpSocket::bind(dummy_ip) {
+      Ok(_) => {
+        // PORT IS GOOD
+        println!("Good");
+        break;
+      }
+      Err(_) => {
+        // PORT IS BAD
+        // try again
+        println!("Bad. Trying again.");
+      }
+    }
+  }
+  return port;
+}
