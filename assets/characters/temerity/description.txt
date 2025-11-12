@@ -14,4 +14,4 @@ DASH - Hasty Dispatch
   alongside walls.
 
 PASSIVE - Save the City
-  Heal damaged walls around you.
+  Heals nearby damaged walls.

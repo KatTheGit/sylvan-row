@@ -18,6 +18,9 @@ pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 30.0;
 pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 9.0;
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
+/// Time interval representing our network rate.
+pub const PACKET_INTERVAL: f32 = 1.0 / 30.0;
+
 /// how many packets are averaged when calculating legality of player position.
 pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
 /// Port the server is hosted on. Used by server, and by the client to set the

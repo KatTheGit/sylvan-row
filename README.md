@@ -42,7 +42,7 @@ Maps are made through `mapmaker.py`.
 
 This is just for me.
 
-## Minimal presentable game
+## Main
 
 - [ ] Characters
   - [ ] Rework Hernani secondary
@@ -109,9 +109,11 @@ This is just for me.
     - [ ] Background loader from file
   - [ ] Mirror the map
   - [ ] Revamp menu
-- [ ] Interpolation
-  - [ ] Self-interpolation on dashes and wallrides
-  - [ ] Player interpolation for other players
+- [x] Interpolation
+  - [x] Self-interpolation on dashes
+  - [x] Player interpolation for other players
+  - [x] Make it optional
+    - Currently just a variable. 
 - [ ] Anticheat
   - [ ] Packet averaging
   - [ ] Hide certain information from client
@@ -123,8 +125,7 @@ This is just for me.
 - [ ] Android port
   - [ ] Android-specific controls (devicequery doesnt work)
 
-## Other
-
+## Side quests
 
 - [ ] Change game engine
 - [ ] Clean up code
@@ -136,6 +137,7 @@ This is just for me.
   - [ ] Organisation
     - [ ] structure into proper modules, like networking, maths, players, ui, etc...
   - [ ] Packet size
+  - [ ] Write own parser
 
 ## Reminders
 - Update Wiro projectile list when new char

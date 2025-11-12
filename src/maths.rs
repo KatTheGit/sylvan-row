@@ -513,10 +513,11 @@ pub fn apply_simple_bullet_logic_extra(
 
 // (vscode) MARK: Other
 
-/// A no dependency crappy random function that returns a random value between 1 and -1.
+/// A no dependency random function that returns a random value between 0.0 and 1.0
 pub fn crappy_random() -> f64 {
-  return f64::sin(SystemTime::now()
+  return (f64::sin(SystemTime::now()
     .duration_since(SystemTime::UNIX_EPOCH)
-    .expect("idk clock error").as_millis() as f64
-  );
+    .expect("idk clock error").as_nanos() as f64
+  )
+  + 1.0)/2.0;
 }

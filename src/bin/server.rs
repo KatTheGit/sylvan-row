@@ -15,9 +15,9 @@ static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
 fn main() {
   // not exactly sure if `max_players` is really needed, but whatevs
-  game_server_instance(400, 2);
+  game_server(400, 2);
 }
-fn game_server_instance(max_players: usize, min_players: u8) -> () {
+fn game_server(max_players: usize, min_players: u8) -> () {
   // set the gamemode (temporary)
 
   // Load character properties
@@ -101,6 +101,7 @@ fn game_server_instance(max_players: usize, min_players: u8) -> () {
           // TEMPORARYf
           if recieved_player_info.character != player.character {
             player.character = recieved_player_info.character;
+            player.stacks = 0;
           }
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
@@ -472,6 +473,7 @@ fn game_server_instance(max_players: usize, min_players: u8) -> () {
                 time_since_last_dash: player.last_dash_time.elapsed().as_secs_f32(),
                 time_since_last_secondary: player.secondary_cast_time.elapsed().as_secs_f32(),
                 stacks: player.stacks,
+                is_dashing: player.is_dashing,
               },
               players: other_players,
               game_objects: game_objects.clone(),
@@ -1192,7 +1194,7 @@ fn game_server_instance(max_players: usize, min_players: u8) -> () {
               }
             }
           }
-          // TEMERITY
+          // TEMERITY ROCKET JUMP
           Character::Temerity => {
             if players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
               // apply an impulse
@@ -1200,12 +1202,12 @@ fn game_server_instance(max_players: usize, min_players: u8) -> () {
               let yeet = 0.2 * TILE_SIZE;
               let lifetime = 0.2;
               players[p_index].buffs.push(
-                Buff { value: yeet, duration: 1.0, buff_type: BuffType::Impulse, direction }
+                Buff { value: yeet, duration: 1.0, buff_type: BuffType::Impulse, direction: direction * -1.0 }
               );
               game_objects.push(GameObject {
                 object_type: GameObjectType::TemerityRocketSecondary,
                 size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-                position: players[p_index].position + players[p_index].aim_direction * -characters[&Character::Temerity].secondary_range,
+                position: players[p_index].position + players[p_index].aim_direction * characters[&Character::Temerity].secondary_range,
                 direction: players[p_index].aim_direction * -1.0,
                 to_be_deleted: false,
                 owner_port: players[p_index].port,

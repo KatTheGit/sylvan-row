@@ -18,4 +18,4 @@ DASH - Enpowering Leap
   A short dash that empowers the next PRIMARY.
 
 PASSIVE - Flight
-  Gains a small speed buff after getting hit.
+  Gains a small speed buff when she gets hit.

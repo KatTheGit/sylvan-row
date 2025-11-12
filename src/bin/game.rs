@@ -85,7 +85,7 @@ async fn main() {
   let mut fullscreen: bool = false;
   let mut toggle_time: Instant = Instant::now();
   
-  // tabs in the main menu
+  // MARK: main menu
   let mut tab_play: bool = true;
   let mut tab_heroes: bool = false;
   let mut tab_tutorial: bool = false;
@@ -98,8 +98,8 @@ async fn main() {
     vh = screen_height() / 100.0;
     clear_background(WHITE);
     let br_anchor: Vector2 = Vector2 { x: screen_width(), y: screen_height() };
-    let tr_anchor: Vector2 = Vector2 { x: screen_width(), y: 0.0 };
-    let bl_anchor: Vector2 = Vector2 { x: 0.0,            y: screen_height() };
+    //let tr_anchor: Vector2 = Vector2 { x: screen_width(), y: 0.0 };
+    //let bl_anchor: Vector2 = Vector2 { x: 0.0,            y: screen_height() };
     let tl_anchor: Vector2 = Vector2 { x: 0.0,            y: 0.0 };
 
 
@@ -207,7 +207,7 @@ async fn main() {
   }
   //game(Character::Raphaelle).await;
 }
-// (vscode) MARK: main()
+// (vscode) MARK: game
 async fn game(/* server_ip: &str */ character: Character, port: u16) {
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
@@ -360,13 +360,16 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
         _ => {},
       }
     }
-    // for players
+
+    // MARK: Interpolation
+    // for now this is just simple linear interpolation, no shenanigans yet.
     for player in other_players.iter_mut() {
-      player.position.x += character_properties[&player.character].speed * player.movement_direction.x * get_frame_time() / 1.0;
-      player.position.y += character_properties[&player.character].speed * player.movement_direction.y * get_frame_time() / 1.0;
+      let distance = player.interpol_next - player.interpol_prev;
+      let period = PACKET_INTERVAL;
+      let speed = distance / period;
+      player.position += speed * get_frame_time();
     }
 
-    
     let mut game_objects_copy = game_objects.clone();
     drop(game_objects);
     
@@ -391,7 +394,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       player.camera.position.x += camera_movement_speed * safe_delta_time * camera_distance.normalize().x; // * mul;
       player.camera.position.y += camera_movement_speed * safe_delta_time * camera_distance.normalize().y; // * mul;
     }
-    // (vscode) MARK: update mouse pos
+    // (vscode) MARK: update mouse
     // update mouse position for the input thread to handle.
     // This hot garbage WILL be removed once camera is implemented correctly. Mayhaps.
     // But what this does is turn the mouse's screen coordinates into game coordinates,
@@ -759,7 +762,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
   // applies to movement and network listen
   let desired_frame_time: f32 = 1.0 / 500.0;
   // only applies to network sending rate.
-  let desired_network_time: f32 = 1.0 / 30.0;
+  let desired_network_time: f32 = PACKET_INTERVAL;
 
   // Whether in keyboard or controller mode.
   // Ignore mouse pos in controller mode for example.
@@ -767,6 +770,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 
   let mut fullscreen = false;
   let mut toggle_time: Instant = Instant::now();
+
+  let interpolate = true;
+
 
   loop {
 
@@ -790,25 +796,31 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         recieved_server_info = bincode::deserialize(data).expect("Could not deserialise server packet.");
         // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
         let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
-        // if we sent an illegal position, and server does a position override:
-        if recieved_server_info.player_packet_is_sent_to.override_position {
-          player.position = recieved_server_info.player_packet_is_sent_to.position_override;
-          println!("Recieved position override.");
+
+        // If we're interpolating dashes, then the server should tell us when we're dashing.
+        if interpolate {
+          player.is_dashing = recieved_server_info.player_packet_is_sent_to.is_dashing;
         }
 
-        // handle camera position upon death
-        if !player.is_dead && recieved_server_info.player_packet_is_sent_to.is_dead {
-          // we just died rn, so set the camera pos (which is now a freecam) to current position
-          // no clue why i have to do this, but for some reason upon death the camera moves "randomly"
-          // IDK SEEMS TO WORK WITHOUT
-          //player.camera.position = player.position;
+        // if we sent an illegal position, and server does a position override:
+        if recieved_server_info.player_packet_is_sent_to.override_position {
+          // If we're interpolating dashes *and* we're dashing, update interpolation info.
+          if interpolate && player.is_dashing {
+            // But if we're dashing (interpolating is set to true), then prepare to smoothly translate to that position.
+            player.interpol_next = recieved_server_info.player_packet_is_sent_to.position_override;
+            player.interpol_prev = player.position; // current position
+          }
+          // but under standard behaviour just teleport the player there.
+          else {
+            player.position = recieved_server_info.player_packet_is_sent_to.position_override;
+          }
+          println!("Recieved position override.");
         }
 
         let ping = match recieved_server_info.timestamp.elapsed() {
           Ok(val) => val.as_millis(),
           Err(_) => 0,
         };
-        // println!("Server to client latency: {:?}ms", one_way_ping);
         player.ping = ping as u16;
         player.health = recieved_server_info.player_packet_is_sent_to.health;
         player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
@@ -822,7 +834,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         player.last_secondary_time = recieved_server_info.player_packet_is_sent_to.time_since_last_secondary;
         player.stacks = recieved_server_info.player_packet_is_sent_to.stacks;
         drop(player); // free mutex guard ASAP for other thread to access player.
-        
+
 
         let mut game_objects = game_objects.lock().unwrap();
         *game_objects = recieved_server_info.game_objects;
@@ -832,6 +844,13 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         let mut recieved_players: Vec<ClientPlayer> = Vec::new();
         for player in recieved_server_info.players {
           recieved_players.push(ClientPlayer::from_otherplayer(player));
+        }
+        for player_index in 0..other_players.len() {
+          // new position
+          recieved_players[player_index].interpol_next = recieved_players[player_index].position;
+          // previous position
+          recieved_players[player_index].position = other_players[player_index].position;
+          recieved_players[player_index].interpol_prev = other_players[player_index].position;
         }
         *other_players = recieved_players;
         drop(other_players);
@@ -1028,40 +1047,61 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
     // by delta time and speed. Sent to the server.
     let mut movement_vector_raw: Vector2 = movement_vector;
 
-    let mut extra_speed: f32 = 0.0;
-    for buff in player.buffs.clone() {
-      if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
-        extra_speed += buff.value;
+    // the server tells us if we're dashing or not when we're in interpolation mode.
+    if interpolate && player.is_dashing {
+      // do the interpolate
+      let distance = player.interpol_next - player.interpol_prev;
+      let speed: Vector2;
+      if distance.magnitude() == 0.0 {
+        // this is only true on the first "frame".
+        // this measure helps reduce the percieved lag from the character standing still
+        // before it obtains its second interpolation position.
+        speed = player.movement_direction * (character_properties[&player.character].dash_speed / 2.0) * delta_time;
+      } else {
+        // this runs the rest of the time
+        let period = PACKET_INTERVAL;
+        speed = distance / period;
       }
+      player.position += speed * delta_time;
     }
-    
-    movement_vector.x *= (movement_speed + extra_speed) * delta_time;
-    movement_vector.y *= (movement_speed + extra_speed) * delta_time;
-
-    if dashing && !player.is_dashing && !player.is_dead && movement_vector_raw.magnitude() != 0.0 {
-      if player.time_since_last_dash > character_properties[&player.character].dash_cooldown {
-        match player.character {
-          Character::Temerity => {
-          }
-          _ => {
-            player.is_dashing = true;
+    else {
+      if dashing && !player.is_dashing && !player.is_dead && movement_vector_raw.magnitude() != 0.0 {
+        if player.time_since_last_dash > character_properties[&player.character].dash_cooldown {
+          match player.character {
+            Character::Temerity => {
+            }
+            _ => {
+              player.is_dashing = true;
+            }
           }
         }
       }
+    
+      if player.is_dashing {
+        (player.position, player.dashed_distance, player.is_dashing) = dashing_logic(
+          player.is_dashing,
+          player.dashed_distance,
+          movement_vector_raw,
+          delta_time as f64,
+          character_properties[&player.character].dash_speed,
+          character_properties[&player.character].dash_distance,
+          game_objects.clone(),
+          player.position,
+        );
+      }
     }
 
-    if player.is_dashing {
-      (player.position, player.dashed_distance, player.is_dashing) = dashing_logic(
-        player.is_dashing,
-        player.dashed_distance,
-        movement_vector_raw,
-        delta_time as f64,
-        character_properties[&player.character].dash_speed,
-        character_properties[&player.character].dash_distance,
-        game_objects,
-        player.position,
-      );
-    } else {
+    // Apply standard movement (non-dashing)
+    if !player.is_dashing {
+      let mut extra_speed: f32 = 0.0;
+      for buff in player.buffs.clone() {
+        if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
+          extra_speed += buff.value;
+        }
+      }
+      
+      movement_vector.x *= (movement_speed + extra_speed) * delta_time;
+      movement_vector.y *= (movement_speed + extra_speed) * delta_time;
       if player.is_dead == false {  
         (movement_vector_raw, movement_vector) = object_aware_movement(player.position, movement_vector_raw, movement_vector, game_objects.clone());
         player.position.x += movement_vector.x;
@@ -1130,11 +1170,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team, y_offset: f32, alpha: f32) -> () {
   if positions.len() < 2 { return; }
   for position_index in 0..positions.len()-1 {
-    // if position_index > positions.len() / 3  {
-    //   draw_line_relative(positions[position_index].x, positions[position_index].y, positions[position_index+1].x, positions[position_index+1].y, 0.4, match team {Team::Blue => BLUE, Team::Red => RED}, camera, vh);
-    // } else {
-    //   draw_line_relative(positions[position_index].x, positions[position_index].y, positions[position_index+1].x, positions[position_index+1].y, 0.4, match team {Team::Blue => SKYBLUE, Team::Red => ORANGE}, camera, vh);
-    // }
     draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: alpha }, Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: alpha }}, camera, vh);
   }
   // let texture = Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/tq-flashback.png"), None  );

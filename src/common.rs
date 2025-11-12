@@ -227,6 +227,7 @@ pub struct ServerRecievingPlayerPacket {
   pub time_since_last_dash: f32,
   pub time_since_last_secondary: f32,
   pub stacks: u8,
+  pub is_dashing: bool,
 }
 
 /// information sent by server to client
