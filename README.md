@@ -82,7 +82,8 @@ This is just for me.
       - [ ] Character
     - [ ] Pre-game info
     - [ ] Post-game info
-    - [ ] Fleet managment
+    - [ ] "Fleet" managment
+      - Single machine 
       - [ ] Error handling
     - [ ] Logs
       - [ ] Chat logs (for moderation)

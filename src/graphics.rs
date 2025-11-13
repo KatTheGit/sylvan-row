@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::gamedata::*;
 use strum::IntoEnumIterator;
 use crate::maths::*;
+use crate::common;
 
 macro_rules! load {
   ($file:expr $(,)?) => {
@@ -120,4 +121,13 @@ pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16
   let relative_position_x = x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
   let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
   draw_text_ex(text, relative_position_x * vh, relative_position_y * vh, TextParams { font: Some(font), font_size: (font_size as f32 * vh) as u16, font_scale: 1.0, font_scale_aspect: 1.0, rotation: 0.0, color });
+}
+
+pub fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: common::Team, y_offset: f32, alpha: f32) -> () {
+  if positions.len() < 2 { return; }
+  for position_index in 0..positions.len()-1 {
+    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {common::Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: alpha }, common::Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: alpha }}, camera, vh);
+  }
+  // let texture = Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/tq-flashback.png"), None  );
+  // draw_image_relative(&texture, positions[0].x - TILE_SIZE/2.0, positions[0].y - (TILE_SIZE*1.5)/2.0, TILE_SIZE, TILE_SIZE * 1.5, vh, camera);
 }

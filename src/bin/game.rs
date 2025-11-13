@@ -2,26 +2,19 @@
 #![windows_subsystem = "windows"]
 #![allow(unused_parens)]
 
-use sylvan_row::graphics::load_character_textures;
-use sylvan_row::graphics::load_game_object_textures;
 use sylvan_row::maths::*;
 use sylvan_row::const_params::*;
 use sylvan_row::gamedata::*;
-use sylvan_row::graphics::*;
-use macroquad::rand::rand;
-use miniquad::window::{set_mouse_cursor, set_window_size};
-use device_query::{DeviceQuery, DeviceState, Keycode};
+use sylvan_row::graphics;
 use sylvan_row::common::*;
 use sylvan_row::ui;
 use macroquad::prelude::*;
+use macroquad::rand::rand;
+use miniquad::window::{set_mouse_cursor, set_window_size};
 use miniquad::conf::Icon;
+use device_query::{DeviceQuery, DeviceState, Keycode};
 use gilrs::*;
 use bincode;
-use sylvan_row::ui::button;
-use sylvan_row::ui::draw_ability_icon;
-use sylvan_row::ui::draw_pause_menu;
-use sylvan_row::ui::draw_player_info;
-use sylvan_row::ui::DivBox;
 use std::process::exit;
 use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration, SystemTime};
@@ -129,7 +122,7 @@ async fn main() {
     }
 
     if tab_play {
-      let play_button = button(
+      let play_button = ui::button(
         br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh, vh
       );
       if play_button {
@@ -198,7 +191,7 @@ async fn main() {
     drop(keys);
     let mut quit: bool = false;
     if menu_paused {
-      (menu_paused, quit) = draw_pause_menu(vh, vw);
+      (menu_paused, quit) = ui::draw_pause_menu(vh, vw);
     }
     if quit {
       exit(0);
@@ -213,7 +206,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
-  let game_object_tetures = load_game_object_textures();
+  let game_object_tetures = graphics::load_game_object_textures();
 
   let kill_all_threads: bool = false;
   let kill_all_threads: Arc<Mutex<bool>> = Arc::new(Mutex::new(kill_all_threads));
@@ -240,7 +233,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   player.position = Vector2 { x: 10.0, y: 10.0 };
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
 
-  let player_textures: HashMap<Character, Texture2D> = load_character_textures();
+  let player_textures: HashMap<Character, Texture2D> = graphics::load_character_textures();
 
   // modified by network listener thread, accessed by input handler and game thread
   let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
@@ -388,7 +381,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
       let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
       let camera_distance_mag = camera_distance.magnitude();
       let camera_smoothing: f32 = 1.5; // higher = less smoothing
-      let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, f32::exp2(camera_distance_mag)*camera_smoothing*5.0);
+      let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, (camera_distance_mag).powf(2.0)*camera_smoothing*5.0);
       let camera_movement_speed = safe_quadratic;
 
       player.camera.position.x += camera_movement_speed * safe_delta_time * camera_distance.normalize().x; // * mul;
@@ -424,7 +417,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     for background_tile in background_tiles.clone() {
       let texture = &game_object_tetures[&background_tile.object_type];
       let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
-      draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, Vector2::new(), WHITE);
+      graphics::draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, Vector2::new(), WHITE);
     }
 
     // adjust certain positions.
@@ -460,7 +453,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
                                                      GameObjectType::ElizabethProjectileRicochet,
                                                     ];
       if shaded_objects.contains(&game_object.object_type) {
-        draw_image_relative(
+        graphics::draw_image_relative(
           texture,
           game_object.position.x - size.x/2.0,
           game_object.position.y - size.y/2.0 + shadow_offset,
@@ -470,7 +463,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
           game_object.direction,
           Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 });
       }
-      draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, game_object.direction, WHITE);
+      graphics::draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, game_object.direction, WHITE);
     }
 
 
@@ -543,15 +536,15 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     let trail_y_offset: f32 = 4.5;
     for player in other_players_copy.clone() {
       if player.character == Character::Cynewynn && !player.is_dead {
-        draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.0, 1.0);
-        draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.3, 0.5);
-        draw_lines(player.previous_positions,         player_copy.camera.position, vh, player.team, trail_y_offset-0.6, 0.25);
+        graphics::draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.0, 1.0);
+        graphics::draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.3, 0.5);
+        graphics::draw_lines(player.previous_positions,         player_copy.camera.position, vh, player.team, trail_y_offset-0.6, 0.25);
       }
     }
     if player_copy.character == Character::Cynewynn && !player_copy.is_dead {
-      draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.0, 0.6);
-      draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.3, 0.4);
-      draw_lines(player_copy.previous_positions.clone(),         player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.6, 0.2);
+      graphics::draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.0, 0.6);
+      graphics::draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.3, 0.4);
+      graphics::draw_lines(player_copy.previous_positions.clone(),         player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.6, 0.2);
     }
 
     // Draw raphaelle's tethering.
@@ -568,7 +561,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
               true => GREEN,
               false => ORANGE,
             };
-            draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, player_copy.camera.position, vh);
+            graphics::draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, player_copy.camera.position, vh);
           }
         }
       }
@@ -591,17 +584,17 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     let gamemode_info_main = gamemode_info.lock().unwrap();
     // let timer_width: f32 = 5.0;
     draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.5 });
-    draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);
-    draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
-    draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
-    draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
-    draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
+    graphics::draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);
+    graphics::draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
+    graphics::draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
+    graphics::draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
+    graphics::draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
     // let bar_offsets = 5.0;
     // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
     drop(gamemode_info_main);
 
     // Ability icons
-    let ability_info_box: DivBox = DivBox { position: Vector2 { x: 5.0, y: 83.0 }, nested: Vec::new() };
+    let ability_info_box: ui::DivBox =ui:: DivBox { position: Vector2 { x: 5.0, y: 83.0 }, nested: Vec::new() };
     let primary_cooldown: f32 = if player_copy.last_shot_time < character_properties[&player_copy.character].primary_cooldown {
       player_copy.last_shot_time / character_properties[&player_copy.character].primary_cooldown
     } else {
@@ -619,26 +612,26 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     } else {
       1.0
     };
-    draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 0.0,  y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 1, player_copy.shooting_primary, primary_cooldown , vh, &health_bar_font);
-    draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 12.5, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 3, player_copy.dashing, dash_cooldown , vh, &health_bar_font);
-    draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 25.0, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 2, player_copy.shooting_secondary, secondary_cooldown , vh, &health_bar_font);
+    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 0.0,  y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 1, player_copy.shooting_primary, primary_cooldown , vh, &health_bar_font);
+    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 12.5, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 3, player_copy.dashing, dash_cooldown , vh, &health_bar_font);
+    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 25.0, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 2, player_copy.shooting_secondary, secondary_cooldown , vh, &health_bar_font);
 
     let mut red_team_players: u8  = 0;
     let mut blue_team_players :u8 = 0;
     let height: f32 = 7.5;
-    let red_team_box: DivBox = DivBox { position: Vector2 { x: (85.0 / vh) * vw, y: height }, nested: Vec::new() };
-    let blue_team_box: DivBox = DivBox { position: Vector2 { x: 5.0, y: height }, nested: Vec::new() };
+    let red_team_box: ui::DivBox = ui::DivBox { position: Vector2 { x: (85.0 / vh) * vw, y: height }, nested: Vec::new() };
+    let blue_team_box: ui::DivBox = ui::DivBox { position: Vector2 { x: 5.0, y: height }, nested: Vec::new() };
     let mut all_players = other_players_copy.clone();
     all_players.push(player_copy.clone());
     for player in all_players {
       match player.team {
         Team::Blue => {
           blue_team_players += 1;
-          draw_player_info(blue_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * blue_team_players as f32 }), 10.0, player, &health_bar_font, vh);
+          ui::draw_player_info(blue_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * blue_team_players as f32 }), 10.0, player, &health_bar_font, vh);
         },
         Team::Red => {
           red_team_players += 1;
-          draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh);
+          ui::draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh);
         }
       }
     }
@@ -653,7 +646,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
     // Draw pause menu
     if menu_paused {
       let mut kill_all_threads = kill_all_threads.lock().unwrap();
-      (menu_paused, *kill_all_threads) = draw_pause_menu(vh, vw);
+      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw);
       drop(kill_all_threads);
       // Draw fps, etc
       if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
@@ -1165,15 +1158,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
     drop(sender_fps);
 
   }
-}
-
-fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team, y_offset: f32, alpha: f32) -> () {
-  if positions.len() < 2 { return; }
-  for position_index in 0..positions.len()-1 {
-    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: alpha }, Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: alpha }}, camera, vh);
-  }
-  // let texture = Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/tq-flashback.png"), None  );
-  // draw_image_relative(&texture, positions[0].x - TILE_SIZE/2.0, positions[0].y - (TILE_SIZE*1.5)/2.0, TILE_SIZE, TILE_SIZE * 1.5, vh, camera);
 }
 
 #[derive(Debug, Clone)]
