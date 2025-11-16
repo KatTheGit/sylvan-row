@@ -12,3 +12,7 @@ pub mod const_params;
 pub mod gamedata;
 /// Functions and structs related to drawing things to the screen
 pub mod graphics;
+/// Game server. Called by mothership when creating an instance for players.
+pub mod gameserver;
+/// Structs that need to be shared between the client and the mothership server.
+pub mod mothership_common;

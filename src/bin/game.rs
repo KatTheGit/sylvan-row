@@ -7,6 +7,7 @@ use sylvan_row::const_params::*;
 use sylvan_row::gamedata::*;
 use sylvan_row::graphics;
 use sylvan_row::common::*;
+use sylvan_row::mothership_common::*;
 use sylvan_row::ui;
 use macroquad::prelude::*;
 use macroquad::rand::rand;
@@ -15,6 +16,7 @@ use miniquad::conf::Icon;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use gilrs::*;
 use bincode;
+use std::fmt::format;
 use std::process::exit;
 use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration, SystemTime};
@@ -22,6 +24,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
 use std::fs::File;
+use std::net::{TcpStream, TcpListener};
 
 #[cfg(target_os = "macos")]
 fn rmb_index() -> usize {
@@ -77,6 +80,11 @@ async fn main() {
 
   let mut fullscreen: bool = false;
   let mut toggle_time: Instant = Instant::now();
+
+  // whether we're queueing
+  let mut queue: bool = false;
+  let mut play_released: bool = false;
+
   
   // MARK: main menu
   let mut tab_play: bool = true;
@@ -84,6 +92,12 @@ async fn main() {
   let mut tab_tutorial: bool = false;
   let mut menu_paused = false;
   let mut escape_already_pressed: bool = false;
+
+  let server_ip = get_ip(SERVER_PORT);
+  let mut tcp_listener = TcpListener::bind(format!("{}:{}", "127.0.0.1", port))
+    .expect("Coulnd't bind TcpListener.");
+  tcp_listener.set_nonblocking(true).expect("toilet");
+
   loop {
     set_mouse_cursor(miniquad::CursorIcon::Default);
 
@@ -126,9 +140,82 @@ async fn main() {
         br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh, vh
       );
       if play_button {
-        game(characters[selected_char], port).await;
+        play_released = true;
+      } if !play_button
+        && play_released {
+        play_released = false;
+        queue = !queue;
+        // this always uses an ephemereal socket, which is super lame.
+        // to help the server reply to us, we need to tell it our listener's
+        // port.
+        let mut server_stream =
+        match TcpStream::connect(&server_ip) {
+          Ok(stream) => stream,
+          Err(err) => {
+            println!("{:?}", err);
+            continue;
+          },
+        };
+        if queue {
+          println!("Sending match request");
+          // Send a match request packet
+          server_stream.write(
+            &bincode::serialize(
+              &ClientToServerPacket {
+                information: ClientToServer::MatchRequest(MatchRequestData {
+                  gamemode: vec![GameMode::Standard1V1],
+                  character: characters[selected_char],
+                }),
+                identifier: 12345,
+                port,
+              }
+            ).expect("idk 1")
+          ).expect("idk 2");
+        } else {
+          println!("Sending match cancel request");
+          // Send a match cancel packet
+          server_stream.write(
+            &bincode::serialize(
+              &ClientToServerPacket {
+                information: ClientToServer::MatchRequestCancel,
+                identifier: 12345,
+                port,
+              }
+            ).expect("idk 1")
+          ).expect("idk 2");
+        }
+        // below code only runs once after button release.
       }
     }
+    // if the server places us in a game, go there
+    for stream in tcp_listener.incoming() {
+      match stream {
+        Ok(mut stream) => {
+          let mut data: [u8; 2048] = [0; 2048];
+          stream.read(&mut data).expect("idk 3");
+          let data = bincode::deserialize::<ServerToClientPacket>(&data)
+            .expect("idk");
+          match data.information {
+            ServerToClient::MatchAssignment(info) => {
+              game(characters[selected_char], port, info.port).await;
+            },
+            ServerToClient::MatchMakingInformation(info) => {
+              println!("{:?}", info);
+            }
+          }
+        }
+        Err(error) => {
+          match error.kind() {
+            std::io::ErrorKind::WouldBlock => {
+              break;
+            }
+            _ => {}
+          }
+          // something's wrong with the client, maybe
+        }
+      }
+    }
+
     if tab_heroes {
       let mut heroes: Vec<bool> = Vec::new();
       let max = characters.len();
@@ -198,10 +285,9 @@ async fn main() {
     }
     next_frame().await;
   }
-  //game(Character::Raphaelle).await;
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16) {
+async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16) {
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
@@ -257,7 +343,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -677,59 +763,16 @@ async fn game(/* server_ip: &str */ character: Character, port: u16) {
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16) -> () {
 
-  let mut server_ip: String; // immutable binding. cool.
-  let ip_file_name = "moba_ip.txt";
-  let ip_file = File::open(ip_file_name);
-  let default_ip: String = format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT);
-  match ip_file {
-    // file exists
-    Ok(mut file) => {
-      let mut data = vec![];
-      match file.read_to_end(&mut data) {
-        // could read file
-        Ok(_) => {
-          server_ip = String::from_utf8(data).expect("Couldn't read IP in file.");
-          server_ip.retain(|c| !c.is_whitespace());
-          // if smaller than smallest possible length: we have a problem (file might be empty)
-          if server_ip.len() < String::from("0.0.0.0:0").len() {
-            println!("IP address was invalid (are you using X.X.X.X:X format?). Defaulting to {}", default_ip);
-            server_ip = default_ip;
-          }
-        }
-        // couldnt read file
-        Err(_) => {
-          println!("Couldn't read IP. defaulting to {}.", default_ip);
-          server_ip = default_ip;
-        }
-      }
-    }
-    // file doesn't exist
-    Err(error) => {
-      println!("Config file not found, attempting to creating one... Error: {}", error);
-      match File::create(ip_file_name) {
-        // Could create file
-        Ok(mut file) => {
-          let _ = file.write_all(default_ip.as_bytes());
-          println!("Config file created with default ip {}", default_ip);
-          server_ip = default_ip;
-        }
-        // Couldn't create file
-        Err(error) => {
-          println!("Could not create config file. Defaulting to {}\nReason:\n{}", default_ip, error);
-          server_ip = default_ip;
-        }
-      }
-    }
-  }
+  let server_ip: String = get_ip(server_port);
+
 
   // let server_ip: String = format!("{}", server_ip);
   // create the socket for sending info.
   let sending_ip: String = format!("0.0.0.0:{}", port);
   let socket: UdpSocket = UdpSocket::bind(sending_ip)
     .expect("Could not bind client sender socket");
-  println!("Socket bound to IP: {}", server_ip);
 
 
   socket.set_nonblocking(true).expect("idk");
@@ -1242,4 +1285,54 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
   }
   return [&sorted_objects_layer_1[0..sorted_objects_layer_1.len()], &sorted_objects_layer_2[0..sorted_objects_layer_2.len()]].concat();
 
+}
+
+
+fn get_ip(port: u16) -> String {
+  let mut server_ip: String;
+  let ip_file_name = "moba_ip.txt";
+  let ip_file = File::open(ip_file_name);
+  let default_ip: String = format!("{}:{}", DEFAULT_SERVER_IP, port);
+  match ip_file {
+    // file exists
+    Ok(mut file) => {
+      let mut data = vec![];
+      match file.read_to_end(&mut data) {
+        // could read file
+        Ok(_) => {
+          server_ip = String::from_utf8(data).expect("Couldn't read IP in file.");
+          server_ip.retain(|c| !c.is_whitespace());
+          server_ip = format!("{}:{}", server_ip, port);
+          // if smaller than smallest possible length: we have a problem (file might be empty)
+          if server_ip.len() < String::from("0.0.0.0").len() {
+            println!("IP address was invalid (are you using X.X.X.X:X format?). Defaulting to {}", default_ip);
+            server_ip = default_ip;
+          }
+        }
+        // couldnt read file
+        Err(_) => {
+          println!("Couldn't read IP. defaulting to {}.", default_ip);
+          server_ip = default_ip;
+        }
+      }
+    }
+    // file doesn't exist
+    Err(error) => {
+      println!("Config file not found, attempting to creating one... Error: {}", error);
+      match File::create(ip_file_name) {
+        // Could create file
+        Ok(mut file) => {
+          let _ = file.write_all(default_ip.as_bytes());
+          println!("Config file created with default ip {}", default_ip);
+          server_ip = default_ip;
+        }
+        // Couldn't create file
+        Err(error) => {
+          println!("Could not create config file. Defaulting to {}\nReason:\n{}", default_ip, error);
+          server_ip = default_ip;
+        }
+      }
+    }
+  }
+  return server_ip
 }

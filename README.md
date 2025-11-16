@@ -79,9 +79,12 @@ This is just for me.
       - [ ] Friends
     - [ ] Game request
       - [ ] Lobby
-      - [ ] Character
-    - [ ] Pre-game info
-    - [ ] Post-game info
+      - [x] Character
+    - [ ] Matchmaking
+      - [ ] Matchmaking info sent to client
+      - [x] Start game server
+      - [ ] Post-game info
+      - [ ] Match ends
     - [ ] "Fleet" managment
       - Single machine 
       - [ ] Error handling
