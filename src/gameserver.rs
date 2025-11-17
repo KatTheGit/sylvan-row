@@ -14,7 +14,7 @@ use crate::gamedata::*;
 static SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
-pub fn game_server(min_players: usize, port: u16, player_requests: Vec<QueuedPlayer>) -> () {
+pub fn game_server(min_players: usize, port: u16, player: Vec<PlayerInfo>) -> () {
   // set the gamemode (temporary)
 
   // Load character properties
@@ -512,11 +512,11 @@ pub fn game_server(min_players: usize, port: u16, player_requests: Vec<QueuedPla
           team = Team::Blue
         }
         let mut character: Character = Character::Hernani;
-        for player_request in player_requests.clone() {
-          if player_request.ip == format!("{}:{}", src.ip().to_string(), src.port().to_string()) {
-            character = player_request.character;
-          }
-        }
+        //for player_request in player_requests.clone() {
+        //  if player_request.ip == format!("{}:{}", src.ip().to_string(), src.port().to_string()) {
+        //    character = player_request.character;
+        //  }
+        //}
 
         // create server player data
         // this data is pretty irrelevant, we're just initialising the player.

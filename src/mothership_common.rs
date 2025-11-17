@@ -18,7 +18,7 @@ pub enum ClientToServer {
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchRequestData {
   /// List of requested gamemodes.
-  pub gamemode: Vec<GameMode>,
+  pub gamemodes: Vec<GameMode>,
   pub character: Character,
 }
 
@@ -54,4 +54,20 @@ pub struct QueuedPlayer {
   pub id: u64,
   pub requested_gamemode: Vec<GameMode>,
   pub character: Character,
+}
+
+/// contains the channel and identifier of a player thread.
+#[derive(Clone, Debug)]
+pub struct PlayerInfo {
+  pub identifier: usize,
+  pub channel: tokio::sync::mpsc::Sender<PlayerMessage>,
+  pub queued: bool,
+  pub queued_gamemodes: Vec<GameMode>,
+  pub selected_character: Character,
+}
+
+/// Possible messages between player threads.
+#[derive(PartialEq, Clone, Debug)]
+pub enum PlayerMessage {
+  GameAssigned(MatchAssignmentData),
 }

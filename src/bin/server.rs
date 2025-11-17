@@ -1,171 +1,190 @@
-use sylvan_row::common;
-use sylvan_row::gameserver::game_server;
-use sylvan_row::mothership_common::*;
+use sylvan_row::{common, const_params::SERVER_PORT, gamedata::Character, gameserver, mothership_common::*} ;
+use std::{io::{Read, Write}, sync::{Arc, Mutex}, thread::{JoinHandle}};
+// https://tokio.rs/tokio/tutorial/ this documentation is so peak
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener, TcpSocket, TcpStream}};
 
-use std::fmt::format;
-use std::io::Write;
-use std::{io::Read, net::{TcpListener, TcpStream}};
+#[tokio::main]
+async fn main() {
+  let mut identifier_counter: usize = 0;
+  let listener = TcpListener::bind(format!("{}:{}", "127.0.0.1", SERVER_PORT)).await.unwrap();
 
-/// This is the mothership server code (aka matchmaking server).
-/// 
-/// Its job is to perform all necessary duties of a usual live-service game's
-/// server (chat, queue, etc), and create instances of game servers.
-/// 
-/// The client and server communicate through TCP. Almost every interaction is
-/// recieve-reply.
-fn main() {
+  let players: Vec<PlayerInfo> = Vec::new();
+  // Arc allows for shared access, and Mutex makes it mutually exclusive.
+  let players = Arc::new(Mutex::new(players));
 
-  let mut matchmaking_queue: Vec<QueuedPlayer> = Vec::new();
+  // Contains all threads running game servers
+  let fleet: Vec<JoinHandle<()>> = Vec::new();
+  let fleet = Arc::new(Mutex::new(fleet));
 
-  // for now the "fleet" will be one single machine.
-  let mut fleet: Vec<std::thread::JoinHandle<()>> = Vec::new();
-
-  let tcp_listener = TcpListener::bind("127.0.0.1:25569")
-    .expect("Coulnd't bind TcpListener.");
-
+  let main_players = Arc::clone(&players);
   loop {
-    // If we've recieved packets, handle them.
-    for stream in tcp_listener.incoming() {
-      match stream {
-        Ok(mut stream) => {
-          // buffer to hold info
-          let mut buffer: [u8; 1024] = [0; 1024];
-          // read what the client sent
-          stream.read(&mut buffer).expect("lol");
-          match bincode::deserialize::<ClientToServerPacket>(&buffer) {
-            // if it's valid
-            Ok(data) => {
-              // save the address
-              let addr = stream.peer_addr().expect("Couldn't read peer address...");
-              // and handle the packet.
-              match data.information {
-                // MARK: Matchmaking
-                // matchmaking request. Add to the queue and check if a game can start.
-                ClientToServer::MatchRequest(request) => {
-                  // add to queue
 
-                  // check that they aren't already in queue
-                  for queued in matchmaking_queue.clone() {
-                    if queued.ip == format!("{}:{}", addr.ip(), data.port)
-                    && queued.id == data.identifier {
-                      // if yes, ignore them.
-                      continue;
-                    }
-                  }
-                  // if valid, add to queue.
-                  matchmaking_queue.push(
-                    QueuedPlayer {
-                      ip: format!("{}:{}", addr.ip(), data.port),
-                      id: data.identifier,
-                      requested_gamemode: request.gamemode,
-                      character: request.character,
-                    }
-                  );
-                  // do matchmaking checks.
-                  // for now this is just a very basic algorithm. If a game can be formed, do it.
-                  let mut queuers_1v1: Vec<usize> = Vec::new();
-                  let mut queuers_2v2: Vec<usize> = Vec::new();
-                  for player_index in 0..matchmaking_queue.len() {
-                    if matchmaking_queue[player_index].requested_gamemode.contains(&GameMode::Standard1V1) {
-                      queuers_1v1.push(player_index);
-                    }
-                    if matchmaking_queue[player_index].requested_gamemode.contains(&GameMode::Standard2V2) {
-                      queuers_2v2.push(player_index);
-                    }
-                  }
-                  let mut queuers: Vec<usize> = Vec::new();
-                  if queuers_2v2.len() >= 4 {
-                    queuers = queuers_2v2;
-                  }
-                  // give 2v2 priority
-                  else if queuers_1v1.len() >= 2 {
-                    queuers = queuers_1v1;
-                  }
-                  // if there are enough people in queue
-                  if !queuers.is_empty() {
-                    let player_count = queuers.len();
-                    let port: u16 = common::get_random_port();
-                    // add an instance of game server
-                    let mut players = Vec::new();
-                    for queuer_index in queuers.clone() {
-                      players.push(matchmaking_queue[queuer_index].clone());
-                    }
-                    fleet.push(
-                      std::thread::spawn(move || {
-                        // run game server
-                        // in the future pass this thread more information so we can like assign victories for
-                        // stats and ranked
-                        game_server(player_count, port, players);
-                      })
-                    );
-                    
-                    // send the first 4 players to the match
-                    for index in 0..player_count {
-                      let addr = matchmaking_queue[queuers[index]].ip.clone();
-                      println!("{}", addr);
-                      // send a match assignment packet.
-                      let stream = TcpStream::connect(addr);
-                      match stream {
-                        Ok(mut stream) => {
-                          let packet = ServerToClientPacket {
-                            information: ServerToClient::MatchAssignment(
-                              MatchAssignmentData {
-                                port: port,
-                              }
-                            ),
-                          };
-                          match stream.write(&bincode::serialize(&packet).expect("idk")) {
-                            Ok(_) => {},
-                            Err(_) => {},
-                          };
-                        },
-                        Err(_) => {
-                          // Don't worry about it.
-                          // In the future, this should probably cancel the match.
-                        }
-                      
-                      }
-                    }
-                    // remove the players from the queue
-                    let mut updated_queue: Vec<QueuedPlayer> = Vec::new();
-                    for index in 0..matchmaking_queue.len() {
-                      //matchmaking_queue.remove(queuers[index]);
-                      if !queuers.contains(&index) {
-                        updated_queue.push(matchmaking_queue[index].clone());
-                      }
-                    }
-                    matchmaking_queue = updated_queue;
-                  }
-                },
-                // QUEUE CANCELED!
-                ClientToServer::MatchRequestCancel => {
-                  for p_index in 0..matchmaking_queue.len() {
-                    println!("{:?}  {:?}", matchmaking_queue[p_index].ip, addr.to_string());
-                    if matchmaking_queue[p_index].ip == format!("{}:{}", addr.ip(), data.port)
-                    && matchmaking_queue[p_index].id == data.identifier {
-                      println!("Canceling request...");
-                      matchmaking_queue.remove(p_index);
+    // Accept a new peer.
+    let (mut socket, _addr) = listener.accept().await.unwrap();
+    // Create the channels to communicate to this thread.
+    let (tx, mut rx): (mpsc::Sender<PlayerMessage>, mpsc::Receiver<PlayerMessage>)
+      = mpsc::channel(32);
+    // Create the identifier.
+    let identifier = identifier_counter; identifier_counter += 1;
+    
+    // Store the information.
+    {
+      let mut players = main_players.lock().unwrap();
+      players.push(PlayerInfo { identifier, channel: tx, queued: false, queued_gamemodes: Vec::new(), selected_character: Character::Hernani });
+    }
+  
+    
+    // for simplicity's sake these will be referred to as threads
+    // in code and comments.
+    let local_players = Arc::clone(&players);
+    let local_fleet = Arc::clone(&fleet);
+    tokio::spawn(async move {
+      let self_identifier = identifier;
+      let mut buffer = [0; 2048];
+      loop {
+        // this thing is really cool and handles whichever branch is ready first
+        tokio::select! {
+          // wait until we recieve packet, and write it to buffer.
+          socket_read = socket.read(&mut buffer) => {
+            match socket_read {
+              Ok(0) => {
+                {
+                  // The player disconnected. remove them from the list.
+                  let mut players = local_players.lock().unwrap();
+                  for t_index in 0..players.len() {
+                    if players[t_index].identifier == self_identifier {
+                      players.remove(t_index);
                       break;
                     }
                   }
                 }
+                return
+              }
+              Ok(_len) => { }
+              Err(err) => {
+                println!("ERROR: {:?}", err);
+                return; // An error happened. We should probably inform the client later, and log this.
+              }
+            };
+            // handle the packet
+            let packet = bincode::deserialize::<ClientToServerPacket>(&buffer);
+            match packet {
+              Ok(packet) => {
+                match packet.information {
+                  // MARK: Match Request
+                  ClientToServer::MatchRequest(data) => {
+                    println!("Match request");
+                    let mut players_copy: Vec<PlayerInfo> = Vec::new();
+                    {
+                      // add the player to the queue
+                      let mut players = local_players.lock().unwrap();
+                      // this player's index
+                      let p_index = from_id(self_identifier, players.clone());
+                      players[p_index].queued = true;
+                      if data.gamemodes.len() <= 2{ players[p_index].queued_gamemodes = data.gamemodes; }
+                      players[p_index].selected_character = data.character;
+
+                      // finally
+                      players_copy = players.clone();
+                    }
+                    // do matchmaking checks
+                    let mut queued_1v1: Vec<usize> = Vec::new();
+                    let mut queued_2v2: Vec<usize> = Vec::new();
+                    for player_index in 0..players_copy.len() {
+                      if !players_copy[player_index].queued { continue; }
+                      if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
+                        queued_2v2.push(player_index);
+                      }
+                      else if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
+                        queued_1v1.push(player_index);
+                      }
+                    }
+                    let mut players_to_match: Vec<usize> = Vec::new();
+                    if queued_2v2.len() >= 4 {
+                      queued_2v2.truncate(4);
+                      players_to_match = queued_2v2;
+                    }
+                    else if queued_1v1.len() >= 2 {
+                      queued_1v1.truncate(2);
+                      players_to_match = queued_1v1;
+                    }
+                    // Create a game
+                    if !players_to_match.is_empty() {
+                      let port = common::get_random_port();
+                      {
+                        let mut fleet = local_fleet.lock().unwrap();
+                        let mut player_info = Vec::new();
+                        for player_index in 0..players_copy.len() {
+                          if players_to_match.contains(&player_index) {
+                            player_info.push(players_copy[player_index].clone())
+                          }
+                        }
+                        fleet.push(
+                          std::thread::spawn(move || {
+                            gameserver::game_server(player_info.len(), port, player_info);
+                          }
+                        ));
+                      }
+                      for pm_index in players_to_match {
+                        players_copy[pm_index].channel.send(PlayerMessage::GameAssigned(
+                          MatchAssignmentData {
+                            port: port,
+                          }
+                        )).await.unwrap(); // PROBLEM HERE
+                      }
+                    }
+                  }
+                  // MARK: Match Cancel
+                  ClientToServer::MatchRequestCancel => {
+                    {
+                      let mut players = local_players.lock().unwrap();
+                      // player's index
+                      let p_index = from_id(self_identifier, players.clone());
+                      players[p_index].queued = false;
+                    }
+                  }
+                }
+              }
+              Err(err) => {
+                println!("ERROR: {:?}", err)
               }
             }
-            Err(_) => {
-              // If the packet is erroneous, ignore it.
-              // In the future, this should probably inform the
-              // client they're on the wrong game version.
+          }
+
+          thread_message = rx.recv() => {
+            if let Some(message) = thread_message {
+              match message {
+                PlayerMessage::GameAssigned(data) => {
+                  socket.write_all(
+                    &bincode::serialize::<ServerToClientPacket>(
+                      &ServerToClientPacket {
+                        information: ServerToClient::MatchAssignment(
+                          MatchAssignmentData { port: data.port }
+                        )
+                      }
+                    ).expect("oops")
+                  ).await.unwrap();
+                },
+              }
             }
-          };
-        },
-
-        Err(_error) => {
-          // ignore
+          }
         }
-      }
-    println!("{:?}", matchmaking_queue);
+        
 
-    }
+      }
+    });
   }
 }
 
+
+/// returns the index of a player in a list of players by its ID.
+fn from_id(id: usize, players: Vec<PlayerInfo>) -> usize {
+  for p_index in 0..players.len() {
+    if players[p_index].identifier == id {
+      return p_index;
+    }
+  }
+  // this should never happen.
+  println!("ERROR: from_id could not find player");
+  return 0;
+}

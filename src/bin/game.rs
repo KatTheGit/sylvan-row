@@ -16,7 +16,9 @@ use miniquad::conf::Icon;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use gilrs::*;
 use bincode;
+use std::any::Any;
 use std::fmt::format;
+use std::io::ErrorKind;
 use std::process::exit;
 use std::{net::UdpSocket, sync::MutexGuard};
 use std::time::{Instant, Duration, SystemTime};
@@ -93,10 +95,16 @@ async fn main() {
   let mut menu_paused = false;
   let mut escape_already_pressed: bool = false;
 
-  let server_ip = get_ip(SERVER_PORT);
-  let mut tcp_listener = TcpListener::bind(format!("{}:{}", "127.0.0.1", port))
-    .expect("Coulnd't bind TcpListener.");
-  tcp_listener.set_nonblocking(true).expect("toilet");
+  let server_ip = get_ip();
+
+  let mut server_stream =
+  match TcpStream::connect(&server_ip) {
+    Ok(stream) => stream,
+    Err(err) => {
+      panic!()
+    },
+  };
+  server_stream.set_nonblocking(true).expect("idk");
 
   loop {
     set_mouse_cursor(miniquad::CursorIcon::Default);
@@ -148,22 +156,14 @@ async fn main() {
         // this always uses an ephemereal socket, which is super lame.
         // to help the server reply to us, we need to tell it our listener's
         // port.
-        let mut server_stream =
-        match TcpStream::connect(&server_ip) {
-          Ok(stream) => stream,
-          Err(err) => {
-            println!("{:?}", err);
-            continue;
-          },
-        };
         if queue {
           println!("Sending match request");
           // Send a match request packet
-          server_stream.write(
+          server_stream.write_all(
             &bincode::serialize(
               &ClientToServerPacket {
                 information: ClientToServer::MatchRequest(MatchRequestData {
-                  gamemode: vec![GameMode::Standard1V1],
+                  gamemodes: vec![GameMode::Standard1V1],
                   character: characters[selected_char],
                 }),
                 identifier: 12345,
@@ -174,7 +174,7 @@ async fn main() {
         } else {
           println!("Sending match cancel request");
           // Send a match cancel packet
-          server_stream.write(
+          server_stream.write_all(
             &bincode::serialize(
               &ClientToServerPacket {
                 information: ClientToServer::MatchRequestCancel,
@@ -188,30 +188,29 @@ async fn main() {
       }
     }
     // if the server places us in a game, go there
-    for stream in tcp_listener.incoming() {
-      match stream {
-        Ok(mut stream) => {
-          let mut data: [u8; 2048] = [0; 2048];
-          stream.read(&mut data).expect("idk 3");
-          let data = bincode::deserialize::<ServerToClientPacket>(&data)
-            .expect("idk");
-          match data.information {
-            ServerToClient::MatchAssignment(info) => {
-              game(characters[selected_char], port, info.port).await;
-            },
-            ServerToClient::MatchMakingInformation(info) => {
-              println!("{:?}", info);
-            }
+    let mut buffer: [u8; 2048] = [0; 2048];
+    match server_stream.read(&mut buffer) {
+      Ok(_) => {
+        let data = bincode::deserialize::<ServerToClientPacket>(&buffer)
+          .expect("idk");
+        match data.information {
+          ServerToClient::MatchAssignment(info) => {
+            println!("{:?}", info);
+            game(characters[selected_char], port, info.port).await;
+          },
+          ServerToClient::MatchMakingInformation(info) => {
+            println!("{:?}", info);
           }
         }
-        Err(error) => {
-          match error.kind() {
-            std::io::ErrorKind::WouldBlock => {
-              break;
-            }
-            _ => {}
+      },
+      Err(error) => {
+        match error.kind() {
+          ErrorKind::WouldBlock => {
+
           }
-          // something's wrong with the client, maybe
+          _ => {
+            println!("{:?}", error);
+          }
         }
       }
     }
@@ -765,7 +764,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 /// slow monitors.
 fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16) -> () {
 
-  let server_ip: String = get_ip(server_port);
+  let server_ip: String = get_ip();
+  let server_ip: Vec<&str> = server_ip.split(":").collect();
+  let server_ip: String = format!("{}:{}", server_ip[0], server_port);
 
 
   // let server_ip: String = format!("{}", server_ip);
@@ -1288,11 +1289,11 @@ fn sort_by_depth(objects: Vec<GameObject>) -> Vec<GameObject> {
 }
 
 
-fn get_ip(port: u16) -> String {
+fn get_ip() -> String {
   let mut server_ip: String;
   let ip_file_name = "moba_ip.txt";
   let ip_file = File::open(ip_file_name);
-  let default_ip: String = format!("{}:{}", DEFAULT_SERVER_IP, port);
+  let default_ip: String = format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT);
   match ip_file {
     // file exists
     Ok(mut file) => {
@@ -1302,9 +1303,8 @@ fn get_ip(port: u16) -> String {
         Ok(_) => {
           server_ip = String::from_utf8(data).expect("Couldn't read IP in file.");
           server_ip.retain(|c| !c.is_whitespace());
-          server_ip = format!("{}:{}", server_ip, port);
           // if smaller than smallest possible length: we have a problem (file might be empty)
-          if server_ip.len() < String::from("0.0.0.0").len() {
+          if server_ip.len() < String::from("0.0.0.0:0").len() {
             println!("IP address was invalid (are you using X.X.X.X:X format?). Defaulting to {}", default_ip);
             server_ip = default_ip;
           }

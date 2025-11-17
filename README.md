@@ -46,8 +46,7 @@ This is just for me.
 
 - [ ] Characters
   - [ ] Rework Hernani secondary
-  - [ ] Josey
-    - [ ] Aim lazer shows ricochet
+  - [ ] Josey aim lazer shows ricochet
 - [ ] Innovate gamemode
 - [x] Rough menu
   - [x] Pause menu, always accessible
@@ -83,6 +82,7 @@ This is just for me.
     - [ ] Matchmaking
       - [ ] Matchmaking info sent to client
       - [x] Start game server
+      - [ ] Rewrite the whole thing with tokio and whatnot
       - [ ] Post-game info
       - [ ] Match ends
     - [ ] "Fleet" managment
