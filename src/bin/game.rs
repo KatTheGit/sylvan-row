@@ -775,7 +775,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
   let socket: UdpSocket = UdpSocket::bind(sending_ip)
     .expect("Could not bind client sender socket");
 
-
   socket.set_nonblocking(true).expect("idk");
   socket.set_read_timeout(Some(Duration::from_millis(100))).expect("Failed to set timeout ig...");
   // if we get another Io(Kind(UnexpectedEof)) then this buffer is too small

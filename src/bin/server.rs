@@ -1,7 +1,7 @@
 use sylvan_row::{common, const_params::SERVER_PORT, gamedata::Character, gameserver, mothership_common::*} ;
-use std::{io::{Read, Write}, sync::{Arc, Mutex}, thread::{JoinHandle}};
+use std::{sync::{Arc, Mutex}, thread::{JoinHandle}};
 // https://tokio.rs/tokio/tutorial/ this documentation is so peak
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener, TcpSocket, TcpStream}};
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 
 #[tokio::main]
 async fn main() {
@@ -74,7 +74,9 @@ async fn main() {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
                     println!("Match request");
-                    let mut players_copy: Vec<PlayerInfo> = Vec::new();
+                    let players_copy: Vec<PlayerInfo>;
+                    let mut players_to_match: Vec<usize> = Vec::new();
+
                     {
                       // add the player to the queue
                       let mut players = local_players.lock().unwrap();
@@ -86,27 +88,29 @@ async fn main() {
 
                       // finally
                       players_copy = players.clone();
-                    }
-                    // do matchmaking checks
-                    let mut queued_1v1: Vec<usize> = Vec::new();
-                    let mut queued_2v2: Vec<usize> = Vec::new();
-                    for player_index in 0..players_copy.len() {
-                      if !players_copy[player_index].queued { continue; }
-                      if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
-                        queued_2v2.push(player_index);
+                      // do matchmaking checks
+                      let mut queued_1v1: Vec<usize> = Vec::new();
+                      let mut queued_2v2: Vec<usize> = Vec::new();
+                      for player_index in 0..players_copy.len() {
+                        if !players_copy[player_index].queued { continue; }
+                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
+                          queued_2v2.push(player_index);
+                        }
+                        else if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
+                          queued_1v1.push(player_index);
+                        }
                       }
-                      else if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
-                        queued_1v1.push(player_index);
-                      }
-                    }
-                    let mut players_to_match: Vec<usize> = Vec::new();
-                    if queued_2v2.len() >= 4 {
-                      queued_2v2.truncate(4);
+                      if queued_2v2.len() >= 4 {
+                        queued_2v2.truncate(4);
                       players_to_match = queued_2v2;
-                    }
-                    else if queued_1v1.len() >= 2 {
-                      queued_1v1.truncate(2);
-                      players_to_match = queued_1v1;
+                      }
+                      else if queued_1v1.len() >= 2 {
+                        queued_1v1.truncate(2);
+                        players_to_match = queued_1v1;
+                      }
+                      for matched_player in players_to_match.clone() {
+                        players[matched_player].queued = false;
+                      }
                     }
                     // Create a game
                     if !players_to_match.is_empty() {
@@ -130,7 +134,7 @@ async fn main() {
                           MatchAssignmentData {
                             port: port,
                           }
-                        )).await.unwrap(); // PROBLEM HERE
+                        )).await.unwrap();
                       }
                     }
                   }
