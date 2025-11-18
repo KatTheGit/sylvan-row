@@ -1,4 +1,5 @@
 use core::panic;
+use std::time::Instant;
 
 use macroquad::prelude::*;
 use crate::common::*;
@@ -43,6 +44,44 @@ pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f
   }
   return false;
 }
+/// A text input field.
+pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32, timer: &mut Instant) {
+    
+  let mouse = Vector2 { x: mouse_position().0, y: mouse_position().1 };
+
+  if is_mouse_button_pressed(MouseButton::Left) {
+    let is_inside =
+      mouse.x > position.x && mouse.x < position.x + size.x &&
+      mouse.y > position.y && mouse.y < position.y + size.y;
+
+    *active = is_inside;
+  }
+
+  let bg = if *active { DARKGRAY } else { GRAY };
+  draw_rectangle(position.x, position.y, size.x, size.y, bg);
+
+  if *active {
+    if let Some(ch) = get_char_pressed() {
+      // extra check not to add backspace...
+      if ch >= ' ' && ch <= '~' {
+        buffer.push(ch);
+      }
+      // 8 = backspace
+      if Some(ch) == char::from_u32(8) {
+        buffer.pop();
+      }
+    }
+    
+  } else {
+    // this functions reads from and empties a buffer. To make sure
+    // we don't get unwanted pressed characters when actually taking input,
+    // empty the buffer beforehand.
+    let _ = get_char_pressed();
+  }
+
+  draw_text(buffer.as_str(), position.x + 2.0 * vh, position.y + size.y * 0.65, font_size, WHITE);
+}
+
 /// - ability index:
 ///   - 1: primary
 ///   - 2: secondary
@@ -153,5 +192,21 @@ pub struct DivBox {
 impl DivBox {
   pub fn rel_pos(&self, position: Vector2) -> Vector2 {
     return Vector2 { x: self.position.x + position.x, y: self.position.y + position.y }
+  }
+}
+
+pub struct Notification {
+  pub start_time: Instant,
+  pub text: String,
+  pub duration: f32,
+}
+impl Notification {
+  pub fn draw(&self, vh: f32, vw: f32, font_size: f32, offset: usize) {
+    let position: Vector2 = Vector2 { x: 65.0*vw, y: 10.0 * vh + offset as f32 * 10.0 * vh };
+    let size: Vector2 = Vector2 { x: 30.0*vw, y: 10.0*vh };
+    let inner_shrink: f32 = 1.0 * vh;
+    draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
+    draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
+    draw_text(self.text.as_str(), position.x + 2.0 * vh, position.y + size.y * 0.65, font_size, BLACK);
   }
 }

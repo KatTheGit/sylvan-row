@@ -96,7 +96,7 @@ async fn main() {
                         if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
                           queued_2v2.push(player_index);
                         }
-                        else if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
+                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
                           queued_1v1.push(player_index);
                         }
                       }

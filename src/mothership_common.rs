@@ -7,8 +7,6 @@ pub struct ClientToServerPacket {
   pub information: ClientToServer,
   /// User's auth token. Not in use right now.
   pub identifier: u64,
-  /// The port the client is listening on.
-  pub port: u16,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum ClientToServer {
@@ -26,16 +24,16 @@ pub struct MatchRequestData {
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum ServerToClient {
   MatchAssignment(MatchAssignmentData),
-  MatchMakingInformation(MatchMakingData),
+  //MatchMakingInformation(MatchMakingData),
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
   pub port: u16,
 }
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
-pub struct MatchMakingData {
-  pub queue_size: u8,
-}
+//#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+//pub struct MatchMakingData {
+//  pub queue_size: u8,
+//}
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct ServerToClientPacket {
   pub information: ServerToClient,

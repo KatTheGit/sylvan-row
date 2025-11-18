@@ -16,8 +16,6 @@ use miniquad::conf::Icon;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use gilrs::*;
 use bincode;
-use std::any::Any;
-use std::fmt::format;
 use std::io::ErrorKind;
 use std::process::exit;
 use std::{net::UdpSocket, sync::MutexGuard};
@@ -26,7 +24,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
 use std::fs::File;
-use std::net::{TcpStream, TcpListener};
+use std::net::{TcpStream};
 
 #[cfg(target_os = "macos")]
 fn rmb_index() -> usize {
@@ -54,7 +52,6 @@ fn window_conf() -> Conf {
   }
 }
 
-/// In the future this function will host the game menu. As of now it just starts the game unconditoinally.
 #[macroquad::main(window_conf)]
 async fn main() {
   set_window_size(800, 450);
@@ -97,18 +94,33 @@ async fn main() {
 
   let server_ip = get_ip();
 
-  let mut server_stream =
-  match TcpStream::connect(&server_ip) {
-    Ok(stream) => stream,
-    Err(err) => {
-      panic!()
-    },
-  };
-  server_stream.set_nonblocking(true).expect("idk");
+  let mut server_stream: Option<TcpStream> = None;
+
+
+  let mut chat: String = String::from("");
+  let mut chat_selected: bool = false;
+  let mut chat_timer: Instant = Instant::now();
+
+  let mut notifications: Vec<ui::Notification> = Vec::new();
 
   loop {
-    set_mouse_cursor(miniquad::CursorIcon::Default);
 
+    match TcpStream::connect(&server_ip) {
+      Ok(stream) => {
+        server_stream = Some(stream);
+        if let Some(ref server_stream) = server_stream {
+          server_stream.set_nonblocking(true).expect("idk");
+        }
+      },
+      Err(err) => {
+        println!("{:?}", err);
+        notifications.push(
+          ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
+        );
+      },
+    };
+
+    set_mouse_cursor(miniquad::CursorIcon::Default);
     vw = screen_width() / 100.0;
     vh = screen_height() / 100.0;
     clear_background(WHITE);
@@ -143,70 +155,79 @@ async fn main() {
       tab_tutorial = true;
     }
 
+    ui::text_input(
+      Vector2 { x: 10.0*vh, y: 60.0*vh },
+      Vector2 { x: 15.0*vw, y: 7.0*vh }, &mut chat, &mut chat_selected, 4.0*vh, vh, &mut chat_timer);
+
     if tab_play {
       let play_button = ui::button(
         br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh, vh
       );
-      if play_button {
-        play_released = true;
-      } if !play_button
-        && play_released {
-        play_released = false;
-        queue = !queue;
-        // this always uses an ephemereal socket, which is super lame.
-        // to help the server reply to us, we need to tell it our listener's
-        // port.
-        if queue {
-          println!("Sending match request");
-          // Send a match request packet
-          server_stream.write_all(
-            &bincode::serialize(
-              &ClientToServerPacket {
-                information: ClientToServer::MatchRequest(MatchRequestData {
-                  gamemodes: vec![GameMode::Standard1V1],
-                  character: characters[selected_char],
-                }),
-                identifier: 12345,
-                port,
-              }
-            ).expect("idk 1")
-          ).expect("idk 2");
-        } else {
-          println!("Sending match cancel request");
-          // Send a match cancel packet
-          server_stream.write_all(
-            &bincode::serialize(
-              &ClientToServerPacket {
-                information: ClientToServer::MatchRequestCancel,
-                identifier: 12345,
-                port,
-              }
-            ).expect("idk 1")
-          ).expect("idk 2");
+      if queue {
+        draw_text("In queue :)", br_anchor.x - 30.0*vh, br_anchor.y - 18.0*vh, 5.0*vh, BLACK);
+      }
+      if let Some(ref mut server_stream) = server_stream {
+        if play_button {
+          play_released = true;
         }
-        // below code only runs once after button release.
+        if !play_button
+        && play_released {
+          play_released = false;
+          queue = !queue;
+          if queue {
+            println!("Sending match request");
+            // Send a match request packet
+            server_stream.write_all(
+              &bincode::serialize(
+                &ClientToServerPacket {
+                  information: ClientToServer::MatchRequest(MatchRequestData {
+                    gamemodes: vec![GameMode::Standard1V1, GameMode::Standard2V2],
+                    character: characters[selected_char],
+                  }),
+                  identifier: 12345,
+                }
+              ).expect("idk 1")
+            ).expect("idk 2");
+          } else {
+            println!("Sending match cancel request");
+            // Send a match cancel packet
+            server_stream.write_all(
+              &bincode::serialize(
+                &ClientToServerPacket {
+                  information: ClientToServer::MatchRequestCancel,
+                  identifier: 12345,
+                }
+              ).expect("idk 1")
+            ).expect("idk 2");
+          }
+        }
       }
     }
     // if the server places us in a game, go there
-    let mut buffer: [u8; 2048] = [0; 2048];
-    match server_stream.read(&mut buffer) {
-      Ok(_) => {
-        let data = bincode::deserialize::<ServerToClientPacket>(&buffer)
+    if let Some(ref mut server_stream) = server_stream {
+
+      let mut buffer: [u8; 2048] = [0; 2048];
+      match server_stream.read(&mut buffer) {
+        Ok(_) => {
+          let data = bincode::deserialize::<ServerToClientPacket>(&buffer)
           .expect("idk");
         match data.information {
           ServerToClient::MatchAssignment(info) => {
             println!("{:?}", info);
-            game(characters[selected_char], port, info.port).await;
+            if info.port != 0 {
+              game(characters[selected_char], port, info.port).await;
+            }
+            queue = false;
           },
-          ServerToClient::MatchMakingInformation(info) => {
-            println!("{:?}", info);
-          }
+          //ServerToClient::MatchMakingInformation(info) => {
+            //  println!("{:?}", info);
+          //}
         }
       },
       Err(error) => {
         match error.kind() {
           ErrorKind::WouldBlock => {
-
+            
           }
           _ => {
             println!("{:?}", error);
@@ -214,6 +235,7 @@ async fn main() {
         }
       }
     }
+  }
 
     if tab_heroes {
       let mut heroes: Vec<bool> = Vec::new();
@@ -251,6 +273,16 @@ async fn main() {
       draw_multiline_text_ex(text,20.0*vh, 13.0*vh, Some(0.7), 
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
+    }
+    // draw notifications
+    for n_index in 0..notifications.len() {
+      notifications[n_index].draw(vh, vw, 5.0*vh, n_index);
+    }
+    for n_index in 0..notifications.len() {
+      if notifications[n_index].start_time.elapsed().as_secs_f32() > notifications[n_index].duration {
+        notifications.remove(n_index);
+        break;
+      }
     }
 
     // SUPER MEGA TEMPORARY

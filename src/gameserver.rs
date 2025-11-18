@@ -14,7 +14,7 @@ use crate::gamedata::*;
 static SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
-pub fn game_server(min_players: usize, port: u16, player: Vec<PlayerInfo>) -> () {
+pub fn game_server(min_players: usize, port: u16, player: Vec<PlayerInfo>) {
   // set the gamemode (temporary)
 
   // Load character properties

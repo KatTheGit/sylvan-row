@@ -71,7 +71,7 @@ This is just for me.
       - [ ] Ban status
     - [ ] Basic authentication system
       - [ ] Create account
-        - [ ] Profanity filter
+        - [ ] Profanity filter (also for chat)
       - [ ] Log in
     - [ ] Chat
       - [ ] Channels
@@ -80,13 +80,11 @@ This is just for me.
       - [ ] Lobby
       - [x] Character
     - [ ] Matchmaking
-      - [ ] Matchmaking info sent to client
       - [x] Start game server
-      - [ ] Rewrite the whole thing with tokio and whatnot
-      - [ ] Post-game info
-      - [ ] Match ends
+      - [ ] Match ends and gives info to server
+        - [ ] Info given to clients
     - [ ] "Fleet" managment
-      - Single machine 
+      - [x] Single-machine 
       - [ ] Error handling
     - [ ] Logs
       - [ ] Chat logs (for moderation)
@@ -97,6 +95,8 @@ This is just for me.
       - [ ] In-game purchases
         - [ ] Inform game request
       - [ ] Display name & change display name
+  - [ ] UI
+    - [ ] Text input fields
 - [ ] Sound
   - [ ] Directional sound (kira crate)
   - [ ] Volume sliders in settings screen, etc
