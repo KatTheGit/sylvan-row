@@ -1,20 +1,34 @@
-use sylvan_row::{common, const_params::SERVER_PORT, gamedata::Character, gameserver, mothership_common::*} ;
+use redb::Database;
+use sylvan_row::{common, const_params::*, database::{self, PlayerData}, gamedata::Character, gameserver, mothership_common::*} ;
 use std::{sync::{Arc, Mutex}, thread::{JoinHandle}};
-// https://tokio.rs/tokio/tutorial/ this documentation is so peak
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
+
+use opaque_ke::{CipherSuite, ServerLoginStartResult};
+use rand::RngCore;
+use rand::rngs::OsRng;
+use opaque_ke::{
+  ClientLogin, ClientLoginFinishParameters, ClientRegistration,
+  ClientRegistrationFinishParameters, CredentialFinalization, CredentialRequest,
+  CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload, ServerLogin,
+  ServerLoginParameters, ServerRegistration, ServerRegistrationLen, ServerSetup,
+};
 
 #[tokio::main]
 async fn main() {
-  let mut identifier_counter: usize = 0;
+
   let listener = TcpListener::bind(format!("{}:{}", "127.0.0.1", SERVER_PORT)).await.unwrap();
 
   let players: Vec<PlayerInfo> = Vec::new();
   // Arc allows for shared access, and Mutex makes it mutually exclusive.
   let players = Arc::new(Mutex::new(players));
-
+  
   // Contains all threads running game servers
   let fleet: Vec<JoinHandle<()>> = Vec::new();
   let fleet = Arc::new(Mutex::new(fleet));
+  
+  // Database
+  let database: Database = database::load().expect("Couldn't load database");
+  let database = Arc::new(Mutex::new(database));
 
   let main_players = Arc::clone(&players);
   loop {
@@ -24,129 +38,127 @@ async fn main() {
     // Create the channels to communicate to this thread.
     let (tx, mut rx): (mpsc::Sender<PlayerMessage>, mpsc::Receiver<PlayerMessage>)
       = mpsc::channel(32);
-    // Create the identifier.
-    let identifier = identifier_counter; identifier_counter += 1;
-    
-    // Store the information.
-    {
-      let mut players = main_players.lock().unwrap();
-      players.push(PlayerInfo { identifier, channel: tx, queued: false, queued_gamemodes: Vec::new(), selected_character: Character::Hernani });
-    }
-  
     
     // for simplicity's sake these will be referred to as threads
     // in code and comments.
     let local_players = Arc::clone(&players);
     let local_fleet = Arc::clone(&fleet);
+    let local_database = Arc::clone(&database);
+    let mut logged_in: bool = false;
     tokio::spawn(async move {
-      let self_identifier = identifier;
+      // Username the client claims to be.
+      let mut username: String = String::from("");
       let mut buffer = [0; 2048];
+      let mut rng = OsRng;
+      let server_setup = ServerSetup::<DefaultCipherSuite>::new(&mut rng);
+      let mut server_login_start_result: Option<ServerLoginStartResult<DefaultCipherSuite>> = None;
       loop {
         // this thing is really cool and handles whichever branch is ready first
         tokio::select! {
           // wait until we recieve packet, and write it to buffer.
           socket_read = socket.read(&mut buffer) => {
-            match socket_read {
+            let len: usize = match socket_read {
               Ok(0) => {
-                {
-                  // The player disconnected. remove them from the list.
-                  let mut players = local_players.lock().unwrap();
-                  for t_index in 0..players.len() {
-                    if players[t_index].identifier == self_identifier {
-                      players.remove(t_index);
-                      break;
-                    }
-                  }
-                }
                 return
               }
-              Ok(_len) => { }
+              Ok(len) => { len }
               Err(err) => {
                 println!("ERROR: {:?}", err);
                 return; // An error happened. We should probably inform the client later, and log this.
               }
             };
             // handle the packet
-            let packet = bincode::deserialize::<ClientToServerPacket>(&buffer);
+            let packet = bincode::deserialize::<ClientToServerPacket>(&buffer[..len]);
             match packet {
               Ok(packet) => {
                 match packet.information {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
-                    println!("Match request");
-                    let players_copy: Vec<PlayerInfo>;
-                    let mut players_to_match: Vec<usize> = Vec::new();
 
-                    {
-                      // add the player to the queue
-                      let mut players = local_players.lock().unwrap();
-                      // this player's index
-                      let p_index = from_id(self_identifier, players.clone());
-                      players[p_index].queued = true;
-                      if data.gamemodes.len() <= 2{ players[p_index].queued_gamemodes = data.gamemodes; }
-                      players[p_index].selected_character = data.character;
-
-                      // finally
-                      players_copy = players.clone();
-                      // do matchmaking checks
-                      let mut queued_1v1: Vec<usize> = Vec::new();
-                      let mut queued_2v2: Vec<usize> = Vec::new();
-                      for player_index in 0..players_copy.len() {
-                        if !players_copy[player_index].queued { continue; }
-                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
-                          queued_2v2.push(player_index);
-                        }
-                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
-                          queued_1v1.push(player_index);
-                        }
-                      }
-                      if queued_2v2.len() >= 4 {
-                        queued_2v2.truncate(4);
-                      players_to_match = queued_2v2;
-                      }
-                      else if queued_1v1.len() >= 2 {
-                        queued_1v1.truncate(2);
-                        players_to_match = queued_1v1;
-                      }
-                      for matched_player in players_to_match.clone() {
-                        players[matched_player].queued = false;
-                      }
-                    }
-                    // Create a game
-                    if !players_to_match.is_empty() {
-                      let port = common::get_random_port();
-                      {
-                        let mut fleet = local_fleet.lock().unwrap();
-                        let mut player_info = Vec::new();
-                        for player_index in 0..players_copy.len() {
-                          if players_to_match.contains(&player_index) {
-                            player_info.push(players_copy[player_index].clone())
-                          }
-                        }
-                        fleet.push(
-                          std::thread::spawn(move || {
-                            gameserver::game_server(player_info.len(), port, player_info);
-                          }
-                        ));
-                      }
-                      for pm_index in players_to_match {
-                        players_copy[pm_index].channel.send(PlayerMessage::GameAssigned(
-                          MatchAssignmentData {
-                            port: port,
-                          }
-                        )).await.unwrap();
-                      }
-                    }
                   }
+
                   // MARK: Match Cancel
                   ClientToServer::MatchRequestCancel => {
+                    
+                  }
+
+                  // MARK: Registration
+                  ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
+                    println!("Trying to run step 1");
+                    username = recieved_username.clone();
+                    let username_taken: bool;
                     {
-                      let mut players = local_players.lock().unwrap();
-                      // player's index
-                      let p_index = from_id(self_identifier, players.clone());
-                      players[p_index].queued = false;
+                      let mut database = local_database.lock().unwrap();
+                      username_taken = database::username_taken(&mut database, &recieved_username).expect("oops");
+                    }
+                    if username_taken {
+                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        information: ServerToClient::AuthenticationRefused(RefusalReason::UsernameTaken),
+                      }).expect("hi")).await;
+                      username = String::new();
+                      continue;
+                    }
+                    let server_registration_start_result = ServerRegistration::<DefaultCipherSuite>::start(
+                      &server_setup,
+                      client_message,
+                      username.clone().as_bytes(),
+                    ).expect("oops");
+                    let response: RegistrationResponse<DefaultCipherSuite> = server_registration_start_result.message;
+                    // reply to the client
+                    // this doesnt reply
+                    let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      information: ServerToClient::RegisterResponse1(response),
+                    }).expect("hi")).await;
+                  }
+                  ClientToServer::RegisterRequestStep2(client_message) => {
+                    if username == String::new() {
+                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                      }).expect("hi")).await;
+                      continue;
+                    }
+                    let password_file = ServerRegistration::<DefaultCipherSuite>::finish(client_message);
+                    println!("Registered user {:?}", username.clone());
+                    let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      information: ServerToClient::RegisterSuccessful,
+                    }).expect("hi")).await;
+                    {
+                      let mut database = local_database.lock().unwrap();
+                      database::create_player(&mut database, username.clone().as_str(), PlayerData::new(password_file)).expect("oops");
+                    }
+
+                  }
+                  // MARK: Login
+                  ClientToServer::LoginRequestStep1(username, client_message) => {
+                    let password_file: ServerRegistration<DefaultCipherSuite>;
+                    {
+                      let database = local_database.lock().unwrap();
+                      password_file = database::get_player(&database, &username).expect("oops").password_hash;
+                    }
+                    server_login_start_result = Some(ServerLogin::start(
+                      &mut rng,
+                      &server_setup,
+                      Some(password_file),
+                      client_message,
+                      username.as_bytes(),
+                      ServerLoginParameters::default(),
+                    ).expect("oops"));
+                    let response = server_login_start_result.as_ref().unwrap().message.clone();
+                    let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      information: ServerToClient::LoginResponse1(response),
+                    }).expect("hi")).await;
+                  }
+                  ClientToServer::LoginRequestStep2(client_message) => {
+                    if let Some(server_login_start_result) = server_login_start_result.take() {
+                      let server_login_finish_result = server_login_start_result.state.finish(
+                        client_message,
+                        ServerLoginParameters::default(),
+                      ).expect("oops");
+                      let session_key = server_login_finish_result.session_key;
+                      println!("KEY: {:?}", session_key);
                     }
                   }
+                  _ => panic!()
                 }
               }
               Err(err) => {
@@ -173,22 +185,7 @@ async fn main() {
             }
           }
         }
-        
-
       }
     });
   }
-}
-
-
-/// returns the index of a player in a list of players by its ID.
-fn from_id(id: usize, players: Vec<PlayerInfo>) -> usize {
-  for p_index in 0..players.len() {
-    if players[p_index].identifier == id {
-      return p_index;
-    }
-  }
-  // this should never happen.
-  println!("ERROR: from_id could not find player");
-  return 0;
 }

@@ -45,8 +45,8 @@ pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f
   return false;
 }
 /// A text input field.
-pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32, timer: &mut Instant) {
-    
+pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32) {
+
   let mouse = Vector2 { x: mouse_position().0, y: mouse_position().1 };
 
   if is_mouse_button_pressed(MouseButton::Left) {
@@ -55,6 +55,10 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
       mouse.y > position.y && mouse.y < position.y + size.y;
 
     *active = is_inside;
+    if is_inside {
+      // empty the input queue
+      clear_input_queue();
+    }
   }
 
   let bg = if *active { DARKGRAY } else { GRAY };
@@ -72,11 +76,6 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
       }
     }
     
-  } else {
-    // this functions reads from and empties a buffer. To make sure
-    // we don't get unwanted pressed characters when actually taking input,
-    // empty the buffer beforehand.
-    let _ = get_char_pressed();
   }
 
   draw_text(buffer.as_str(), position.x + 2.0 * vh, position.y + size.y * 0.65, font_size, WHITE);

@@ -1,4 +1,6 @@
 use crate::gamedata::GameObjectType;
+use opaque_ke::CipherSuite;
+
 
 pub const TILE_SIZE: f32 = 8.0;
 pub const ORB_HEALING: u8 = 20;
@@ -28,3 +30,12 @@ pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
 pub const SERVER_PORT:        u16 = 25569;
 /// Default IP to be used when there's an issue with the moba_ip.txt file.
 pub const DEFAULT_SERVER_IP: &str = "13.38.240.14"; // my AWS instance address
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct DefaultCipherSuite;
+
+impl CipherSuite for DefaultCipherSuite {
+    type OprfCs = opaque_ke::Ristretto255;
+    type KeyExchange = opaque_ke::TripleDh<opaque_ke::Ristretto255, sha2::Sha512>;
+    type Ksf = opaque_ke::ksf::Identity;
+}

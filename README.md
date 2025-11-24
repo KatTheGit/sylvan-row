@@ -69,10 +69,14 @@ This is just for me.
       - [ ] Friends
       - [ ] Muted players is CLIENTSIDE
       - [ ] Ban status
-    - [ ] Basic authentication system
+    - [ ] Auth
       - [ ] Create account
-        - [ ] Profanity filter (also for chat)
+        - [x] PAKE register
+          - [ ] Profanity filter
+          - [x] Check if already in use
+        - [x] Username & password storage
       - [ ] Log in
+      - [ ] save server_setup...
     - [ ] Chat
       - [ ] Channels
       - [ ] Friends
@@ -96,7 +100,8 @@ This is just for me.
         - [ ] Inform game request
       - [ ] Display name & change display name
   - [ ] UI
-    - [ ] Text input fields
+    - [x] Text input fields
+- [ ] Remove all .unwrap() and .expect(), at least serverside
 - [ ] Sound
   - [ ] Directional sound (kira crate)
   - [ ] Volume sliders in settings screen, etc

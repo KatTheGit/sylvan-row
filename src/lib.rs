@@ -16,3 +16,7 @@ pub mod graphics;
 pub mod gameserver;
 /// Structs that need to be shared between the client and the mothership server.
 pub mod mothership_common;
+/// Interface for the server's database.
+pub mod database;
+/// Filters for the chat, user registration, etc...
+pub mod filter;

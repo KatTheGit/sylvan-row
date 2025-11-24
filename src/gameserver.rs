@@ -94,12 +94,6 @@ pub fn game_server(min_players: usize, port: u16, player: Vec<PlayerInfo>) {
           //   break;
           // }
 
-          // TEMPORARYf
-          if recieved_player_info.character != player.character {
-            player.character = recieved_player_info.character;
-            player.stacks = 0;
-          }
-
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           player.shooting = recieved_player_info.shooting_primary;
           player.shooting_secondary = recieved_player_info.shooting_secondary;

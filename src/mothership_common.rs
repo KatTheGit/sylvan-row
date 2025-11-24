@@ -1,17 +1,21 @@
-use crate::gamedata::Character;
+use opaque_ke::{CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
 
-// CLIENT to server
+use crate::{const_params::DefaultCipherSuite, gamedata::Character};
+
+// MARK: CLIENT to server
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct ClientToServerPacket {
   /// Actual packet contents. Can be a match request, a chat message, anything.
   pub information: ClientToServer,
-  /// User's auth token. Not in use right now.
-  pub identifier: u64,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum ClientToServer {
   MatchRequest(MatchRequestData),
   MatchRequestCancel,
+  RegisterRequestStep1(String, RegistrationRequest<DefaultCipherSuite>),
+  RegisterRequestStep2(RegistrationUpload<DefaultCipherSuite>),
+  LoginRequestStep1(String, CredentialRequest<DefaultCipherSuite>),
+  LoginRequestStep2(CredentialFinalization<DefaultCipherSuite>),
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchRequestData {
@@ -20,11 +24,25 @@ pub struct MatchRequestData {
   pub character: Character,
 }
 
-// SERVER to client
+// MARK: SERVER to client
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum ServerToClient {
   MatchAssignment(MatchAssignmentData),
-  //MatchMakingInformation(MatchMakingData),
+  RegisterResponse1(RegistrationResponse<DefaultCipherSuite>),
+  RegisterSuccessful,
+  LoginResponse1(CredentialResponse<DefaultCipherSuite>),
+  LoginResponse2,
+  /// String contains reason for refusal, to be displayed
+  AuthenticationRefused(RefusalReason),
+}
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub enum RefusalReason {
+  /// Someone already owns this username.
+  UsernameTaken,
+  /// Any error that is entirely the server's fault.
+  InternalError,
+  /// Contains inappropriate words, symbols, etc...
+  InvalidUsername,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
@@ -45,21 +63,21 @@ pub enum GameMode {
   Standard1V1,
   Standard2V2,
 }
-/// Data stored for each player in queue.
-#[derive(PartialEq, Clone, Debug)]
-pub struct QueuedPlayer {
-  pub ip: String,
-  pub id: u64,
-  pub requested_gamemode: Vec<GameMode>,
-  pub character: Character,
-}
 
 /// contains the channel and identifier of a player thread.
 #[derive(Clone, Debug)]
 pub struct PlayerInfo {
-  pub identifier: usize,
+  pub username: String,
+  pub session_key: String,
+  /// The channel other threads can use to communicate with this player's
+  /// associated thread.
   pub channel: tokio::sync::mpsc::Sender<PlayerMessage>,
+  /// Whether the player is in a queue.
+  /// 
+  /// When returned by the game server, this flag actually
+  /// represends whether the player won (true) or lost (false)
   pub queued: bool,
+  /// Will be truncated if longer than the total amount of gamemodes.
   pub queued_gamemodes: Vec<GameMode>,
   pub selected_character: Character,
 }
@@ -68,4 +86,9 @@ pub struct PlayerInfo {
 #[derive(PartialEq, Clone, Debug)]
 pub enum PlayerMessage {
   GameAssigned(MatchAssignmentData),
+}
+
+// filters out
+pub fn profanity_filter() {
+
 }

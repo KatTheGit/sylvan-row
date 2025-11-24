@@ -16,6 +16,7 @@ use miniquad::conf::Icon;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use gilrs::*;
 use bincode;
+use sylvan_row::ui::Notification;
 use std::io::ErrorKind;
 use std::process::exit;
 use std::{net::UdpSocket, sync::MutexGuard};
@@ -25,6 +26,16 @@ use std::sync::{Arc, Mutex};
 use std::io::{Read, Write};
 use std::fs::File;
 use std::net::{TcpStream};
+
+use opaque_ke::CipherSuite;
+use rand_core::RngCore;
+use ::rand::rngs::OsRng;
+use opaque_ke::{
+    ClientLogin, ClientLoginFinishParameters, ClientRegistration,
+    ClientRegistrationFinishParameters, CredentialFinalization, CredentialRequest,
+    CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload, ServerLogin,
+    ServerLoginParameters, ServerRegistration, ServerRegistrationLen, ServerSetup,
+};
 
 #[cfg(target_os = "macos")]
 fn rmb_index() -> usize {
@@ -99,26 +110,44 @@ async fn main() {
 
   let mut chat: String = String::from("");
   let mut chat_selected: bool = false;
-  let mut chat_timer: Instant = Instant::now();
+
+  // login fields
+  let mut username: String = String::from("");
+  let mut username_selected: bool = false;
+  let mut password: String = String::from("");
+  let mut password_selected: bool = false;
+
+  let mut registering: bool = false;
+  
+  let mut client_rng = OsRng;
 
   let mut notifications: Vec<ui::Notification> = Vec::new();
 
+  let mut logged_in: bool = false;
+
+  let mut player_username: String = String::new();
+
+  let mut confirm_button_check: bool = false;
+
   loop {
 
-    match TcpStream::connect(&server_ip) {
-      Ok(stream) => {
-        server_stream = Some(stream);
-        if let Some(ref server_stream) = server_stream {
-          server_stream.set_nonblocking(true).expect("idk");
-        }
-      },
-      Err(err) => {
-        println!("{:?}", err);
-        notifications.push(
-          ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
-        );
-      },
-    };
+    if server_stream.is_none() {
+
+      match TcpStream::connect(&server_ip) {
+        Ok(stream) => {
+          server_stream = Some(stream);
+          if let Some(ref server_stream) = server_stream {
+            server_stream.set_nonblocking(true).expect("idk");
+          }
+        },
+        Err(err) => {
+          // println!("{:?}", err);
+          notifications.push(
+            ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
+          );
+        },
+      };
+    }
 
     set_mouse_cursor(miniquad::CursorIcon::Default);
     vw = screen_width() / 100.0;
@@ -128,6 +157,191 @@ async fn main() {
     //let tr_anchor: Vector2 = Vector2 { x: screen_width(), y: 0.0 };
     //let bl_anchor: Vector2 = Vector2 { x: 0.0,            y: screen_height() };
     let tl_anchor: Vector2 = Vector2 { x: 0.0,            y: 0.0 };
+
+
+    // show login window
+    if !logged_in {
+
+      draw_text("Username", 35.0 * vh, 38.0*vh, 4.0*vh, BLACK);
+      draw_text("Password", 35.0 * vh, 53.0*vh, 4.0*vh, BLACK);
+
+      let register_button = ui::one_way_button(
+        Vector2 { x: 35.0*vh, y: 30.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Register", 4.0*vh, vh, registering
+      );
+      let login_button = ui::one_way_button(
+        Vector2 { x: 55.0*vh, y: 30.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Login", 4.0*vh, vh, !registering
+      );
+      if register_button {
+        registering = true;
+      }
+      if login_button {
+        registering = false;
+      }
+
+      ui::text_input(
+        Vector2 { x: 35.0*vh, y: 40.0*vh },
+        Vector2 { x: 30.0*vw, y: 7.0*vh }, &mut username, &mut username_selected, 4.0*vh, vh
+      );
+      ui::text_input(
+        Vector2 { x: 35.0*vh, y: 55.0*vh },
+        Vector2 { x: 30.0*vw, y: 7.0*vh }, &mut password, &mut password_selected, 4.0*vh, vh
+      );
+
+      let confirm = ui::button(
+        Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh, vh
+      );
+      if !confirm { confirm_button_check = false; }
+
+      if let Some(ref mut server_stream) = server_stream { if confirm && !confirm_button_check {
+        println!("{:?}", username);
+        confirm_button_check = true;
+        player_username = username.clone();
+        draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
+        next_frame().await;
+        // register
+        if registering {
+          // step 1
+          let mut client_rng = OsRng;
+          let client_registration_start_result =
+            ClientRegistration::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("oops");
+          let message = client_registration_start_result.message;
+          let state = client_registration_start_result.state;
+          let message = ClientToServerPacket {
+            information: ClientToServer::RegisterRequestStep1(username.clone(), message)
+          };
+          match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+            Ok(_) => {}
+            Err(_) => {
+              //registration failed.
+              continue;
+            }
+          }
+          // step 3
+          let mut buffer: [u8; 2048] = [0; 2048];
+          server_stream.set_nonblocking(false).expect("oops");
+          let len: usize = match server_stream.read(&mut buffer) {
+            Ok(0) => {println!("crap"); continue;}
+            Ok(n) => {n}
+            Err(_) => {println!("crap"); continue;}
+          };
+          let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
+            Ok(message) => message,
+            Err(_) => {
+              continue;
+            }
+          };
+          match data.information {
+            // result from server's step 2
+            ServerToClient::RegisterResponse1(server_message) => {
+              let client_registration_finish_result = state.finish(
+                &mut client_rng,
+                password.as_bytes(),
+                server_message,
+                ClientRegistrationFinishParameters::default(),
+              ).expect("idgaf");
+              let registration_upload = client_registration_finish_result.message;
+              let message = ClientToServerPacket {
+                information: ClientToServer::RegisterRequestStep2(registration_upload)
+              };
+              match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+                Ok(_) => {}
+                Err(_) => {
+                  //registration failed.
+                  println!("hello");
+                  continue;
+                }
+              }
+            }
+            ServerToClient::AuthenticationRefused(reason) => {
+              notifications.push(
+                Notification { start_time: Instant::now(), text: match reason {
+                  RefusalReason::InternalError => String::from("Internal Server Error"),
+                  RefusalReason::InvalidUsername => String::from("Invalid Username"),
+                  RefusalReason::UsernameTaken => String::from("Username Taken"),
+                }, duration: 1.0 }
+              );
+              continue;
+            }
+
+            _ => {
+              // ignore
+            }
+          }
+          registering = false;
+
+        }
+        // login
+        else {
+          let client_login_start_result = ClientLogin::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("Oops");
+          let message = client_login_start_result.message;
+          let message = ClientToServerPacket {
+            information: ClientToServer::LoginRequestStep1(username.clone(), message)
+          };
+          match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+            Ok(_) => {}
+            Err(_) => {
+              //registration failed.
+              println!("hello");
+              continue;
+            }
+          }
+          // step 3
+          let mut buffer: [u8; 2048] = [0; 2048];
+          server_stream.set_nonblocking(false).expect("oops");
+          let len: usize = match server_stream.read(&mut buffer) {
+            Ok(0) => {println!("crap"); continue;}
+            Ok(n) => {n}
+            Err(_) => {println!("crap"); continue;}
+          };
+          let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
+            Ok(message) => message,
+            Err(_) => {
+              continue;
+            }
+          };
+          match data.information {
+            ServerToClient::LoginResponse1(server_response) => {
+              let client_login_finish_result = client_login_start_result.state.finish(
+                &mut client_rng,
+                password.as_bytes(),
+                server_response,
+                ClientLoginFinishParameters::default(),
+              ).expect("oops");
+              let session_key = client_login_finish_result.session_key;
+              println!("KEY: {:?}", session_key);
+              let credential_finalization = client_login_finish_result.message;
+              let message = ClientToServerPacket {
+                information: ClientToServer::LoginRequestStep2(credential_finalization)
+              };
+              match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+                Ok(_) => {}
+                Err(_) => {
+                  //registration failed.
+                  println!("hello");
+                  continue;
+                }
+              }
+            }
+            _ => {}
+          }
+        }
+      }}
+
+      // draw notifications
+      for n_index in 0..notifications.len() {
+        notifications[n_index].draw(vh, vw, 5.0*vh, n_index);
+      }
+      for n_index in 0..notifications.len() {
+        if notifications[n_index].start_time.elapsed().as_secs_f32() > notifications[n_index].duration {
+          notifications.remove(n_index);
+          break;
+        }
+      }
+
+      next_frame().await;
+      // end early
+      continue;
+    }
 
 
     let play_tab_button = ui::one_way_button(
@@ -157,7 +371,8 @@ async fn main() {
 
     ui::text_input(
       Vector2 { x: 10.0*vh, y: 60.0*vh },
-      Vector2 { x: 15.0*vw, y: 7.0*vh }, &mut chat, &mut chat_selected, 4.0*vh, vh, &mut chat_timer);
+      Vector2 { x: 15.0*vw, y: 7.0*vh }, &mut chat, &mut chat_selected, 4.0*vh, vh
+    );
 
     if tab_play {
       let play_button = ui::button(
@@ -184,7 +399,6 @@ async fn main() {
                     gamemodes: vec![GameMode::Standard1V1, GameMode::Standard2V2],
                     character: characters[selected_char],
                   }),
-                  identifier: 12345,
                 }
               ).expect("idk 1")
             ).expect("idk 2");
@@ -195,7 +409,6 @@ async fn main() {
               &bincode::serialize(
                 &ClientToServerPacket {
                   information: ClientToServer::MatchRequestCancel,
-                  identifier: 12345,
                 }
               ).expect("idk 1")
             ).expect("idk 2");
@@ -219,9 +432,7 @@ async fn main() {
             }
             queue = false;
           },
-          //ServerToClient::MatchMakingInformation(info) => {
-            //  println!("{:?}", info);
-          //}
+          _ => panic!()
         }
       },
       Err(error) => {
