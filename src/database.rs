@@ -1,8 +1,11 @@
-use opaque_ke::ServerRegistration;
+use std::fs;
+use opaque_ke::{ServerRegistration, ServerSetup};
 use crate::const_params::DefaultCipherSuite;
-use redb::{Database, Error, ReadableTable, TableDefinition};
+use redb::{Database, Error, TableDefinition};
+use rand_core::OsRng;
 
 const DATABASE_LOCATION: &str = "./database";
+const SERVER_SETUP_LOCATION: &str = "./server_setup";
 const TABLEDEF: TableDefinition<&str, &[u8]> = TableDefinition::new("my_data");
 
 /// Returns the PlayerData for the given username in the given database.
@@ -48,7 +51,12 @@ pub fn create_player(database: &mut Database, username: &str, player_data: Playe
 /// Checks if an username is already in use in the database.
 pub fn username_taken(database: &mut Database, username: &str) -> Result<bool, Error> {
   let read_txn = database.begin_read()?;
-  let table = read_txn.open_table(TABLEDEF)?;
+  let table = match read_txn.open_table(TABLEDEF) {
+    Ok(table) => {table},
+    Err(err) => {
+      return Ok(false);
+    }
+  };
   let taken: bool = table.get(username)?.is_some();
   return Ok(taken);
 }
@@ -57,6 +65,39 @@ pub fn username_taken(database: &mut Database, username: &str) -> Result<bool, E
 pub fn load() -> Result<Database, Error> {
   let database = Database::create(DATABASE_LOCATION)?;
   return Ok(database);
+}
+
+pub fn load_server_setup() -> Result<ServerSetup<DefaultCipherSuite>, Error> {
+  let file_exists: bool;
+  match fs::exists(SERVER_SETUP_LOCATION) {
+    Ok(exists) => {
+      file_exists = exists;
+    }
+    Err(err) => {
+      file_exists = false;
+    }
+  }
+  // load file
+  if file_exists {
+    let serialized = fs::read(SERVER_SETUP_LOCATION)?;
+    let server_setup = match ServerSetup::<DefaultCipherSuite>::deserialize(&serialized) {
+      Ok(data) => { data },
+      Err(err) => {
+        println!("{:?}", err);
+        return Err(redb::Error::PreviousIo);
+      }
+    };
+    return Ok(server_setup);
+  }
+  // create new and store
+  else {
+    let mut rng = OsRng;
+    let server_setup = ServerSetup::<DefaultCipherSuite>::new(&mut rng);
+    let serialized = server_setup.serialize().to_vec();
+    fs::write(SERVER_SETUP_LOCATION, serialized)?;
+    return Ok(server_setup);
+  }
+
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

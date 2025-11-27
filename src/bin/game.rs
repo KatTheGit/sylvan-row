@@ -2,39 +2,18 @@
 #![windows_subsystem = "windows"]
 #![allow(unused_parens)]
 
-use sylvan_row::maths::*;
-use sylvan_row::const_params::*;
-use sylvan_row::gamedata::*;
-use sylvan_row::graphics;
-use sylvan_row::common::*;
-use sylvan_row::mothership_common::*;
-use sylvan_row::ui;
-use macroquad::prelude::*;
-use macroquad::rand::rand;
-use miniquad::window::{set_mouse_cursor, set_window_size};
-use miniquad::conf::Icon;
+use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
+use sylvan_row::{common::*, const_params::*, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification}};
+use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
+use macroquad::{prelude::*, rand::rand};
+use ring::hkdf;
 use gilrs::*;
 use bincode;
-use sylvan_row::ui::Notification;
-use std::io::ErrorKind;
-use std::process::exit;
-use std::{net::UdpSocket, sync::MutexGuard};
-use std::time::{Instant, Duration, SystemTime};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::io::{Read, Write};
-use std::fs::File;
-use std::net::{TcpStream};
-
-use opaque_ke::CipherSuite;
-use rand_core::RngCore;
 use ::rand::rngs::OsRng;
 use opaque_ke::{
-    ClientLogin, ClientLoginFinishParameters, ClientRegistration,
-    ClientRegistrationFinishParameters, CredentialFinalization, CredentialRequest,
-    CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload, ServerLogin,
-    ServerLoginParameters, ServerRegistration, ServerRegistrationLen, ServerSetup,
+  ClientLogin, ClientLoginFinishParameters, ClientRegistration,
+  ClientRegistrationFinishParameters
 };
 
 #[cfg(target_os = "macos")]
@@ -124,13 +103,15 @@ async fn main() {
   let mut notifications: Vec<ui::Notification> = Vec::new();
 
   let mut logged_in: bool = false;
+  let mut cipher_key: Vec<u8> = Vec::new();
+  // counter used for cipher nonce.
+  let mut nonce: u32 = 1234;
 
   let mut player_username: String = String::new();
 
   let mut confirm_button_check: bool = false;
 
   loop {
-
     if server_stream.is_none() {
 
       match TcpStream::connect(&server_ip) {
@@ -224,6 +205,7 @@ async fn main() {
             Ok(n) => {n}
             Err(_) => {println!("crap"); continue;}
           };
+          server_stream.set_nonblocking(true).expect("oops");
           let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
             Ok(message) => message,
             Err(_) => {
@@ -272,6 +254,7 @@ async fn main() {
         }
         // login
         else {
+          println!("1");
           let client_login_start_result = ClientLogin::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("Oops");
           let message = client_login_start_result.message;
           let message = ClientToServerPacket {
@@ -285,6 +268,7 @@ async fn main() {
               continue;
             }
           }
+          println!("2");
           // step 3
           let mut buffer: [u8; 2048] = [0; 2048];
           server_stream.set_nonblocking(false).expect("oops");
@@ -293,12 +277,14 @@ async fn main() {
             Ok(n) => {n}
             Err(_) => {println!("crap"); continue;}
           };
+          server_stream.set_nonblocking(true).expect("oops");
           let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
             Ok(message) => message,
             Err(_) => {
               continue;
             }
           };
+          println!("3");
           match data.information {
             ServerToClient::LoginResponse1(server_response) => {
               let client_login_finish_result = client_login_start_result.state.finish(
@@ -308,11 +294,22 @@ async fn main() {
                 ClientLoginFinishParameters::default(),
               ).expect("oops");
               let session_key = client_login_finish_result.session_key;
-              println!("KEY: {:?}", session_key);
+
+              // Shrink PAKE key
+              // put this in a function later
+              let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+              let prk = salt.extract(&session_key);
+              let okm = prk.expand(&[], hkdf::HKDF_SHA256).unwrap();
+              let mut key_bytes = [0u8; 32];
+              okm.fill(&mut key_bytes).unwrap();
+              let key = Vec::from(&key_bytes);
+              cipher_key = key;
+
               let credential_finalization = client_login_finish_result.message;
               let message = ClientToServerPacket {
                 information: ClientToServer::LoginRequestStep2(credential_finalization)
               };
+              println!("4");
               match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
                 Ok(_) => {}
                 Err(_) => {
@@ -321,8 +318,12 @@ async fn main() {
                   continue;
                 }
               }
+              logged_in = true;
+              continue;
             }
-            _ => {}
+            _ => {
+              println!("{:?}", data.information);
+            }
           }
         }
       }}
@@ -393,24 +394,20 @@ async fn main() {
             println!("Sending match request");
             // Send a match request packet
             server_stream.write_all(
-              &bincode::serialize(
-                &ClientToServerPacket {
-                  information: ClientToServer::MatchRequest(MatchRequestData {
-                    gamemodes: vec![GameMode::Standard1V1, GameMode::Standard2V2],
-                    character: characters[selected_char],
-                  }),
-                }
-              ).expect("idk 1")
-            ).expect("idk 2");
+              &ClientToServerPacket {
+                information: ClientToServer::MatchRequest(MatchRequestData {
+                  gamemodes: vec![GameMode::Standard1V1, GameMode::Standard2V2],
+                  character: characters[selected_char],
+                }),
+              }.cipher(nonce, cipher_key.clone())
+            ).expect("idk 1")
           } else {
             println!("Sending match cancel request");
             // Send a match cancel packet
             server_stream.write_all(
-              &bincode::serialize(
-                &ClientToServerPacket {
-                  information: ClientToServer::MatchRequestCancel,
-                }
-              ).expect("idk 1")
+              &ClientToServerPacket {
+                information: ClientToServer::MatchRequestCancel,
+              }.cipher(nonce, cipher_key.clone())
             ).expect("idk 2");
           }
         }

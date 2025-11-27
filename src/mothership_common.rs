@@ -1,5 +1,8 @@
-use opaque_ke::{CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
-
+use opaque_ke::{generic_array::GenericArray, CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
+use chacha20poly1305::{
+  aead::{Aead, KeyInit},
+  ChaCha20Poly1305, Nonce
+};
 use crate::{const_params::DefaultCipherSuite, gamedata::Character};
 
 // MARK: CLIENT to server
@@ -7,6 +10,24 @@ use crate::{const_params::DefaultCipherSuite, gamedata::Character};
 pub struct ClientToServerPacket {
   /// Actual packet contents. Can be a match request, a chat message, anything.
   pub information: ClientToServer,
+}
+impl ClientToServerPacket {
+  /// Creates a data structure containing the nonce in its first 4 bytes
+  /// and the encrypted packet in the remainder.
+  pub fn cipher(&self, nonce: u32, key: Vec<u8>) -> Vec<u8> {
+    let mut nonce_bytes = [0u8; 12];
+    nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
+    let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+    
+    let key = GenericArray::from_slice(&key);
+    let cipher = ChaCha20Poly1305::new(&key);
+
+    let serialized_nonce = bincode::serialize::<u32>(&nonce).expect("oops");
+    let serialized_packet = bincode::serialize::<ClientToServerPacket>(&self).expect("oops");
+    let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
+    println!("ass {:?}", serialized_nonce);
+    return [&serialized_nonce[..], &ciphered[..]].concat();
+  }
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum ClientToServer {

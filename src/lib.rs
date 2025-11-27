@@ -20,3 +20,5 @@ pub mod mothership_common;
 pub mod database;
 /// Filters for the chat, user registration, etc...
 pub mod filter;
+/// cipher
+pub mod cipher;

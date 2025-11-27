@@ -75,8 +75,9 @@ This is just for me.
           - [ ] Profanity filter
           - [x] Check if already in use
         - [x] Username & password storage
-      - [ ] Log in
-      - [ ] save server_setup...
+      - [x] Log in
+      - [x] save server_setup...
+      - [ ] Serverside error handling
     - [ ] Chat
       - [ ] Channels
       - [ ] Friends
