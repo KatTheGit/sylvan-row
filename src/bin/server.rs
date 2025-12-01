@@ -36,7 +36,6 @@ async fn main() {
 
   //let main_players = Arc::clone(&players);
   loop {
-
     // Accept a new peer.
     let (mut socket, _addr) = listener.accept().await.unwrap();
     // Create the channels to communicate to this thread.
@@ -65,17 +64,25 @@ async fn main() {
         tokio::select! {
           // wait until we recieve packet, and write it to buffer.
           socket_read = socket.read(&mut buffer) => {
+            println!("hi");
             let len: usize = match socket_read {
               Ok(0) => {
                 // disconnect
                 // remove player from players.
                 if logged_in {
-                  let mut players = local_players.lock().unwrap();
-                  for p_index in 0..players.len() {
-                    if players[p_index].username == username {
-                      players.remove(p_index);
-                      return;
+                  let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
+                  {
+                    let mut players = local_players.lock().unwrap();
+                    for p_index in 0..players.len() {
+                      if players[p_index].username == username {
+                        channel_copy = Some(players[p_index].channel.clone());
+                        players.remove(p_index);
+                        return;
+                      }
                     }
+                  }
+                  if let Some(channel) = channel_copy {
+                    channel.send(PlayerMessage::ForceDisconnect).await.unwrap();
                   }
                 }
                 return
@@ -347,6 +354,9 @@ async fn main() {
                   ).await.unwrap();
                   nonce += 1;
                 },
+                PlayerMessage::ForceDisconnect => {
+                  return;
+                }
               }
             }
           }

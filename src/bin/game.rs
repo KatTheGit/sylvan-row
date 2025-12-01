@@ -112,7 +112,6 @@ async fn main() {
   let mut nonce: u32 = 1;
   let mut last_nonce: u32 = 0;
 
-  let mut player_username: String = String::new();
 
   let mut confirm_button_check: bool = false;
 
@@ -126,7 +125,7 @@ async fn main() {
             server_stream.set_nonblocking(true).expect("idk");
           }
         },
-        Err(err) => {
+        Err(_err) => {
           // println!("{:?}", err);
           notifications.push(
             ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
@@ -181,7 +180,6 @@ async fn main() {
       if let Some(ref mut server_stream) = server_stream { if confirm && !confirm_button_check {
         println!("{:?}", username);
         confirm_button_check = true;
-        player_username = username.clone();
         draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
         next_frame().await;
         // register
@@ -259,7 +257,6 @@ async fn main() {
         }
         // login
         else {
-          println!("1");
           let client_login_start_result = ClientLogin::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("Oops");
           let message = client_login_start_result.message;
           let message = ClientToServerPacket {
@@ -273,7 +270,6 @@ async fn main() {
               continue;
             }
           }
-          println!("2");
           // step 3
           let mut buffer: [u8; 2048] = [0; 2048];
           server_stream.set_nonblocking(false).expect("oops");
@@ -289,15 +285,22 @@ async fn main() {
               continue;
             }
           };
-          println!("3");
           match data.information {
             ServerToClient::LoginResponse1(server_response) => {
-              let client_login_finish_result = client_login_start_result.state.finish(
+              let client_login_finish_result = match client_login_start_result.state.finish(
                 &mut client_rng,
                 password.as_bytes(),
                 server_response,
                 ClientLoginFinishParameters::default(),
-              ).expect("oops");
+              ) {
+                Ok(result) => {result},
+                Err(_err) => {
+                  notifications.push(
+                    Notification { start_time: Instant::now(), text: String::from("Wrong password"), duration: 1.0 }
+                  );
+                  continue;
+                }
+              };
               let session_key = client_login_finish_result.session_key;
 
               // Shrink PAKE key
@@ -314,7 +317,6 @@ async fn main() {
               let message = ClientToServerPacket {
                 information: ClientToServer::LoginRequestStep2(credential_finalization)
               };
-              println!("4");
               match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
                 Ok(_) => {}
                 Err(_) => {

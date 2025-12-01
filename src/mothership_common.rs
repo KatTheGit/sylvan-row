@@ -124,6 +124,8 @@ pub struct PlayerInfo {
 #[derive(PartialEq, Clone, Debug)]
 pub enum PlayerMessage {
   GameAssigned(MatchAssignmentData),
+  /// This thread must stop now.
+  ForceDisconnect,
 }
 
 // filters out
