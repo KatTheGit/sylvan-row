@@ -49,7 +49,7 @@ pub fn create_player(database: &mut Database, username: &str, player_data: Playe
   return Ok(());
 }
 /// Checks if an username is already in use in the database.
-pub fn username_taken(database: &mut Database, username: &str) -> Result<bool, Error> {
+pub fn username_taken(database: &Database, username: &str) -> Result<bool, Error> {
   let read_txn = database.begin_read()?;
   let table = match read_txn.open_table(TABLEDEF) {
     Ok(table) => {table},

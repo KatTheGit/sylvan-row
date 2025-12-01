@@ -29,6 +29,24 @@ impl ClientToServerPacket {
     return [&serialized_nonce[..], &ciphered[..]].concat();
   }
 }
+impl ServerToClientPacket {
+  /// Creates a data structure containing the nonce in its first 4 bytes
+  /// and the encrypted packet in the remainder.
+  pub fn cipher(&self, nonce: u32, key: Vec<u8>) -> Vec<u8> {
+    let mut nonce_bytes = [0u8; 12];
+    nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
+    let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+    
+    let key = GenericArray::from_slice(&key);
+    let cipher = ChaCha20Poly1305::new(&key);
+
+    let serialized_nonce = bincode::serialize::<u32>(&nonce).expect("oops");
+    let serialized_packet = bincode::serialize::<ServerToClientPacket>(&self).expect("oops");
+    let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
+    println!("ass {:?}", serialized_nonce);
+    return [&serialized_nonce[..], &ciphered[..]].concat();
+  }
+}
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum ClientToServer {
   MatchRequest(MatchRequestData),
@@ -89,7 +107,6 @@ pub enum GameMode {
 #[derive(Clone, Debug)]
 pub struct PlayerInfo {
   pub username: String,
-  pub session_key: String,
   /// The channel other threads can use to communicate with this player's
   /// associated thread.
   pub channel: tokio::sync::mpsc::Sender<PlayerMessage>,

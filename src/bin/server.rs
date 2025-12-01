@@ -1,5 +1,5 @@
 use redb::Database;
-use sylvan_row::{const_params::*, database::{self, PlayerData}, gamedata::Character, gameserver, mothership_common::*} ;
+use sylvan_row::{common, const_params::*, database::{self, PlayerData}, gamedata::Character, gameserver, mothership_common::*} ;
 use std::{sync::{Arc, Mutex}, thread::{JoinHandle}};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
@@ -7,7 +7,7 @@ use opaque_ke::{generic_array::GenericArray, ServerLoginStartResult};
 use rand::{rngs::OsRng};
 use opaque_ke::{
   RegistrationResponse, ServerLogin,
-  ServerLoginParameters, ServerRegistration, ServerSetup,
+  ServerLoginParameters, ServerRegistration,
 };
 use chacha20poly1305::{
   aead::{Aead, KeyInit},
@@ -34,7 +34,7 @@ async fn main() {
   let server_setup = database::load_server_setup().expect("Failed to load server setup");
   let server_setup = Arc::new(server_setup);
 
-  let main_players = Arc::clone(&players);
+  //let main_players = Arc::clone(&players);
   loop {
 
     // Accept a new peer.
@@ -55,6 +55,8 @@ async fn main() {
       let mut username: String = String::from("");
       let mut buffer = [0; 2048];
       let mut rng = OsRng;
+      let mut last_nonce: u32 = 0;
+      let mut nonce: u32 = 1;
       let mut server_login_start_result: Option<ServerLoginStartResult<DefaultCipherSuite>> = None;
       // cipher key, also session key.
       let mut cipher_key: Vec<u8> = Vec::new();
@@ -65,6 +67,17 @@ async fn main() {
           socket_read = socket.read(&mut buffer) => {
             let len: usize = match socket_read {
               Ok(0) => {
+                // disconnect
+                // remove player from players.
+                if logged_in {
+                  let mut players = local_players.lock().unwrap();
+                  for p_index in 0..players.len() {
+                    if players[p_index].username == username {
+                      players.remove(p_index);
+                      return;
+                    }
+                  }
+                }
                 return
               }
               Ok(len) => { len }
@@ -83,7 +96,6 @@ async fn main() {
                   match packet.information {                    
                     // MARK: Registration
                     ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
-                      println!("Trying to run step 1");
                       username = recieved_username.clone();
                       let username_taken: bool;
                       {
@@ -132,6 +144,10 @@ async fn main() {
                       let password_file: ServerRegistration<DefaultCipherSuite>;
                       {
                         let database = local_database.lock().unwrap();
+                        let user_exists = database::username_taken(&database, &username).expect("oops");
+                        if !user_exists {
+                          continue;
+                        }
                         password_file = database::get_player(&database, &username).expect("oops").password_hash;
                       }
                       server_login_start_result = Some(ServerLogin::start(
@@ -166,6 +182,30 @@ async fn main() {
                         // save the new key for this thread
                         cipher_key = key;
                         logged_in = true;
+
+                        // login successful, add user to user list
+                        {
+                          // Make sure we avoid duplicates, if a player struct was left by this player
+                          // beforehand (ungraceful exit)
+                          let mut players = local_players.lock().unwrap();
+                          if logged_in {
+                            for p_index in 0..players.len() {
+                              if players[p_index].username == username {
+                                players.remove(p_index);
+                                return;
+                              }
+                            }
+                          }
+                          players.push(
+                            PlayerInfo {
+                              username: username.clone(),
+                              channel: tx.clone(),
+                              queued: false,
+                              queued_gamemodes: Vec::new(),
+                              selected_character: Character::Hernani
+                            }
+                          );
+                        }
                       }
                     }
                     _ => {
@@ -181,11 +221,13 @@ async fn main() {
             }
             // logged in, so use cipher
             else {
-
+              // this code is a bit redundant for TCP, but will work particularily well for UDP.
               let nonce = &buffer[..4];
-              println!("{:?}", nonce);
               let nonce = bincode::deserialize::<u32>(&nonce).expect("oops");
-              println!("{:?}", nonce);
+              if nonce <= last_nonce {
+                continue;
+              }
+              let nonce_num = nonce;
               let mut nonce_bytes = [0u8; 12];
               nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
               let nonce = Nonce::from_slice(&nonce_bytes);
@@ -194,9 +236,101 @@ async fn main() {
               let cipher = ChaCha20Poly1305::new(key);
               
               let raw_packet = &buffer[4..len];
-              let deciphered = cipher.decrypt(&nonce, raw_packet.as_ref()).expect("shit");
-              let packet = bincode::deserialize::<ClientToServerPacket>(&deciphered);
-              println!("{:?}", packet);
+              let deciphered = match cipher.decrypt(&nonce, raw_packet.as_ref()) {
+                Ok(decrypted) => {
+                  if nonce_num <= last_nonce {
+                    // this is a parroted packet, ignore it.
+                    continue;
+                  }
+                  // this is a valid packet, update last_nonce
+                  last_nonce = nonce_num;
+                  decrypted
+                },
+                Err(_err) => {
+                  // this is an erroneous packet, ignore it.
+                  continue;
+                },
+              };
+              let packet = bincode::deserialize::<ClientToServerPacket>(&deciphered).expect("oops");
+              match packet.information {
+                // MARK: Match Request
+                ClientToServer::MatchRequest(data) => {
+                  println!("Match request");
+                  let players_copy: Vec<PlayerInfo>;
+                  let mut players_to_match: Vec<usize> = Vec::new();
+
+                  {
+                    // add the player to the queue
+                    let mut players = local_players.lock().unwrap();
+                    // this player's index
+                    let p_index = from_user(&username, players.clone());
+                    players[p_index].queued = true;
+                    if data.gamemodes.len() <= 2{ players[p_index].queued_gamemodes = data.gamemodes; }
+                    players[p_index].selected_character = data.character;
+
+                    // finally
+                    players_copy = players.clone();
+                    // do matchmaking checks
+                    let mut queued_1v1: Vec<usize> = Vec::new();
+                    let mut queued_2v2: Vec<usize> = Vec::new();
+                    for player_index in 0..players_copy.len() {
+                      if !players_copy[player_index].queued { continue; }
+                      if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
+                        queued_2v2.push(player_index);
+                      }
+                      if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
+                        queued_1v1.push(player_index);
+                      }
+                    }
+                    if queued_2v2.len() >= 4 {
+                      queued_2v2.truncate(4);
+                    players_to_match = queued_2v2;
+                    }
+                    else if queued_1v1.len() >= 2 {
+                      queued_1v1.truncate(2);
+                      players_to_match = queued_1v1;
+                    }
+                    for matched_player in players_to_match.clone() {
+                      players[matched_player].queued = false;
+                    }
+                  }
+                  // Create a game
+                  if !players_to_match.is_empty() {
+                    let port = common::get_random_port();
+                    {
+                      let mut fleet = local_fleet.lock().unwrap();
+                      let mut player_info = Vec::new();
+                      for player_index in 0..players_copy.len() {
+                        if players_to_match.contains(&player_index) {
+                          player_info.push(players_copy[player_index].clone())
+                        }
+                      }
+                      fleet.push(
+                        std::thread::spawn(move || {
+                          gameserver::game_server(player_info.len(), port, player_info);
+                        }
+                      ));
+                    }
+                    for pm_index in players_to_match {
+                      players_copy[pm_index].channel.send(PlayerMessage::GameAssigned(
+                        MatchAssignmentData {
+                          port: port,
+                        }
+                      )).await.unwrap();
+                    }
+                  }
+                }
+                // MARK: Match Cancel
+                ClientToServer::MatchRequestCancel => {
+                  {
+                    let mut players = local_players.lock().unwrap();
+                    // player's index
+                    let p_index = from_user(&username, players.clone());
+                    players[p_index].queued = false;
+                  }
+                }
+                _ => {}
+              }
             }
           }
 
@@ -205,14 +339,13 @@ async fn main() {
               match message {
                 PlayerMessage::GameAssigned(data) => {
                   socket.write_all(
-                    &bincode::serialize::<ServerToClientPacket>(
-                      &ServerToClientPacket {
-                        information: ServerToClient::MatchAssignment(
-                          MatchAssignmentData { port: data.port }
-                        )
-                      }
-                    ).expect("oops")
+                    &ServerToClientPacket {
+                      information: ServerToClient::MatchAssignment(
+                        MatchAssignmentData { port: data.port }
+                      )
+                    }.cipher(nonce, cipher_key.clone())
                   ).await.unwrap();
+                  nonce += 1;
                 },
               }
             }
@@ -221,4 +354,13 @@ async fn main() {
       }
     });
   }
+}
+
+fn from_user(username: &String, players: Vec<PlayerInfo>) -> usize {
+  for p_index in 0..players.len() {
+    if &players[p_index].username == username {
+      return p_index;
+    }
+  }
+  return usize::MAX;
 }

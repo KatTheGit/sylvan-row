@@ -13,7 +13,11 @@ use bincode;
 use ::rand::rngs::OsRng;
 use opaque_ke::{
   ClientLogin, ClientLoginFinishParameters, ClientRegistration,
-  ClientRegistrationFinishParameters
+  ClientRegistrationFinishParameters, generic_array::GenericArray,
+};
+use chacha20poly1305::{
+  aead::{Aead, KeyInit},
+  ChaCha20Poly1305, Nonce
 };
 
 #[cfg(target_os = "macos")]
@@ -105,7 +109,8 @@ async fn main() {
   let mut logged_in: bool = false;
   let mut cipher_key: Vec<u8> = Vec::new();
   // counter used for cipher nonce.
-  let mut nonce: u32 = 1234;
+  let mut nonce: u32 = 1;
+  let mut last_nonce: u32 = 0;
 
   let mut player_username: String = String::new();
 
@@ -410,40 +415,69 @@ async fn main() {
               }.cipher(nonce, cipher_key.clone())
             ).expect("idk 2");
           }
+          nonce += 1;
         }
       }
     }
-    // if the server places us in a game, go there
+    // MARK: Menu Listen
     if let Some(ref mut server_stream) = server_stream {
-
       let mut buffer: [u8; 2048] = [0; 2048];
       match server_stream.read(&mut buffer) {
-        Ok(_) => {
-          let data = bincode::deserialize::<ServerToClientPacket>(&buffer)
-          .expect("idk");
-        match data.information {
-          ServerToClient::MatchAssignment(info) => {
-            println!("{:?}", info);
-            if info.port != 0 {
-              game(characters[selected_char], port, info.port).await;
-            }
-            queue = false;
-          },
-          _ => panic!()
-        }
-      },
-      Err(error) => {
-        match error.kind() {
-          ErrorKind::WouldBlock => {
-            
+        Ok(len) => {
+          let nonce = &buffer[..4];
+          let nonce = bincode::deserialize::<u32>(&nonce).expect("oops");
+          if nonce <= last_nonce {
+            continue;
           }
-          _ => {
-            println!("{:?}", error);
+          let nonce_num = nonce;
+          let mut nonce_bytes = [0u8; 12];
+          nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
+          let nonce = Nonce::from_slice(&nonce_bytes);
+          let key = GenericArray::from_slice(cipher_key.as_slice());
+          let cipher = ChaCha20Poly1305::new(key);
+          
+          let raw_packet = &buffer[4..len];
+          let deciphered = match cipher.decrypt(&nonce, raw_packet.as_ref()) {
+            Ok(decrypted) => {
+              if nonce_num <= last_nonce {
+                // this is a parroted packet, ignore it.
+                continue;
+              }
+              // this is a valid packet, update last_nonce
+              last_nonce = nonce_num;
+              decrypted
+            },
+            Err(_err) => {
+              // this is an erroneous packet, ignore it.
+              continue;
+            },
+          };
+
+          let packet = bincode::deserialize::<ServerToClientPacket>(&deciphered).expect("oops");
+
+          match packet.information {
+            ServerToClient::MatchAssignment(info) => {
+              println!("{:?}", info);
+              if info.port != 0 {
+                game(characters[selected_char], port, info.port).await;
+              }
+              queue = false;
+            },
+            _ => panic!()
+          }
+        },
+        Err(error) => {
+          match error.kind() {
+            ErrorKind::WouldBlock => {
+              
+            }
+            _ => {
+              println!("{:?}", error);
+            }
           }
         }
       }
     }
-  }
 
     if tab_heroes {
       let mut heroes: Vec<bool> = Vec::new();
