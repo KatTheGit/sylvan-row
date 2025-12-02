@@ -243,6 +243,7 @@ async fn main() {
                   RefusalReason::InternalError => String::from("Internal Server Error"),
                   RefusalReason::InvalidUsername => String::from("Invalid Username"),
                   RefusalReason::UsernameTaken => String::from("Username Taken"),
+                  RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
                 }, duration: 1.0 }
               );
               continue;
@@ -326,6 +327,17 @@ async fn main() {
                 }
               }
               logged_in = true;
+              continue;
+            }
+            ServerToClient::AuthenticationRefused(reason) => {
+              notifications.push(
+                Notification { start_time: Instant::now(), text: match reason {
+                  RefusalReason::InternalError => String::from("Internal Server Error"),
+                  RefusalReason::InvalidUsername => String::from("Invalid Username"),
+                  RefusalReason::UsernameTaken => String::from("Username Taken"),
+                  RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
+                }, duration: 1.0 }
+              );
               continue;
             }
             _ => {

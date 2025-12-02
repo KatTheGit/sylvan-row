@@ -64,10 +64,10 @@ This is just for me.
 - [ ] Matchmaking server ![mindmap](mm-mindmap.png)
   - [ ] **Part 1** (for open beta)
     - [ ] Player data
-      - [ ] Username
-      - [ ] Password (hashed)
+      - [x] Username
+      - [x] Password hash
       - [ ] Friends
-      - [ ] Muted players is CLIENTSIDE
+      - [ ] Muted players
       - [ ] Ban status
     - [ ] Auth
       - [ ] Create account

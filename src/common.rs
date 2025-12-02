@@ -268,9 +268,11 @@ pub fn get_random_port() -> u16 {
 
 /// Information held by server about players.
 /// 
-/// This struct can be as hefty as we want, it stays here, doesn't get sent through network.
+/// This struct can be as hefty as we want, it doesn't get sent over network.
 #[derive(Debug, Clone)]
 pub struct ServerPlayer {
+  pub username:             String,
+  pub cipher_key:           Vec<u8>,
   pub ip:                   String,
   /// Reported network port, also used as an identifier (temporarily)
   pub port:                 u16,

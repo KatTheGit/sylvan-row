@@ -17,7 +17,6 @@ static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) {
   
   println!("{:?}", player_info);
-
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
   println!("Loaded character properties.");
@@ -714,6 +713,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
 
       players.push(
         ServerPlayer {
+          username: String::from("Dummy McDummington"),
+          cipher_key: Vec::new(),
           ip: String::from("hello"),
           port: 12,
           true_port: 12,

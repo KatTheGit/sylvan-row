@@ -208,4 +208,7 @@ impl Notification {
     draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
     draw_text(self.text.as_str(), position.x + 2.0 * vh, position.y + size.y * 0.65, font_size, BLACK);
   }
+  pub fn new(text: &str, duration: f32) -> Notification {
+    return Notification { start_time: Instant::now(), text: String::from(text), duration }
+  }
 }

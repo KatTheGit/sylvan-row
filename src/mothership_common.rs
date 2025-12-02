@@ -78,7 +78,9 @@ pub enum ServerToClient {
 pub enum RefusalReason {
   /// Someone already owns this username.
   UsernameTaken,
-  /// Any error that is entirely the server's fault.
+  /// Attempted login username does not exist.
+  UsernameInexistent,
+  /// Any error that is entirely (or mostly) the server's fault.
   InternalError,
   /// Contains inappropriate words, symbols, etc...
   InvalidUsername,
@@ -107,6 +109,7 @@ pub enum GameMode {
 #[derive(Clone, Debug)]
 pub struct PlayerInfo {
   pub username: String,
+  pub session_key: Vec<u8>,
   /// The channel other threads can use to communicate with this player's
   /// associated thread.
   pub channel: tokio::sync::mpsc::Sender<PlayerMessage>,
@@ -128,7 +131,7 @@ pub enum PlayerMessage {
   ForceDisconnect,
 }
 
-// filters out
+// filters out shit
 pub fn profanity_filter() {
 
 }

@@ -37,5 +37,5 @@ pub struct DefaultCipherSuite;
 impl CipherSuite for DefaultCipherSuite {
     type OprfCs = opaque_ke::Ristretto255;
     type KeyExchange = opaque_ke::TripleDh<opaque_ke::Ristretto255, sha2::Sha512>;
-    type Ksf = opaque_ke::ksf::Identity;
+    type Ksf = opaque_ke::argon2::Argon2<'static>; // argon2 is safer
 }
