@@ -282,7 +282,7 @@ Intended playstyle:
 
 # 6. Lore
 
-The lore serves as guidelines for creating characters. In-game at least, the tidbits of lore should try to be funny and unserious. This is not the case here because I need to condense the world into this document, so do be kind enough to forgive my unpolished writing.
+The lore serves as guidelines for creating characters. In-game at least, the tidbits of lore should try to be funny and unserious. This is not the case here because I need to condense the world into this document, so do be kind enough to forgive my unpolished and description-heavy writing.
 
 ## 6.1. Setting
 

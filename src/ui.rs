@@ -126,7 +126,7 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
     Team::Red => RED,
     Team::Blue => BLUE,
   };
-  draw_text_ex("Player", (position.x) * vh, (position.y) * vh, TextParams { font: Some(font), font_size: (size * 0.5 * vh) as u16, color: color, ..Default::default() });
+  draw_text_ex(player.username.as_str(), (position.x) * vh, (position.y) * vh, TextParams { font: Some(font), font_size: (size * 0.5 * vh) as u16, color: color, ..Default::default() });
   draw_rectangle(
     (position.x) * vh,
     (position.y + 1.5) * vh,

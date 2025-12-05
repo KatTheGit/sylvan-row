@@ -21,6 +21,7 @@ impl Camera {
 /// Information held by client about self and other players.
 #[derive(Debug, Clone)]
 pub struct ClientPlayer {
+  pub username: String,
   pub health: u8,
   pub position: Vector2,
   pub aim_direction: Vector2,
@@ -52,6 +53,7 @@ pub struct ClientPlayer {
 /// Information sent by server to client about other players.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct OtherPlayer {
+  pub username: String,
   pub health: u8,
   pub position: Vector2,
   pub aim_direction: Vector2,
@@ -70,7 +72,9 @@ pub struct OtherPlayer {
 }
 impl ClientPlayer {
   pub fn from_otherplayer(other_player: OtherPlayer) -> ClientPlayer {
-    return ClientPlayer { health: other_player.health,
+    return ClientPlayer {
+      username: other_player.username,
+      health: other_player.health,
       position: other_player.position,
       aim_direction: other_player.aim_direction,
       character: other_player.character,
@@ -150,8 +154,10 @@ impl ClientPlayer {
     let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
     let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
     draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
-
-    let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
+    
+    let username_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
+    draw_text_relative(self.username.as_str(), self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera_position, Color { r: color.r, g: color.g, b: color.b, a: 1.0 });
+    let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -21.0 };
     for buff in self.buffs.clone() {
       draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
       buff_offset.y -= 3.0;
@@ -159,6 +165,7 @@ impl ClientPlayer {
   }
   pub fn new() -> ClientPlayer {
     return ClientPlayer {
+      username: String::from("New User"),
       health: 100,
       position: Vector2::new(),
       aim_direction: Vector2::new(),
@@ -274,11 +281,7 @@ pub struct ServerPlayer {
   pub username:             String,
   pub cipher_key:           Vec<u8>,
   pub ip:                   String,
-  /// Reported network port, also used as an identifier (temporarily)
   pub port:                 u16,
-  /// Actual network port, sometimes different than the client's reported
-  /// network port because of shenanigans like CG-NAT (because God forbid we upgrade to ipv6)
-  pub true_port:            u16,
   pub team:                 Team,
   pub character:            Character,
   pub health:               u8,

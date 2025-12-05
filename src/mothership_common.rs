@@ -3,7 +3,7 @@ use chacha20poly1305::{
   aead::{Aead, KeyInit},
   ChaCha20Poly1305, Nonce
 };
-use crate::{const_params::DefaultCipherSuite, gamedata::Character};
+use crate::{const_params::DefaultCipherSuite, gamedata::Character, common};
 
 // MARK: CLIENT to server
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
@@ -121,6 +121,7 @@ pub struct PlayerInfo {
   /// Will be truncated if longer than the total amount of gamemodes.
   pub queued_gamemodes: Vec<GameMode>,
   pub selected_character: Character,
+  pub assigned_team: common::Team,
 }
 
 /// Possible messages between player threads.

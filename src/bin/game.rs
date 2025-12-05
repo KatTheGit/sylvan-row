@@ -95,9 +95,9 @@ async fn main() {
   let mut chat_selected: bool = false;
 
   // login fields
-  let mut username: String = String::from("");
+  let mut username: String = String::from("ornit");
   let mut username_selected: bool = false;
-  let mut password: String = String::from("");
+  let mut password: String = String::from("toyota");
   let mut password_selected: bool = false;
 
   let mut registering: bool = false;
@@ -473,7 +473,7 @@ async fn main() {
             ServerToClient::MatchAssignment(info) => {
               println!("{:?}", info);
               if info.port != 0 {
-                game(characters[selected_char], port, info.port).await;
+                game(characters[selected_char], port, info.port, cipher_key.clone(), username.clone()).await;
               }
               queue = false;
             },
@@ -574,7 +574,7 @@ async fn main() {
   }
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16) {
+async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String) {
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
@@ -604,7 +604,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
   player.character = character;
   player.position = Vector2 { x: 10.0, y: 10.0 };
+  player.username = username;
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
+  
 
   let player_textures: HashMap<Character, Texture2D> = graphics::load_character_textures();
 
@@ -630,7 +632,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key.clone());
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -1050,7 +1052,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>) -> () {
 
   let server_ip: String = get_ip();
   let server_ip: Vec<&str> = server_ip.split(":").collect();
@@ -1468,7 +1470,19 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       };
 
       // send data to server
-      let serialized: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
+      let serialized_packet: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
+      let nonce: u32 = 1234;
+      let mut nonce_bytes = [0u8; 12];
+      nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
+      
+      let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+      let cipher_key = cipher_key.clone();
+      let key = GenericArray::from_slice(&cipher_key);
+      let cipher = ChaCha20Poly1305::new(&key);
+      let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
+      
+      let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&nonce).expect("oops");
+      let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
       socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server. Is your IP address correct?");
     }
     // drop mutexguard ASAP so other threads can use player ASAP.

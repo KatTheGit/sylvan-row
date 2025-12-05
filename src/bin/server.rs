@@ -89,6 +89,9 @@ async fn main() {
               }
               Ok(len) => { len }
               Err(err) => {
+                if err.kind() == std::io::ErrorKind::WouldBlock {
+                  continue;
+                }
                 println!("ERROR: {:?}", err);
                 return; // An error happened. We should probably inform the client later, and log this.
               }
@@ -241,6 +244,7 @@ async fn main() {
                             for p_index in 0..players.len() {
                               if players[p_index].username == username {
                                 players.remove(p_index);
+                                drop(players);
                                 return;
                               }
                             }
@@ -252,7 +256,8 @@ async fn main() {
                               channel: tx.clone(),
                               queued: false,
                               queued_gamemodes: Vec::new(),
-                              selected_character: Character::Hernani
+                              selected_character: Character::Hernani,
+                              assigned_team: common::Team::Blue,
                             }
                           );
                         }
@@ -294,16 +299,14 @@ async fn main() {
               let deciphered = match cipher.decrypt(&nonce, raw_packet.as_ref()) {
                 Ok(decrypted) => {
                   if nonce_num <= last_nonce {
-                    // this is a parroted packet, ignore it.
-                    continue;
+                    continue; // this is a parroted packet, ignore it.
                   }
                   // this is a valid packet, update last_nonce
                   last_nonce = nonce_num;
                   decrypted
                 },
                 Err(_err) => {
-                  // this is an erroneous packet, ignore it.
-                  continue;
+                  continue; // this is an erroneous packet, ignore it.
                 },
               };
               let packet = match bincode::deserialize::<ClientToServerPacket>(&deciphered) {
@@ -360,14 +363,20 @@ async fn main() {
                     {
                       let mut fleet = local_fleet.lock().unwrap();
                       let mut player_info = Vec::new();
+                      let mut team_counter = 0;
                       for player_index in 0..players_copy.len() {
                         if players_to_match.contains(&player_index) {
-                          player_info.push(players_copy[player_index].clone())
+                          let mut player = players_copy[player_index].clone();
+                          if team_counter < (players_to_match.len() / 2) {
+                            player.assigned_team = common::Team::Red;
+                            team_counter += 1;
+                          }
+                          player_info.push(player);
                         }
                       }
                       fleet.push(
                         std::thread::spawn(move || {
-                          gameserver::game_server(player_info.len(), port, player_info);
+                          sylvan_row::gameserver::game_server(player_info.len(), port, player_info);
                         }
                       ));
                     }
