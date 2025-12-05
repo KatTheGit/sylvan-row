@@ -201,14 +201,33 @@ async fn main() {
             }
           }
           // step 3
-          let mut buffer: [u8; 2048] = [0; 2048];
-          server_stream.set_nonblocking(false).expect("oops");
-          let len: usize = match server_stream.read(&mut buffer) {
-            Ok(0) => {println!("crap"); continue;}
-            Ok(n) => {n}
-            Err(_) => {println!("crap"); continue;}
-          };
-          server_stream.set_nonblocking(true).expect("oops");
+          let mut buffer: [u8; 2048] = [0; 2048]
+          ;
+          let len: usize;
+          loop {
+              match server_stream.read(&mut buffer) {
+                  Ok(0) => {
+                      // server closed
+                      println!("server disconnected");
+                      continue;
+                  }
+                  Ok(n) => {
+                      len = n;
+                      break; // data arrived
+                  }
+                  Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                      // no data yet → draw frame + wait for next tick
+                      draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
+                      next_frame().await;
+                      continue;
+                  }
+                  Err(_) => {
+                      println!("read error");
+                      continue;
+                  }
+              }
+          }
+
           let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
             Ok(message) => message,
             Err(_) => {
@@ -273,13 +292,31 @@ async fn main() {
           }
           // step 3
           let mut buffer: [u8; 2048] = [0; 2048];
-          server_stream.set_nonblocking(false).expect("oops");
-          let len: usize = match server_stream.read(&mut buffer) {
-            Ok(0) => {println!("crap"); continue;}
-            Ok(n) => {n}
-            Err(_) => {println!("crap"); continue;}
-          };
-          server_stream.set_nonblocking(true).expect("oops");
+          let len: usize;
+          loop {
+              match server_stream.read(&mut buffer) {
+                  Ok(0) => {
+                      // server closed
+                      println!("server disconnected");
+                      continue;
+                  }
+                  Ok(n) => {
+                      len = n;
+                      break; // data arrived
+                  }
+                  Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                      // no data yet → draw frame + wait for next tick
+                      draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
+                      next_frame().await;
+                      continue;
+                  }
+                  Err(_) => {
+                      println!("read error");
+                      continue;
+                  }
+              }
+          }
+
           let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
             Ok(message) => message,
             Err(_) => {
@@ -1635,5 +1672,6 @@ fn get_ip() -> String {
       }
     }
   }
+  println!("{:?}", server_ip);
   return server_ip
 }
