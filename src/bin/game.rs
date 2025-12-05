@@ -125,8 +125,8 @@ async fn main() {
             server_stream.set_nonblocking(true).expect("idk");
           }
         },
-        Err(_err) => {
-          // println!("{:?}", err);
+        Err(err) => {
+          println!("{:?}", err);
           notifications.push(
             ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
           );

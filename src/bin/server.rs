@@ -38,6 +38,7 @@ async fn main() {
   loop {
     // Accept a new peer.
     let (mut socket, _addr) = listener.accept().await.unwrap();
+    println!("hi new peer");
     // Create the channels to communicate to this thread.
     let (tx, mut rx): (mpsc::Sender<PlayerMessage>, mpsc::Receiver<PlayerMessage>)
       = mpsc::channel(32);
