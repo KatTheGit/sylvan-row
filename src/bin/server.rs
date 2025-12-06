@@ -17,7 +17,7 @@ use chacha20poly1305::{
 #[tokio::main]
 async fn main() {
 
-  let listener = TcpListener::bind(format!("{}:{}", "127.0.0.1", SERVER_PORT)).await.unwrap();
+  let listener = TcpListener::bind(format!("{}:{}", "0.0.0.0", SERVER_PORT)).await.unwrap();
 
   let players: Vec<PlayerInfo> = Vec::new();
   // Arc allows for shared access, and Mutex makes it mutually exclusive.
@@ -61,6 +61,10 @@ async fn main() {
       // cipher key, also session key.
       let mut cipher_key: Vec<u8> = Vec::new();
       loop {
+        {
+          let players = local_players.lock().unwrap();
+          println!("{:?}", players);
+        }
         // this thing is really cool and handles whichever branch is ready first
         tokio::select! {
           // wait until we recieve packet, and write it to buffer.

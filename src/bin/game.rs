@@ -478,6 +478,8 @@ async fn main() {
           let nonce = &buffer[..4];
           let nonce = bincode::deserialize::<u32>(&nonce).expect("oops");
           if nonce <= last_nonce {
+            next_frame().await;
+            println!("spinning");
             continue;
           }
           let nonce_num = nonce;
