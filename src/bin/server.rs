@@ -124,14 +124,14 @@ async fn main() {
                           let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                             information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
                           //.expect() is ok to use on serialize because we control what gets serialized.
-                          }).expect("hi")).await;
+                          }).expect("hi1")).await;
                           continue;
                         }
                       };
                       if username_taken_real {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                           information: ServerToClient::AuthenticationRefused(RefusalReason::UsernameTaken),
-                        }).expect("hi")).await;
+                        }).expect("hi2")).await;
                         username = String::new();
                         continue;
                       }
@@ -144,7 +144,7 @@ async fn main() {
                         Err(_err) => {
                           let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                             information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
-                          }).expect("hi")).await;
+                          }).expect("hi3")).await;
                           continue;
                         }
                       };
@@ -153,24 +153,25 @@ async fn main() {
                       // this doesnt reply
                       let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                         information: ServerToClient::RegisterResponse1(response),
-                      }).expect("hi")).await;
+                      }).expect("hi4")).await;
                     }
                     ClientToServer::RegisterRequestStep2(client_message) => {
                       if username == String::new() {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                           information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
-                        }).expect("hi")).await;
+                        }).expect("hi5")).await;
                         continue;
                       }
                       let password_file = ServerRegistration::<DefaultCipherSuite>::finish(client_message);
                       println!("Registered user {:?}", username.clone());
                       {
                         let mut database = local_database.lock().unwrap();
-                        database::create_player(&mut database, username.clone().as_str(), PlayerData::new(password_file)).expect("oops");
+                        database::create_player(&mut database, username.clone().as_str(), PlayerData::new(password_file)).expect("hi6");
                       }
                     }
                     // MARK: Login
-                    ClientToServer::LoginRequestStep1(username, client_message) => {
+                    ClientToServer::LoginRequestStep1(recv_username, client_message) => {
+                      username = recv_username;
                       let password_file: Result<PlayerData, redb::Error>;
                       let password_file_real: ServerRegistration<DefaultCipherSuite>;
                       let user_exists: Result<bool, redb::Error>;
@@ -195,7 +196,7 @@ async fn main() {
                       if !user_exists_real {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                           information: ServerToClient::AuthenticationRefused(RefusalReason::UsernameInexistent),
-                        }).expect("hi")).await;
+                        }).expect("hi7")).await;
                         continue;
                       }
                       let result = match ServerLogin::start(
@@ -210,7 +211,7 @@ async fn main() {
                         Err(_err) => {
                           let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                             information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
-                          }).expect("hi")).await;
+                          }).expect("hi8")).await;
                           continue;
                         },
                       };
@@ -218,14 +219,15 @@ async fn main() {
                       let response = server_login_start_result.as_ref().unwrap().message.clone();
                       let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                         information: ServerToClient::LoginResponse1(response),
-                      }).expect("hi")).await;
+                      }).expect("hi9")).await;
                     }
                     ClientToServer::LoginRequestStep2(client_message) => {
+                      println!("step 2");
                       if let Some(server_login_start_result) = server_login_start_result.take() {
                         let server_login_finish_result = server_login_start_result.state.finish(
                           client_message,
                           ServerLoginParameters::default(),
-                        ).expect("oops");
+                        ).expect("hi10");
                         let session_key = server_login_finish_result.session_key.to_vec();
 
                         // Shrink PAKE key
@@ -240,20 +242,38 @@ async fn main() {
                         cipher_key = key;
                         logged_in = true;
 
-                        // login successful, add user to user list
+                        //// login successful, add user to user list
+                        //{
+                        //  // Make sure we avoid duplicates, if a player struct was left by this player
+                        //  // beforehand (ungraceful exit)
+                        //  let mut players = local_players.lock().unwrap();
+                        //  if logged_in {
+                        //    for p_index in 0..players.len() {
+                        //      if players[p_index].username == username {
+                        //        println!("{:?}, {:?}", players[p_index].username, username);
+                        //        players.remove(p_index);
+                        //        drop(players);
+                        //        return;
+                        //      }
+                        //    }
+                        //  }
+                        //}
+                        let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
                         {
-                          // Make sure we avoid duplicates, if a player struct was left by this player
-                          // beforehand (ungraceful exit)
                           let mut players = local_players.lock().unwrap();
-                          if logged_in {
-                            for p_index in 0..players.len() {
-                              if players[p_index].username == username {
-                                players.remove(p_index);
-                                drop(players);
-                                return;
-                              }
+                          for p_index in 0..players.len() {
+                            if players[p_index].username == username {
+                              channel_copy = Some(players[p_index].channel.clone());
+                              players.remove(p_index);
+                              //return;
                             }
                           }
+                        }
+                        if let Some(channel) = channel_copy {
+                          channel.send(PlayerMessage::ForceDisconnect).await.unwrap();
+                        }
+                        {
+                          let mut players = local_players.lock().unwrap();
                           players.push(
                             PlayerInfo {
                               username: username.clone(),

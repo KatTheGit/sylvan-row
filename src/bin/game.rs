@@ -358,8 +358,6 @@ async fn main() {
               match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
                 Ok(_) => {}
                 Err(_) => {
-                  //registration failed.
-                  println!("hello");
                   continue;
                 }
               }
