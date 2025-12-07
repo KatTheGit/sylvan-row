@@ -732,8 +732,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   // toggling the menu every frame
   let mut escape_already_pressed: bool = false;
 
-  // Camera offset from player.
-  // let mut camera_offset: Vector2 = Vector2::new();
+  let mut prev_gamemode_info: GameModeInfo = GameModeInfo::new();
 
   // Main thread
   loop {
@@ -1021,6 +1020,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
       }
     }
 
+    // MARK: UI
     // temporary ofc
     if !player_copy.is_dead {
       player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
@@ -1033,9 +1033,30 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     if player_copy.is_dead {
       draw_text("You dead rip", 20.0*vh, 50.0*vh, 20.0*vh, RED);
     }
-    // MARK: UI
     // time, kills, rounds
     let gamemode_info_main = gamemode_info.lock().unwrap();
+
+    if gamemode_info_main.time < 3 {
+      if gamemode_info_main.rounds_won_blue > prev_gamemode_info.rounds_won_blue
+      && gamemode_info_main.rounds_won_red > prev_gamemode_info.rounds_won_red {
+        draw_text("It's a draw!", 20.0*vh, 50.0*vh, 17.0*vh, BLUE);
+      }
+      if gamemode_info_main.rounds_won_blue > prev_gamemode_info.rounds_won_blue {
+        draw_text("Blue wins this round!", 20.0*vh, 50.0*vh, 15.0*vh, BLUE);
+      }
+      if gamemode_info_main.rounds_won_red > prev_gamemode_info.rounds_won_red {
+        draw_text("Red wins this round!", 20.0*vh, 50.0*vh, 15.0*vh, RED);
+      }
+    } else if gamemode_info_main.time < 5 {
+      prev_gamemode_info = gamemode_info_main.clone();
+    }
+    if gamemode_info_main.rounds_won_red >= ROUNDS_TO_WIN {
+      draw_text("Red wins the game!", 20.0*vh, 50.0*vh, 15.0*vh, RED);
+    }
+    if gamemode_info_main.rounds_won_blue >= ROUNDS_TO_WIN {
+      draw_text("Blue wins the game!", 20.0*vh, 50.0*vh, 15.0*vh, BLUE);
+    }
+
     // let timer_width: f32 = 5.0;
     draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.5 });
     graphics::draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);

@@ -34,10 +34,14 @@ async fn main() {
   let server_setup = database::load_server_setup().expect("Failed to load server setup");
   let server_setup = Arc::new(server_setup);
 
-  // the server is now started so none of the code below should use .expect() or .unwrap()
+  // the server is now started so none of the code below should use .expect() or .unwrap(), unless
+  // it is perfectly safe to do so.
   loop {
     // Accept a new peer.
-    let (mut socket, _addr) = listener.accept().await.unwrap();
+    let (mut socket, _addr) = match listener.accept().await {
+      Ok(info) => info,
+      Err(_) => {continue;}
+    };
     // Create the channels to communicate to this thread.
     let (tx, mut rx): (mpsc::Sender<PlayerMessage>, mpsc::Receiver<PlayerMessage>)
       = mpsc::channel(32);
@@ -60,9 +64,6 @@ async fn main() {
       // cipher key, also session key.
       let mut cipher_key: Vec<u8> = Vec::new();
       loop {
-        {
-          let players = local_players.lock().unwrap();
-        }
         // this thing is really cool and handles whichever branch is ready first
         tokio::select! {
           // wait until we recieve packet, and write it to buffer.
