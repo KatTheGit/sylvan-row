@@ -72,17 +72,20 @@ This is just for me.
     - [ ] Auth
       - [ ] Create account
         - [x] PAKE register
-          - [ ] Profanity filter
+          - [x] Filters
+            - [x] Basic filter
+            - [ ] Profanity filter
           - [x] Check if already in use
         - [x] Username & password storage
       - [x] Log in
       - [x] save server_setup...
-      - [ ] Serverside error handling
+      - [x] Serverside error handling
+        - [ ] Runtime indexing errors
     - [ ] Chat
       - [ ] Channels
       - [ ] Friends
     - [ ] Game request
-      - [ ] Lobby
+      - [ ] Lobby (request with friend)
       - [x] Character
     - [ ] Matchmaking
       - [x] Start game server
@@ -94,6 +97,14 @@ This is just for me.
     - [ ] Logs
       - [ ] Chat logs (for moderation)
       - [ ] Server crash logs
+  - [ ] Server survival
+    - [ ] Throttling
+    - [ ] Invalid account deletion
+    - [ ] Database Efficiency
+      - [ ] Disk size
+      - [ ] Table instead of serialized struct
+    - [ ] No direct indexing[69], no ".expect()"
+      - [ ] Reboot on failure
   - [ ] **Part 2** (for release)
     - [ ] Steam integration
       - [ ] Accounts

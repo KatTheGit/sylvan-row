@@ -1,15 +1,16 @@
-pub fn profanity(text: String) -> bool {
-  let mut valid = true;
-  // to do
-  return valid;
-}
+/// Conditions for validity:
+/// - 8 characters or more
 pub fn valid_password(text: String) -> bool {
-  let mut valid = true;
-  // to do
-  return valid;
+  if text.len() < 8 {
+    return false;
+  }
+  return true;
 }
+/// Conditions for validity:
+/// - 3 characters or more
 pub fn valid_username(text: String) -> bool {
-  let mut valid = true;
-  // to do
-  return valid;
+  if text.len() < 3 {
+    return false;
+  }
+  return true;
 }

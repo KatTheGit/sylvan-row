@@ -25,7 +25,6 @@ impl ClientToServerPacket {
     let serialized_nonce = bincode::serialize::<u32>(&nonce).expect("oops");
     let serialized_packet = bincode::serialize::<ClientToServerPacket>(&self).expect("oops");
     let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
-    println!("ass {:?}", serialized_nonce);
     return [&serialized_nonce[..], &ciphered[..]].concat();
   }
 }
@@ -43,7 +42,6 @@ impl ServerToClientPacket {
     let serialized_nonce = bincode::serialize::<u32>(&nonce).expect("oops");
     let serialized_packet = bincode::serialize::<ServerToClientPacket>(&self).expect("oops");
     let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
-    println!("ass {:?}", serialized_nonce);
     return [&serialized_nonce[..], &ciphered[..]].concat();
   }
 }
@@ -51,6 +49,7 @@ impl ServerToClientPacket {
 pub enum ClientToServer {
   MatchRequest(MatchRequestData),
   MatchRequestCancel,
+  PlayerDataRequest,
   RegisterRequestStep1(String, RegistrationRequest<DefaultCipherSuite>),
   RegisterRequestStep2(RegistrationUpload<DefaultCipherSuite>),
   LoginRequestStep1(String, CredentialRequest<DefaultCipherSuite>),
@@ -73,6 +72,19 @@ pub enum ServerToClient {
   LoginResponse2,
   /// String contains reason for refusal, to be displayed
   AuthenticationRefused(RefusalReason),
+  PlayerDataResponse(PlayerStatistics),
+}
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub struct PlayerStatistics {
+  /// Victory count in standard gamemodes.
+  pub wins: u16,
+}
+impl PlayerStatistics {
+  pub fn new() -> PlayerStatistics {
+    return PlayerStatistics {
+      wins: 0,
+    };
+  }
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum RefusalReason {

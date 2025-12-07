@@ -11,7 +11,9 @@ pub const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectTyp
 pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall, GameObjectType::Water1, GameObjectType::Water2];
 
 /// Disable this for release builds.
-pub const DEBUG: bool = true;
+pub const DEBUG: bool = false;
+
+pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
 // this is bs
 /// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.

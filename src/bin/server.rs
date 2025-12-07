@@ -1,5 +1,5 @@
 use redb::{Database, Result};
-use sylvan_row::{common, const_params::*, database::{self, PlayerData}, gamedata::Character, gameserver, mothership_common::*} ;
+use sylvan_row::{filter, common, const_params::*, database::{self, PlayerData}, gamedata::Character, gameserver, mothership_common::*} ;
 use std::{sync::{Arc, Mutex}, thread::{JoinHandle}};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
@@ -38,7 +38,6 @@ async fn main() {
   loop {
     // Accept a new peer.
     let (mut socket, _addr) = listener.accept().await.unwrap();
-    println!("hi new peer");
     // Create the channels to communicate to this thread.
     let (tx, mut rx): (mpsc::Sender<PlayerMessage>, mpsc::Receiver<PlayerMessage>)
       = mpsc::channel(32);
@@ -63,13 +62,11 @@ async fn main() {
       loop {
         {
           let players = local_players.lock().unwrap();
-          println!("{:?}", players);
         }
         // this thing is really cool and handles whichever branch is ready first
         tokio::select! {
           // wait until we recieve packet, and write it to buffer.
           socket_read = socket.read(&mut buffer) => {
-            println!("hi");
             let len: usize = match socket_read {
               Ok(0) => {
                 // disconnect
@@ -112,6 +109,13 @@ async fn main() {
                     // MARK: Registration
                     ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
                       username = recieved_username.clone();
+                      let valid = filter::valid_username(username.clone());
+                      if !valid {
+                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                          information: ServerToClient::AuthenticationRefused(RefusalReason::InvalidUsername),
+                        }).expect("hi1")).await;
+                        continue;
+                      }
                       let username_taken: Result<bool, redb::Error>;
                       let username_taken_real: bool;
                       {
@@ -222,7 +226,6 @@ async fn main() {
                       }).expect("hi9")).await;
                     }
                     ClientToServer::LoginRequestStep2(client_message) => {
-                      println!("step 2");
                       if let Some(server_login_start_result) = server_login_start_result.take() {
                         let server_login_finish_result = server_login_start_result.state.finish(
                           client_message,
@@ -302,26 +305,26 @@ async fn main() {
             // logged in, so use cipher
             else {
               // this code is a bit redundant for TCP, but will work particularily well for UDP.
-              let nonce = &buffer[..4];
-              let nonce = match bincode::deserialize::<u32>(&nonce){
+              let recv_nonce = &buffer[..4];
+              let recv_nonce = match bincode::deserialize::<u32>(&recv_nonce){
                 Ok(nonce) => nonce,
                 Err(_) => {
                   continue;
                 }
               };
-              if nonce <= last_nonce {
+              if recv_nonce <= last_nonce {
                 continue;
               }
-              let nonce_num = nonce;
+              let nonce_num = recv_nonce;
               let mut nonce_bytes = [0u8; 12];
               nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
-              let nonce = Nonce::from_slice(&nonce_bytes);
+              let nonce_formatted = Nonce::from_slice(&nonce_bytes);
               
               let key = GenericArray::from_slice(cipher_key.as_slice());
               let cipher = ChaCha20Poly1305::new(key);
               
               let raw_packet = &buffer[4..len];
-              let deciphered = match cipher.decrypt(&nonce, raw_packet.as_ref()) {
+              let deciphered = match cipher.decrypt(&nonce_formatted, raw_packet.as_ref()) {
                 Ok(decrypted) => {
                   if nonce_num <= last_nonce {
                     continue; // this is a parroted packet, ignore it.
@@ -343,7 +346,6 @@ async fn main() {
               match packet.information {
                 // MARK: Match Request
                 ClientToServer::MatchRequest(data) => {
-                  println!("Match request");
                   let players_copy: Vec<PlayerInfo>;
                   let mut players_to_match: Vec<usize> = Vec::new();
 
@@ -399,9 +401,35 @@ async fn main() {
                           player_info.push(player);
                         }
                       }
+                      // MARK: Game Server
+                      let thread_database = Arc::clone(&local_database);
                       fleet.push(
                         std::thread::spawn(move || {
-                          sylvan_row::gameserver::game_server(player_info.len(), port, player_info);
+                          let players = player_info.clone();
+                          match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info)}){
+                            Ok(winning_team) => {
+                              println!("Winning team: {:?}", winning_team);
+                              let mut database = thread_database.lock().unwrap();
+                              // assign victories.
+                              for player in players {
+                                if player.assigned_team == winning_team {
+                                  // put the victory in the database
+                                  let mut player_data: PlayerData = match database::get_player(&database, &player.username) {
+                                    Ok(data) => data,
+                                    Err(_err) => {continue;}
+                                  };
+                                  player_data.wins += 1;
+                                  match database::create_player(&mut database, &player.username, player_data) {
+                                    Ok(_) => {},
+                                    Err(_err) => {},
+                                  }
+                                }
+                              }
+                            },
+                            Err(error) => {
+                              println!("Game server crashed: {:?}", error);
+                            }
+                          };
                         }
                       ));
                     }
@@ -423,6 +451,27 @@ async fn main() {
                     players[p_index].queued = false;
                   }
                 }
+                // MARK: Data Request
+                ClientToServer::PlayerDataRequest => {
+                  // client wants to see their stats!!!
+                  let player_stats: PlayerStatistics;
+                  {
+                    let database = local_database.lock().unwrap();
+                    let player_data = match database::get_player(&database, &username) {
+                      Ok(data) => data,
+                      Err(_err) => {
+                        continue;
+                      }
+                    };
+                    player_stats = PlayerStatistics {
+                      wins: player_data.wins as u16,
+                    };
+                  }
+                  let _ = socket.write_all(&ServerToClientPacket {
+                    information: ServerToClient::PlayerDataResponse(player_stats),
+                  }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                  nonce += 1;
+                }
                 _ => {}
               }
             }
@@ -442,7 +491,6 @@ async fn main() {
                   nonce += 1;
                 },
                 PlayerMessage::ForceDisconnect => {
-                  println!("Force Disconnect");
                   return;
                 }
               }

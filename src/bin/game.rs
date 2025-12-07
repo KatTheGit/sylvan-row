@@ -2,7 +2,7 @@
 #![windows_subsystem = "windows"]
 #![allow(unused_parens)]
 
-use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
+use std::{collections::HashMap, fmt::format, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
 use sylvan_row::{common::*, const_params::*, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
@@ -83,6 +83,8 @@ async fn main() {
   let mut tab_play: bool = true;
   let mut tab_heroes: bool = false;
   let mut tab_tutorial: bool = false;
+  let mut tab_stats: bool = false;
+  let mut tab_stats_refresh_flag: bool = false;
   let mut menu_paused = false;
   let mut escape_already_pressed: bool = false;
 
@@ -114,6 +116,8 @@ async fn main() {
 
 
   let mut confirm_button_check: bool = false;
+
+  let mut player_stats: PlayerStatistics = PlayerStatistics::new();
 
   loop {
     if server_stream.is_none() {
@@ -368,7 +372,7 @@ async fn main() {
               notifications.push(
                 Notification { start_time: Instant::now(), text: match reason {
                   RefusalReason::InternalError => String::from("Internal Server Error"),
-                  RefusalReason::InvalidUsername => String::from("Invalid Username"),
+                  RefusalReason::InvalidUsername => String::from("Invalid Username."),
                   RefusalReason::UsernameTaken => String::from("Username Taken"),
                   RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
                 }, duration: 1.0 }
@@ -408,26 +412,39 @@ async fn main() {
     let tutorial_tab_button = ui::one_way_button(
       tl_anchor + Vector2 { x: 65.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Tutorial", 5.0*vh, vh, tab_tutorial
     );
+    let stats_tab_button = ui::one_way_button(
+      tl_anchor + Vector2 { x: 95.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Stats", 5.0*vh, vh, tab_stats
+    );
     if play_tab_button {
       tab_heroes = false;
       tab_play = true;
       tab_tutorial = false;
+      tab_stats = false;
     }
     if heroes_tab_button {
       tab_heroes = true;
       tab_play = false;
       tab_tutorial = false;
+      tab_stats = false;
     }
     if tutorial_tab_button {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = true;
+      tab_stats = false;
+    }
+    if stats_tab_button {
+      tab_heroes = false;
+      tab_play = false;
+      tab_tutorial = false;
+      tab_stats = true;
     }
 
-    ui::text_input(
-      Vector2 { x: 10.0*vh, y: 60.0*vh },
-      Vector2 { x: 15.0*vw, y: 7.0*vh }, &mut chat, &mut chat_selected, 4.0*vh, vh
-    );
+    //// chatbox
+    //ui::text_input(
+    //  Vector2 { x: 10.0*vh, y: 60.0*vh },
+    //  Vector2 { x: 15.0*vw, y: 7.0*vh }, &mut chat, &mut chat_selected, 4.0*vh, vh
+    //);
 
     if tab_play {
       let play_button = ui::button(
@@ -473,33 +490,35 @@ async fn main() {
       let mut buffer: [u8; 2048] = [0; 2048];
       match server_stream.read(&mut buffer) {
         Ok(len) => {
-          let nonce = &buffer[..4];
-          let nonce = bincode::deserialize::<u32>(&nonce).expect("oops");
-          if nonce <= last_nonce {
+          let recv_nonce = &buffer[..4];
+          let recv_nonce = bincode::deserialize::<u32>(&recv_nonce).expect("oops");
+          if recv_nonce <= last_nonce {
             next_frame().await;
             println!("spinning");
             continue;
           }
-          let nonce_num = nonce;
+          let nonce_num = recv_nonce;
           let mut nonce_bytes = [0u8; 12];
-          nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
-          let nonce = Nonce::from_slice(&nonce_bytes);
+          nonce_bytes[8..].copy_from_slice(&recv_nonce.to_be_bytes());
+          let formatted_nonce = Nonce::from_slice(&nonce_bytes);
           let key = GenericArray::from_slice(cipher_key.as_slice());
           let cipher = ChaCha20Poly1305::new(key);
           
           let raw_packet = &buffer[4..len];
-          let deciphered = match cipher.decrypt(&nonce, raw_packet.as_ref()) {
+          let deciphered = match cipher.decrypt(&formatted_nonce, raw_packet.as_ref()) {
             Ok(decrypted) => {
               if nonce_num <= last_nonce {
                 // this is a parroted packet, ignore it.
+                println!("parroted packet");
                 continue;
               }
               // this is a valid packet, update last_nonce
               last_nonce = nonce_num;
               decrypted
             },
-            Err(_err) => {
+            Err(err) => {
               // this is an erroneous packet, ignore it.
+              println!("erroneous packet: {:?}", err);
               continue;
             },
           };
@@ -508,12 +527,14 @@ async fn main() {
 
           match packet.information {
             ServerToClient::MatchAssignment(info) => {
-              println!("{:?}", info);
               if info.port != 0 {
                 game(characters[selected_char], port, info.port, cipher_key.clone(), username.clone()).await;
               }
               queue = false;
             },
+            ServerToClient::PlayerDataResponse(player_data) => {
+              player_stats = player_data;
+            }
             _ => panic!()
           }
         },
@@ -566,6 +587,27 @@ async fn main() {
       draw_multiline_text_ex(text,20.0*vh, 13.0*vh, Some(0.7), 
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
+    }
+    if tab_stats {
+      // runs once when we click this tab
+      if tab_stats_refresh_flag == false {
+        tab_stats_refresh_flag = true;
+        // ask the server for our stats
+        if let Some(ref mut server_stream) = server_stream {
+          server_stream.write_all(
+            &ClientToServerPacket {
+              information: ClientToServer::PlayerDataRequest,
+            }.cipher(nonce, cipher_key.clone())
+          ).expect("idk 3");
+          nonce += 1;
+        }
+      }
+      let username = username.clone();
+      let stats = player_stats.clone();
+      draw_text(&format!("{}'s beautiful stats:", username), 20.0*vh, 20.0*vh, 5.0*vh, BLACK);
+      draw_text(&format!("Wins: {}", stats.wins), 20.0*vh, 27.0*vh, 5.0*vh, BLACK);
+    } if !tab_stats {
+      tab_stats_refresh_flag = false;
     }
     // draw notifications
     for n_index in 0..notifications.len() {

@@ -1,5 +1,5 @@
-A lone wolf. He's a bit weird but he's very
-good with his musket.
+A lone wolf, very wary of people around him. He's
+very good with his musket.
 
 PRIMARY - Silver Bullet
   Fires a long range musket.

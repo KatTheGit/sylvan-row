@@ -19,9 +19,8 @@ use opaque_ke::generic_array::GenericArray;
 static SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
-pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) {
-  
-  println!("{:?}", player_info);
+/// Gameplay server. Returns a winning team.
+pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) -> Team {
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
   println!("Loaded character properties.");
@@ -93,7 +92,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       // recieve packet
       let (amt, src) = socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
-      println!("SERVER: Received from {}", src);
       
       // clean all recieved NaNs and infinites so the server doesnt explode
       //recieved_player_info.aim_direction.clean();
@@ -111,14 +109,12 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       
       // iterate through players
       for p_index in 0..players.len() {
-        println!("attempting to find player...");
         // THIS VALUE WILL THEN BE ASSIGNED BACK TO players[p_index] !!!!
         let mut player = players[p_index].clone();
         
         // use IP as identifier, check if packet from sent player correlates to our player
         // Later on we might have an account system and use that as ID. For now, IP will do
         if player.ip == src.ip().to_string() && player.port == src.port() {
-        println!("player found");
 
           // get nonce
           let nonce = &buffer[..4];
@@ -575,12 +571,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       // otherwise, add the player
       // NOTE: In the future this entire chunk of code will be gone, the matchmaker will populate
       // the list of players beforehand.
-      println!("{:?}", player_found);
       if !player_found /*&& (gamemode_info.total_blue + gamemode_info.total_red < max_players as u8)*/ {
-        println!("player not found");
 
         for p_index in 0..players.len() {
-          println!("trying to find...");
 
           // get nonce
           let nonce = &buffer[..4];
@@ -612,7 +605,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               // SUCCESSFULLY DECRYPTED. ASSIGN IP TO THIS PLAYER.
               players[p_index].ip = src.ip().to_string();
               players[p_index].port = src.port();
-              println!("player found");
               break; // decrypted
             },
             Err(err) => {
@@ -818,7 +810,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             gamemode_info.game_active = true;
             game_start_time = Instant::now();
             // reset player data, but not positions. It's ok if players get a small headstart
-            // in the palyer cages.
+            // in the palyer "cages".
             for p_index in 0..players.len() {
               players[p_index].is_dead = false;
               players[p_index].secondary_charge = 0;
@@ -830,6 +822,13 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             }
             // reset the game objects too
             *game_objects = load_map_from_file(include_str!("../assets/maps/map1.map"));
+          }
+          // MARK: Game End
+          if gamemode_info.rounds_won_blue >= ROUNDS_TO_WIN {
+            return Team::Blue;
+          }
+          if gamemode_info.rounds_won_red >= ROUNDS_TO_WIN {
+            return Team::Red;
           }
         }
 

@@ -7,6 +7,7 @@ use rand_core::OsRng;
 const DATABASE_LOCATION: &str = "./database";
 const SERVER_SETUP_LOCATION: &str = "./server_setup";
 const TABLEDEF: TableDefinition<&str, &[u8]> = TableDefinition::new("my_data");
+const TABLE_DEF: TableDefinition<&str, u32> = TableDefinition::new("cool and awesome database");
 
 /// Returns the PlayerData for the given username in the given database.
 pub fn get_player(database: &Database, username: &str) -> Result<PlayerData, Error> {
@@ -29,6 +30,8 @@ pub fn get_player(database: &Database, username: &str) -> Result<PlayerData, Err
   }
 }
 /// Creates a new entry in the database for this player.
+/// 
+/// If player already exists, replaces data.
 pub fn create_player(database: &mut Database, username: &str, player_data: PlayerData) -> Result<(), Error>{
   let write_txn = database.begin_write()?;
   {
