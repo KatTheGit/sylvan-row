@@ -189,12 +189,9 @@ async fn main() {
                       match user_exists {
                         Ok(exists) => user_exists_real = exists,
                         Err(_err) => {
-                          continue;
-                        }
-                      }
-                      match password_file {
-                        Ok(playerdata) => password_file_real = playerdata.password_hash,
-                        Err(_err) => {
+                          let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                            information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                          }).expect("hi7")).await;
                           continue;
                         }
                       }
@@ -203,6 +200,15 @@ async fn main() {
                           information: ServerToClient::AuthenticationRefused(RefusalReason::UsernameInexistent),
                         }).expect("hi7")).await;
                         continue;
+                      }
+                      match password_file {
+                        Ok(playerdata) => password_file_real = playerdata.password_hash,
+                        Err(_err) => {
+                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                          information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                        }).expect("hi7")).await;
+                          continue;
+                        }
                       }
                       let result = match ServerLogin::start(
                         &mut rng,

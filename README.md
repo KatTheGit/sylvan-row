@@ -7,9 +7,7 @@ A twin-stick hero shooter, with the ambition of avoiding hard-counter interactio
 
 The game's development highly relies on player feedback, and the game is currently having scheduled playtests on [discord](https://discord.gg/4SbwGZeYcx).
 
-There is a playable release, but you'll need to host your own server if you want to try the game.
-
-When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP address in there.
+There is a playable release, but you'll need to host your own server if you want to try the game. When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP address in there.
 
 ## Compile and run it yourself
 

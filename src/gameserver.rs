@@ -607,8 +607,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               players[p_index].port = src.port();
               break; // decrypted
             },
-            Err(err) => {
-              println!("decryption error");
+            Err(_err) => {
               continue; // this is an erroneous packet, ignore it.
             },
           };

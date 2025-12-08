@@ -88,6 +88,9 @@ async fn main() {
   let mut menu_paused = false;
   let mut escape_already_pressed: bool = false;
 
+  let mut checkbox_1v1 = true;
+  let mut checkbox_2v2 = true;
+
   let server_ip = get_ip();
 
   let mut server_stream: Option<TcpStream> = None;
@@ -205,32 +208,15 @@ async fn main() {
             }
           }
           // step 3
-          let mut buffer: [u8; 2048] = [0; 2048]
-          ;
+          let mut buffer: [u8; 2048] = [0; 2048];
           let len: usize;
-          loop {
-              match server_stream.read(&mut buffer) {
-                  Ok(0) => {
-                      // server closed
-                      println!("server disconnected");
-                      continue;
-                  }
-                  Ok(n) => {
-                      len = n;
-                      break; // data arrived
-                  }
-                  Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                      // no data yet → draw frame + wait for next tick
-                      draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
-                      next_frame().await;
-                      continue;
-                  }
-                  Err(_) => {
-                      println!("read error");
-                      continue;
-                  }
-              }
-          }
+          server_stream.set_nonblocking(false).expect("oops");
+          let len: usize = match server_stream.read(&mut buffer) {
+            Ok(0) => {println!("crap"); continue;}
+            Ok(n) => {n}
+            Err(_) => {println!("crap"); continue;}
+          };
+          server_stream.set_nonblocking(true).expect("oops");
 
           let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
             Ok(message) => message,
@@ -296,30 +282,13 @@ async fn main() {
           }
           // step 3
           let mut buffer: [u8; 2048] = [0; 2048];
-          let len: usize;
-          loop {
-              match server_stream.read(&mut buffer) {
-                  Ok(0) => {
-                      // server closed
-                      println!("server disconnected");
-                      continue;
-                  }
-                  Ok(n) => {
-                      len = n;
-                      break; // data arrived
-                  }
-                  Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                      // no data yet → draw frame + wait for next tick
-                      draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
-                      next_frame().await;
-                      continue;
-                  }
-                  Err(_) => {
-                      println!("read error");
-                      continue;
-                  }
-              }
-          }
+          server_stream.set_nonblocking(false).expect("oops");
+          let len: usize = match server_stream.read(&mut buffer) {
+            Ok(0) => {println!("crap"); continue;}
+            Ok(n) => {n}
+            Err(_) => {println!("crap"); continue;}
+          };
+          server_stream.set_nonblocking(true).expect("oops");
 
           let data = match bincode::deserialize::<ServerToClientPacket>(&buffer[..len]) {
             Ok(message) => message,
@@ -447,11 +416,19 @@ async fn main() {
     //);
 
     if tab_play {
+      if !queue {
+        checkbox_1v1 = ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, checkbox_1v1);
+        checkbox_2v2 = ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, checkbox_2v2);
+      } if queue {
+        ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, checkbox_1v1);
+        ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, checkbox_2v2);
+      }
+
       let play_button = ui::button(
         br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh, vh
       );
       if queue {
-        draw_text("In queue :)", br_anchor.x - 30.0*vh, br_anchor.y - 18.0*vh, 5.0*vh, BLACK);
+        draw_text("In queue :)", br_anchor.x - 30.0*vh, br_anchor.y - 24.0*vh, 5.0*vh, BLACK);
       }
       if let Some(ref mut server_stream) = server_stream {
         if play_button {
@@ -462,18 +439,24 @@ async fn main() {
           play_released = false;
           queue = !queue;
           if queue {
-            println!("Sending match request");
+            let mut selected_gamemodes: Vec<GameMode> = Vec::new();
+            if checkbox_1v1 {selected_gamemodes.push(GameMode::Standard1V1)}
+            if checkbox_2v2 {selected_gamemodes.push(GameMode::Standard2V2)}
+            if selected_gamemodes.is_empty() {
+              notifications.push(Notification::new("Pick a gamemode!", 1.0));
+              queue = false;
+              continue;
+            }
             // Send a match request packet
             server_stream.write_all(
               &ClientToServerPacket {
                 information: ClientToServer::MatchRequest(MatchRequestData {
-                  gamemodes: vec![GameMode::Standard1V1, GameMode::Standard2V2],
+                  gamemodes: selected_gamemodes,
                   character: characters[selected_char],
                 }),
               }.cipher(nonce, cipher_key.clone())
             ).expect("idk 1")
           } else {
-            println!("Sending match cancel request");
             // Send a match cancel packet
             server_stream.write_all(
               &ClientToServerPacket {

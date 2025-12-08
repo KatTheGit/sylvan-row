@@ -34,7 +34,7 @@ pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f
   }
   let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
   if mouse.x > position.x && mouse.x < (position.x + size.x) {
-    if mouse.y > position.y && mouse.y < (position.y + size.y) {
+    if mouse.y > position.y && mouse.y < (position.y + size.y)   {
       draw_rectangle(position.x, position.y, size.x, size.y,GRAY);
       draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
       if is_mouse_button_down(MouseButton::Left) {
@@ -43,6 +43,32 @@ pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f
     }
   }
   return false;
+}
+/// A checkbox.
+/// 
+/// Reads a `selected` boolean, returns the same bool if it wasn't
+/// pressed, and returns the opposite if it was.
+pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: bool) -> bool {
+draw_rectangle(position.x, position.y, size, size, BLUE);
+  let inner_shrink: f32 = 0.2 * vh;
+  draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size - inner_shrink*2.0, size - inner_shrink*2.0, SKYBLUE);
+  draw_text(text, position.x + size + 1.0 *vh, position.y + size / 1.5, font_size , BLACK);
+
+  
+  if selected {
+    draw_line(position.x, position.y + size/2.0, position.x + size/2.0, position.y + size, 0.5*vh, WHITE);
+    draw_line(position.x + size/2.0, position.y + size, position.x + size,position.y, 0.5*vh, WHITE);
+  }
+  let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
+  if mouse.x > position.x && mouse.x < (position.x + size) {
+    if mouse.y > position.y && mouse.y < (position.y + size) {
+      draw_rectangle(position.x, position.y, size, size,Color { r: 0.05, g: 0.0, b: 0.1, a: 0.2 });
+      if is_mouse_button_pressed(MouseButton::Left) {
+        return !selected;
+      }
+    }
+  }
+  return selected;
 }
 /// A text input field.
 pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32) {
