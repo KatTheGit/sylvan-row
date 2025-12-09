@@ -76,9 +76,9 @@ This is just for me.
           - [x] Check if already in use
         - [x] Username & password storage
       - [x] Log in
-      - [x] save server_setup...
-      - [x] Serverside error handling
-        - [ ] Runtime indexing errors
+      - [x] Encryption
+        - [x] Game server
+        - [x] Matchmaking server
     - [ ] Chat
       - [ ] Channels
       - [ ] Friends

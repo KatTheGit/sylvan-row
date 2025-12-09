@@ -1182,6 +1182,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 
   let interpolate = true;
 
+  let mut nonce: u32 = 1;
+  let mut last_nonce: u32 = 0;
 
   loop {
 
@@ -1202,7 +1204,50 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       Ok(data) => {
         let (amt, _): (usize, std::net::SocketAddr) = data;
         let data: &[u8] = &buffer[..amt];
-        recieved_server_info = bincode::deserialize(data).expect("Could not deserialise server packet.");
+
+
+        // get nonce
+        let recv_nonce = &buffer[..4];
+        let recv_nonce = match bincode::deserialize::<u32>(&recv_nonce){
+          Ok(nonce) => nonce,
+          Err(_) => {
+            continue;
+          }
+        };
+        if recv_nonce <= last_nonce {
+          continue;
+        }
+        let nonce_num = recv_nonce;
+        let mut nonce_bytes = [0u8; 12];
+        nonce_bytes[8..].copy_from_slice(&recv_nonce.to_be_bytes());
+        let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+        
+        let key = cipher_key.clone();
+        let key = GenericArray::from_slice(&key.as_slice());
+        let cipher = ChaCha20Poly1305::new(key);
+        
+        let deciphered = match cipher.decrypt(&formatted_nonce, data[4..].as_ref()) {
+          Ok(decrypted) => {
+            if nonce_num <= last_nonce {
+              continue; // this is a parroted packet, ignore it.
+            }
+            decrypted
+          },
+          Err(_err) => {
+            continue; // this is an erroneous packet, ignore it.
+          },
+        };
+        recieved_server_info = match bincode::deserialize::<ServerPacket>(&deciphered) {
+          Ok(packet) => packet,
+          Err(_err) => {
+            continue; // ignore invalid packet
+          }
+        };
+
+
+
+
+        //recieved_server_info = bincode::deserialize(data).expect("Could not deserialise server packet.");
         // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
         let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
 
@@ -1554,7 +1599,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 
       // send data to server
       let serialized_packet: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
-      let nonce: u32 = 1234;
       let mut nonce_bytes = [0u8; 12];
       nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
       
@@ -1567,6 +1611,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&nonce).expect("oops");
       let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
       socket.send_to(&serialized, server_ip.clone()).expect("Failed to send packet to server. Is your IP address correct?");
+      nonce += 1;
     }
     // drop mutexguard ASAP so other threads can use player ASAP.
     drop(player);

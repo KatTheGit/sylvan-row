@@ -280,6 +280,7 @@ pub fn get_random_port() -> u16 {
 pub struct ServerPlayer {
   pub username:             String,
   pub cipher_key:           Vec<u8>,
+  pub last_nonce:           u32,
   pub ip:                   String,
   pub port:                 u16,
   pub team:                 Team,

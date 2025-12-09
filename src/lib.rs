@@ -22,5 +22,3 @@ pub mod database;
 pub mod filter;
 /// cipher
 pub mod cipher;
-///// temp
-//pub mod gameserver2;

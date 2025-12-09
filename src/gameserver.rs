@@ -32,6 +32,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       ServerPlayer {
         username: player.username,
         cipher_key: player.session_key,
+        last_nonce: 0,
         ip: String::new(),
         port: 0,
         team: player.assigned_team,
@@ -86,6 +87,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
   // variable used to swap between which team we assign players
   let mut team_flag: bool = true;
 
+  let mut nonce: u32 = 1;
+  
   println!();
   std::thread::spawn(move || {
     loop {
@@ -117,35 +120,29 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         if player.ip == src.ip().to_string() && player.port == src.port() {
 
           // get nonce
-          let nonce = &buffer[..4];
-          let nonce = match bincode::deserialize::<u32>(&nonce){
+          let recv_nonce = &buffer[..4];
+          let recv_nonce = match bincode::deserialize::<u32>(&recv_nonce){
             Ok(nonce) => nonce,
             Err(_) => {
               continue;
             }
           };
-          //if nonce <= last_nonce {
-          //  continue;
-          //}
-          let nonce_num = nonce;
+          if recv_nonce <= player.last_nonce {
+            continue;
+          }
+          let nonce_num = recv_nonce;
           let mut nonce_bytes = [0u8; 12];
-          nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
-          let nonce = Nonce::from_slice(&nonce_bytes);
+          nonce_bytes[8..].copy_from_slice(&recv_nonce.to_be_bytes());
+          let formatted_nonce = Nonce::from_slice(&nonce_bytes);
           
           let key = GenericArray::from_slice(&players[p_index].cipher_key.as_slice());
           let cipher = ChaCha20Poly1305::new(key);
           
-          let deciphered = match cipher.decrypt(&nonce, data[4..].as_ref()) {
+          let deciphered = match cipher.decrypt(&formatted_nonce, data[4..].as_ref()) {
             Ok(decrypted) => {
-              //if nonce_num <= last_nonce {
-              //  continue; // this is a parroted packet, ignore it.
-              //}
-              // this is a valid packet, update last_nonce
-              //last_nonce = nonce_num;
-
-              // SUCCESSFULLY DECRYPTED. ASSIGN IP TO THIS PLAYER.
-              //players[p_index].ip = src.ip().to_string();
-              //players[p_index].port = src.port();
+              if nonce_num <= player.last_nonce {
+                continue; // this is a parroted packet, ignore it.
+              }
               decrypted
             },
             Err(_err) => {
@@ -552,12 +549,23 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             let split_player_ip: Vec<&str> = player_ip.split(":").collect();
             player_ip = split_player_ip[0].to_string();
             player_ip = format!("{}:{}", player_ip, player.port);
-            // println!("PLAYER IP: {}", player_ip);
-            // println!("PACKET: {:?}", server_packet);
-            let serialized: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message (this should never happen)");
+
+            // send data to client
+            let serialized_packet: Vec<u8> = bincode::serialize(&server_packet).expect("Failed to serialize message");
+            let mut nonce_bytes = [0u8; 12];
+            nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
+
+            let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+            let cipher_key = player.cipher_key.clone();
+            let key = GenericArray::from_slice(&cipher_key);
+            let cipher = ChaCha20Poly1305::new(&key);
+            let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
+
+            let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&nonce).expect("oops");
+            let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
+            nonce += 1;
             socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
-            // player.had_illegal_position = false; // reset since we corrected the error.
-         }
+          }
 
           // exit loop, and inform rest of program not to proceed with appending a new player.
           player_found = true;
@@ -568,10 +576,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       }
 
       // (vscode) MARK: Instantiate Player
-      // otherwise, add the player
-      // NOTE: In the future this entire chunk of code will be gone, the matchmaker will populate
-      // the list of players beforehand.
-      if !player_found /*&& (gamemode_info.total_blue + gamemode_info.total_red < max_players as u8)*/ {
+
+      if !player_found {
 
         for p_index in 0..players.len() {
 
@@ -583,10 +589,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               continue;
             }
           };
-          //if nonce <= last_nonce {
-          //  continue;
-          //}
-          let nonce_num = nonce;
           let mut nonce_bytes = [0u8; 12];
           nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
           let nonce = Nonce::from_slice(&nonce_bytes);
@@ -611,70 +613,14 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               continue; // this is an erroneous packet, ignore it.
             },
           };
-          //let packet = match bincode::deserialize::<ClientPacket>(&deciphered) {
-          //  Ok(packet) => packet,
-          //  Err(_err) => {
-          //    continue; // ignore invalid packet
-          //  }
-          //};
         }
-        // decide the player's team (alternate for each player)
-        
-        //team_flag = !team_flag;
-        //let team: Team;
-        //if team_flag {
-        //  team = Team::Red
-        //} else {
-        //  team = Team::Blue
-        //}
-        //let mut character: Character = Character::Hernani;
-        //for player_request in player_requests.clone() {
-        //  if player_request.ip == format!("{}:{}", src.ip().to_string(), src.port().to_string()) {
-        //    character = player_request.character;
-        //  }
-        //}
-        //
-        //// create server player data
-        // this data is pretty irrelevant, we're just initialising the player.
-        //players.push(ServerPlayer {
-        //  username: String::from("ass"),
-        //  cipher_key: Vec::new(),
-        //  ip: src.ip().to_string(),
-        //  port: recieved_player_info.port,
-        //  true_port: src.port(),
-        //  team,
-        //  health: 100,
-        //  position: match team {
-        //    Team::Blue => SPAWN_BLUE,
-        //    Team::Red  => SPAWN_RED,
-        //  },
-        //  move_direction:       Vector2::new(),
-        //  aim_direction:        Vector2::new(),
-        //  shooting:             false,
-        //  shooting_secondary:   false,
-        //  secondary_cast_time:  Instant::now(),
-        //  secondary_charge:     100,
-        //  had_illegal_position: false,
-        //  character:            recieved_player_info.character,
-        //  last_shot_time:       Instant::now(),
-        //  is_dashing:           false,
-        //  last_dash_time:       Instant::now(),
-        //  dashed_distance:      0.0,
-        //  dash_direction:       Vector2::new(),
-        //  previous_positions:   Vec::new(),
-        //  is_dead:              false,
-        //  death_timer_start:    Instant::now(),
-        //  stacks:               0,
-        //  buffs:                Vec::new(),
-        //  last_packet_time:     Instant::now(),
-        //});
-        //println!("Player connected: {}: {} - {}", src.ip().to_string(), src.port().to_string(), recieved_player_info.port);
       }
     }
   });
   
   // (vscode) MARK: Server Loop Initiate
 
+  // counter used to calculate delta_time
   let mut server_counter: Instant = Instant::now();
   let mut delta_time: f64 = server_counter.elapsed().as_secs_f64();
   // Server logic frequency in Hertz. Doesn't need to be much higher than 120.
@@ -846,6 +792,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         ServerPlayer {
           username: String::from("Dummy McDummington"),
           cipher_key: Vec::new(),
+          last_nonce: 0,
           ip: String::from("hello"),
           port: 12,
           team: Team::Red,
