@@ -1,6 +1,7 @@
 # personal gitignore? Heh. I don't think so.
 target
 moba_ip.txt
+moba_settings.txt
 .DS_Store
 *~*
 *.~*

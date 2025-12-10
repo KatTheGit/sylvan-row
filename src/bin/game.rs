@@ -2,8 +2,8 @@
 #![windows_subsystem = "windows"]
 #![allow(unused_parens)]
 
-use std::{collections::HashMap, fmt::format, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification}};
+use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
+use sylvan_row::{common::*, const_params::*, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -71,6 +71,8 @@ async fn main() {
     include_str!("../../assets/characters/temerity/description.txt"),
   ];
 
+  let mut settings = Settings::load();
+
   let mut fullscreen: bool = false;
   let mut toggle_time: Instant = Instant::now();
 
@@ -87,6 +89,8 @@ async fn main() {
   let mut tab_stats_refresh_flag: bool = false;
   let mut menu_paused = false;
   let mut escape_already_pressed: bool = false;
+
+  let mut settings_open_flag: bool = false;
 
   let mut checkbox_1v1 = true;
   let mut checkbox_2v2 = true;
@@ -133,7 +137,7 @@ async fn main() {
           }
         },
         Err(err) => {
-          println!("{:?}", err);
+          //println!("{:?}", err);
           notifications.push(
             ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
           );
@@ -511,7 +515,7 @@ async fn main() {
           match packet.information {
             ServerToClient::MatchAssignment(info) => {
               if info.port != 0 {
-                game(characters[selected_char], port, info.port, cipher_key.clone(), username.clone()).await;
+                game(characters[selected_char], port, info.port, cipher_key.clone(), username.clone(), &mut settings).await;
               }
               queue = false;
             },
@@ -527,7 +531,7 @@ async fn main() {
               
             }
             _ => {
-              println!("{:?}", error);
+              //println!("{:?}", error);
             }
           }
         }
@@ -627,7 +631,7 @@ async fn main() {
     drop(keys);
     let mut quit: bool = false;
     if menu_paused {
-      (menu_paused, quit) = ui::draw_pause_menu(vh, vw);
+      (menu_paused, quit) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag);
     }
     if quit {
       exit(0);
@@ -636,7 +640,7 @@ async fn main() {
   }
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String) {
+async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings) {
 
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
@@ -660,6 +664,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let mut mouse_position: Vec2 = Vec2::new(0.0, 0.0);
 
   let mut menu_paused = false;
+  let mut settings_open_flag = false;
 
   // player in a mutex because many threads need to access and modify this information safely.
   let mut player: ClientPlayer = ClientPlayer::new();
@@ -811,17 +816,23 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // Do camera logic
     //camera_offset = Vector2::difference( player_copy.camera.position, player_copy.position);
     if !player_copy.is_dead {
-      // if delta_time is too long, the camera behaves very weirdly, so let's arficially assume
-      // framerate never goes below 20fps.
-      let safe_delta_time = f32::min(delta_time, 1.0/20.0);
-      let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
-      let camera_distance_mag = camera_distance.magnitude();
-      let camera_smoothing: f32 = 1.5; // higher = less smoothing
-      let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, (camera_distance_mag).powf(2.0)*camera_smoothing*5.0);
-      let camera_movement_speed = safe_quadratic;
+      match settings.camera_smoothing {
+        true => {
+          // if delta_time is too long, the camera behaves very weirdly, so let's arficially assume
+          // framerate never goes below 20fps.
+          let safe_delta_time = f32::min(delta_time, 1.0/20.0);
+          let camera_distance: Vector2 = Vector2::difference(player_copy.camera.position, player_copy.position);
+          let camera_distance_mag = camera_distance.magnitude();
+          let camera_smoothing: f32 = 1.5; // higher = less smoothing
+          let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, (camera_distance_mag).powf(2.0)*camera_smoothing*5.0);
+          let camera_movement_speed = safe_quadratic;
 
-      player.camera.position.x += camera_movement_speed * safe_delta_time * camera_distance.normalize().x; // * mul;
-      player.camera.position.y += camera_movement_speed * safe_delta_time * camera_distance.normalize().y; // * mul;
+          player.camera.position += camera_distance.normalize() * safe_delta_time * camera_movement_speed;
+        }
+        false => {
+          player.camera.position = player.position;
+        }
+      }
     }
     // (vscode) MARK: update mouse
     // update mouse position for the input thread to handle.
@@ -1104,7 +1115,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // Draw pause menu
     if menu_paused {
       let mut kill_all_threads = kill_all_threads.lock().unwrap();
-      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw);
+      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag);
       drop(kill_all_threads);
       // Draw fps, etc
       if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {

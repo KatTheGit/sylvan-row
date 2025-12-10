@@ -1,6 +1,9 @@
 use core::panic;
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::io::Write;
 use std::time::Instant;
-
+use std::fs::File;
 use macroquad::prelude::*;
 use crate::common::*;
 use crate::maths::*;
@@ -174,38 +177,51 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
 /// This function is called both in-game and in the main menu
 /// 
 /// returns menu_paused and wants_to_quit
-pub fn draw_pause_menu(vh: f32, vw: f32) -> (bool, bool) {
+pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
-
-  // semi-transparent background
-  draw_rectangle(0.0, 0.0, vw * 100.0, vh * 100.0, Color { r: 0.0, g: 0.0, b: 0.0, a: 0.5 });
-
-  // buttons
   let button_y_separation: f32 = 15.0 * vh;
   let button_y_offset: f32 = 25.0 * vh;
   let button_font_size = 5.0 * vh;
 
   let button_size: Vector2 = Vector2 { x: 25.0 * vh, y: 9.0 * vh };
-  let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
-  let resume_button = button(resume_button_position, button_size, "Resume", button_font_size, vh);
-  if resume_button {
-    menu_paused = false;
+  // semi-transparent background
+  draw_rectangle(0.0, 0.0, vw * 100.0, vh * 100.0, Color { r: 0.0, g: 0.0, b: 0.0, a: 0.3 });
+  if !*settings_open {
+    // buttons
+    let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
+    let resume_button = button(resume_button_position, button_size, "Resume", button_font_size, vh);
+    if resume_button {
+      menu_paused = false;
+      *settings_open = false;
+    }
+    
+    
+    let settings_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation };
+    let settings_button = button(settings_button_position, button_size, "Options", button_font_size, vh);
+    if settings_button {
+      *settings_open = true;
+    }
+
+    // Quit button
+    let quit_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation * 2.0 };
+    let quit_button = button(quit_button_position, button_size, "Quit", button_font_size, vh);
+    if quit_button {
+      wants_to_quit = true;
+      menu_paused = false;
+      *settings_open = false;
+    }
+
   }
-  
-  
-  let settings_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation };
-  let settings_button = button(settings_button_position, button_size, "Options", button_font_size, vh);
-  if settings_button {
-    // draw settings()
+  if *settings_open {
+    let back_button = button(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 15.0*vh }, Vector2 { x: 25.0 * vh, y: 9.0 * vh }, "Back", button_font_size, vh);
+    if back_button {
+      *settings_open = false;
+      settings.save();
+    }
+    settings.camera_smoothing = checkbox(Vector2 { x: vw * 40.0, y: vh * 30.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, settings.camera_smoothing);
   }
-  // Quit button
-  let quit_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation * 2.0 };
-  let quit_button = button(quit_button_position, button_size, "Quit", button_font_size, vh);
-  if quit_button {
-    wants_to_quit = true;
-    menu_paused = false;
-  }
+
   return (menu_paused, wants_to_quit)
 }
 
@@ -236,5 +252,70 @@ impl Notification {
   }
   pub fn new(text: &str, duration: f32) -> Notification {
     return Notification { start_time: Instant::now(), text: String::from(text), duration }
+  }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy)]
+pub struct Settings {
+  pub camera_smoothing: bool,
+}
+impl Settings {
+  pub fn new() -> Settings{
+    return Settings {
+      camera_smoothing: true,
+    }
+  }
+  pub fn load() -> Settings {
+    let settings_file_name = "moba_settings.txt";
+    let settings_file = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .open(settings_file_name);
+
+    match settings_file {
+      Ok(mut file) => {
+        let mut data = vec![];
+        match file.read_to_end(&mut data) {
+          Ok(_) => {
+            match bincode::deserialize::<Settings>(&data) {
+              Ok(settings) => {
+                return settings
+              },
+              Err(_) => {
+                file.set_len(0).ok(); // clear
+                file.write_all(&bincode::serialize(&Settings::new()).expect("oops")).expect("oops");
+                return Settings::new();
+              }
+            }
+          }
+          Err(_) => {
+            println!("Couldn't read settings file.");
+            file.set_len(0).ok();
+            match file.write_all(&bincode::serialize(&Settings::new()).expect("oops")) {
+              Ok(_) => {}
+              Err(_) => {
+                return Settings::new();
+              }
+            }
+            return Settings::new();
+          }
+        }
+      }
+      Err(_) => {
+        println!("Error loading settings file, using default settings.");
+        return Settings::new();
+      }
+    }
+  }
+  pub fn save(&self) {
+    let settings_file_name = "moba_settings.txt";
+    let settings_file = File::create(settings_file_name);
+    match settings_file {
+      Ok(mut file) => {
+        file.write_all(&bincode::serialize::<Settings>(&self).expect("Serialization failure.")).expect("oops");
+      }
+      Err(_) => { }
+    }
   }
 }

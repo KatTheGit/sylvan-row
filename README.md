@@ -48,10 +48,10 @@ This is just for me.
 - [ ] Innovate gamemode
 - [x] Rough menu
   - [x] Pause menu, always accessible
-    - [ ] Settings screen
+    - [x] Settings screen
       - [ ] Text input field
       - [ ] Input bar
-      - [ ] Checkbox
+      - [x] Checkbox
       - [ ] Drop-down menu
       - [ ] Keybind input field
   - [x] Home menu
@@ -91,7 +91,8 @@ This is just for me.
         - [ ] Info given to clients
     - [ ] "Fleet" managment
       - [x] Single-machine 
-      - [ ] Error handling
+      - [x] Error handling
+        - [ ] Apologise to user
     - [ ] Logs
       - [ ] Chat logs (for moderation)
       - [ ] Server crash logs
