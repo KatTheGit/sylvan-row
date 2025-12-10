@@ -615,6 +615,7 @@ async fn main() {
       //*killall = true;
       if !escape_already_pressed {
         menu_paused = !menu_paused;
+        settings_open_flag = false;
       }
       escape_already_pressed = true;
       //return;
@@ -735,6 +736,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
       //*killall = true;
       if !escape_already_pressed {
         menu_paused = !menu_paused;
+        settings_open_flag = false;
       }
       escape_already_pressed = true;
       //return;
