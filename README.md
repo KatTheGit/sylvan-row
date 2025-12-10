@@ -100,7 +100,6 @@ This is just for me.
     - [ ] Throttling
     - [ ] Invalid account deletion
     - [ ] Database Efficiency
-      - [ ] Disk size
       - [ ] Table instead of serialized struct
     - [ ] No direct indexing[69], no ".expect()"
       - [ ] Reboot on failure

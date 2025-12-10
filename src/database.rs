@@ -1,7 +1,7 @@
-use std::fs;
+use std::{any::Any, fs};
 use opaque_ke::{ServerRegistration, ServerSetup};
 use crate::const_params::DefaultCipherSuite;
-use redb::{Database, Error, TableDefinition};
+use redb::{Database, Error, TableDefinition, TableError};
 use rand_core::OsRng;
 
 const DATABASE_LOCATION: &str = "./database";
@@ -56,7 +56,7 @@ pub fn username_taken(database: &Database, username: &str) -> Result<bool, Error
   let read_txn = database.begin_read()?;
   let table = match read_txn.open_table(TABLEDEF) {
     Ok(table) => {table},
-    Err(err) => {
+    Err(_err) => {
       return Ok(false);
     }
   };
@@ -66,7 +66,8 @@ pub fn username_taken(database: &Database, username: &str) -> Result<bool, Error
 /// Loads the database struct. If the database doesn't exist, create a file
 /// at DATABASE_LOCATION.
 pub fn load() -> Result<Database, Error> {
-  let database = Database::create(DATABASE_LOCATION)?;
+  let mut database = Database::create(DATABASE_LOCATION)?;
+  let _ = database.compact();
   return Ok(database);
 }
 
