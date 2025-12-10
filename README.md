@@ -103,14 +103,14 @@ This is just for me.
       - [ ] Table instead of serialized struct
     - [ ] No direct indexing[69], no ".expect()"
       - [ ] Reboot on failure
+  - [ ] UI
+    - [x] Text input fields
   - [ ] **Part 2** (for release)
     - [ ] Steam integration
       - [ ] Accounts
       - [ ] In-game purchases
         - [ ] Inform game request
       - [ ] Display name & change display name
-  - [ ] UI
-    - [x] Text input fields
 - [ ] Remove all .unwrap() and .expect(), at least serverside
 - [ ] Sound
   - [ ] Directional sound (kira crate)

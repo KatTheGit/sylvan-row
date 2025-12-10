@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 
 use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
+use sylvan_row::{common::*, const_params::*, filter::valid_password, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -189,12 +189,21 @@ async fn main() {
       if !confirm { confirm_button_check = false; }
 
       if let Some(ref mut server_stream) = server_stream { if confirm && !confirm_button_check {
-        println!("{:?}", username);
         confirm_button_check = true;
         draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
         next_frame().await;
         // register
         if registering {
+          // this is only a clientside check because:
+          // 1. the server doesn't know the plaintext password
+          // 2. if you bypass this just to have a shit password, you do you...
+          if !valid_password(password.clone()) {
+            notifications.push(
+              Notification::new("Unsafe password", 1.0)
+            );
+            next_frame().await;
+            continue;
+          }
           // step 1
           let mut client_rng = OsRng;
           let client_registration_start_result =
