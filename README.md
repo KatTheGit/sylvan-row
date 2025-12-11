@@ -1,5 +1,5 @@
 # Sylvan Row
-A twin-stick hero shooter, with the ambition of avoiding hard-counter interactions, having simple but unique characters, playing on keyboard&mouse and controller, all while having a working anticheat despite being FOSS.
+A twin-stick hero shooter, with the ambition of avoiding hard-counter interactions, having simple but unique characters, and being easy to learn but hard to master.
 
 <img src="assets/characters/cynewynn/textures/banner.png" width="300" title="Preliminary art of one of the characters" alt="An anthro lioness in armor, preliminary art for the game"/>
 
@@ -7,7 +7,7 @@ A twin-stick hero shooter, with the ambition of avoiding hard-counter interactio
 
 The game's development highly relies on player feedback, and the game is currently having scheduled playtests on [discord](https://discord.gg/4SbwGZeYcx).
 
-There is a playable release, but you'll need to host your own server if you want to try the game. When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP address in there.
+There is a playable release, but you'll need to host your own server if you want to try the game (by downloading server.exe). When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP address in there.
 
 ## Compile and run it yourself
 

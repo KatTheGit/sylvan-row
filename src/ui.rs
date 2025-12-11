@@ -266,7 +266,7 @@ impl Settings {
     }
   }
   pub fn load() -> Settings {
-    let settings_file_name = "moba_settings.txt";
+    let settings_file_name = "moba_settings";
     let settings_file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -309,7 +309,7 @@ impl Settings {
     }
   }
   pub fn save(&self) {
-    let settings_file_name = "moba_settings.txt";
+    let settings_file_name = "moba_settings";
     let settings_file = File::create(settings_file_name);
     match settings_file {
       Ok(mut file) => {
