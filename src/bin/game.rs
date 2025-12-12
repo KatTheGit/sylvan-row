@@ -259,13 +259,14 @@ async fn main() {
                 }
               }
             }
-            ServerToClient::AuthenticationRefused(reason) => {
+            ServerToClient::InteractionRefused(reason) => {
               notifications.push(
                 Notification { start_time: Instant::now(), text: match reason {
                   RefusalReason::InternalError => String::from("Internal Server Error"),
                   RefusalReason::InvalidUsername => String::from("Invalid Username"),
                   RefusalReason::UsernameTaken => String::from("Username Taken"),
                   RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
+                  _ => String::from("Unexpected Error"),
                 }, duration: 1.0 }
               );
               continue;
@@ -350,13 +351,14 @@ async fn main() {
               logged_in = true;
               continue;
             }
-            ServerToClient::AuthenticationRefused(reason) => {
+            ServerToClient::InteractionRefused(reason) => {
               notifications.push(
                 Notification { start_time: Instant::now(), text: match reason {
                   RefusalReason::InternalError => String::from("Internal Server Error"),
-                  RefusalReason::InvalidUsername => String::from("Invalid Username."),
+                  RefusalReason::InvalidUsername => String::from("Invalid Username"),
                   RefusalReason::UsernameTaken => String::from("Username Taken"),
                   RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
+                  _ => String::from("Unexpected Error"),
                 }, duration: 1.0 }
               );
               continue;
@@ -530,6 +532,19 @@ async fn main() {
             },
             ServerToClient::PlayerDataResponse(player_data) => {
               player_stats = player_data;
+            }
+            ServerToClient::InteractionRefused(refusal_reason) => {
+              let text = match refusal_reason {
+                RefusalReason::FriendRequestAlreadySent => "Request Already Exists",
+                RefusalReason::InternalError => "Internal Server Error",
+                RefusalReason::UsernameInexistent => "User Inexistent",
+                //there is no reason for these to exist here
+                RefusalReason::InvalidUsername => "Unexpected Error",
+                RefusalReason::UsernameTaken => "Unexpected Error",
+                RefusalReason::AlreadyFriends => "Already Friends",
+                RefusalReason::UsersBlocked => "Users are Blocked",
+              };
+              notifications.push(Notification::new(text, 1.0));
             }
             _ => panic!()
           }

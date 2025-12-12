@@ -3,7 +3,7 @@ use chacha20poly1305::{
   aead::{Aead, KeyInit},
   ChaCha20Poly1305, Nonce
 };
-use crate::{const_params::DefaultCipherSuite, gamedata::Character, common};
+use crate::{common, const_params::DefaultCipherSuite, database::FriendShipStatus, gamedata::Character};
 
 // MARK: CLIENT to server
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
@@ -49,7 +49,14 @@ impl ServerToClientPacket {
 pub enum ClientToServer {
   MatchRequest(MatchRequestData),
   MatchRequestCancel,
+  /// User requests their statistics
   PlayerDataRequest,
+  /// User requests a list of friends/pending/blocked players
+  GetFriendList,
+  /// User wants to send a friend request to the user in the `String`.
+  SendFriendRequest(String),
+  /// User wants to accept the friend request of the user in the `String`.
+  AcceptFriendRequest(String),
   RegisterRequestStep1(String, RegistrationRequest<DefaultCipherSuite>),
   RegisterRequestStep2(RegistrationUpload<DefaultCipherSuite>),
   LoginRequestStep1(String, CredentialRequest<DefaultCipherSuite>),
@@ -70,9 +77,20 @@ pub enum ServerToClient {
   RegisterSuccessful,
   LoginResponse1(CredentialResponse<DefaultCipherSuite>),
   LoginResponse2,
-  /// String contains reason for refusal, to be displayed
-  AuthenticationRefused(RefusalReason),
+  /// An error occured and the server refused to comply, for
+  /// the reason described by the `RefusalReason`
+  /// 
+  /// This can be user error or a server error.
+  InteractionRefused(RefusalReason),
   PlayerDataResponse(PlayerStatistics),
+  /// Contains a list of the user's friends/pending/blocked, as requested
+  /// by the user.
+  /// - `String` for the username
+  /// - `FriendShipStatus` for the... friendship status
+  /// - `bool` for whether the player is online
+  FriendListResponse(Vec<(String, FriendShipStatus, bool)>),
+  FriendRequestSuccessful,
+  FriendshipSuccessful,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct PlayerStatistics {
@@ -90,12 +108,18 @@ impl PlayerStatistics {
 pub enum RefusalReason {
   /// Someone already owns this username.
   UsernameTaken,
-  /// Attempted login username does not exist.
+  /// Attempted username does not exist.
   UsernameInexistent,
   /// Any error that is entirely (or mostly) the server's fault.
   InternalError,
   /// Contains inappropriate words, symbols, etc...
   InvalidUsername,
+  /// This friend request was already made.
+  FriendRequestAlreadySent,
+  /// This friend request was useless since users are already friends.
+  AlreadyFriends,
+  /// This request failed because the users are blocked.
+  UsersBlocked,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {

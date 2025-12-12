@@ -1,5 +1,5 @@
 use redb::{Database, Result};
-use sylvan_row::{filter, common, const_params::*, database::{self, PlayerData}, gamedata::Character, gameserver, mothership_common::*} ;
+use sylvan_row::{common, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, gameserver, mothership_common::*} ;
 use std::{sync::{Arc, Mutex}, thread::{JoinHandle}};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
@@ -73,19 +73,12 @@ async fn main() {
                 // disconnect
                 // remove player from players.
                 if logged_in {
-                  let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
-                  {
-                    let mut players = local_players.lock().unwrap();
-                    for p_index in 0..players.len() {
-                      if players[p_index].username == username {
-                        channel_copy = Some(players[p_index].channel.clone());
-                        players.remove(p_index);
-                        return;
-                      }
+                  let mut players = local_players.lock().unwrap();
+                  for p_index in 0..players.len() {
+                    if players[p_index].username == username {
+                      players.remove(p_index);
+                      return;
                     }
-                  }
-                  if let Some(channel) = channel_copy {
-                    channel.send(PlayerMessage::ForceDisconnect).await.unwrap();
                   }
                 }
                 return
@@ -99,6 +92,10 @@ async fn main() {
                 return; // An error happened. We should probably inform the client later, and log this.
               }
             };
+            // if the packet is too big, skip it.
+            if len > buffer.len() {
+              continue;
+            }
             // handle the packet
 
             // not logged in, register, login, and get cipher key.
@@ -113,7 +110,7 @@ async fn main() {
                       let valid = filter::valid_username(username.clone());
                       if !valid {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::AuthenticationRefused(RefusalReason::InvalidUsername),
+                          information: ServerToClient::InteractionRefused(RefusalReason::InvalidUsername),
                         }).expect("hi1")).await;
                         continue;
                       }
@@ -127,7 +124,7 @@ async fn main() {
                         Ok(taken) => { username_taken_real = taken; },
                         Err(_) => {
                           let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                           //.expect() is ok to use on serialize because we control what gets serialized.
                           }).expect("hi1")).await;
                           continue;
@@ -135,7 +132,7 @@ async fn main() {
                       };
                       if username_taken_real {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::AuthenticationRefused(RefusalReason::UsernameTaken),
+                          information: ServerToClient::InteractionRefused(RefusalReason::UsernameTaken),
                         }).expect("hi2")).await;
                         username = String::new();
                         continue;
@@ -148,7 +145,7 @@ async fn main() {
                         Ok(result) => {result},
                         Err(_err) => {
                           let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                           }).expect("hi3")).await;
                           continue;
                         }
@@ -163,7 +160,7 @@ async fn main() {
                     ClientToServer::RegisterRequestStep2(client_message) => {
                       if username == String::new() {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         }).expect("hi5")).await;
                         continue;
                       }
@@ -190,14 +187,14 @@ async fn main() {
                         Ok(exists) => user_exists_real = exists,
                         Err(_err) => {
                           let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                           }).expect("hi7")).await;
                           continue;
                         }
                       }
                       if !user_exists_real {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::AuthenticationRefused(RefusalReason::UsernameInexistent),
+                          information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
                         }).expect("hi7")).await;
                         continue;
                       }
@@ -205,7 +202,7 @@ async fn main() {
                         Ok(playerdata) => password_file_real = playerdata.password_hash,
                         Err(_err) => {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         }).expect("hi7")).await;
                           continue;
                         }
@@ -221,7 +218,7 @@ async fn main() {
                         Ok(result) => result,
                         Err(_err) => {
                           let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::AuthenticationRefused(RefusalReason::InternalError),
+                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                           }).expect("hi8")).await;
                           continue;
                         },
@@ -310,6 +307,7 @@ async fn main() {
               }
             }
             // logged in, so use cipher
+            // MARK: ===============
             else {
               // this code is a bit redundant for TCP, but will work particularily well for UDP.
               let recv_nonce = &buffer[..4];
@@ -479,6 +477,229 @@ async fn main() {
                   }.cipher(nonce, cipher_key.clone())).await.unwrap();
                   nonce += 1;
                 }
+                // MARK: Get Friend List
+                // expensive operation
+                ClientToServer::GetFriendList => {
+                  let friend_list: Result<Vec<(String, FriendShipStatus)>, redb::Error>;
+                  {
+                    let database = local_database.lock().unwrap();
+                    friend_list = database::get_status_list(&database, &username);
+                  }
+                  match friend_list {
+                    Ok(friend_list) => {
+                      let mut final_friend_list: Vec<(String, FriendShipStatus, bool)> = Vec::new();
+                      {
+                        let players = local_players.lock().unwrap();
+                        for friend in friend_list {
+                          let mut online: bool = false;
+                          for player in players.clone() {
+                            if player.username == friend.0 {
+                              online = true;
+                              break;
+                            } 
+                          }
+                          final_friend_list.push((friend.0, friend.1, online));
+                        }
+                      }
+                      let _ = socket.write_all(&ServerToClientPacket {
+                        information: ServerToClient::FriendListResponse(final_friend_list),
+                      }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                      nonce += 1;
+                    }
+                    Err(_err) => {
+                      let _ = socket.write_all(&ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                      }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                      nonce += 1;
+                    }
+                  }
+                }
+                // FR = Friend Request
+                // MARK: FR / FR Accept
+                ClientToServer::SendFriendRequest(other_user) => {
+                  let username_exists: Result<bool, redb::Error>;
+                  let current_status: Result<FriendShipStatus, redb::Error>;
+                  // ends up being true if the request was successful, and false if
+                  // there was an internal error (database error).
+                  let mut request_successful = false;
+                  // true if the interaction led to a friendship grant.
+                  // (Happens if FR is sent to someone who already sent you an FR)
+                  let mut friendship_achieved = false;
+                  {
+                    let database = local_database.lock().unwrap();
+                    username_exists = database::username_taken(&database, &other_user);
+                    current_status = database::get_friend_status(&database, &username, &other_user);
+                  }
+                  match username_exists {
+                    Ok(exists) => {
+                      if !exists {
+                        // the requested user doesn't exist.
+                        let _ = socket.write_all(&ServerToClientPacket {
+                          information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
+                        }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                        nonce += 1;
+                        continue;
+                      }
+                    }
+                    Err(_err) => {
+                      // database error (internal server error)
+                      let _ = socket.write_all(&ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                      }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                      nonce += 1;
+                      continue;
+                    }
+                  }
+                  match current_status {
+                    Ok(status) => {
+                      match status {
+                        FriendShipStatus::Friends => {
+                          // if they're already friends, ignore
+                          let _ = socket.write_all(&ServerToClientPacket {
+                            information: ServerToClient::InteractionRefused(RefusalReason::AlreadyFriends),
+                          }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                          nonce += 1;
+                          continue;
+                        }
+                        FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
+                          let predicted_pending_status: FriendShipStatus = database::get_friend_request_type(&username, &other_user);
+                          if predicted_pending_status == status {
+                            // this friend request was already made.
+                            let _ = socket.write_all(&ServerToClientPacket {
+                              information: ServerToClient::InteractionRefused(RefusalReason::FriendRequestAlreadySent),
+                            }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                            nonce += 1;
+                            continue;
+                          } else {
+                            // the other user also sent a friend request, which means either they
+                            // both want to be friends, or one is accepting a request.
+                            // either way, let's grant the friendship.
+                            {
+                              let database = local_database.lock().unwrap();
+                              match database::set_friend_status(&database, &username, &other_user, FriendShipStatus::Friends) {
+                                Ok(_) => {
+                                  // friendship successful by mutual request.
+                                  request_successful = true;
+                                  friendship_achieved = true;
+                                }
+                                Err(_err) => {
+                                  // friendship failed (internal error).
+                                  request_successful = false;
+                                }
+                              }
+                            }
+                          }
+                        }
+                        FriendShipStatus::Blocked => {
+                          // blocked, so ignore.
+                          let _ = socket.write_all(&ServerToClientPacket {
+                            information: ServerToClient::InteractionRefused(RefusalReason::UsersBlocked),
+                          }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                          nonce += 1;
+                          continue;
+                        }
+                      }
+                    }
+                    Err(err) => {
+                      match err {
+                        redb::Error::Corrupted(reason) => {
+                          if reason == "norelation" {
+                            // the users have no entry in the database, set their status as pending.
+                            let pending_status: FriendShipStatus = database::get_friend_request_type(&username, &other_user);
+                            {
+                              let database = local_database.lock().unwrap();
+                              match database::set_friend_status(&database, &username, &other_user, pending_status) {
+                                Ok(_) => {
+                                  // friend request successfully sent
+                                  request_successful = true;
+                                }
+                                Err(_err) => {
+                                  // friend request failed (internal error).
+                                  request_successful = false;
+                                }
+                              }
+                            }
+                          }
+                        }
+                        _ => {
+                          // some other error happened in the database.
+                          let _ = socket.write_all(&ServerToClientPacket {
+                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                          }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                          nonce += 1;
+                          continue;
+                        }
+                      }
+                    }
+                  }
+                  if request_successful {
+                    if friendship_achieved {
+                      // users are now friends.
+                      let _ = socket.write_all(&ServerToClientPacket {
+                        information: ServerToClient::FriendshipSuccessful,
+                      }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                      nonce += 1;
+                    } else {
+                      // the friend request was successfully sent to the peer.
+                      let _ = socket.write_all(&ServerToClientPacket {
+                        information: ServerToClient::FriendRequestSuccessful,
+                      }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                      nonce += 1;
+                    }
+                  }
+                  else {
+                    // request unsuccessful due to an internal error (db error).
+                    let _ = socket.write_all(&ServerToClientPacket {
+                      information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                    }.cipher(nonce, cipher_key.clone())).await.unwrap();
+                    nonce += 1;
+                  }
+                }
+                ////MA//RK: FR Accept
+                //ClientToServer::AcceptFriendRequest(other_user) => {
+                //  let other_user_exists: Result<bool, redb::Error>;
+                //  let current_friendship_status: Result<FriendShipStatus, redb::Error>;
+                //  {
+                //    let database = local_database.lock().unwrap();
+                //    other_user_exists = database::username_taken(&database, &other_user);
+                //    current_friendship_status = database::get_friend_status(&database, &username, &other_user);
+                //  }
+                //  match other_user_exists {
+                //    Ok(exists) => {
+                //      if !exists {
+                //        // user doesn't exist.
+                //        // also, this situation only happens when someone modifies the client.
+                //        // you filthy filthy hacker.
+                //        continue;
+                //      }
+                //    }
+                //    Err(_err) => {
+                //      // internal server error
+                //    }
+                //  }
+                //  match current_friendship_status {
+                //    Ok(status) => {
+                //      match status {
+                //        FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
+                //          // the type for status we want is a request from the other user.
+                //          let correct_status = database::get_friend_request_type(&other_user, &username);
+                //          if status == correct_status {
+                //            // the other user sent us a request, so we can accept it.
+                //          }
+                //        }
+                //        FriendShipStatus::Friends => {
+                //
+                //        }
+                //        FriendShipStatus::Blocked => {
+                //
+                //        }
+                //      }
+                //    }
+                //    Err(_err) => {
+                //      // internal server error
+                //    }
+                //  }
+                //}
                 _ => {}
               }
             }
