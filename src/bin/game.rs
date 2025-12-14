@@ -2,8 +2,8 @@
 #![windows_subsystem = "windows"]
 #![allow(unused_parens)]
 
-use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, filter::valid_password, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
+use std::{any::Any, collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
+use sylvan_row::{common::*, const_params::*, database::{self, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -86,7 +86,9 @@ async fn main() {
   let mut tab_heroes: bool = false;
   let mut tab_tutorial: bool = false;
   let mut tab_stats: bool = false;
+  let mut tab_friends: bool = false;
   let mut tab_stats_refresh_flag: bool = false;
+  let mut tab_friends_refresh_flag: bool = false;
   let mut menu_paused = false;
   let mut escape_already_pressed: bool = false;
 
@@ -103,10 +105,13 @@ async fn main() {
   let mut chat: String = String::from("");
   let mut chat_selected: bool = false;
 
+  let mut friend_request_input: String = String::from("");
+  let mut friend_request_input_selected: bool = false;
+
   // login fields
   let mut username: String = String::from("ornit");
   let mut username_selected: bool = false;
-  let mut password: String = String::from("toyota");
+  let mut password: String = String::from("toyotaprius");
   let mut password_selected: bool = false;
 
   let mut registering: bool = false;
@@ -125,6 +130,7 @@ async fn main() {
   let mut confirm_button_check: bool = false;
 
   let mut player_stats: PlayerStatistics = PlayerStatistics::new();
+  let mut friend_list: Vec<(String, FriendShipStatus, bool)> = Vec::new();
 
   loop {
     if server_stream.is_none() {
@@ -136,7 +142,7 @@ async fn main() {
             server_stream.set_nonblocking(true).expect("idk");
           }
         },
-        Err(err) => {
+        Err(_err) => {
           //println!("{:?}", err);
           notifications.push(
             ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
@@ -156,6 +162,7 @@ async fn main() {
 
 
     // show login window
+    // MARK: Login
     if !logged_in {
 
       draw_text("Username", 35.0 * vh, 38.0*vh, 4.0*vh, BLACK);
@@ -222,7 +229,6 @@ async fn main() {
           }
           // step 3
           let mut buffer: [u8; 2048] = [0; 2048];
-          let len: usize;
           server_stream.set_nonblocking(false).expect("oops");
           let len: usize = match server_stream.read(&mut buffer) {
             Ok(0) => {println!("crap"); continue;}
@@ -385,43 +391,62 @@ async fn main() {
       // end early
       continue;
     }
+    // MARK: Main (logged in)
 
-
+    let button_count: f32 = 5 as f32;
+    let margin: f32 = 5.0;
+    let offset = (100.0 - margin*2.0)/button_count;
+    let y_offset: f32 = 5.0;
+    let y_size: f32 = 6.0;
     let play_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: 5.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Play", 5.0*vh, vh, tab_play
+      tl_anchor + Vector2 { x: (margin + offset * 0.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Play", 5.0*vh, vh, tab_play
     );
     let heroes_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: 35.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Heroes", 5.0*vh, vh, tab_heroes
+      tl_anchor + Vector2 { x: (margin + offset * 1.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Heroes", 5.0*vh, vh, tab_heroes
     );
     let tutorial_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: 65.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Tutorial", 5.0*vh, vh, tab_tutorial
+      tl_anchor + Vector2 { x: (margin + offset * 2.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Tutorial", 5.0*vh, vh, tab_tutorial
     );
     let stats_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: 95.0*vh, y: 3.0*vh }, Vector2 { x: 30.0*vh, y: 5.0*vh }, "Stats", 5.0*vh, vh, tab_stats
+      tl_anchor + Vector2 { x: (margin + offset * 3.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Stats", 5.0*vh, vh, tab_stats
+    );
+    let friends_tab_button = ui::one_way_button(
+      tl_anchor + Vector2 { x: (margin + offset * 4.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Friends", 5.0*vh, vh, tab_friends
     );
     if play_tab_button {
       tab_heroes = false;
       tab_play = true;
       tab_tutorial = false;
       tab_stats = false;
+      tab_friends = false;
     }
     if heroes_tab_button {
       tab_heroes = true;
       tab_play = false;
       tab_tutorial = false;
       tab_stats = false;
+      tab_friends = false;
     }
     if tutorial_tab_button {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = true;
       tab_stats = false;
+      tab_friends = false;
     }
     if stats_tab_button {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = false;
       tab_stats = true;
+      tab_friends = false;
+    }
+    if friends_tab_button {
+      tab_heroes = false;
+      tab_play = false;
+      tab_tutorial = false;
+      tab_stats = false;
+      tab_friends = true;
     }
 
     //// chatbox
@@ -516,7 +541,7 @@ async fn main() {
             },
             Err(err) => {
               // this is an erroneous packet, ignore it.
-              println!("erroneous packet: {:?}", err);
+              println!("erroneous packet: {:?}", err.type_id());
               continue;
             },
           };
@@ -530,8 +555,11 @@ async fn main() {
               }
               queue = false;
             },
-            ServerToClient::PlayerDataResponse(player_data) => {
-              player_stats = player_data;
+            ServerToClient::PlayerDataResponse(recv_player_stats) => {
+              player_stats = recv_player_stats;
+            }
+            ServerToClient::FriendListResponse(recv_friend_list) => {
+              friend_list = recv_friend_list;
             }
             ServerToClient::InteractionRefused(refusal_reason) => {
               let text = match refusal_reason {
@@ -543,10 +571,17 @@ async fn main() {
                 RefusalReason::UsernameTaken => "Unexpected Error",
                 RefusalReason::AlreadyFriends => "Already Friends",
                 RefusalReason::UsersBlocked => "Users are Blocked",
+                RefusalReason::ThatsYouDummy => "That's you dummy!",
               };
               notifications.push(Notification::new(text, 1.0));
             }
-            _ => panic!()
+            ServerToClient::FriendRequestSuccessful => {
+              notifications.push(Notification::new("Friend request sent", 1.0));
+            }
+            ServerToClient::FriendshipSuccessful => {
+              notifications.push(Notification::new("You are now friends!", 1.0));
+            }
+            _ => {}
           }
         },
         Err(error) => {
@@ -588,14 +623,14 @@ async fn main() {
           selected_char = hero_index;
         }
       }
-      draw_multiline_text_ex(descriptions[selected_char],20.0*vh, 13.0*vh, Some(0.7), 
+      draw_multiline_text_ex(descriptions[selected_char],20.0*vh, 15.0*vh, Some(0.7), 
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
     }
     if tab_tutorial {
       let text: &str =
         "(LMB)   PRIMARY   - Ability on short cooldown.\n(RMB)   SECONDARY - Ability that requires charge. Build charge by hitting opponents.\n(Space) DASH      - Cooldown ability.\n(WASD)  Move";
-      draw_multiline_text_ex(text,20.0*vh, 13.0*vh, Some(0.7), 
+      draw_multiline_text_ex(text,20.0*vh, 15.0*vh, Some(0.7), 
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
     }
@@ -620,7 +655,127 @@ async fn main() {
     } if !tab_stats {
       tab_stats_refresh_flag = false;
     }
-    // draw notifications
+    if tab_friends {
+      // runs once when we click this tab
+      if tab_friends_refresh_flag == false {
+        tab_friends_refresh_flag = true;
+        // ask the server for our friendship data.
+        println!("requesting friends list");
+        if let Some(ref mut server_stream) = server_stream {
+          server_stream.write_all(
+            &ClientToServerPacket {
+              information: ClientToServer::GetFriendList,
+            }.cipher(nonce, cipher_key.clone())
+          ).expect("idk 31");
+          nonce += 1;
+        }
+      }
+      // Friend request form
+      ui::text_input(
+        Vector2 { x: 15.0*vw, y: 15.0*vh },
+        Vector2 { x: 45.0*vw, y: 7.0*vh }, &mut friend_request_input, &mut friend_request_input_selected, 4.0*vh, vh
+      );
+      let send_request = ui::button_was_pressed(
+        Vector2 { x: 60.0*vw, y: 15.0*vh }, Vector2 { x: 25.0*vw, y: 7.0*vh }, "Send friend request", 5.0*vh, vh
+      );
+      if send_request {
+        let username_requested = friend_request_input.as_str();
+        if username_requested.is_empty() {
+          notifications.push(
+            Notification::new("Enter a username.", 1.0)
+          );
+          next_frame().await;
+          continue;
+        }
+        if !filter::valid_username(String::from(username_requested)) {
+          notifications.push(
+            Notification::new("User doesn't exist.", 1.0)
+          );
+          next_frame().await;
+          continue;
+        }
+        // the server also refuses this interaction if the check is bypassed
+        if username_requested == username {
+          notifications.push(
+            Notification::new("That's you dummy!", 1.0)
+          );
+          next_frame().await;
+          continue;
+        }
+        if let Some(ref mut server_stream) = server_stream {
+          server_stream.write_all(
+            &ClientToServerPacket {
+              information: ClientToServer::SendFriendRequest(String::from(username_requested)),
+            }.cipher(nonce, cipher_key.clone())
+          ).expect("idk 32");
+          nonce += 1;
+        }
+      }
+
+      // FRIEND LIST
+      let y_offset = 6.0 * vh;
+      for f_index in 0..friend_list.len() {
+        let friend = &friend_list[f_index];
+        let current_offset = y_offset * f_index as f32;
+        let peer_username;
+        let split: Vec<&str> = friend.0.split(":").collect();
+        if *split[0] == username {
+          peer_username = split[1];
+        } else {
+          peer_username = split[0];
+        }
+
+        draw_text(peer_username, 10.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
+        let status: &str;
+        match friend.1 {
+          FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
+            let pending_for_you_status = database::get_friend_request_type(&username, &peer_username);
+            if pending_for_you_status != friend.1 {
+              // This user is requesting to be friends.
+              status = "Awaiting your response.";
+              let accept_button = ui::button_was_pressed(
+                Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Accept", 5.0*vh, vh
+              );
+              if accept_button {
+                // Accept the friend request by sending a friend request to this user, which the
+                // server processes as an accept.
+                if let Some(ref mut server_stream) = server_stream {
+                  server_stream.write_all(
+                    &ClientToServerPacket {
+                      information: ClientToServer::SendFriendRequest(String::from(peer_username)),
+                    }.cipher(nonce, cipher_key.clone())
+                  ).expect("idk 33");
+                  nonce += 1;
+                  // refresh the user list while we're at it
+                  //server_stream.write_all(
+                  //  &ClientToServerPacket {
+                  //    information: ClientToServer::GetFriendList,
+                  //  }.cipher(nonce, cipher_key.clone())
+                  //).expect("idk 33");
+                  //nonce += 1;
+                }
+              }
+
+            } else {
+              // We sent a request to this user,
+              status = "Friend request sent..."
+            }
+          }
+          FriendShipStatus::Blocked => {
+            status = "Blocked"
+          }
+          FriendShipStatus::Friends => {
+            status = "Friends";
+            draw_text(match friend.2 {true => "Online", false => "Offline"}, 70.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
+          }
+        }
+        draw_text(status, 40.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
+      }
+    } if !tab_friends {
+      tab_friends_refresh_flag = false;
+    }
+
+    // draw NOTIFICATIONS
     for n_index in 0..notifications.len() {
       notifications[n_index].draw(vh, vw, 5.0*vh, n_index);
     }
@@ -630,7 +785,6 @@ async fn main() {
         break;
       }
     }
-
     // SUPER MEGA TEMPORARY
     let device_state: DeviceState = DeviceState::new();
     let keys: Vec<Keycode> = device_state.get_keys();
@@ -1280,7 +1434,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
             continue; // ignore invalid packet
           }
         };
-
+        last_nonce = recv_nonce;
 
 
 

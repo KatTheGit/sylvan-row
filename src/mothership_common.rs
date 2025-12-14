@@ -55,8 +55,8 @@ pub enum ClientToServer {
   GetFriendList,
   /// User wants to send a friend request to the user in the `String`.
   SendFriendRequest(String),
-  /// User wants to accept the friend request of the user in the `String`.
-  AcceptFriendRequest(String),
+  ///// User wants to accept the friend request of the user in the `String`.
+  //AcceptFriendRequest(String),
   RegisterRequestStep1(String, RegistrationRequest<DefaultCipherSuite>),
   RegisterRequestStep2(RegistrationUpload<DefaultCipherSuite>),
   LoginRequestStep1(String, CredentialRequest<DefaultCipherSuite>),
@@ -120,6 +120,8 @@ pub enum RefusalReason {
   AlreadyFriends,
   /// This request failed because the users are blocked.
   UsersBlocked,
+  /// That's you, dummy!
+  ThatsYouDummy,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
@@ -163,9 +165,9 @@ pub struct PlayerInfo {
 /// Possible messages between player threads.
 #[derive(PartialEq, Clone, Debug)]
 pub enum PlayerMessage {
-  GameAssigned(MatchAssignmentData),
   /// This thread must stop now.
   ForceDisconnect,
+  SendPacket(ServerToClientPacket),
 }
 
 // filters out shit

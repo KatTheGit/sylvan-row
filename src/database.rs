@@ -1,7 +1,7 @@
 use std::fs;
 use opaque_ke::{ServerRegistration, ServerSetup};
 use crate::const_params::DefaultCipherSuite;
-use redb::{Database, Error, TableDefinition};
+use redb::{Database, Error, ReadableTable, TableDefinition};
 use rand_core::OsRng;
 
 const DATABASE_LOCATION: &str = "./database";
@@ -179,7 +179,19 @@ pub fn set_friend_status(database: &Database, username_a: &str, username_b: &str
 /// Returns the friendship status for the given username pair
 pub fn get_friend_status(database: &Database, username_a: &str, username_b: &str) -> Result<FriendShipStatus, Error>  {
   let read_txn = database.begin_read()?;
-  let table = read_txn.open_table(FRIENDS_TABLE)?;
+  let table = match read_txn.open_table(FRIENDS_TABLE) {
+    Ok(table) => table,
+    Err(err) => {
+      match err {
+        redb::TableError::TableDoesNotExist(_) => {
+          return Err(Error::Corrupted(String::from("norelation")));
+        }
+        _ => {
+          return Err(err.into());
+        }
+      }
+    }
+  };
   let key = generate_friendship_key(username_a, username_b);
   let data = table.get(key.as_str())?;
   if let Some(status) = data {
@@ -196,26 +208,17 @@ pub fn get_status_list(database: &Database, username: &str) -> Result<Vec<(Strin
   let table = read_txn.open_table(FRIENDS_TABLE)?;
   let prefix = format!("{}:", username);
   let suffix = format!(":{}", username);
-  let mut prefix_values = table.range(prefix.as_str()..)?;
-  let mut suffix_values = table.range(..suffix.as_str())?;
-  let mut values = Vec::new();
-  while let Some(value) = prefix_values.next() {
-    let value = value?;
-    if !value.0.value().starts_with(&prefix) {
-      break;
-    }
-    values.push(value);
-  }
-  while let Some(value) = suffix_values.next() {
-    let value = value?;
-    if value.0.value().ends_with(&suffix) {
-      values.push(value);
-    }
-  }
   let mut friendship_statuses: Vec<(String, FriendShipStatus)> = Vec::new();
-  for value in values {
-    let friendship_status: (String, FriendShipStatus) = (value.0.value().to_string(), FriendShipStatus::from_u8(value.1.value()));
-    friendship_statuses.push(friendship_status);
+
+  // to be optimised...
+  for entry in table.iter()? {
+    let entry = entry?; 
+    let key = entry.0.value();
+    if key.starts_with(&prefix)
+    || key.ends_with(&suffix) {    
+      let friendship_status: (String, FriendShipStatus) = (key.to_string(), FriendShipStatus::from_u8(entry.1.value()));
+      friendship_statuses.push(friendship_status);
+    }
   }
   return Ok(friendship_statuses);
 }

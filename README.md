@@ -61,11 +61,13 @@ This is just for me.
       - [x] Tutorial
 - [ ] Matchmaking server ![mindmap](mm-mindmap.png)
   - [ ] **Part 1** (for open beta)
+    - [ ] Easier and more reliable netcode
     - [ ] Player data
       - [x] Username
       - [x] Password hash
-      - [ ] Friends
-      - [ ] Muted players
+      - [x] Friends
+      - [x] Blocked players
+        - [ ] Interface
       - [ ] Ban status
     - [ ] Auth
       - [ ] Create account
