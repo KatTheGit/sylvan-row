@@ -142,9 +142,9 @@ pub fn tcp_decode_decrypt<T: serde::de::DeserializeOwned>(mut data: Vec<u8>, key
   return Ok(decoded_packets);
 }
 
-pub fn udp_encode_encrypt<T>(data: T) {
-
-}
-pub fn udp_decode_decrypt<T>(data: Vec<u8>) {
-  
-}
+//pub fn udp_encode_encrypt<T>(data: T) {
+//
+//}
+//pub fn udp_decode_decrypt<T>(data: Vec<u8>) {
+//  
+//}

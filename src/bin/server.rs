@@ -1,5 +1,5 @@
 use redb::{Database, Result};
-use sylvan_row::{common, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, gameserver, mothership_common::*} ;
+use sylvan_row::{common, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, gameserver, mothership_common::*, network} ;
 use std::{sync::{Arc, Mutex}, thread::JoinHandle, time::Duration};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
@@ -101,209 +101,198 @@ async fn main() {
 
             // not logged in, register, login, and get cipher key.
             if !logged_in {
-              let packet = bincode::deserialize::<ClientToServerPacket>(&buffer[..len]);
-              match packet {
-                Ok(packet) => {
-                  match packet.information {                    
-                    // MARK: Registration
-                    ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
-                      username = recieved_username.clone();
-                      let valid = filter::valid_username(username.clone());
-                      if !valid {
+              let packets: Result<Vec<ClientToServerPacket>, bincode::Error> = network::tcp_decode::<ClientToServerPacket>(buffer[..len].to_vec());
+              let packets: Vec<ClientToServerPacket> = match packets {
+                Ok(packets) => packets,
+                Err(_err) => {
+                  // write an internal error here maybe?
+                  println!("hi");
+                  continue;
+                }
+              };
+              for packet in packets {
+                println!("{:?}", packet);
+                match packet.information {                    
+                  // MARK: Registration
+                  ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
+                    username = recieved_username.clone();
+                    let valid = filter::valid_username(username.clone());
+                    if !valid {
+                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(RefusalReason::InvalidUsername),
+                      }).expect("hi1")).await;
+                      continue;
+                    }
+                    let username_taken: Result<bool, redb::Error>;
+                    let username_taken_real: bool;
+                    {
+                      let mut database = local_database.lock().unwrap();
+                      username_taken = database::username_taken(&mut database, &recieved_username);
+                    }
+                    match username_taken {
+                      Ok(taken) => { username_taken_real = taken; },
+                      Err(_) => {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::InteractionRefused(RefusalReason::InvalidUsername),
+                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                        //.expect() is ok to use on serialize because we control what gets serialized.
                         }).expect("hi1")).await;
                         continue;
                       }
-                      let username_taken: Result<bool, redb::Error>;
-                      let username_taken_real: bool;
-                      {
-                        let mut database = local_database.lock().unwrap();
-                        username_taken = database::username_taken(&mut database, &recieved_username);
-                      }
-                      match username_taken {
-                        Ok(taken) => { username_taken_real = taken; },
-                        Err(_) => {
-                          let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                          //.expect() is ok to use on serialize because we control what gets serialized.
-                          }).expect("hi1")).await;
-                          continue;
-                        }
-                      };
-                      if username_taken_real {
-                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::InteractionRefused(RefusalReason::UsernameTaken),
-                        }).expect("hi2")).await;
-                        username = String::new();
-                        continue;
-                      }
-                      let server_registration_start_result = match ServerRegistration::<DefaultCipherSuite>::start(
-                        &local_server_setup,
-                        client_message,
-                        username.clone().as_bytes(),
-                      ) {
-                        Ok(result) => {result},
-                        Err(_err) => {
-                          let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                          }).expect("hi3")).await;
-                          continue;
-                        }
-                      };
-                      let response: RegistrationResponse<DefaultCipherSuite> = server_registration_start_result.message;
-                      // reply to the client
-                      // this doesnt reply
+                    };
+                    if username_taken_real {
                       let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                        information: ServerToClient::RegisterResponse1(response),
-                      }).expect("hi4")).await;
+                        information: ServerToClient::InteractionRefused(RefusalReason::UsernameTaken),
+                      }).expect("hi2")).await;
+                      username = String::new();
+                      continue;
                     }
-                    ClientToServer::RegisterRequestStep2(client_message) => {
-                      if username == String::new() {
+                    let server_registration_start_result = match ServerRegistration::<DefaultCipherSuite>::start(
+                      &local_server_setup,
+                      client_message,
+                      username.clone().as_bytes(),
+                    ) {
+                      Ok(result) => {result},
+                      Err(_err) => {
                         let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                        }).expect("hi5")).await;
+                        }).expect("hi3")).await;
                         continue;
                       }
-                      let password_file = ServerRegistration::<DefaultCipherSuite>::finish(client_message);
-                      println!("Registered user {:?}", username.clone());
-                      {
-                        let mut database = local_database.lock().unwrap();
-                        database::create_player(&mut database, username.clone().as_str(), PlayerData::new(password_file)).expect("hi6");
-                      }
-                    }
-                    // MARK: Login
-                    ClientToServer::LoginRequestStep1(recv_username, client_message) => {
-                      username = recv_username;
-                      let password_file: Result<PlayerData, redb::Error>;
-                      let password_file_real: ServerRegistration<DefaultCipherSuite>;
-                      let user_exists: Result<bool, redb::Error>;
-                      let user_exists_real: bool;
-                      {
-                        let database = local_database.lock().unwrap();
-                        user_exists = database::username_taken(&database, &username);
-                        password_file = database::get_player(&database, &username);
-                      }
-                      match user_exists {
-                        Ok(exists) => user_exists_real = exists,
-                        Err(_err) => {
-                          let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                          }).expect("hi7")).await;
-                          continue;
-                        }
-                      }
-                      if !user_exists_real {
-                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
-                        }).expect("hi7")).await;
-                        continue;
-                      }
-                      match password_file {
-                        Ok(playerdata) => password_file_real = playerdata.password_hash,
-                        Err(_err) => {
-                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                        }).expect("hi7")).await;
-                          continue;
-                        }
-                      }
-                      let result = match ServerLogin::start(
-                        &mut rng,
-                        &local_server_setup,
-                        Some(password_file_real),
-                        client_message,
-                        username.as_bytes(),
-                        ServerLoginParameters::default(),
-                      ) {
-                        Ok(result) => result,
-                        Err(_err) => {
-                          let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                          }).expect("hi8")).await;
-                          continue;
-                        },
-                      };
-                      server_login_start_result = Some(result);
-                      let response = server_login_start_result.as_ref().unwrap().message.clone();
+                    };
+                    let response: RegistrationResponse<DefaultCipherSuite> = server_registration_start_result.message;
+                    // reply to the client
+                    // this doesnt reply
+                    let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      information: ServerToClient::RegisterResponse1(response),
+                    }).expect("hi4")).await;
+                  }
+                  ClientToServer::RegisterRequestStep2(client_message) => {
+                    if username == String::new() {
                       let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
-                        information: ServerToClient::LoginResponse1(response),
-                      }).expect("hi9")).await;
+                        information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                      }).expect("hi5")).await;
+                      continue;
                     }
-                    ClientToServer::LoginRequestStep2(client_message) => {
-                      if let Some(server_login_start_result) = server_login_start_result.take() {
-                        let server_login_finish_result = server_login_start_result.state.finish(
-                          client_message,
-                          ServerLoginParameters::default(),
-                        ).expect("hi10");
-                        let session_key = server_login_finish_result.session_key.to_vec();
-
-                        // Shrink PAKE key
-                        // put this in a function later
-                        let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
-                        let prk = salt.extract(&session_key);
-                        let okm = prk.expand(&[], hkdf::HKDF_SHA256).unwrap();
-                        let mut key_bytes = [0u8; 32];
-                        okm.fill(&mut key_bytes).unwrap();
-                        let key = Vec::from(&key_bytes);
-                        // save the new key for this thread
-                        cipher_key = key;
-                        logged_in = true;
-
-                        //// login successful, add user to user list
-                        //{
-                        //  // Make sure we avoid duplicates, if a player struct was left by this player
-                        //  // beforehand (ungraceful exit)
-                        //  let mut players = local_players.lock().unwrap();
-                        //  if logged_in {
-                        //    for p_index in 0..players.len() {
-                        //      if players[p_index].username == username {
-                        //        println!("{:?}, {:?}", players[p_index].username, username);
-                        //        players.remove(p_index);
-                        //        drop(players);
-                        //        return;
-                        //      }
-                        //    }
-                        //  }
-                        //}
-                        let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
-                        {
-                          let mut players = local_players.lock().unwrap();
-                          for p_index in 0..players.len() {
-                            if players[p_index].username == username {
-                              channel_copy = Some(players[p_index].channel.clone());
-                              players.remove(p_index);
-                              //return;
-                            }
-                          }
-                        }
-                        if let Some(channel) = channel_copy {
-                          channel.send(PlayerMessage::ForceDisconnect).await.unwrap();
-                        }
-                        {
-                          let mut players = local_players.lock().unwrap();
-                          players.push(
-                            PlayerInfo {
-                              username: username.clone(),
-                              session_key:cipher_key.clone(),
-                              channel: tx.clone(),
-                              queued: false,
-                              queued_gamemodes: Vec::new(),
-                              selected_character: Character::Hernani,
-                              assigned_team: common::Team::Blue,
-                            }
-                          );
-                        }
-                      }
-                    }
-                    _ => {
-                      // Ignore packet. Invalid.
+                    let password_file = ServerRegistration::<DefaultCipherSuite>::finish(client_message);
+                    println!("Registered user {:?}", username.clone());
+                    {
+                      let mut database = local_database.lock().unwrap();
+                      database::create_player(&mut database, username.clone().as_str(), PlayerData::new(password_file)).expect("hi6");
                     }
                   }
-                // if the user is logged in
-                }
-                Err(err) => {
-                  println!("ERROR: {:?}", err)
+                  // MARK: Login
+                  ClientToServer::LoginRequestStep1(recv_username, client_message) => {
+                    username = recv_username;
+                    let password_file: Result<PlayerData, redb::Error>;
+                    let password_file_real: ServerRegistration<DefaultCipherSuite>;
+                    let user_exists: Result<bool, redb::Error>;
+                    let user_exists_real: bool;
+                    {
+                      let database = local_database.lock().unwrap();
+                      user_exists = database::username_taken(&database, &username);
+                      password_file = database::get_player(&database, &username);
+                    }
+                    match user_exists {
+                      Ok(exists) => user_exists_real = exists,
+                      Err(_err) => {
+                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                        }).expect("hi7")).await;
+                        continue;
+                      }
+                    }
+                    if !user_exists_real {
+                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
+                      }).expect("hi7")).await;
+                      continue;
+                    }
+                    match password_file {
+                      Ok(playerdata) => password_file_real = playerdata.password_hash,
+                      Err(_err) => {
+                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                      }).expect("hi7")).await;
+                        continue;
+                      }
+                    }
+                    let result = match ServerLogin::start(
+                      &mut rng,
+                      &local_server_setup,
+                      Some(password_file_real),
+                      client_message,
+                      username.as_bytes(),
+                      ServerLoginParameters::default(),
+                    ) {
+                      Ok(result) => result,
+                      Err(_err) => {
+                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                        }).expect("hi8")).await;
+                        continue;
+                      },
+                    };
+                    server_login_start_result = Some(result);
+                    let response = server_login_start_result.as_ref().unwrap().message.clone();
+                    let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      information: ServerToClient::LoginResponse1(response),
+                    }).expect("hi9")).await;
+                  }
+                  ClientToServer::LoginRequestStep2(client_message) => {
+                    if let Some(server_login_start_result) = server_login_start_result.take() {
+                      let server_login_finish_result = server_login_start_result.state.finish(
+                        client_message,
+                        ServerLoginParameters::default(),
+                      ).expect("hi10");
+                      let session_key = server_login_finish_result.session_key.to_vec();
+
+                      // Shrink PAKE key
+                      // put this in a function later
+                      let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+                      let prk = salt.extract(&session_key);
+                      let okm = prk.expand(&[], hkdf::HKDF_SHA256).unwrap();
+                      let mut key_bytes = [0u8; 32];
+                      okm.fill(&mut key_bytes).unwrap();
+                      let key = Vec::from(&key_bytes);
+                      // save the new key for this thread
+                      cipher_key = key;
+                      logged_in = true;
+
+                      // login is successful, so append the user to the player list.
+                      // however, if they already exist, disconnect the old session.
+                      let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
+                      {
+                        let mut players = local_players.lock().unwrap();
+                        for p_index in 0..players.len() {
+                          if players[p_index].username == username {
+                            channel_copy = Some(players[p_index].channel.clone());
+                            players.remove(p_index);
+                            //return;
+                          }
+                        }
+                      }
+                      if let Some(channel) = channel_copy {
+                        channel.send(PlayerMessage::ForceDisconnect).await.unwrap();
+                      }
+                      {
+                        let mut players = local_players.lock().unwrap();
+                        players.push(
+                          PlayerInfo {
+                            username: username.clone(),
+                            session_key:cipher_key.clone(),
+                            channel: tx.clone(),
+                            queued: false,
+                            queued_gamemodes: Vec::new(),
+                            selected_character: Character::Hernani,
+                            assigned_team: common::Team::Blue,
+                          }
+                        );
+                      }
+                    }
+                  }
+                  _ => {
+                    // Ignore packet. Invalid.
+                  }
                 }
               }
             }

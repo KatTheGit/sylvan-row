@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 
 use std::{any::Any, collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, database::{self, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
+use sylvan_row::{network, common::*, const_params::*, database::{self, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -220,7 +220,7 @@ async fn main() {
           let message = ClientToServerPacket {
             information: ClientToServer::RegisterRequestStep1(username.clone(), message)
           };
-          match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+          match server_stream.write_all(&network::tcp_encode(message).expect("oops")) {
             Ok(_) => {}
             Err(_) => {
               //registration failed.
@@ -256,7 +256,7 @@ async fn main() {
               let message = ClientToServerPacket {
                 information: ClientToServer::RegisterRequestStep2(registration_upload)
               };
-              match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+              match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
                 Ok(_) => {}
                 Err(_) => {
                   //registration failed.
@@ -292,7 +292,7 @@ async fn main() {
           let message = ClientToServerPacket {
             information: ClientToServer::LoginRequestStep1(username.clone(), message)
           };
-          match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+          match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
             Ok(_) => {}
             Err(_) => {
               //registration failed.
@@ -348,7 +348,7 @@ async fn main() {
               let message = ClientToServerPacket {
                 information: ClientToServer::LoginRequestStep2(credential_finalization)
               };
-              match server_stream.write_all(&bincode::serialize::<ClientToServerPacket>(&message).expect("oops")) {
+              match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
                 Ok(_) => {}
                 Err(_) => {
                   continue;
