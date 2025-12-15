@@ -170,6 +170,7 @@ This is just for me.
   - [x] Holy shit they fixed it
 - Icon doesn't show up on Linux (Macroquad issue)
   - [x] Holy guacamole they fixed it
+- Any MITM mitigation that goes beyond making sure data is secure and legitimate.
 
 # Notes
 

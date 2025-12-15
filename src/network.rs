@@ -123,9 +123,6 @@ pub fn tcp_decode_decrypt<T: serde::de::DeserializeOwned>(mut data: Vec<u8>, key
       
       let deciphered = match cipher.decrypt(&nonce_formatted, data_to_decode.as_ref()) {
         Ok(decrypted) => {
-          if nonce_num <= *last_nonce {
-            break;
-          }
           // this is a valid packet, update last_nonce
           *last_nonce = nonce_num;
           decrypted
