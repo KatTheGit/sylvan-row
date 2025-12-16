@@ -33,7 +33,7 @@ pub const SERVER_PORT:        u16 = 25569;
 /// Default IP to be used when there's an issue with the moba_ip.txt file.
 pub const DEFAULT_SERVER_IP: &str = "13.38.240.14"; // my AWS instance address
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, Copy)]
 pub struct DefaultCipherSuite;
 
 impl CipherSuite for DefaultCipherSuite {

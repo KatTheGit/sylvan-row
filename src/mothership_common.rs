@@ -76,7 +76,6 @@ pub enum ServerToClient {
   RegisterResponse1(RegistrationResponse<DefaultCipherSuite>),
   RegisterSuccessful,
   LoginResponse1(CredentialResponse<DefaultCipherSuite>),
-  LoginResponse2,
   /// An error occured and the server refused to comply, for
   /// the reason described by the `RefusalReason`
   /// 

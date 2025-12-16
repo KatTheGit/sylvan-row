@@ -111,14 +111,13 @@ async fn main() {
                 }
               };
               for packet in packets {
-                println!("{:?}", packet);
                 match packet.information {                    
                   // MARK: Registration
                   ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
                     username = recieved_username.clone();
                     let valid = filter::valid_username(username.clone());
                     if !valid {
-                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      let _ = socket.write_all(&network::tcp_encode(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::InvalidUsername),
                       }).expect("hi1")).await;
                       continue;
@@ -132,7 +131,7 @@ async fn main() {
                     match username_taken {
                       Ok(taken) => { username_taken_real = taken; },
                       Err(_) => {
-                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         //.expect() is ok to use on serialize because we control what gets serialized.
                         }).expect("hi1")).await;
@@ -140,7 +139,7 @@ async fn main() {
                       }
                     };
                     if username_taken_real {
-                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::UsernameTaken),
                       }).expect("hi2")).await;
                       username = String::new();
@@ -153,7 +152,7 @@ async fn main() {
                     ) {
                       Ok(result) => {result},
                       Err(_err) => {
-                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         }).expect("hi3")).await;
                         continue;
@@ -162,13 +161,13 @@ async fn main() {
                     let response: RegistrationResponse<DefaultCipherSuite> = server_registration_start_result.message;
                     // reply to the client
                     // this doesnt reply
-                    let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                    let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                       information: ServerToClient::RegisterResponse1(response),
                     }).expect("hi4")).await;
                   }
                   ClientToServer::RegisterRequestStep2(client_message) => {
                     if username == String::new() {
-                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                       }).expect("hi5")).await;
                       continue;
@@ -195,14 +194,14 @@ async fn main() {
                     match user_exists {
                       Ok(exists) => user_exists_real = exists,
                       Err(_err) => {
-                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         }).expect("hi7")).await;
                         continue;
                       }
                     }
                     if !user_exists_real {
-                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
                       }).expect("hi7")).await;
                       continue;
@@ -210,7 +209,7 @@ async fn main() {
                     match password_file {
                       Ok(playerdata) => password_file_real = playerdata.password_hash,
                       Err(_err) => {
-                      let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                      let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                       }).expect("hi7")).await;
                         continue;
@@ -226,7 +225,7 @@ async fn main() {
                     ) {
                       Ok(result) => result,
                       Err(_err) => {
-                        let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                        let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         }).expect("hi8")).await;
                         continue;
@@ -234,7 +233,7 @@ async fn main() {
                     };
                     server_login_start_result = Some(result);
                     let response = server_login_start_result.as_ref().unwrap().message.clone();
-                    let _ = socket.write_all(&bincode::serialize(&ServerToClientPacket {
+                    let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                       information: ServerToClient::LoginResponse1(response),
                     }).expect("hi9")).await;
                   }
@@ -260,6 +259,7 @@ async fn main() {
 
                       // login is successful, so append the user to the player list.
                       // however, if they already exist, disconnect the old session.
+                      println!("login success");
                       let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
                       {
                         let mut players = local_players.lock().unwrap();
