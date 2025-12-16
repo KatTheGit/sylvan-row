@@ -271,6 +271,8 @@ Intended playstyle:
 
 # 5. Gameplay
 
+The format that surrounds the fighting itself.
+
 ## 5.1. Gamemode
 - Format
   - 1v1 or 2v2

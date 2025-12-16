@@ -1842,7 +1842,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         packet_interval: network_elapsed,
         dashing,
         character: player.character,
-        port: port,
         timestamp: SystemTime::now(), // ping!
       };
 
