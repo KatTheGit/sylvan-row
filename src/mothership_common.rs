@@ -20,9 +20,11 @@ pub enum ClientToServer {
   /// User requests a list of friends/pending/blocked players
   GetFriendList,
   /// User wants to send a friend request to the user in the `String`.
+  /// 
+  /// Also used to accept friend requests.
   SendFriendRequest(String),
-  ///// User wants to accept the friend request of the user in the `String`.
-  //AcceptFriendRequest(String),
+  /// User wants to send a chat message (String 2) to a recipient (String 1).
+  SendChatMessage(String, String),
   RegisterRequestStep1(String, RegistrationRequest<DefaultCipherSuite>),
   RegisterRequestStep2(RegistrationUpload<DefaultCipherSuite>),
   LoginRequestStep1(String, CredentialRequest<DefaultCipherSuite>),
@@ -56,6 +58,8 @@ pub enum ServerToClient {
   FriendListResponse(Vec<(String, FriendShipStatus, bool)>),
   FriendRequestSuccessful,
   FriendshipSuccessful,
+  /// The user recieved a chat message (String 2) from a sender (String 1).
+  ChatMessage(String, String),
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct PlayerStatistics {
@@ -87,6 +91,11 @@ pub enum RefusalReason {
   UsersBlocked,
   /// That's you, dummy!
   ThatsYouDummy,
+  /// The user isn't currently online.
+  UserNotOnline,
+  /// The user's request is invalidated because the concerned peer
+  /// is not a friend.
+  NotFriends,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {

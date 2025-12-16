@@ -317,7 +317,13 @@ async fn main() {
                       // add the player to the queue
                       let mut players = local_players.lock().unwrap();
                       // this player's index
-                      let p_index = from_user(&username, players.clone());
+                      let p_index = match from_user(&username, players.clone()) {
+                        Ok(index) => index,
+                        Err(()) => {
+                          // this has no reason to happen lowkey.
+                          continue;
+                        }
+                      };
                       players[p_index].queued = true;
                       if data.gamemodes.len() <= 2{ players[p_index].queued_gamemodes = data.gamemodes; }
                       players[p_index].selected_character = data.character;
@@ -412,7 +418,13 @@ async fn main() {
                     {
                       let mut players = local_players.lock().unwrap();
                       // player's index
-                      let p_index = from_user(&username, players.clone());
+                      let p_index = match from_user(&username, players.clone()) {
+                        Ok(index) => index,
+                        Err(()) => {
+                          // this has no reason to happen lowkey.
+                          continue;
+                        }
+                      };
                       players[p_index].queued = false;
                     }
                   }
@@ -624,6 +636,81 @@ async fn main() {
                       })).await.unwrap();
                     }
                   }
+                  ClientToServer::SendChatMessage(peer_username, message) => {
+                    let mut peers_are_friends: bool = false;
+                    let mut internal_error_occurred: bool = false;
+                    {
+                      let database = local_database.lock().unwrap();
+                      match database::get_friend_status(&database, &peer_username, &username) {
+                        Ok(status) => {
+                          if status == FriendShipStatus::Friends {
+                            peers_are_friends = true;
+                          }
+                        }
+                        Err(err) => {
+                          match err {
+                            redb::Error::Corrupted(reason) => {
+                              if reason == "norelation" {
+                                //peers_are_friends = false;
+                              } else {
+                                internal_error_occurred = true;
+                              }
+                            }
+                            _ => {
+                              internal_error_occurred = true;
+                            }
+                          }
+                        }
+                      }
+                    }
+                    if internal_error_occurred {
+                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(
+                          RefusalReason::InternalError
+                        ),
+                      })).await.unwrap();
+                      continue;
+                    }
+                    // if they indeed are friends, we can proceed.
+                    if peers_are_friends {
+                      let mut peer_user_online = true;
+                      let peer_channel;
+                      {
+
+                        let players = local_players.lock().unwrap();
+                        let index_of_peer: usize = match from_user(&username, players.clone()) {
+                          Ok(index) => {index},
+                          Err(()) => {
+                            peer_user_online = false;
+                            0 // return a gibberish value who cares it won't be read.
+                          }
+                        };
+                        peer_channel = players[index_of_peer].channel.clone();
+                      }
+                      if !peer_user_online {
+                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                          information: ServerToClient::InteractionRefused(
+                            RefusalReason::UserNotOnline
+                          ),
+                        })).await.unwrap();
+                        continue;
+                      }
+                      peer_channel.send(
+                        PlayerMessage::SendPacket(
+                          ServerToClientPacket { information: 
+                          ServerToClient::ChatMessage(username.clone(), message) }
+                        )
+                      ).await.unwrap();
+                    }
+                    // peers are not friends.
+                    else {
+                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(
+                          RefusalReason::NotFriends
+                        ),
+                      })).await.unwrap();
+                    }
+                  }
                   _ => {}
                 }
               }
@@ -651,11 +738,11 @@ async fn main() {
   }
 }
 
-fn from_user(username: &String, players: Vec<PlayerInfo>) -> usize {
+fn from_user(username: &String, players: Vec<PlayerInfo>) -> Result<usize, ()> {
   for p_index in 0..players.len() {
     if &players[p_index].username == username {
-      return p_index;
+      return Ok(p_index);
     }
   }
-  return usize::MAX;
+  return Err(())
 }

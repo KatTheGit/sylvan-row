@@ -92,6 +92,7 @@ async fn main() {
   let mut escape_already_pressed: bool = false;
 
   let mut settings_open_flag: bool = false;
+  let mut startup_happened: bool = false;
 
   let mut checkbox_1v1 = true;
   let mut checkbox_2v2 = true;
@@ -472,6 +473,16 @@ async fn main() {
     }
     // MARK: Main (logged in)
 
+    // Startup
+    if !startup_happened {
+      startup_happened = true;
+
+      // request friend list.
+      packet_queue.push(
+        ClientToServerPacket { information: ClientToServer::GetFriendList }
+      );
+    }
+
     let button_count: f32 = 5 as f32;
     let margin: f32 = 5.0;
     let offset = (100.0 - margin*2.0)/button_count;
@@ -567,12 +578,14 @@ async fn main() {
                   RefusalReason::FriendRequestAlreadySent => "Request Already Exists",
                   RefusalReason::InternalError => "Internal Server Error",
                   RefusalReason::UsernameInexistent => "User Inexistent",
-                  //there is no reason for these to exist here
-                  RefusalReason::InvalidUsername => "Unexpected Error",
-                  RefusalReason::UsernameTaken => "Unexpected Error",
-                  RefusalReason::AlreadyFriends => "Already Friends",
-                  RefusalReason::UsersBlocked => "Users are Blocked",
+                  RefusalReason::AlreadyFriends => "Already friends",
+                  RefusalReason::UsersBlocked => "Users are blocked",
                   RefusalReason::ThatsYouDummy => "That's you dummy!",
+                  RefusalReason::UserNotOnline => "User not online",
+                  RefusalReason::NotFriends => "Not friends with user",
+                  //there is no reason for these to exist here
+                  RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
+                  RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",
                 };
                 notifications.push(Notification::new(text, 1.0));
               }

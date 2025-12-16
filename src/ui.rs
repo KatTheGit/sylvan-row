@@ -336,3 +336,14 @@ impl Settings {
     }
   }
 }
+
+
+pub fn chatbox(
+  friends:              &mut Vec<String>,
+  is_chatbox_open:      &mut bool,
+  selected_friend:      &mut usize,
+  recv_messages_buffer: Vec<(String, String)>,
+  chat_input_buffer:    &mut String
+) {
+  
+}
