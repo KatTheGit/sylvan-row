@@ -1,17 +1,13 @@
 use redb::{Database, Result};
-use sylvan_row::{common, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, gameserver, mothership_common::*, network} ;
-use std::{sync::{Arc, Mutex}, thread::JoinHandle, time::Duration};
+use sylvan_row::{common, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, mothership_common::*, network} ;
+use std::{sync::{Arc, Mutex}, thread::JoinHandle};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
-use opaque_ke::{generic_array::GenericArray, ServerLoginStartResult};
+use opaque_ke::{ServerLoginStartResult};
 use rand::{rngs::OsRng};
 use opaque_ke::{
   RegistrationResponse, ServerLogin,
   ServerLoginParameters, ServerRegistration,
-};
-use chacha20poly1305::{
-  aead::{Aead, KeyInit},
-  ChaCha20Poly1305, Nonce
 };
 
 #[tokio::main]
@@ -63,7 +59,6 @@ async fn main() {
       let mut server_login_start_result: Option<ServerLoginStartResult<DefaultCipherSuite>> = None;
       // cipher key, also session key.
       let mut cipher_key: Vec<u8> = Vec::new();
-      let mut packet_queue: Vec<ServerToClientPacket> = Vec::new();
       loop {
         // this thing is really cool and handles whichever branch is ready first
         tokio::select! {
@@ -259,7 +254,6 @@ async fn main() {
 
                       // login is successful, so append the user to the player list.
                       // however, if they already exist, disconnect the old session.
-                      println!("login success");
                       let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
                       {
                         let mut players = local_players.lock().unwrap();
@@ -299,371 +293,339 @@ async fn main() {
             // logged in, so use cipher
             // MARK: ===============
             else {
-              // this code is a bit redundant for TCP, but will work particularily well for UDP.
-              let recv_nonce = &buffer[..4];
-              let recv_nonce = match bincode::deserialize::<u32>(&recv_nonce){
-                Ok(nonce) => nonce,
-                Err(_) => {
+
+              let packets = network::tcp_decode_decrypt::<ClientToServerPacket>(buffer[..len].to_vec(), cipher_key.clone(), &mut last_nonce);
+              let packets = match packets {
+                Ok(packets) => {packets},
+                Err(_err) => {
                   continue;
                 }
               };
-              if recv_nonce <= last_nonce {
-                continue;
-              }
-              let nonce_num = recv_nonce;
-              let mut nonce_bytes = [0u8; 12];
-              nonce_bytes[8..].copy_from_slice(&nonce.to_be_bytes());
-              let nonce_formatted = Nonce::from_slice(&nonce_bytes);
-              
-              let key = GenericArray::from_slice(cipher_key.as_slice());
-              let cipher = ChaCha20Poly1305::new(key);
-              
-              let raw_packet = &buffer[4..len];
-              let deciphered = match cipher.decrypt(&nonce_formatted, raw_packet.as_ref()) {
-                Ok(decrypted) => {
-                  if nonce_num <= last_nonce {
-                    continue; // this is a parroted packet, ignore it.
-                  }
-                  // this is a valid packet, update last_nonce
-                  last_nonce = nonce_num;
-                  decrypted
-                },
-                Err(_err) => {
-                  continue; // this is an erroneous packet, ignore it.
-                },
-              };
-              let packet = match bincode::deserialize::<ClientToServerPacket>(&deciphered) {
-                Ok(packet) => packet,
-                Err(_err) => {
-                  continue; // ignore invalid packet
-                }
-              };
-              // this is the nonce we use to *send* data
-              // incrementing it once we recieve a valid packet
-              // allows us to make sure our reply always has a correct
-              // nonce.
-              match packet.information {
-                // MARK: Match Request
-                ClientToServer::MatchRequest(data) => {
-                  let players_copy: Vec<PlayerInfo>;
-                  let mut players_to_match: Vec<usize> = Vec::new();
+              for packet in packets {
 
-                  {
-                    // add the player to the queue
-                    let mut players = local_players.lock().unwrap();
-                    // this player's index
-                    let p_index = from_user(&username, players.clone());
-                    players[p_index].queued = true;
-                    if data.gamemodes.len() <= 2{ players[p_index].queued_gamemodes = data.gamemodes; }
-                    players[p_index].selected_character = data.character;
+                // this is the nonce we use to *send* data
+                // incrementing it once we recieve a valid packet
+                // allows us to make sure our reply always has a correct
+                // nonce.
+                match packet.information {
+                  // MARK: Match Request
+                  ClientToServer::MatchRequest(data) => {
+                    let players_copy: Vec<PlayerInfo>;
+                    let mut players_to_match: Vec<usize> = Vec::new();
 
-                    // finally
-                    players_copy = players.clone();
-                    // do matchmaking checks
-                    let mut queued_1v1: Vec<usize> = Vec::new();
-                    let mut queued_2v2: Vec<usize> = Vec::new();
-                    for player_index in 0..players_copy.len() {
-                      if !players_copy[player_index].queued { continue; }
-                      if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
-                        queued_2v2.push(player_index);
-                      }
-                      if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
-                        queued_1v1.push(player_index);
-                      }
-                    }
-                    if queued_2v2.len() >= 4 {
-                      queued_2v2.truncate(4);
-                    players_to_match = queued_2v2;
-                    }
-                    else if queued_1v1.len() >= 2 {
-                      queued_1v1.truncate(2);
-                      players_to_match = queued_1v1;
-                    }
-                    for matched_player in players_to_match.clone() {
-                      players[matched_player].queued = false;
-                    }
-                  }
-                  // Create a game
-                  if !players_to_match.is_empty() {
-                    let port = common::get_random_port();
                     {
-                      let mut fleet = local_fleet.lock().unwrap();
-                      let mut player_info = Vec::new();
-                      let mut team_counter = 0;
+                      // add the player to the queue
+                      let mut players = local_players.lock().unwrap();
+                      // this player's index
+                      let p_index = from_user(&username, players.clone());
+                      players[p_index].queued = true;
+                      if data.gamemodes.len() <= 2{ players[p_index].queued_gamemodes = data.gamemodes; }
+                      players[p_index].selected_character = data.character;
+
+                      // finally
+                      players_copy = players.clone();
+                      // do matchmaking checks
+                      let mut queued_1v1: Vec<usize> = Vec::new();
+                      let mut queued_2v2: Vec<usize> = Vec::new();
                       for player_index in 0..players_copy.len() {
-                        if players_to_match.contains(&player_index) {
-                          let mut player = players_copy[player_index].clone();
-                          if team_counter < (players_to_match.len() / 2) {
-                            player.assigned_team = common::Team::Red;
-                            team_counter += 1;
-                          }
-                          player_info.push(player);
+                        if !players_copy[player_index].queued { continue; }
+                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
+                          queued_2v2.push(player_index);
+                        }
+                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
+                          queued_1v1.push(player_index);
                         }
                       }
-                      // MARK: Game Server
-                      let thread_database = Arc::clone(&local_database);
-                      fleet.push(
-                        std::thread::spawn(move || {
-                          let players = player_info.clone();
-                          match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info)}){
-                            Ok(winning_team) => {
-                              println!("Winning team: {:?}", winning_team);
-                              let mut database = thread_database.lock().unwrap();
-                              // assign victories.
-                              for player in players {
-                                if player.assigned_team == winning_team {
-                                  // put the victory in the database
-                                  let mut player_data: PlayerData = match database::get_player(&database, &player.username) {
-                                    Ok(data) => data,
-                                    Err(_err) => {continue;}
-                                  };
-                                  player_data.wins += 1;
-                                  match database::create_player(&mut database, &player.username, player_data) {
-                                    Ok(_) => {},
-                                    Err(_err) => {},
+                      if queued_2v2.len() >= 4 {
+                        queued_2v2.truncate(4);
+                      players_to_match = queued_2v2;
+                      }
+                      else if queued_1v1.len() >= 2 {
+                        queued_1v1.truncate(2);
+                        players_to_match = queued_1v1;
+                      }
+                      for matched_player in players_to_match.clone() {
+                        players[matched_player].queued = false;
+                      }
+                    }
+                    // Create a game
+                    if !players_to_match.is_empty() {
+                      let port = common::get_random_port();
+                      {
+                        let mut fleet = local_fleet.lock().unwrap();
+                        let mut player_info = Vec::new();
+                        let mut team_counter = 0;
+                        for player_index in 0..players_copy.len() {
+                          if players_to_match.contains(&player_index) {
+                            let mut player = players_copy[player_index].clone();
+                            if team_counter < (players_to_match.len() / 2) {
+                              player.assigned_team = common::Team::Red;
+                              team_counter += 1;
+                            }
+                            player_info.push(player);
+                          }
+                        }
+                        // MARK: Game Server
+                        let thread_database = Arc::clone(&local_database);
+                        fleet.push(
+                          std::thread::spawn(move || {
+                            let players = player_info.clone();
+                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info)}){
+                              Ok(winning_team) => {
+                                let mut database = thread_database.lock().unwrap();
+                                // assign victories.
+                                for player in players {
+                                  if player.assigned_team == winning_team {
+                                    // put the victory in the database
+                                    let mut player_data: PlayerData = match database::get_player(&database, &player.username) {
+                                      Ok(data) => data,
+                                      Err(_err) => {continue;}
+                                    };
+                                    player_data.wins += 1;
+                                    match database::create_player(&mut database, &player.username, player_data) {
+                                      Ok(_) => {},
+                                      Err(_err) => {},
+                                    }
                                   }
                                 }
+                              },
+                              Err(error) => {
+                                println!("Game server crashed: {:?}", error);
                               }
-                            },
-                            Err(error) => {
-                              println!("Game server crashed: {:?}", error);
-                            }
-                          };
-                        }
-                      ));
-                    }
-                    for pm_index in players_to_match {
-                      players_copy[pm_index].channel.send(PlayerMessage::SendPacket(
-                        ServerToClientPacket {
-                          information: ServerToClient::MatchAssignment(
-                            MatchAssignmentData { port: port }
-                          )
-                        }
-                      )).await.unwrap();
-                    }
-                  }
-                }
-                // MARK: Match Cancel
-                ClientToServer::MatchRequestCancel => {
-                  {
-                    let mut players = local_players.lock().unwrap();
-                    // player's index
-                    let p_index = from_user(&username, players.clone());
-                    players[p_index].queued = false;
-                  }
-                }
-                // MARK: Data Request
-                ClientToServer::PlayerDataRequest => {
-                  // client wants to see their stats!!!
-                  let player_stats: PlayerStatistics;
-                  {
-                    let database = local_database.lock().unwrap();
-                    let player_data = match database::get_player(&database, &username) {
-                      Ok(data) => data,
-                      Err(_err) => {
-                        continue;
-                      }
-                    };
-                    player_stats = PlayerStatistics {
-                      wins: player_data.wins as u16,
-                    };
-                  }
-                  tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                    information: ServerToClient::PlayerDataResponse(player_stats),
-                  })).await.unwrap();
-                }
-                // MARK: Get Friend List
-                // expensive operation
-                ClientToServer::GetFriendList => {
-                  println!("getting friend list...");
-                  let friend_list: Result<Vec<(String, FriendShipStatus)>, redb::Error>;
-                  {
-                    let database = local_database.lock().unwrap();
-                    friend_list = database::get_status_list(&database, &username);
-                  }
-                  match friend_list {
-                    Ok(friend_list) => {
-                      let mut final_friend_list: Vec<(String, FriendShipStatus, bool)> = Vec::new();
-                      {
-                        let players = local_players.lock().unwrap();
-                        for friend in friend_list {
-                          // only tell the user the peer is online if they're friends.
-                          let mut online: bool = false;
-                          if friend.1 == FriendShipStatus::Friends {
-                            for player in players.clone() {
-                              if player.username == username {
-                                continue;
-                              }
-                              let split: Vec<&str> = friend.0.split(":").collect();
-                              if split[0] == player.username
-                              || split[1] == player.username {
-                                online = true;
-                                break;
-                              }
-                            }
-                          } else {
-                            online = false;
+                            };
                           }
-                          final_friend_list.push((friend.0, friend.1, online));
+                        ));
+                      }
+                      for pm_index in players_to_match {
+                        players_copy[pm_index].channel.send(PlayerMessage::SendPacket(
+                          ServerToClientPacket {
+                            information: ServerToClient::MatchAssignment(
+                              MatchAssignmentData { port: port }
+                            )
+                          }
+                        )).await.unwrap();
+                      }
+                    }
+                  }
+                  // MARK: Match Cancel
+                  ClientToServer::MatchRequestCancel => {
+                    {
+                      let mut players = local_players.lock().unwrap();
+                      // player's index
+                      let p_index = from_user(&username, players.clone());
+                      players[p_index].queued = false;
+                    }
+                  }
+                  // MARK: Data Request
+                  ClientToServer::PlayerDataRequest => {
+                    // client wants to see their stats!!!
+                    let player_stats: PlayerStatistics;
+                    {
+                      let database = local_database.lock().unwrap();
+                      let player_data = match database::get_player(&database, &username) {
+                        Ok(data) => data,
+                        Err(_err) => {
+                          continue;
+                        }
+                      };
+                      player_stats = PlayerStatistics {
+                        wins: player_data.wins as u16,
+                      };
+                    }
+                    tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      information: ServerToClient::PlayerDataResponse(player_stats),
+                    })).await.unwrap();
+                  }
+                  // MARK: Get Friend List
+                  // expensive operation
+                  ClientToServer::GetFriendList => {
+                    let friend_list: Result<Vec<(String, FriendShipStatus)>, redb::Error>;
+                    {
+                      let database = local_database.lock().unwrap();
+                      friend_list = database::get_status_list(&database, &username);
+                    }
+                    match friend_list {
+                      Ok(friend_list) => {
+                        let mut final_friend_list: Vec<(String, FriendShipStatus, bool)> = Vec::new();
+                        {
+                          let players = local_players.lock().unwrap();
+                          for friend in friend_list {
+                            // only tell the user the peer is online if they're friends.
+                            let mut online: bool = false;
+                            if friend.1 == FriendShipStatus::Friends {
+                              for player in players.clone() {
+                                if player.username == username {
+                                  continue;
+                                }
+                                let split: Vec<&str> = friend.0.split(":").collect();
+                                if split[0] == player.username
+                                || split[1] == player.username {
+                                  online = true;
+                                  break;
+                                }
+                              }
+                            } else {
+                              online = false;
+                            }
+                            final_friend_list.push((friend.0, friend.1, online));
+                          }
+                        }
+                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                          information: ServerToClient::FriendListResponse(final_friend_list),
+                        })).await.unwrap();
+                      }
+                      Err(err) => {
+                        println!("{:?}", err);
+                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                        })).await.unwrap();
+                      }
+                    }
+                  }
+                  // FR = Friend Request
+                  // MARK: FR / FR Accept
+                  ClientToServer::SendFriendRequest(other_user) => {
+                    if username == other_user {
+                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(RefusalReason::ThatsYouDummy),
+                      })).await.unwrap();
+                      continue;
+                    }
+                    let username_exists: Result<bool, redb::Error>;
+                    let current_status: Result<FriendShipStatus, redb::Error>;
+                    // ends up being true if the request was successful, and false if
+                    // there was an internal error (database error).
+                    let mut request_successful = false;
+                    // true if the interaction led to a friendship grant.
+                    // (Happens if FR is sent to someone who already sent you an FR)
+                    let mut friendship_achieved = false;
+                    {
+                      let database = local_database.lock().unwrap();
+                      username_exists = database::username_taken(&database, &other_user);
+                      current_status = database::get_friend_status(&database, &username, &other_user);
+                    }
+                    match username_exists {
+                      Ok(exists) => {
+                        if !exists {
+                          // the requested user doesn't exist.
+                          tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                            information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
+                          })).await.unwrap();
+                          continue;
                         }
                       }
-                      println!("{:?}", final_friend_list);
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                        information: ServerToClient::FriendListResponse(final_friend_list),
-                      })).await.unwrap();
-                    }
-                    Err(err) => {
-                      println!("{:?}", err);
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                        information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                      })).await.unwrap();
-                    }
-                  }
-                }
-                // FR = Friend Request
-                // MARK: FR / FR Accept
-                ClientToServer::SendFriendRequest(other_user) => {
-                  println!("{:?}", other_user);
-                  if username == other_user {
-                    tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                      information: ServerToClient::InteractionRefused(RefusalReason::ThatsYouDummy),
-                    })).await.unwrap();
-                    continue;
-                  }
-                  let username_exists: Result<bool, redb::Error>;
-                  let current_status: Result<FriendShipStatus, redb::Error>;
-                  // ends up being true if the request was successful, and false if
-                  // there was an internal error (database error).
-                  let mut request_successful = false;
-                  // true if the interaction led to a friendship grant.
-                  // (Happens if FR is sent to someone who already sent you an FR)
-                  let mut friendship_achieved = false;
-                  {
-                    let database = local_database.lock().unwrap();
-                    username_exists = database::username_taken(&database, &other_user);
-                    current_status = database::get_friend_status(&database, &username, &other_user);
-                  }
-                  match username_exists {
-                    Ok(exists) => {
-                      if !exists {
-                        // the requested user doesn't exist.
+                      Err(err) => {
+                        println!("1 Error: {:?}", err);
+                        // database error (internal server error)
                         tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                          information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
+                          information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         })).await.unwrap();
                         continue;
                       }
                     }
-                    Err(err) => {
-                      println!("1 Error: {:?}", err);
-                      // database error (internal server error)
+                    match current_status {
+                      Ok(status) => {
+                        match status {
+                          FriendShipStatus::Friends => {
+                            // if they're already friends, ignore
+                            tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                              information: ServerToClient::InteractionRefused(RefusalReason::AlreadyFriends),
+                            })).await.unwrap();
+                            continue;
+                          }
+                          FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
+                            let predicted_pending_status: FriendShipStatus = database::get_friend_request_type(&username, &other_user);
+                            if predicted_pending_status == status {
+                              // this friend request was already made.
+                              tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                                information: ServerToClient::InteractionRefused(RefusalReason::FriendRequestAlreadySent),
+                              })).await.unwrap();
+                              continue;
+                            } else {
+                              // the other user also sent a friend request, which means either they
+                              // both want to be friends, or one is accepting a request.
+                              // either way, let's grant the friendship.
+                              {
+                                let database = local_database.lock().unwrap();
+                                match database::set_friend_status(&database, &username, &other_user, FriendShipStatus::Friends) {
+                                  Ok(_) => {
+                                    // friendship successful by mutual request.
+                                    request_successful = true;
+                                    friendship_achieved = true;
+                                  }
+                                  Err(err) => {
+                                    println!("2 Error: {:?}", err);
+                                    // friendship failed (internal error).
+                                    request_successful = false;
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          FriendShipStatus::Blocked => {
+                            // blocked, so ignore.
+                            tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                              information: ServerToClient::InteractionRefused(RefusalReason::UsersBlocked),
+                            })).await.unwrap();
+                            continue;
+                          }
+                        }
+                      }
+                      Err(err) => {
+                        match err {
+                          redb::Error::Corrupted(reason) => {
+                            if reason == "norelation" {
+                              // the users have no entry in the database, set their status as pending.
+                              let pending_status: FriendShipStatus = database::get_friend_request_type(&username, &other_user);
+                              {
+                                let database = local_database.lock().unwrap();
+                                match database::set_friend_status(&database, &username, &other_user, pending_status) {
+                                  Ok(_) => {
+                                    // friend request successfully sent
+                                    request_successful = true;
+                                  }
+                                  Err(err) => {
+                                    println!("4 Error: {:?}", err);
+                                    // friend request failed (internal error).
+                                    request_successful = false;
+                                  }
+                                }
+                              }
+                            }
+                          }
+                          _ => {
+                            println!("3 Error: {:?}", err);
+                            // some other error happened in the database.
+                            tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                              information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
+                            })).await.unwrap();
+                            continue;
+                          }
+                        }
+                      }
+                    }
+                    if request_successful {
+                      if friendship_achieved {
+                        // users are now friends.
+                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                          information: ServerToClient::FriendshipSuccessful,
+                        })).await.unwrap();
+                      } else {
+                        // the friend request was successfully sent to the peer.
+                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                          information: ServerToClient::FriendRequestSuccessful,
+                        })).await.unwrap();
+                      }
+                    }
+                    else {
+                      // request unsuccessful due to an internal error (db error).
                       tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                       })).await.unwrap();
-                      continue;
                     }
                   }
-                  match current_status {
-                    Ok(status) => {
-                      match status {
-                        FriendShipStatus::Friends => {
-                          // if they're already friends, ignore
-                          tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                            information: ServerToClient::InteractionRefused(RefusalReason::AlreadyFriends),
-                          })).await.unwrap();
-                          continue;
-                        }
-                        FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
-                          let predicted_pending_status: FriendShipStatus = database::get_friend_request_type(&username, &other_user);
-                          if predicted_pending_status == status {
-                            // this friend request was already made.
-                            tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                              information: ServerToClient::InteractionRefused(RefusalReason::FriendRequestAlreadySent),
-                            })).await.unwrap();
-                            continue;
-                          } else {
-                            // the other user also sent a friend request, which means either they
-                            // both want to be friends, or one is accepting a request.
-                            // either way, let's grant the friendship.
-                            {
-                              let database = local_database.lock().unwrap();
-                              match database::set_friend_status(&database, &username, &other_user, FriendShipStatus::Friends) {
-                                Ok(_) => {
-                                  // friendship successful by mutual request.
-                                  request_successful = true;
-                                  friendship_achieved = true;
-                                }
-                                Err(err) => {
-                                  println!("2 Error: {:?}", err);
-                                  // friendship failed (internal error).
-                                  request_successful = false;
-                                }
-                              }
-                            }
-                          }
-                        }
-                        FriendShipStatus::Blocked => {
-                          // blocked, so ignore.
-                          tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                            information: ServerToClient::InteractionRefused(RefusalReason::UsersBlocked),
-                          })).await.unwrap();
-                          continue;
-                        }
-                      }
-                    }
-                    Err(err) => {
-                      println!("3 Error: {:?}", err);
-                      match err {
-                        redb::Error::Corrupted(reason) => {
-                          if reason == "norelation" {
-                            // the users have no entry in the database, set their status as pending.
-                            let pending_status: FriendShipStatus = database::get_friend_request_type(&username, &other_user);
-                            {
-                              let database = local_database.lock().unwrap();
-                              match database::set_friend_status(&database, &username, &other_user, pending_status) {
-                                Ok(_) => {
-                                  // friend request successfully sent
-                                  request_successful = true;
-                                }
-                                Err(err) => {
-                                  println!("4 Error: {:?}", err);
-                                  // friend request failed (internal error).
-                                  request_successful = false;
-                                }
-                              }
-                            }
-                          }
-                        }
-                        _ => {
-                          // some other error happened in the database.
-                          tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                            information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                          })).await.unwrap();
-                          continue;
-                        }
-                      }
-                    }
-                  }
-                  if request_successful {
-                    if friendship_achieved {
-                      // users are now friends.
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                        information: ServerToClient::FriendshipSuccessful,
-                      })).await.unwrap();
-                    } else {
-                      // the friend request was successfully sent to the peer.
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                        information: ServerToClient::FriendRequestSuccessful,
-                      })).await.unwrap();
-                    }
-                  }
-                  else {
-                    // request unsuccessful due to an internal error (db error).
-                    tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                      information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                    })).await.unwrap();
-                  }
+                  _ => {}
                 }
-                _ => {}
               }
             }
           }
@@ -677,7 +639,7 @@ async fn main() {
                 PlayerMessage::SendPacket(packet) => {
                   nonce += 1;
                   socket.write_all(
-                    &packet.cipher(nonce, cipher_key.clone())
+                    &network::tcp_encode_encrypt(packet, cipher_key.clone(), nonce).expect("oops")
                   ).await.unwrap();
                 }
               }

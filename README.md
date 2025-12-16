@@ -61,16 +61,20 @@ This is just for me.
       - [x] Tutorial
 - [ ] Matchmaking server ![mindmap](mm-mindmap.png)
   - [ ] **Part 1** (for open beta)
-    - [ ] Easier and more reliable netcode
+    - [x] Easier and more reliable netcode
+      - [x] TCP
+      - [ ] UDP
     - [ ] Player data
       - [x] Username
       - [x] Password hash
       - [x] Friends
       - [x] Blocked players
         - [ ] Interface
+      - [x] Stats
+        - [x] Win count
       - [ ] Ban status
     - [ ] Auth
-      - [ ] Create account
+      - [x] Create account
         - [x] PAKE register
           - [x] Filters
             - [x] Basic filter
@@ -89,7 +93,7 @@ This is just for me.
       - [x] Character
     - [ ] Matchmaking
       - [x] Start game server
-      - [ ] Match ends and gives info to server
+      - [x] Match ends and gives info to server
         - [ ] Info given to clients
     - [ ] "Fleet" managment
       - [x] Single-machine 
@@ -107,6 +111,7 @@ This is just for me.
       - [ ] Reboot on failure
   - [ ] UI
     - [x] Text input fields
+  - [ ] Ranked system
   - [ ] **Part 2** (for release)
     - [ ] Steam integration
       - [ ] Accounts
@@ -134,7 +139,7 @@ This is just for me.
   - [x] Self-interpolation on dashes
   - [x] Player interpolation for other players
   - [x] Make it optional
-    - Currently just a variable. 
+    - Currently just a variable.
 - [ ] Anticheat
   - [ ] Packet averaging
   - [ ] Hide certain information from client

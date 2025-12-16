@@ -76,16 +76,13 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
   println!("Sockets bound.");
   println!("Listening on: {}", server_address.clone());
 
-  let max_players = min_players;
+  //let max_players = min_players;
 
   // (vscode) MARK: Networking - Listen
   // and also return lol
   let listener_players = Arc::clone(&players);
   let listener_gamemode_info = Arc::clone(&general_gamemode_info);
   let listener_game_objects = Arc::clone(&game_objects);
-
-  // variable used to swap between which team we assign players
-  let mut team_flag: bool = true;
 
   let mut nonce: u32 = 1;
   

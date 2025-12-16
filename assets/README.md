@@ -25,6 +25,8 @@ This document specifies guidelines to aid with the development of this game from
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Josey](#432-josey)
 - [5. Gameplay](#5-gameplay)
+  - [5.1. Gamemode](#51-gamemode)
+  - [5.2. Ranked System](#52-ranked-system)
 - [6. Lore](#6-lore)
   - [6.1. Setting](#61-setting)
   - [6.2. Characters](#62-characters)
@@ -269,6 +271,7 @@ Intended playstyle:
 
 # 5. Gameplay
 
+## 5.1. Gamemode
 - Format
   - 1v1 or 2v2
   - Both teams fight until only one team remains.
@@ -279,6 +282,25 @@ Intended playstyle:
   - Every 30s or so, an orb spawns in the middle of the map.
     - Whoever gets the last hit on the orb gives their whole team a bit of health.
     - Shooting the orb knocks it back a little.
+
+## 5.2. Ranked System
+
+The rank of a player is determined entirely through their winrate, since no skill-based or ranked-only matchmaking exists (yet).
+
+Each rank has 3 divisions (III to I). Going up a division requires 100 rp. In the last division of a rank, the rp gain/loss is equal to that of the rank above.
+
+| num | RP | name | winrate | win | loss
+|---|---|---|---|---|---|
+1 | 0 | Bronze | 0% | 50 | 0
+2 | 300 | Silver | 25% | 60 | 20
+3 | 600 | Gold | 50% | 50 | 50
+4 | 900 | ??? | 60% | 34 | 50
+5 | 1200 | ??? | 70% | 21 | 50
+6 | 1500 | Mystic (n) | 80% | 13-0 ($\frac{100}{0.2 * (RP - 1500) + 0.13}$) | 50
+
+Mystic rank has your leaderboard position appended, and doesn't have any divisions.
+
+You cannot derank 4 divisions (1.33 ranks) below your highest rank. Ranks are reset to 0 every month.
 
 # 6. Lore
 

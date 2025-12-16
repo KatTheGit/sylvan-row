@@ -2,7 +2,7 @@
 #![windows_subsystem = "windows"]
 #![allow(unused_parens)]
 
-use std::{any::Any, collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
+use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
 use sylvan_row::{network, common::*, const_params::*, database::{self, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
@@ -12,7 +12,7 @@ use gilrs::*;
 use bincode;
 use ::rand::rngs::OsRng;
 use opaque_ke::{
-  generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult
+  generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientRegistration, ClientRegistrationFinishParameters
 };
 use chacha20poly1305::{
   aead::{Aead, KeyInit},
@@ -114,8 +114,6 @@ async fn main() {
   let mut password_selected: bool = false;
 
   let mut registering: bool = false;
-  
-  let mut client_rng = OsRng;
 
   let mut notifications: Vec<ui::Notification> = Vec::new();
 
@@ -130,6 +128,7 @@ async fn main() {
 
   let mut player_stats: PlayerStatistics = PlayerStatistics::new();
   let mut friend_list: Vec<(String, FriendShipStatus, bool)> = Vec::new();
+  let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
 
   loop {
     if server_stream.is_none() {
@@ -203,6 +202,10 @@ async fn main() {
 
         // all data
         let mut client_rng = OsRng;
+
+        // used inside the listener loops to perform
+        // a double break
+        let mut error_occurred: bool = false;
 
         // register
         if registering {
@@ -306,11 +309,15 @@ async fn main() {
                       _ => String::from("Unexpected Error"),
                     }, duration: 1.0 }
                   );
-                  continue;
+                  error_occurred = true;
+                  break;
                 }
                 // any other packet
                 _ => {}
               }
+            }
+            if error_occurred {
+              break;
             }
             if registering == false {
               break;
@@ -373,7 +380,6 @@ async fn main() {
                 continue;
               }
             };
-            println!("{:?}", packets);
             for packet in packets {
               match packet.information {
 
@@ -433,13 +439,16 @@ async fn main() {
                       _ => String::from("Unexpected Error"),
                     }, duration: 1.0 }
                   );
-                  continue;
+                  error_occurred = true;
+                  break;
                 }
                 // any other packet
                 _ => {}
               }
             }
-
+            if error_occurred {
+              break;
+            }
             if logged_in {
               break;
             }
@@ -525,6 +534,89 @@ async fn main() {
     //  Vector2 { x: 15.0*vw, y: 7.0*vh }, &mut chat, &mut chat_selected, 4.0*vh, vh
     //);
 
+    // MARK: Listen-Write
+    if let Some(ref mut server_stream) = server_stream {
+      let mut buffer: [u8; 2048] = [0; 2048];
+      match server_stream.read(&mut buffer) {
+        Ok(len) => {
+          let packets = network::tcp_decode_decrypt::<ServerToClientPacket>(buffer[..len].to_vec(), cipher_key.clone(), &mut last_nonce);
+          let packets = match packets {
+            Ok(packets) => packets,
+            Err(_) => {
+              continue;
+            }
+          };
+
+          for packet in packets {
+            
+            match packet.information {
+              ServerToClient::MatchAssignment(info) => {
+                if info.port != 0 {
+                  game(characters[selected_char], port, info.port, cipher_key.clone(), username.clone(), &mut settings).await;
+                }
+                queue = false;
+              },
+              ServerToClient::PlayerDataResponse(recv_player_stats) => {
+                player_stats = recv_player_stats;
+              }
+              ServerToClient::FriendListResponse(recv_friend_list) => {
+                friend_list = recv_friend_list;
+              }
+              ServerToClient::InteractionRefused(refusal_reason) => {
+                let text = match refusal_reason {
+                  RefusalReason::FriendRequestAlreadySent => "Request Already Exists",
+                  RefusalReason::InternalError => "Internal Server Error",
+                  RefusalReason::UsernameInexistent => "User Inexistent",
+                  //there is no reason for these to exist here
+                  RefusalReason::InvalidUsername => "Unexpected Error",
+                  RefusalReason::UsernameTaken => "Unexpected Error",
+                  RefusalReason::AlreadyFriends => "Already Friends",
+                  RefusalReason::UsersBlocked => "Users are Blocked",
+                  RefusalReason::ThatsYouDummy => "That's you dummy!",
+                };
+                notifications.push(Notification::new(text, 1.0));
+              }
+              ServerToClient::FriendRequestSuccessful => {
+                notifications.push(Notification::new("Friend request sent", 1.0));
+                packet_queue.push(
+                  ClientToServerPacket {
+                    information: ClientToServer::GetFriendList
+                  }
+                )
+              }
+              ServerToClient::FriendshipSuccessful => {
+                notifications.push(Notification::new("You are now friends!", 1.0));
+                packet_queue.push(
+                  ClientToServerPacket {
+                    information: ClientToServer::GetFriendList
+                  }
+                )
+              }
+              _ => {}
+            }
+          }
+        },
+        Err(error) => {
+          match error.kind() {
+            ErrorKind::WouldBlock => {
+              
+            }
+            _ => {
+              //println!("{:?}", error);
+            }
+          }
+        }
+      }
+      for packet in packet_queue.clone() {
+        server_stream.write_all(
+          &network::tcp_encode_encrypt(packet, cipher_key.clone(), nonce).expect("oops")
+        ).expect("idk 1");
+        nonce += 1;
+      }
+      packet_queue = Vec::new();
+    }
+
+
     if tab_play {
       if !queue {
         checkbox_1v1 = ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, checkbox_1v1);
@@ -540,129 +632,38 @@ async fn main() {
       if queue {
         draw_text("In queue :)", br_anchor.x - 30.0*vh, br_anchor.y - 24.0*vh, 5.0*vh, BLACK);
       }
-      if let Some(ref mut server_stream) = server_stream {
-        if play_button {
-          play_released = true;
-        }
-        if !play_button
-        && play_released {
-          play_released = false;
-          queue = !queue;
-          if queue {
-            let mut selected_gamemodes: Vec<GameMode> = Vec::new();
-            if checkbox_1v1 {selected_gamemodes.push(GameMode::Standard1V1)}
-            if checkbox_2v2 {selected_gamemodes.push(GameMode::Standard2V2)}
-            if selected_gamemodes.is_empty() {
-              notifications.push(Notification::new("Pick a gamemode!", 1.0));
-              queue = false;
-              continue;
-            }
-            // Send a match request packet
-            server_stream.write_all(
-              &ClientToServerPacket {
-                information: ClientToServer::MatchRequest(MatchRequestData {
-                  gamemodes: selected_gamemodes,
-                  character: characters[selected_char],
-                }),
-              }.cipher(nonce, cipher_key.clone())
-            ).expect("idk 1")
-          } else {
-            // Send a match cancel packet
-            server_stream.write_all(
-              &ClientToServerPacket {
-                information: ClientToServer::MatchRequestCancel,
-              }.cipher(nonce, cipher_key.clone())
-            ).expect("idk 2");
-          }
-          nonce += 1;
-        }
+      if play_button {
+        play_released = true;
       }
-    }
-    // MARK: Menu Listen
-    if let Some(ref mut server_stream) = server_stream {
-      let mut buffer: [u8; 2048] = [0; 2048];
-      match server_stream.read(&mut buffer) {
-        Ok(len) => {
-          let recv_nonce = &buffer[..4];
-          let recv_nonce = bincode::deserialize::<u32>(&recv_nonce).expect("oops");
-          if recv_nonce <= last_nonce {
-            next_frame().await;
-            println!("spinning");
+      if !play_button
+      && play_released {
+        play_released = false;
+        queue = !queue;
+        if queue {
+          let mut selected_gamemodes: Vec<GameMode> = Vec::new();
+          if checkbox_1v1 {selected_gamemodes.push(GameMode::Standard1V1)}
+          if checkbox_2v2 {selected_gamemodes.push(GameMode::Standard2V2)}
+          if selected_gamemodes.is_empty() {
+            notifications.push(Notification::new("Pick a gamemode!", 1.0));
+            queue = false;
             continue;
           }
-          let nonce_num = recv_nonce;
-          let mut nonce_bytes = [0u8; 12];
-          nonce_bytes[8..].copy_from_slice(&recv_nonce.to_be_bytes());
-          let formatted_nonce = Nonce::from_slice(&nonce_bytes);
-          let key = GenericArray::from_slice(cipher_key.as_slice());
-          let cipher = ChaCha20Poly1305::new(key);
-          
-          let raw_packet = &buffer[4..len];
-          let deciphered = match cipher.decrypt(&formatted_nonce, raw_packet.as_ref()) {
-            Ok(decrypted) => {
-              if nonce_num <= last_nonce {
-                // this is a parroted packet, ignore it.
-                println!("parroted packet");
-                continue;
-              }
-              // this is a valid packet, update last_nonce
-              last_nonce = nonce_num;
-              decrypted
+          // Send a match request packet
+          packet_queue.push(
+            ClientToServerPacket {
+              information: ClientToServer::MatchRequest(MatchRequestData {
+                gamemodes: selected_gamemodes,
+                character: characters[selected_char],
+              }),
+            }
+          );
+        } else {
+          // Send a match cancel packet
+          packet_queue.push(
+            ClientToServerPacket {
+              information: ClientToServer::MatchRequestCancel,
             },
-            Err(err) => {
-              // this is an erroneous packet, ignore it.
-              println!("erroneous packet: {:?}", err.type_id());
-              continue;
-            },
-          };
-
-          let packet = bincode::deserialize::<ServerToClientPacket>(&deciphered).expect("oops");
-
-          match packet.information {
-            ServerToClient::MatchAssignment(info) => {
-              if info.port != 0 {
-                game(characters[selected_char], port, info.port, cipher_key.clone(), username.clone(), &mut settings).await;
-              }
-              queue = false;
-            },
-            ServerToClient::PlayerDataResponse(recv_player_stats) => {
-              player_stats = recv_player_stats;
-            }
-            ServerToClient::FriendListResponse(recv_friend_list) => {
-              friend_list = recv_friend_list;
-            }
-            ServerToClient::InteractionRefused(refusal_reason) => {
-              let text = match refusal_reason {
-                RefusalReason::FriendRequestAlreadySent => "Request Already Exists",
-                RefusalReason::InternalError => "Internal Server Error",
-                RefusalReason::UsernameInexistent => "User Inexistent",
-                //there is no reason for these to exist here
-                RefusalReason::InvalidUsername => "Unexpected Error",
-                RefusalReason::UsernameTaken => "Unexpected Error",
-                RefusalReason::AlreadyFriends => "Already Friends",
-                RefusalReason::UsersBlocked => "Users are Blocked",
-                RefusalReason::ThatsYouDummy => "That's you dummy!",
-              };
-              notifications.push(Notification::new(text, 1.0));
-            }
-            ServerToClient::FriendRequestSuccessful => {
-              notifications.push(Notification::new("Friend request sent", 1.0));
-            }
-            ServerToClient::FriendshipSuccessful => {
-              notifications.push(Notification::new("You are now friends!", 1.0));
-            }
-            _ => {}
-          }
-        },
-        Err(error) => {
-          match error.kind() {
-            ErrorKind::WouldBlock => {
-              
-            }
-            _ => {
-              //println!("{:?}", error);
-            }
-          }
+          )
         }
       }
     }
@@ -709,14 +710,12 @@ async fn main() {
       if tab_stats_refresh_flag == false {
         tab_stats_refresh_flag = true;
         // ask the server for our stats
-        if let Some(ref mut server_stream) = server_stream {
-          server_stream.write_all(
-            &ClientToServerPacket {
-              information: ClientToServer::PlayerDataRequest,
-            }.cipher(nonce, cipher_key.clone())
-          ).expect("idk 3");
-          nonce += 1;
-        }
+        packet_queue.push(
+          ClientToServerPacket {
+            information: ClientToServer::PlayerDataRequest,
+          }
+        );
+      
       }
       let username = username.clone();
       let stats = player_stats.clone();
@@ -730,15 +729,11 @@ async fn main() {
       if tab_friends_refresh_flag == false {
         tab_friends_refresh_flag = true;
         // ask the server for our friendship data.
-        println!("requesting friends list");
-        if let Some(ref mut server_stream) = server_stream {
-          server_stream.write_all(
-            &ClientToServerPacket {
-              information: ClientToServer::GetFriendList,
-            }.cipher(nonce, cipher_key.clone())
-          ).expect("idk 31");
-          nonce += 1;
-        }
+        packet_queue.push(
+          ClientToServerPacket {
+            information: ClientToServer::GetFriendList,
+          }
+        );
       }
       // Friend request form
       ui::text_input(
@@ -772,14 +767,11 @@ async fn main() {
           next_frame().await;
           continue;
         }
-        if let Some(ref mut server_stream) = server_stream {
-          server_stream.write_all(
-            &ClientToServerPacket {
-              information: ClientToServer::SendFriendRequest(String::from(username_requested)),
-            }.cipher(nonce, cipher_key.clone())
-          ).expect("idk 32");
-          nonce += 1;
-        }
+        packet_queue.push(
+          ClientToServerPacket {
+            information: ClientToServer::SendFriendRequest(String::from(username_requested)),
+          }
+        );
       }
 
       // FRIEND LIST
@@ -809,21 +801,17 @@ async fn main() {
               if accept_button {
                 // Accept the friend request by sending a friend request to this user, which the
                 // server processes as an accept.
-                if let Some(ref mut server_stream) = server_stream {
-                  server_stream.write_all(
-                    &ClientToServerPacket {
-                      information: ClientToServer::SendFriendRequest(String::from(peer_username)),
-                    }.cipher(nonce, cipher_key.clone())
-                  ).expect("idk 33");
-                  nonce += 1;
-                  // refresh the user list while we're at it
-                  //server_stream.write_all(
-                  //  &ClientToServerPacket {
-                  //    information: ClientToServer::GetFriendList,
-                  //  }.cipher(nonce, cipher_key.clone())
-                  //).expect("idk 33");
-                  //nonce += 1;
-                }
+                packet_queue.push(
+                  ClientToServerPacket {
+                    information: ClientToServer::SendFriendRequest(String::from(peer_username)),
+                  }
+                );
+                // refresh the user list while we're at it
+                packet_queue.push(
+                  ClientToServerPacket {
+                    information: ClientToServer::GetFriendList,
+                  }
+                );
               }
 
             } else {
