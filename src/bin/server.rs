@@ -636,7 +636,9 @@ async fn main() {
                       })).await.unwrap();
                     }
                   }
+                  // MARK: Chat Message
                   ClientToServer::SendChatMessage(peer_username, message) => {
+                    println!("Chat message: {} : {}", peer_username, message);
                     let mut peers_are_friends: bool = false;
                     let mut internal_error_occurred: bool = false;
                     {
@@ -678,7 +680,7 @@ async fn main() {
                       {
 
                         let players = local_players.lock().unwrap();
-                        let index_of_peer: usize = match from_user(&username, players.clone()) {
+                        let index_of_peer: usize = match from_user(&peer_username, players.clone()) {
                           Ok(index) => {index},
                           Err(()) => {
                             peer_user_online = false;

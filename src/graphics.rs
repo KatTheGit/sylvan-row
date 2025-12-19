@@ -114,7 +114,10 @@ pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, co
 pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Color, center_position: Vector2, vh:f32) -> () {
   let relative_position_x1 = x1 - center_position.x + (50.0 * (16.0/9.0));
   let relative_position_y1 = y1 - center_position.y + 50.0;
-  draw_rectangle(relative_position_x1*vh, relative_position_y1*vh, w*vh, h*vh, color);
+  macroquad::prelude::draw_rectangle(relative_position_x1*vh, relative_position_y1*vh, w*vh, h*vh, color);
+}
+pub fn draw_rectangle(position: Vector2, size: Vector2, color: Color) {
+  macroquad::prelude::draw_rectangle(position.x, position.y, size.x, size.y, color);
 }
 
 pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16, vh: f32, center_position: Vector2, color: Color) -> () {

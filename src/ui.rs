@@ -6,18 +6,24 @@ use std::time::Instant;
 use std::fs::File;
 use macroquad::prelude::*;
 use crate::common::*;
+use crate::database::FriendShipStatus;
+use crate::graphics;
 use crate::maths::*;
 use crate::graphics::*;
+use crate::mothership_common::ClientToServer;
+use crate::mothership_common::ClientToServerPacket;
+
+// MARK: Buttons & fluff
 
 pub fn button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32) -> bool {
-  draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
+  graphics::draw_rectangle(position, size, BLUE);
   let inner_shrink: f32 = 1.0 * vh;
-  draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
+  graphics::draw_rectangle(position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
   draw_text(text, position.x + 1.0*vh, position.y + size.y / 2.0, font_size , BLACK);
   let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
   if mouse.x > position.x && mouse.x < (position.x + size.x) {
     if mouse.y > position.y && mouse.y < (position.y + size.y) {
-      draw_rectangle(position.x, position.y, size.x, size.y,GRAY);
+      graphics::draw_rectangle(position, size,GRAY);
       draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
       if is_mouse_button_down(MouseButton::Left) {
         return true;
@@ -27,14 +33,14 @@ pub fn button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
   return false;
 }
 pub fn button_was_pressed(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32) -> bool {
-  draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
+  graphics::draw_rectangle(position, size, BLUE);
   let inner_shrink: f32 = 1.0 * vh;
-  draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
+  graphics::draw_rectangle(position + Vector2 {x: inner_shrink, y: inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
   draw_text(text, position.x + 1.0*vh, position.y + size.y / 2.0, font_size , BLACK);
   let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
   if mouse.x > position.x && mouse.x < (position.x + size.x) {
     if mouse.y > position.y && mouse.y < (position.y + size.y) {
-      draw_rectangle(position.x, position.y, size.x, size.y,GRAY);
+      graphics::draw_rectangle(position, size,GRAY);
       draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
       if is_mouse_button_pressed(MouseButton::Left) {
         return true;
@@ -44,18 +50,18 @@ pub fn button_was_pressed(position: Vector2, size: Vector2, text: &str, font_siz
   return false;
 }
 pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool) -> bool {
-  draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
+  graphics::draw_rectangle(position, size, BLUE);
   let inner_shrink: f32 = 1.0 * vh;
-  draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
+  graphics::draw_rectangle(position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
   draw_text(text, position.x + 1.0*vh, position.y + size.y / 2.0, font_size , BLACK);
   if selected {
-    draw_rectangle(position.x, position.y, size.x, size.y,GRAY);
+    graphics::draw_rectangle(position, size,GRAY);
     draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
   }
   let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
   if mouse.x > position.x && mouse.x < (position.x + size.x) {
     if mouse.y > position.y && mouse.y < (position.y + size.y)   {
-      draw_rectangle(position.x, position.y, size.x, size.y,GRAY);
+      graphics::draw_rectangle(position, size,GRAY);
       draw_text(text, position.x + 10.0, position.y + size.y / 2.0, font_size , BLACK);
       if is_mouse_button_down(MouseButton::Left) {
         return true;
@@ -69,9 +75,9 @@ pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f
 /// Reads a `selected` boolean, returns the same bool if it wasn't
 /// pressed, and returns the opposite if it was.
 pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: bool) -> bool {
-draw_rectangle(position.x, position.y, size, size, BLUE);
+  graphics::draw_rectangle(position, Vector2 { x: size, y: size }, BLUE);
   let inner_shrink: f32 = 0.2 * vh;
-  draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size - inner_shrink*2.0, size - inner_shrink*2.0, SKYBLUE);
+  graphics::draw_rectangle(position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2{x: size, y:size} - Vector2{ x: inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
   draw_text(text, position.x + size + 1.0 *vh, position.y + size / 1.5, font_size , BLACK);
 
   
@@ -82,7 +88,7 @@ draw_rectangle(position.x, position.y, size, size, BLUE);
   let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
   if mouse.x > position.x && mouse.x < (position.x + size) {
     if mouse.y > position.y && mouse.y < (position.y + size) {
-      draw_rectangle(position.x, position.y, size, size,Color { r: 0.05, g: 0.0, b: 0.1, a: 0.2 });
+      graphics::draw_rectangle(position, Vector2 { x: size, y: size },Color { r: 0.05, g: 0.0, b: 0.1, a: 0.2 });
       if is_mouse_button_pressed(MouseButton::Left) {
         return !selected;
       }
@@ -90,42 +96,8 @@ draw_rectangle(position.x, position.y, size, size, BLUE);
   }
   return selected;
 }
-/// A text input field.
-pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32) {
 
-  let mouse = Vector2 { x: mouse_position().0, y: mouse_position().1 };
-
-  if is_mouse_button_pressed(MouseButton::Left) {
-    let is_inside =
-      mouse.x > position.x && mouse.x < position.x + size.x &&
-      mouse.y > position.y && mouse.y < position.y + size.y;
-
-    *active = is_inside;
-    if is_inside {
-      // empty the input queue
-      clear_input_queue();
-    }
-  }
-
-  let bg = if *active { DARKGRAY } else { GRAY };
-  draw_rectangle(position.x, position.y, size.x, size.y, bg);
-
-  if *active {
-    if let Some(ch) = get_char_pressed() {
-      // extra check not to add backspace...
-      if ch >= ' ' && ch <= '~' {
-        buffer.push(ch);
-      }
-      // 8 = backspace
-      if Some(ch) == char::from_u32(8) {
-        buffer.pop();
-      }
-    }
-    
-  }
-
-  draw_text(buffer.as_str(), position.x + 2.0 * vh, position.y + size.y * 0.65, font_size, WHITE);
-}
+// MARK: In-game
 
 /// - ability index:
 ///   - 1: primary
@@ -151,11 +123,9 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     size.y - squish_offset,
     vh, Vector2::new(), WHITE
   );
-  draw_rectangle(
-    (position.x + squish_offset/2.0) * vh,
-    (position.y + squish_offset/2.0) * vh,
-    (size.x - squish_offset) * vh,
-    ((size.y - squish_offset) * (1.0 - progress)) * vh,
+  graphics::draw_rectangle(
+    Vector2{x: (position.x + squish_offset/2.0) * vh, y:(position.y + squish_offset/2.0) * vh},
+    Vector2{x: (size.x - squish_offset) * vh, y: ((size.y - squish_offset) * (1.0 - progress)) * vh},
     Color { r: 0.05, g: 0.0, b: 0.1, a: 0.4 },
   );
   let text = match ability_index {
@@ -173,21 +143,19 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
     Team::Blue => BLUE,
   };
   draw_text_ex(player.username.as_str(), (position.x) * vh, (position.y) * vh, TextParams { font: Some(font), font_size: (size * 0.5 * vh) as u16, color: color, ..Default::default() });
-  draw_rectangle(
-    (position.x) * vh,
-    (position.y + 1.5) * vh,
-    (size * (100.0 as f32 / 100.0) * 2.0 ) * vh,
-    (size * 0.25 ) * vh,
+  graphics::draw_rectangle(
+    Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh},
+    Vector2 {x: (size * (100.0 as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh},
     Color { r: 0.0, g: 0.0, b: 0.0, a: 0.5 },
   );
-  draw_rectangle(
-    (position.x) * vh,
-    (position.y + 1.5) * vh,
-    (size * (player.health as f32 / 100.0) * 2.0 ) * vh,
-    (size * 0.25 ) * vh,
+  graphics::draw_rectangle(
+    Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh},
+    Vector2{x:( size * (player.health as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh},
     Color { r: 0.0, g: 1.0, b: 0.1, a: 1.0 },
   );
 }
+
+// MARK: Esc Menu
 
 /// Not actually a pause menu, but you get the point
 /// 
@@ -203,7 +171,7 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
 
   let button_size: Vector2 = Vector2 { x: 25.0 * vh, y: 9.0 * vh };
   // semi-transparent background
-  draw_rectangle(0.0, 0.0, vw * 100.0, vh * 100.0, Color { r: 0.0, g: 0.0, b: 0.0, a: 0.3 });
+  graphics::draw_rectangle(Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, Color { r: 0.0, g: 0.0, b: 0.0, a: 0.3 });
   if !*settings_open {
     // buttons
     let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
@@ -253,6 +221,7 @@ impl DivBox {
   }
 }
 
+// MARK: Notification
 pub struct Notification {
   pub start_time: Instant,
   pub text: String,
@@ -263,14 +232,16 @@ impl Notification {
     let position: Vector2 = Vector2 { x: 65.0*vw, y: 10.0 * vh + offset as f32 * 10.0 * vh };
     let size: Vector2 = Vector2 { x: 30.0*vw, y: 10.0*vh };
     let inner_shrink: f32 = 1.0 * vh;
-    draw_rectangle(position.x, position.y, size.x, size.y, BLUE);
-    draw_rectangle(position.x + inner_shrink, position.y + inner_shrink, size.x - inner_shrink*2.0, size.y - inner_shrink*2.0, SKYBLUE);
+    graphics::draw_rectangle(position, size, BLUE);
+    graphics::draw_rectangle(position + Vector2 {x: inner_shrink, y: inner_shrink}, size - Vector2 {x: inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
     draw_text(self.text.as_str(), position.x + 2.0 * vh, position.y + size.y * 0.65, font_size, BLACK);
   }
   pub fn new(text: &str, duration: f32) -> Notification {
     return Notification { start_time: Instant::now(), text: String::from(text), duration }
   }
 }
+
+// MARK: Settings
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy)]
 pub struct Settings {
@@ -337,13 +308,185 @@ impl Settings {
   }
 }
 
+// MARK: Chat
 
 pub fn chatbox(
-  friends:              &mut Vec<String>,
-  is_chatbox_open:      &mut bool,
-  selected_friend:      &mut usize,
-  recv_messages_buffer: Vec<(String, String)>,
-  chat_input_buffer:    &mut String
+  position:                  Vector2,
+  size:                      Vector2,
+  friends:                   Vec<(String, FriendShipStatus, bool)>,
+  is_chatbox_open:           &mut bool,
+  selected_friend:           &mut usize,
+  recv_messages_buffer:      &mut Vec<(String, String)>,
+  chat_input_buffer:         &mut String,
+  chat_input_field_selected: &mut bool,
+  vh:                        f32,
+  username:                  String,
+  packet_queue:              &mut Vec<ClientToServerPacket>,
+  scroll_index:              &mut usize,
 ) {
-  
+
+  let margin: f32 = 1.5 * vh;
+
+  // get a list of online friends (which we can chat to).
+  let mut online_friends: Vec<String> = Vec::new();
+  for friend in friends {
+    if friend.1 == FriendShipStatus::Friends
+    && friend.2 == true  {
+      online_friends.push(friend.0);
+    }
+  }
+  // cycle through friends if TAB is pressed
+  if online_friends.len() >= 2 {
+    if get_keys_pressed().contains(&KeyCode::Tab) {
+      *selected_friend += 1;
+      if *selected_friend >= online_friends.len() {
+        *selected_friend = 0;
+      }
+    }
+  } else {
+    *selected_friend = 0;
+  }
+
+  // Open chat if ENTER is pressed
+  if !*is_chatbox_open {
+    if get_keys_pressed().contains(&KeyCode::Enter) {
+      *is_chatbox_open = true;
+      *chat_input_field_selected = true;
+      return
+    }
+  }
+  // Close chat if ENTER is pressed and buffer is empty
+  if *is_chatbox_open {
+    if get_keys_pressed().contains(&KeyCode::Enter)
+    && (chat_input_buffer.is_empty() || !*chat_input_field_selected) {
+      *is_chatbox_open = false;
+      return
+    }
+  }
+
+  if *is_chatbox_open {
+    let text_input_box_size = Vector2 {x: size.x, y: 5.5 * vh};
+
+    // draw frame
+    graphics::draw_rectangle(position, size, Color { r: 0.025, g: 0.0, b: 0.05, a: 0.45 });
+
+    // draw all messages
+    let y_start = position.y + size.y - text_input_box_size.y - 5.0 * vh;
+    let mut formatted_messages: Vec<String> = Vec::new();
+    let mut reversed_recv_messages: Vec<(String, String)> = recv_messages_buffer.clone();
+    reversed_recv_messages.reverse();
+    for message in reversed_recv_messages {
+      let mut formatted_message = format!("{}: {}", message.0, message.1);
+      while measure_text(&formatted_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width > size.x - margin {
+        let mut new_message = String::new();
+        println!("hello12");
+        while measure_text(&new_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width < size.x - margin {
+          println!("hello 2");
+          new_message.insert(0, formatted_message.pop().expect("oopsies"));
+        }
+        formatted_messages.push(new_message);
+      }
+      formatted_messages.push(formatted_message);
+    }
+
+    if *scroll_index > formatted_messages.len() {
+      *scroll_index = formatted_messages.len() -1;
+    }
+    if formatted_messages.len() > 0 {
+      for m_index in *scroll_index..(*formatted_messages).len() {
+        draw_text(&formatted_messages[m_index], position.x, y_start - (m_index as f32) * 3.0 * vh, 3.0 * vh, PINK);
+      }
+    }
+
+    
+    // draw selected friend indicator
+    //let selected_friend_indicator_size = Vector2 {x: size.x}
+    let displayed_selected_friend = if online_friends.len() > 0 {
+      let peer_username;
+      let split: Vec<&str> = (*online_friends[*selected_friend]).split(":").collect();
+      if *split[0] == username {
+        peer_username = split[1];
+      } else {
+        peer_username = split[0];
+      }
+      peer_username
+    } else {
+      "No friends online."
+    };
+    draw_text(&format!("[TAB] Messaging: {}", displayed_selected_friend), position.x, position.y + size.y - text_input_box_size.y - 1.0 *vh, 3.0 * vh, Color { r: 0.0, g: 1.0, b: 0.1, a: 1.0 });
+    
+    // draw input textbox
+    text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, chat_input_buffer, chat_input_field_selected, 3.0*vh, vh);
+    
+    // Send message if ENTER is pressed and buffer is not empty
+    // and a friend can be messaged and input field selected.
+    if !chat_input_buffer.is_empty()
+    && !online_friends.is_empty()
+    && *chat_input_field_selected
+    && get_keys_pressed().contains(&KeyCode::Enter) {
+
+      // send message
+      let peer_username;
+      let split: Vec<&str> = (*online_friends[*selected_friend]).split(":").collect();
+      if *split[0] == username {
+        peer_username = split[1];
+      } else {
+        peer_username = split[0];
+      }
+      println!("hello??");
+      packet_queue.push(
+        ClientToServerPacket {
+          information: ClientToServer::SendChatMessage(String::from(peer_username), chat_input_buffer.clone())
+        }
+      );
+
+      // reset things
+      recv_messages_buffer.push((username, chat_input_buffer.clone()));
+      *chat_input_buffer = String::new();
+    }
+
+  }
+}
+
+// MARK: Text input
+
+/// A text input field.
+pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32) {
+  let margin: f32 = 2.0 * vh;
+  let mouse = Vector2 { x: mouse_position().0, y: mouse_position().1 };
+
+  if is_mouse_button_pressed(MouseButton::Left) {
+    let is_inside =
+      mouse.x > position.x && mouse.x < position.x + size.x &&
+      mouse.y > position.y && mouse.y < position.y + size.y;
+
+    *active = is_inside;
+    if is_inside {
+      // empty the input queue
+      clear_input_queue();
+    }
+  }
+
+  let bg = if *active { DARKGRAY } else { GRAY };
+  graphics::draw_rectangle(position, size, bg);
+
+  if *active {
+    if let Some(ch) = get_char_pressed() {
+      // extra check not to allow goofy characters like backspace...
+      if ch >= ' ' /* && ch <= '~' */ {
+        buffer.push(ch);
+      }
+      // 8 = backspace
+      if Some(ch) == char::from_u32(8) {
+        buffer.pop();
+      }
+    }
+  }
+  let mut text_to_draw = buffer.clone();
+  let mut text_size = measure_text(&text_to_draw, TextParams::default().font, font_size as u16, 1.0);
+  while text_size.width > size.x - margin * 2.0 {
+    text_size = measure_text(&text_to_draw, TextParams::default().font, font_size as u16, 1.0);
+    text_to_draw.remove(0);
+  }
+  draw_text(text_to_draw.as_str(), position.x + margin, position.y + size.y * 0.65, font_size, WHITE);
 }

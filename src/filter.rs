@@ -7,10 +7,13 @@ pub fn valid_password(text: String) -> bool {
   return true;
 }
 /// Conditions for validity:
-/// - 3 characters or more
+/// - 3-20 characters
 /// - Does not contain `:`
 pub fn valid_username(text: String) -> bool {
   if text.len() < 3 {
+    return false;
+  }
+  if text.len() > 20 {
     return false;
   }
   if text.contains(":") {

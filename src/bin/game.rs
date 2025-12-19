@@ -48,7 +48,6 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
   set_window_size(800, 450);
-
   let port = get_random_port();
   let mut vw: f32;
   let mut vh: f32;
@@ -101,10 +100,6 @@ async fn main() {
 
   let mut server_stream: Option<TcpStream> = None;
 
-
-  let mut chat: String = String::from("");
-  let mut chat_selected: bool = false;
-
   let mut friend_request_input: String = String::from("");
   let mut friend_request_input_selected: bool = false;
 
@@ -130,6 +125,14 @@ async fn main() {
   let mut player_stats: PlayerStatistics = PlayerStatistics::new();
   let mut friend_list: Vec<(String, FriendShipStatus, bool)> = Vec::new();
   let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
+
+  // chat fields
+  let mut is_chatbox_open = false;
+  let mut selected_friend = 0;
+  let mut recv_messages_buffer = Vec::new();
+  let mut chat_input_buffer = String::new();
+  let mut chat_selected: bool = false;
+  let mut chat_scroll_index: usize = 0;
 
   loop {
     if server_stream.is_none() {
@@ -467,6 +470,13 @@ async fn main() {
           break;
         }
       }
+      // for some reason on windows when there's no connection to the server the
+      // client spins a lot and lags out the whole user's desktop which isn't
+      // very "i promise my game is not malware"-like.
+      // this is an ugly fix.
+      if get_frame_time() < (1.0 / 30.0) {
+        std::thread::sleep(Duration::from_secs_f32(1.0/30.0 - get_frame_time()));
+      }
       next_frame().await;
       // end early
       continue;
@@ -539,12 +549,6 @@ async fn main() {
       tab_friends = true;
     }
 
-    //// chatbox
-    //ui::text_input(
-    //  Vector2 { x: 10.0*vh, y: 60.0*vh },
-    //  Vector2 { x: 15.0*vw, y: 7.0*vh }, &mut chat, &mut chat_selected, 4.0*vh, vh
-    //);
-
     // MARK: Listen-Write
     if let Some(ref mut server_stream) = server_stream {
       let mut buffer: [u8; 2048] = [0; 2048];
@@ -604,6 +608,9 @@ async fn main() {
                     information: ClientToServer::GetFriendList
                   }
                 )
+              }
+              ServerToClient::ChatMessage(sender, message) => {
+                recv_messages_buffer.push((sender, message));
               }
               _ => {}
             }
@@ -845,6 +852,11 @@ async fn main() {
     } if !tab_friends {
       tab_friends_refresh_flag = false;
     }
+
+    // chat box
+    let chatbox_position = Vector2{x: 5.0 * vw, y: 20.0 * vh};
+    let chatbox_size = Vector2{x: 30.0 * vw, y: 70.0 * vh};
+    ui::chatbox(chatbox_position, chatbox_size, friend_list.clone(), &mut is_chatbox_open, &mut selected_friend, &mut recv_messages_buffer, &mut chat_input_buffer, &mut chat_selected, vh, username.clone(), &mut packet_queue, &mut chat_scroll_index);
 
     // draw NOTIFICATIONS
     for n_index in 0..notifications.len() {

@@ -87,7 +87,8 @@ This is just for me.
         - [x] Matchmaking server
     - [ ] Chat
       - [ ] Channels
-      - [ ] Friends
+      - [x] Friends (PM)
+        - [ ] Formatting that doesn't look like shit
     - [ ] Game request
       - [ ] Lobby (request with friend)
       - [x] Character
