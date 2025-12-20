@@ -252,6 +252,8 @@ async fn main() {
                       cipher_key = key;
                       logged_in = true;
 
+                      // MARK: Init after login
+
                       // login is successful, so append the user to the player list.
                       // however, if they already exist, disconnect the old session.
                       let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;

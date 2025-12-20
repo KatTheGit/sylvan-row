@@ -4,6 +4,7 @@ use std::io::Read;
 use std::io::Write;
 use std::time::Instant;
 use std::fs::File;
+use macroquad::prelude::camera::mouse;
 use macroquad::prelude::*;
 use crate::common::*;
 use crate::database::FriendShipStatus;
@@ -350,6 +351,7 @@ pub fn chatbox(
   // Open chat if ENTER is pressed
   if !*is_chatbox_open {
     if get_keys_pressed().contains(&KeyCode::Enter) {
+      clear_input_queue();
       *is_chatbox_open = true;
       *chat_input_field_selected = true;
       return
@@ -360,6 +362,7 @@ pub fn chatbox(
     if get_keys_pressed().contains(&KeyCode::Enter)
     && (chat_input_buffer.is_empty() || !*chat_input_field_selected) {
       *is_chatbox_open = false;
+      *chat_input_field_selected = false;
       return
     }
   }
@@ -379,9 +382,7 @@ pub fn chatbox(
       let mut formatted_message = format!("{}: {}", message.0, message.1);
       while measure_text(&formatted_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width > size.x - margin {
         let mut new_message = String::new();
-        println!("hello12");
         while measure_text(&new_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width < size.x - margin {
-          println!("hello 2");
           new_message.insert(0, formatted_message.pop().expect("oopsies"));
         }
         formatted_messages.push(new_message);
@@ -394,10 +395,22 @@ pub fn chatbox(
     }
     if formatted_messages.len() > 0 {
       for m_index in *scroll_index..(*formatted_messages).len() {
-        draw_text(&formatted_messages[m_index], position.x, y_start - (m_index as f32) * 3.0 * vh, 3.0 * vh, PINK);
+        let pos_y = y_start - ((m_index - *scroll_index) as f32) * 3.0 * vh;
+        if pos_y < position.y {
+          break;
+        }
+        draw_text(&formatted_messages[m_index], position.x, pos_y, 3.0 * vh, PINK);
       }
     }
-
+    let mouse_wheel = mouse_wheel();
+    if mouse_wheel.1 > 0.0
+    && *scroll_index < formatted_messages.len() {
+      *scroll_index += 1;
+    }
+    if mouse_wheel.1 < 0.0
+    && *scroll_index > 0 {
+      *scroll_index -= 1;
+    }
     
     // draw selected friend indicator
     //let selected_friend_indicator_size = Vector2 {x: size.x}
@@ -433,7 +446,6 @@ pub fn chatbox(
       } else {
         peer_username = split[0];
       }
-      println!("hello??");
       packet_queue.push(
         ClientToServerPacket {
           information: ClientToServer::SendChatMessage(String::from(peer_username), chat_input_buffer.clone())
@@ -444,7 +456,6 @@ pub fn chatbox(
       recv_messages_buffer.push((username, chat_input_buffer.clone()));
       *chat_input_buffer = String::new();
     }
-
   }
 }
 
@@ -489,4 +500,16 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
     text_to_draw.remove(0);
   }
   draw_text(text_to_draw.as_str(), position.x + margin, position.y + size.y * 0.65, font_size, WHITE);
+}
+
+/// When the mouse hovers over the given rectangle with `position`
+/// and `size`, it will display the given text.
+pub fn tooltip(position: Vector2, size: Vector2, text: &str) {
+  let mouse_pos = mouse_position();
+  if mouse_pos.0 < position.x + size.x
+  && mouse_pos.0 > position.x
+  && mouse_pos.1 < position.y + size.y
+  && mouse_pos.1 > position.y {
+    println!("hello");
+  }
 }

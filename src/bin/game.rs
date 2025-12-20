@@ -183,14 +183,22 @@ async fn main() {
         registering = false;
       }
 
+      // username
+      let username_input_position = Vector2 { x: 35.0*vh, y: 40.0*vh };
+      let username_input_size = Vector2 { x: 30.0*vw, y: 7.0*vh };
+
       ui::text_input(
-        Vector2 { x: 35.0*vh, y: 40.0*vh },
-        Vector2 { x: 30.0*vw, y: 7.0*vh }, &mut username, &mut username_selected, 4.0*vh, vh
+        username_input_position,
+        username_input_size, &mut username, &mut username_selected, 4.0*vh, vh
       );
+      // password
+      let password_input_position = Vector2 { x: 35.0*vh, y: 55.0*vh };
+      let password_input_size = Vector2 { x: 30.0*vw, y: 7.0*vh };
       ui::text_input(
-        Vector2 { x: 35.0*vh, y: 55.0*vh },
-        Vector2 { x: 30.0*vw, y: 7.0*vh }, &mut password, &mut password_selected, 4.0*vh, vh
+        password_input_position,
+        password_input_size, &mut password, &mut password_selected, 4.0*vh, vh
       );
+      //ui::tooltip(password_input_position, password_input_size, "yo wassup");
 
       // confirm button for either action
       let confirm = ui::button(
@@ -513,35 +521,35 @@ async fn main() {
     let friends_tab_button = ui::one_way_button(
       tl_anchor + Vector2 { x: (margin + offset * 4.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Friends", 5.0*vh, vh, tab_friends
     );
-    if play_tab_button {
+    if play_tab_button || (get_keys_pressed().contains(&KeyCode::Key1) && !chat_selected) {
       tab_heroes = false;
       tab_play = true;
       tab_tutorial = false;
       tab_stats = false;
       tab_friends = false;
     }
-    if heroes_tab_button {
+    if heroes_tab_button || (get_keys_pressed().contains(&KeyCode::Key2) && !chat_selected) {
       tab_heroes = true;
       tab_play = false;
       tab_tutorial = false;
       tab_stats = false;
       tab_friends = false;
     }
-    if tutorial_tab_button {
+    if tutorial_tab_button || (get_keys_pressed().contains(&KeyCode::Key3) && !chat_selected) {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = true;
       tab_stats = false;
       tab_friends = false;
     }
-    if stats_tab_button {
+    if stats_tab_button || (get_keys_pressed().contains(&KeyCode::Key4) && !chat_selected) {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = false;
       tab_stats = true;
       tab_friends = false;
     }
-    if friends_tab_button {
+    if friends_tab_button || (get_keys_pressed().contains(&KeyCode::Key5) && !chat_selected) {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = false;
