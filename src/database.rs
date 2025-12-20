@@ -222,3 +222,18 @@ pub fn get_status_list(database: &Database, username: &str) -> Result<Vec<(Strin
   }
   return Ok(friendship_statuses);
 }
+
+/// Gets the name of the friend from a couple, taking the user's username
+/// as input.
+/// 
+/// Friend1:Friend2
+pub fn get_friend_name(username: &str, friend_couple: &str) -> String {
+  let peer_username;
+  let split: Vec<&str> = friend_couple.split(":").collect();
+  if *split[0] == *username {
+    peer_username = split[1];
+  } else {
+    peer_username = split[0];
+  }
+  return peer_username.to_string();
+}

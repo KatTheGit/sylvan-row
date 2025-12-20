@@ -510,6 +510,6 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str) {
   && mouse_pos.0 > position.x
   && mouse_pos.1 < position.y + size.y
   && mouse_pos.1 > position.y {
-    println!("hello");
+    println!("hello, {}", text);
   }
 }

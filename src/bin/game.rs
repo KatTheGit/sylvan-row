@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 
 use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{network, common::*, const_params::*, database::{self, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, ui::{self, Notification, Settings}};
+use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -521,35 +521,35 @@ async fn main() {
     let friends_tab_button = ui::one_way_button(
       tl_anchor + Vector2 { x: (margin + offset * 4.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Friends", 5.0*vh, vh, tab_friends
     );
-    if play_tab_button || (get_keys_pressed().contains(&KeyCode::Key1) && !chat_selected) {
+    if play_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key1) && !chat_selected) */ {
       tab_heroes = false;
       tab_play = true;
       tab_tutorial = false;
       tab_stats = false;
       tab_friends = false;
     }
-    if heroes_tab_button || (get_keys_pressed().contains(&KeyCode::Key2) && !chat_selected) {
+    if heroes_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key2) && !chat_selected) */ {
       tab_heroes = true;
       tab_play = false;
       tab_tutorial = false;
       tab_stats = false;
       tab_friends = false;
     }
-    if tutorial_tab_button || (get_keys_pressed().contains(&KeyCode::Key3) && !chat_selected) {
+    if tutorial_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key3) && !chat_selected) */ {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = true;
       tab_stats = false;
       tab_friends = false;
     }
-    if stats_tab_button || (get_keys_pressed().contains(&KeyCode::Key4) && !chat_selected) {
+    if stats_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key4) && !chat_selected) */ {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = false;
       tab_stats = true;
       tab_friends = false;
     }
-    if friends_tab_button || (get_keys_pressed().contains(&KeyCode::Key5) && !chat_selected) {
+    if friends_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key5) && !chat_selected) */ {
       tab_heroes = false;
       tab_play = false;
       tab_tutorial = false;
@@ -603,21 +603,29 @@ async fn main() {
               }
               ServerToClient::FriendRequestSuccessful => {
                 notifications.push(Notification::new("Friend request sent", 1.0));
-                packet_queue.push(
-                  ClientToServerPacket {
-                    information: ClientToServer::GetFriendList
-                  }
-                )
+                // update friend list
+                friend_list.push(
+                  (friend_request_input.clone(), get_friend_request_type(&username, &friend_request_input), false)
+                );
+                friend_request_input = String::new();
               }
               ServerToClient::FriendshipSuccessful => {
                 notifications.push(Notification::new("You are now friends!", 1.0));
-                packet_queue.push(
-                  ClientToServerPacket {
-                    information: ClientToServer::GetFriendList
+                // update friend list
+                for f_index in 0..friend_list.len() {
+                  if database::get_friend_name(&username, &friend_list[f_index].0) == friend_request_input {
+                    friend_list[f_index].1 = FriendShipStatus::Friends;
                   }
-                )
+                }
+                friend_request_input = String::new();
               }
               ServerToClient::ChatMessage(sender, message) => {
+                // update friend list
+                for f_index in 0..friend_list.len() {
+                  if sender == friend_list[f_index].0 {
+                    friend_list[f_index].2 = true;
+                  }
+                }
                 recv_messages_buffer.push((sender, message));
               }
               _ => {}
@@ -834,12 +842,7 @@ async fn main() {
                     information: ClientToServer::SendFriendRequest(String::from(peer_username)),
                   }
                 );
-                // refresh the user list while we're at it
-                packet_queue.push(
-                  ClientToServerPacket {
-                    information: ClientToServer::GetFriendList,
-                  }
-                );
+                friend_request_input = peer_username.to_string();
               }
 
             } else {

@@ -88,7 +88,7 @@ This is just for me.
     - [ ] Chat
       - [ ] Channels
       - [x] Friends (PM)
-        - [ ] Formatting that doesn't look like shit
+        - [ ] Selected friend is a numerical index, which can change the selected friend on refresh.
     - [ ] Game request
       - [ ] Lobby (request with friend)
       - [x] Character
