@@ -56,6 +56,19 @@ pub enum Character {
   Wiro,
   Temerity,
 }
+impl Character {
+  pub fn name(self) -> String {
+    return match self {
+      Character::Cynewynn => String::from("Cynewynn"),
+      Character::Elizabeth => String::from("Josey"),
+      Character::Temerity => String::from("Temerity"),
+      Character::Wiro => String::from("Wiro"),
+      Character::Hernani => String::from("Hernani"),
+      Character::Raphaelle => String::from("Raphaelle"),
+      Character::Dummy => String::from("Dummy"),
+    }
+  }
+}
 /// Struct that contains the properties for each character. These are stored
 /// in the respective characters' `properties.pkl` files. This data structure
 /// can be as large as we want it to be, since we never send it over network.

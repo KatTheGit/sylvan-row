@@ -3,6 +3,7 @@ use std::time::SystemTime;
 use crate::maths::*;
 use crate::gamedata::*;
 use crate::graphics::*;
+use crate::ui::Settings;
 use std::time::Instant;
 use std::collections::HashMap;
 // MARK: Gamemodes
@@ -100,7 +101,7 @@ impl ClientPlayer {
       interpol_prev: Vector2::new(),
     }
   }
-  pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties) {
+  pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties, settings: Settings) {
     // TODO: animations
     let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
@@ -155,8 +156,16 @@ impl ClientPlayer {
     let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
     draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
     
+    let displayed_name =
+      if settings.display_char_name_instead {
+        self.character.name()
+      }
+      else {
+        self.username.clone()
+      };
+
     let username_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
-    draw_text_relative(self.username.as_str(), self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera_position, Color { r: color.r, g: color.g, b: color.b, a: 1.0 });
+    draw_text_relative(&displayed_name, self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera_position, Color { r: color.r, g: color.g, b: color.b, a: 1.0 });
     let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -21.0 };
     for buff in self.buffs.clone() {
       draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);

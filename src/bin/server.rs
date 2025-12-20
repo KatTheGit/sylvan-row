@@ -64,6 +64,7 @@ async fn main() {
         tokio::select! {
           // wait until we recieve packet, and write it to buffer.
           socket_read = socket.read(&mut buffer) => {
+            //std::thread::sleep(std::time::Duration::from_secs_f32(0.5));
             let len: usize = match socket_read {
               Ok(0) => {
                 // disconnect

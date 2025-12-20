@@ -75,14 +75,14 @@ pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f
 /// 
 /// Reads a `selected` boolean, returns the same bool if it wasn't
 /// pressed, and returns the opposite if it was.
-pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: bool) -> bool {
+pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool) {
   graphics::draw_rectangle(position, Vector2 { x: size, y: size }, BLUE);
   let inner_shrink: f32 = 0.2 * vh;
   graphics::draw_rectangle(position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2{x: size, y:size} - Vector2{ x: inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
   draw_text(text, position.x + size + 1.0 *vh, position.y + size / 1.5, font_size , BLACK);
 
   
-  if selected {
+  if *selected {
     draw_line(position.x, position.y + size/2.0, position.x + size/2.0, position.y + size, 0.5*vh, WHITE);
     draw_line(position.x + size/2.0, position.y + size, position.x + size,position.y, 0.5*vh, WHITE);
   }
@@ -91,11 +91,10 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
     if mouse.y > position.y && mouse.y < (position.y + size) {
       graphics::draw_rectangle(position, Vector2 { x: size, y: size },Color { r: 0.05, g: 0.0, b: 0.1, a: 0.2 });
       if is_mouse_button_pressed(MouseButton::Left) {
-        return !selected;
+        *selected = !*selected;
       }
     }
   }
-  return selected;
 }
 
 // MARK: In-game
@@ -138,12 +137,19 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
   draw_text_ex(text, (position.x + size.y * 0.125) * vh, (position.y + size.y * 1.3) * vh, TextParams { font: Some(font), font_size: (size.x * 0.3 * vh) as u16, ..Default::default() });
 }
 
-pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Font, vh: f32) -> () {
+pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Font, vh: f32, settings: Settings) -> () {
   let color = match player.team {
     Team::Red => RED,
     Team::Blue => BLUE,
   };
-  draw_text_ex(player.username.as_str(), (position.x) * vh, (position.y) * vh, TextParams { font: Some(font), font_size: (size * 0.5 * vh) as u16, color: color, ..Default::default() });
+  let displayed_name =
+    if settings.display_char_name_instead {
+      player.character.name()
+    }
+    else {
+      player.username.clone()
+    };
+  draw_text_ex(&displayed_name, (position.x) * vh, (position.y) * vh, TextParams { font: Some(font), font_size: (size * 0.5 * vh) as u16, color: color, ..Default::default() });
   graphics::draw_rectangle(
     Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh},
     Vector2 {x: (size * (100.0 as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh},
@@ -205,7 +211,8 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
       *settings_open = false;
       settings.save();
     }
-    settings.camera_smoothing = checkbox(Vector2 { x: vw * 40.0, y: vh * 30.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, settings.camera_smoothing);
+    checkbox(Vector2 { x: vw * 25.0, y: vh * 30.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, &mut settings.camera_smoothing);
+    checkbox(Vector2 { x: vw * 25.0, y: vh * 35.0 }, 4.0 * vh, "Display character names instead of usernames", 5.0*vh, vh, &mut settings.display_char_name_instead);
   }
 
   return (menu_paused, wants_to_quit)
@@ -247,11 +254,15 @@ impl Notification {
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy)]
 pub struct Settings {
   pub camera_smoothing: bool,
+  /// If false, usernames are displayed.
+  /// If true, character names are displayed.
+  pub display_char_name_instead: bool,
 }
 impl Settings {
   pub fn new() -> Settings{
     return Settings {
       camera_smoothing: true,
+      display_char_name_instead: false,
     }
   }
   pub fn load() -> Settings {

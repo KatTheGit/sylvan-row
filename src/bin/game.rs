@@ -622,7 +622,7 @@ async fn main() {
               ServerToClient::ChatMessage(sender, message) => {
                 // update friend list
                 for f_index in 0..friend_list.len() {
-                  if sender == friend_list[f_index].0 {
+                  if sender == database::get_friend_name(&username, &friend_list[f_index].0) {
                     friend_list[f_index].2 = true;
                   }
                 }
@@ -655,11 +655,11 @@ async fn main() {
 
     if tab_play {
       if !queue {
-        checkbox_1v1 = ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, checkbox_1v1);
-        checkbox_2v2 = ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, checkbox_2v2);
+        ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, &mut checkbox_1v1);
+        ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, &mut checkbox_2v2);
       } if queue {
-        ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, checkbox_1v1);
-        ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, checkbox_2v2);
+        ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, &mut checkbox_1v1.clone()); // clone to disable writes
+        ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, &mut checkbox_2v2.clone());
       }
 
       let play_button = ui::button(
@@ -1291,11 +1291,11 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // MARK: UI
     // temporary ofc
     if !player_copy.is_dead {
-      player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone());
+      player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone(), settings.clone());
     }
     for player in other_players_copy.clone() {
       if !player.is_dead {
-        player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone());
+        player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone(), settings.clone());
       }
     }
     if player_copy.is_dead {
@@ -1367,14 +1367,15 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     let mut all_players = other_players_copy.clone();
     all_players.push(player_copy.clone());
     for player in all_players {
+
       match player.team {
         Team::Blue => {
           blue_team_players += 1;
-          ui::draw_player_info(blue_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * blue_team_players as f32 }), 10.0, player, &health_bar_font, vh);
+          ui::draw_player_info(blue_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * blue_team_players as f32 }), 10.0, player, &health_bar_font, vh, settings.clone());
         },
         Team::Red => {
           red_team_players += 1;
-          ui::draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh);
+          ui::draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh, settings.clone());
         }
       }
     }
