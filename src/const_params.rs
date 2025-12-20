@@ -10,12 +10,11 @@ pub const WALL_HP: u8 = 30;
 pub const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall];
 pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall, GameObjectType::Water1, GameObjectType::Water2];
 
-pub const PROD: bool = false;
 // debug constants. disable ALL for prod
 /// Whether to spawn one dummy in the game
-pub const SPAWN_DUMMY: bool = false || !PROD;
+pub const SPAWN_DUMMY: bool = false;
 /// Whether the server allows to start a game with only 1 player in queue
-pub const MATCHMAKE_ALONE: bool = false || !PROD;
+pub const MATCHMAKE_ALONE: bool = false;
 
 pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
