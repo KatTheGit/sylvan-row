@@ -137,9 +137,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           
           let deciphered = match cipher.decrypt(&formatted_nonce, data[4..].as_ref()) {
             Ok(decrypted) => {
-              if nonce_num <= player.last_nonce {
-                continue; // this is a parroted packet, ignore it.
-              }
               decrypted
             },
             Err(_err) => {
@@ -645,7 +642,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
   
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = !DEBUG;
+  let mut dummy_summoned: bool = !SPAWN_DUMMY;
 
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);

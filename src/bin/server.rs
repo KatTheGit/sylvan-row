@@ -345,12 +345,15 @@ async fn main() {
                           queued_1v1.push(player_index);
                         }
                       }
+                      // debug
+                      let player_count_1v1: usize = if MATCHMAKE_ALONE { 1 } else { 2 };
+
                       if queued_2v2.len() >= 4 {
                         queued_2v2.truncate(4);
                       players_to_match = queued_2v2;
                       }
-                      else if queued_1v1.len() >= 2 {
-                        queued_1v1.truncate(2);
+                      else if queued_1v1.len() >= player_count_1v1 {
+                        queued_1v1.truncate(player_count_1v1);
                         players_to_match = queued_1v1;
                       }
                       for matched_player in players_to_match.clone() {

@@ -10,16 +10,20 @@ pub const WALL_HP: u8 = 30;
 pub const WALL_TYPES: [GameObjectType; 3] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall];
 pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjectType::UnbreakableWall, GameObjectType::HernaniWall, GameObjectType::Water1, GameObjectType::Water2];
 
-/// Disable this for release builds.
-pub const DEBUG: bool = false;
+pub const PROD: bool = false;
+// debug constants. disable ALL for prod
+/// Whether to spawn one dummy in the game
+pub const SPAWN_DUMMY: bool = false || !PROD;
+/// Whether the server allows to start a game with only 1 player in queue
+pub const MATCHMAKE_ALONE: bool = false || !PROD;
 
 pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
-// this is bs
-/// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
-pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 30.0;
-/// A client sending packets slower than this will be ignored, as this could be a cheating attempt.
-pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 9.0;
+//// this is bs
+///// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
+//pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 30.0;
+///// A client sending packets slower than this will be ignored, as this could be a cheating attempt.
+//pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 9.0;
 pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// Time interval representing our network rate.

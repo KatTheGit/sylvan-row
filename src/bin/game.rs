@@ -1503,7 +1503,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         if recv_nonce <= last_nonce {
           continue;
         }
-        let nonce_num = recv_nonce;
         let mut nonce_bytes = [0u8; 12];
         nonce_bytes[8..].copy_from_slice(&recv_nonce.to_be_bytes());
         let formatted_nonce = Nonce::from_slice(&nonce_bytes);
@@ -1514,9 +1513,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         
         let deciphered = match cipher.decrypt(&formatted_nonce, data[4..].as_ref()) {
           Ok(decrypted) => {
-            if nonce_num <= last_nonce {
-              continue; // this is a parroted packet, ignore it.
-            }
             decrypted
           },
           Err(_err) => {
@@ -1530,8 +1526,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
           }
         };
         last_nonce = recv_nonce;
-
-
 
         //recieved_server_info = bincode::deserialize(data).expect("Could not deserialise server packet.");
         // println!("CLIENT: Received from {}: {:?}", src, recieved_server_info);
