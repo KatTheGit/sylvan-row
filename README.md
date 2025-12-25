@@ -103,6 +103,16 @@ This is just for me.
     - [ ] Logs
       - [ ] Chat logs (for moderation)
       - [ ] Server crash logs
+  - [ ] UI
+    - [x] Text input fields
+  - [ ] Ranked system
+    - [ ] Ranked queue
+    - [ ] Ranked points storage
+    - [ ] Ranked points assignment at win/loss
+    - [ ] Rank update display at end of game
+  - [ ] Maintain ability to read primary server socket during game
+    - [ ] In-game chat
+    - [ ] Game update (game won/lost)
   - [ ] Server survival
     - [ ] Throttling
     - [ ] Invalid account deletion
@@ -110,9 +120,6 @@ This is just for me.
       - [ ] Table instead of serialized struct
     - [ ] No direct indexing[69], no ".expect()"
       - [ ] Reboot on failure
-  - [ ] UI
-    - [x] Text input fields
-  - [ ] Ranked system
   - [ ] **Part 2** (for release)
     - [ ] Steam integration
       - [ ] Accounts

@@ -127,7 +127,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           if recv_nonce <= player.last_nonce {
             continue;
           }
-          let nonce_num = recv_nonce;
           let mut nonce_bytes = [0u8; 12];
           nonce_bytes[8..].copy_from_slice(&recv_nonce.to_be_bytes());
           let formatted_nonce = Nonce::from_slice(&nonce_bytes);
@@ -1487,10 +1486,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           let target_position: Vector2 = players[owner_index].position;
           let object_position: Vector2 = game_objects[o_index].position;
           let speed = characters[&players[owner_index].character].primary_shot_speed;
-          // You are a promise, abolish hatred,
-          // Child of the Sanctum, you are beloved,
-          // You know to fathom, how I'm suffering,
-          // Yourself to release, out in this clearing,
           let direction: Vector2 = Vector2::difference(object_position, target_position);
           // update position
           game_objects[o_index].position.x += direction.normalize().x * speed * true_delta_time as f32;

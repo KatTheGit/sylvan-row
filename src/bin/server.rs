@@ -282,6 +282,10 @@ async fn main() {
                             queued_gamemodes: Vec::new(),
                             selected_character: Character::Hernani,
                             assigned_team: common::Team::Blue,
+                            queued_with: Vec::new(),
+                            is_party_leader: true, // pary leader by default. demoted if invited. promoted back if you leave the party.
+                            invited_by: Vec::new(),
+                            is_ready: false,
                           }
                         );
                       }
@@ -706,7 +710,7 @@ async fn main() {
                       peer_channel.send(
                         PlayerMessage::SendPacket(
                           ServerToClientPacket { information: 
-                          ServerToClient::ChatMessage(username.clone(), message) }
+                          ServerToClient::ChatMessage(username.clone(), message, ChatMessageType::Private) }
                         )
                       ).await.unwrap();
                     }
@@ -719,6 +723,125 @@ async fn main() {
                       })).await.unwrap();
                     }
                   }
+                  // MARK: Lobby invite
+                  ClientToServer::LobbyInvite(other_player) => {
+                    let mut player_not_found = false;
+                    let mut not_friends = false;
+                    let mut other_player_channel: Option<tokio::sync::mpsc::Sender<PlayerMessage>> = None;
+                    {
+                      let mut players = local_players.lock().unwrap();
+                      match from_user(&other_player, players.clone()) {
+                        Ok(index) => {
+                          // check if they're friends.
+                          let friends;
+                          {
+                            let database = local_database.lock().unwrap();
+                            match database::get_friend_status(&database, &username.clone(), &other_player) {
+                              Ok(friendship_status) => {
+                                friends = friendship_status == FriendShipStatus::Friends;
+                              }
+                              Err(_err) => {
+                                friends = false;
+                              }
+                            }
+                          }
+                          if friends {
+                            // updated invited_by list for the other player.
+                            players[index].invited_by.push(username.clone());
+                            // now send a packet to the player
+                            // the code a few lines below will perform this duty.
+                            other_player_channel = Some(players[index].channel.clone());
+                          }
+                          // if not friends
+                          else {
+                            not_friends = true;
+                          }
+                        }
+                        // no exist >:(
+                        Err(_) => {
+                          player_not_found = true;
+                        }
+                      };
+                    }
+                    // no exist >:(
+                    if player_not_found {
+                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(
+                          RefusalReason::UserNotOnline
+                        ),
+                      })).await.unwrap();
+                      continue;
+                    }
+                    if not_friends {
+                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(
+                          RefusalReason::NotFriends
+                        ),
+                      })).await.unwrap();
+                      continue;
+                    }
+                    // since everything else went well, operation inform other client is go.
+                    if let Some(channel) = other_player_channel {
+                      channel.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::LobbyInvite(username.clone())
+                      })).await.unwrap();
+                    }
+                  }
+                  // MARK: Lobby accept
+                  ClientToServer::LobbyInviteAccept(other_player) => {
+                    // get index of other player
+                    let mut player_not_found = false;
+                    let mut invalid_invite = false;
+                    {
+                      let mut players = local_players.lock().unwrap();
+                      match from_user(&other_player, players.clone()) {
+                        Ok(other_index) => {
+                          let own_index = from_user(&username, players.clone()).expect("strawberry");
+                          // if was invited
+                          if players[own_index].invited_by.contains(&username) {
+                            // all good.
+                            // add this accepted user to the party.
+                            players[other_index].queued_with.push(username.clone());
+                            // remember to remove the invitation from the user.
+                            players[own_index].invited_by.retain(|i| *i != username.clone());
+                            // also make sure the user isn't considered party leader
+                            players[own_index].is_party_leader = false;
+                            // add the party owner's name to the user so we can track easily which party they're in.
+                            players[own_index].queued_with.push(other_player);
+                          } else {
+                            invalid_invite = true;
+                          }
+                        }
+                        Err(_err) => {
+                          player_not_found = true;
+                        }
+                      }
+                    }
+                    if invalid_invite {
+                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(
+                          RefusalReason::InvalidInvite
+                        ),
+                      })).await.unwrap();
+                      continue;
+                    }
+                    if player_not_found{
+                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(
+                          RefusalReason::NotFriends
+                        ),
+                      })).await.unwrap();
+                      continue;
+                    }
+
+                    // inform everybody.
+
+                  }
+                  // MARK: Lobby leave
+                  ClientToServer::LobbyLeave => {
+                    
+                  }
+
                   _ => {}
                 }
               }

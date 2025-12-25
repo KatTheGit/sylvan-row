@@ -1,8 +1,4 @@
-use opaque_ke::{generic_array::GenericArray, CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
-use chacha20poly1305::{
-  aead::{Aead, KeyInit},
-  ChaCha20Poly1305, Nonce
-};
+use opaque_ke::{CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
 use crate::{common, const_params::DefaultCipherSuite, database::FriendShipStatus, gamedata::Character};
 
 // MARK: CLIENT to server
@@ -25,6 +21,10 @@ pub enum ClientToServer {
   SendFriendRequest(String),
   /// User wants to send a chat message (String 2) to a recipient (String 1).
   SendChatMessage(String, String),
+  LobbyInvite(String),
+  LobbyInviteAccept(String),
+  LobbyLeave,
+  // LOGIN
   RegisterRequestStep1(String, RegistrationRequest<DefaultCipherSuite>),
   RegisterRequestStep2(RegistrationUpload<DefaultCipherSuite>),
   LoginRequestStep1(String, CredentialRequest<DefaultCipherSuite>),
@@ -58,8 +58,18 @@ pub enum ServerToClient {
   FriendListResponse(Vec<(String, FriendShipStatus, bool)>),
   FriendRequestSuccessful,
   FriendshipSuccessful,
-  /// The user recieved a chat message (String 2) from a sender (String 1).
-  ChatMessage(String, String),
+  /// The user recieved a chat message (String 2) from a sender (String 1), of type ChatMessageType
+  ChatMessage(String, String, ChatMessageType),
+  /// Lobby invitation from a user (String)
+  LobbyInvite(String),
+  /// Update users about everyone else in the lobby.
+  LobbyUpdate(Vec<LobbyPlayerInfo>)
+}
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub struct LobbyPlayerInfo {
+  pub username: String,
+  pub character: Character,
+  pub is_ready: bool,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct PlayerStatistics {
@@ -72,6 +82,19 @@ impl PlayerStatistics {
       wins: 0,
     };
   }
+}
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub enum ChatMessageType {
+  /// Private message
+  Private,
+  /// Message broadcast to the whole group (lobby)
+  Group,
+  /// Message broadcast to the whole in-game team
+  Team,
+  /// Message broadcast to every played in the current game.
+  All,
+  /// Message sent by the server itself.
+  Administrative,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub enum RefusalReason {
@@ -96,15 +119,12 @@ pub enum RefusalReason {
   /// The user's request is invalidated because the concerned peer
   /// is not a friend.
   NotFriends,
+  InvalidInvite,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
   pub port: u16,
 }
-//#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
-//pub struct MatchMakingData {
-//  pub queue_size: u8,
-//}
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct ServerToClientPacket {
   pub information: ServerToClient,
@@ -130,10 +150,18 @@ pub struct PlayerInfo {
   /// When returned by the game server, this flag actually
   /// represends whether the player won (true) or lost (false)
   pub queued: bool,
+  /// Whether this user is the party owner. True by default.
+  pub is_party_leader: bool,
+  /// All users that are in the party owned by this user.
+  pub queued_with: Vec<String>,
+  /// All users that have invited this user.
+  pub invited_by: Vec<String>,
   /// Will be truncated if longer than the total amount of gamemodes.
   pub queued_gamemodes: Vec<GameMode>,
   pub selected_character: Character,
   pub assigned_team: common::Team,
+  /// In a party, this must be true for every player to start the match.
+  pub is_ready: bool,
 }
 
 /// Possible messages between player threads.
@@ -142,9 +170,4 @@ pub enum PlayerMessage {
   /// This thread must stop now.
   ForceDisconnect,
   SendPacket(ServerToClientPacket),
-}
-
-// filters out shit
-pub fn profanity_filter() {
-
 }

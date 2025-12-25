@@ -595,6 +595,7 @@ async fn main() {
                   RefusalReason::ThatsYouDummy => "That's you dummy!",
                   RefusalReason::UserNotOnline => "User not online",
                   RefusalReason::NotFriends => "Not friends with user",
+                  RefusalReason::InvalidInvite => "Invite expired/invalid",
                   //there is no reason for these to exist here
                   RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
                   RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",
@@ -619,7 +620,7 @@ async fn main() {
                 }
                 friend_request_input = String::new();
               }
-              ServerToClient::ChatMessage(sender, message) => {
+              ServerToClient::ChatMessage(sender, message, _message_type) => {
                 // update friend list
                 for f_index in 0..friend_list.len() {
                   if sender == database::get_friend_name(&username, &friend_list[f_index].0) {

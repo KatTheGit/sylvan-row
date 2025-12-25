@@ -4,7 +4,6 @@ use std::io::Read;
 use std::io::Write;
 use std::time::Instant;
 use std::fs::File;
-use macroquad::prelude::camera::mouse;
 use macroquad::prelude::*;
 use crate::common::*;
 use crate::database::FriendShipStatus;
