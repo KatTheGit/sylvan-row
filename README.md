@@ -1,7 +1,8 @@
 # Sylvan Row
 A twin-stick hero shooter, with the ambition of avoiding hard-counter interactions, having simple but unique characters, and being easy to learn but hard to master.
 
-<img src="assets/characters/cynewynn/textures/banner.png" width="300" title="Preliminary art of one of the characters" alt="An anthro lioness in armor, preliminary art for the game"/>
+<img src="assets/characters/cynewynn/textures/banner.png" width="300" title="Preliminary art of Cynewynn" alt="An anthro lioness in armor, preliminary art for the game"/>
+<img src="assets/characters/temerity/textures/banner.png" width="300" title="Preliminary art of Temerity" alt="An anthro hyena in semi-casual police uniform wielding a rocket launcher, preliminary art for the game"/>
 
 ## Play
 
