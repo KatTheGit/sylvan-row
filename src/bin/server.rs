@@ -792,6 +792,9 @@ async fn main() {
                     // get index of other player
                     let mut player_not_found = false;
                     let mut invalid_invite = false;
+
+                    let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
+                    let mut lobby_player_data: Vec<LobbyPlayerInfo> = Vec::new();
                     {
                       let mut players = local_players.lock().unwrap();
                       match from_user(&other_player, players.clone()) {
@@ -801,6 +804,7 @@ async fn main() {
                           if players[own_index].invited_by.contains(&username) {
                             // all good.
                             // add this accepted user to the party.
+
                             players[other_index].queued_with.push(username.clone());
                             // remember to remove the invitation from the user.
                             players[own_index].invited_by.retain(|i| *i != username.clone());
@@ -808,6 +812,23 @@ async fn main() {
                             players[own_index].is_party_leader = false;
                             // add the party owner's name to the user so we can track easily which party they're in.
                             players[own_index].queued_with.push(other_player);
+                            // SOME FLAWED LOGIC DOWN HERE what is this!???
+                            for player in players[own_index].queued_with.clone() {
+                              match from_user(&player, players.clone()) {
+                                Ok(player_index) => {
+                                  players_to_inform.push(players[player_index].channel.clone());
+                                  lobby_player_data.push(
+                                    LobbyPlayerInfo {
+                                      username: players[player_index].username.clone(),
+                                      is_ready: players[player_index].is_ready,
+                                    }
+                                  );
+                                }
+                                Err(_err) => {
+                                  continue;
+                                }
+                              }
+                            }
                           } else {
                             invalid_invite = true;
                           }
@@ -828,18 +849,47 @@ async fn main() {
                     if player_not_found{
                       tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(
-                          RefusalReason::NotFriends
+                          RefusalReason::UserNotOnline
                         ),
                       })).await.unwrap();
                       continue;
                     }
 
                     // inform everybody.
-
+                    for player_to_inform in players_to_inform {
+                      player_to_inform.send(PlayerMessage::SendPacket(
+                        ServerToClientPacket {
+                          information: ServerToClient::LobbyUpdate(
+                            lobby_player_data.clone(),
+                          )
+                        }
+                      )).await.unwrap();
+                    }
                   }
                   // MARK: Lobby leave
                   ClientToServer::LobbyLeave => {
-                    
+                    let mut people_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
+                    let mut new_lobby_state: Vec<LobbyPlayerInfo> = Vec::new();
+                    {
+                      let players = local_players.lock().unwrap();
+                      let player_index = from_user(&username, players.clone()).expect("oopsies");
+                      // if in a lobby
+                      if !players[player_index].queued_with.is_empty() {
+                        if players[player_index].is_party_leader {
+                          // cancel queue
+                          
+                          // if pary leader, assign another random party leader.
+                          
+                        }
+                        else {
+                          // cancel queue
+                          
+                          // if not party leader, just leave.
+
+                        }
+                      }
+                    }
+                    // inform everybody
                   }
 
                   _ => {}

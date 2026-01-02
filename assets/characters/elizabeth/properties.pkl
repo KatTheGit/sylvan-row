@@ -3,7 +3,7 @@ health = 100
 speed = 4.25
 
 primary_damage = 10
-primary_damage_2 = 2
+primary_damage_2 = 4
 primary_heal = 0
 primary_heal_2 = 0
 primary_lifesteal = 0

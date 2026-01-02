@@ -68,7 +68,7 @@ pub enum ServerToClient {
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct LobbyPlayerInfo {
   pub username: String,
-  pub character: Character,
+  // pub character: Character,   maybe later :)
   pub is_ready: bool,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]

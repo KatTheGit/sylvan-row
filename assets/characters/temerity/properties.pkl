@@ -16,7 +16,7 @@ primary_range_3 = 7.0
 primary_shot_speed = 20.0
 primary_shot_speed_2 = 3.0
 primary_wall_hit_radius = 0.1
-primary_hit_radius = 1.2
+primary_hit_radius = 1.4
 wall_damage_multiplier = 1.0
 
 secondary_damage = 15
