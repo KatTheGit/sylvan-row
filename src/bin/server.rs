@@ -789,115 +789,208 @@ async fn main() {
                   }
                   // MARK: Lobby accept
                   ClientToServer::LobbyInviteAccept(other_player) => {
-                    // get index of other player
-                    let mut player_not_found = false;
-                    let mut invalid_invite = false;
-
-                    let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
-                    let mut lobby_player_data: Vec<LobbyPlayerInfo> = Vec::new();
+                    let mut users_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
+                    let mut lobby_info_update: Vec<LobbyPlayerInfo> = Vec::new();
+                    let mut user_not_online = false;
+                    let mut already_in_party = false;
                     {
                       let mut players = local_players.lock().unwrap();
-                      match from_user(&other_player, players.clone()) {
+                      let other_index_result = from_user(&other_player, players.clone());
+                      match other_index_result {
                         Ok(other_index) => {
-                          let own_index = from_user(&username, players.clone()).expect("strawberry");
-                          // if was invited
-                          if players[own_index].invited_by.contains(&username) {
-                            // all good.
-                            // add this accepted user to the party.
+                          let own_index = from_user(&username, players.clone()).expect("oops");
 
-                            players[other_index].queued_with.push(username.clone());
-                            // remember to remove the invitation from the user.
-                            players[own_index].invited_by.retain(|i| *i != username.clone());
-                            // also make sure the user isn't considered party leader
-                            players[own_index].is_party_leader = false;
-                            // add the party owner's name to the user so we can track easily which party they're in.
-                            players[own_index].queued_with.push(other_player);
-                            // SOME FLAWED LOGIC DOWN HERE what is this!???
-                            for player in players[own_index].queued_with.clone() {
-                              match from_user(&player, players.clone()) {
-                                Ok(player_index) => {
-                                  players_to_inform.push(players[player_index].channel.clone());
-                                  lobby_player_data.push(
-                                    LobbyPlayerInfo {
-                                      username: players[player_index].username.clone(),
-                                      is_ready: players[player_index].is_ready,
-                                    }
-                                  );
+                          // check if already in party
+                          if !players[own_index].queued_with.is_empty() {
+                            already_in_party = true;
+                          }
+                          else {
+
+                            // check if was invited
+                            let other_username = players[other_index].username.clone();
+                            let was_invited = players[own_index].invited_by.contains(&other_username);
+                            if was_invited {
+
+                              // remove the invitation
+                              players[own_index].invited_by.retain(|element| (element != &other_username));
+
+                              // update own player
+                              players[own_index].queued_with = vec![other_username.clone()];
+                              players[own_index].is_party_leader = false;
+                              players[own_index].queued = false;
+                              
+                              // update other players
+                              players[other_index].is_party_leader = true;
+                              players[other_index].queued_with.push(username.clone());
+                              users_to_inform.push(players[other_index].channel.clone());
+                              lobby_info_update.push(
+                                LobbyPlayerInfo {
+                                  username: other_username.clone(),
+                                  is_ready: false,
                                 }
-                                Err(_err) => {
-                                  continue;
+                              );
+                              for player in players[other_index].queued_with.clone() {
+                                match from_user(&player, players.clone()) {
+                                  Ok(index) => {
+                                    users_to_inform.push(players[index].channel.clone());
+                                    lobby_info_update.push(
+                                      LobbyPlayerInfo {
+                                        username: players[index].username.clone(),
+                                        is_ready: players[index].is_ready.clone(),
+                                      }
+                                    );
+                                  }
+                                  Err(_err) => {
+                                    // don't bother.
+                                  }
                                 }
                               }
                             }
-                          } else {
-                            invalid_invite = true;
                           }
                         }
                         Err(_err) => {
-                          player_not_found = true;
+                          user_not_online = true;
                         }
                       }
                     }
-                    if invalid_invite {
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                        information: ServerToClient::InteractionRefused(
-                          RefusalReason::InvalidInvite
-                        ),
-                      })).await.unwrap();
+                    // send error packets
+                    if user_not_online {
+                      tx.send(
+                        PlayerMessage::SendPacket(
+                          ServerToClientPacket { 
+                            information: ServerToClient::InteractionRefused(
+                              RefusalReason::UserNotOnline
+                            )
+                          }
+                        )
+                      ).await.unwrap();
                       continue;
                     }
-                    if player_not_found{
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
-                        information: ServerToClient::InteractionRefused(
-                          RefusalReason::UserNotOnline
-                        ),
-                      })).await.unwrap();
+                    if already_in_party {
+                      tx.send(
+                        PlayerMessage::SendPacket(
+                          ServerToClientPacket { 
+                            information: ServerToClient::InteractionRefused(
+                              RefusalReason::AlreadyInPary
+                            )
+                          }
+                        )
+                      ).await.unwrap();
                       continue;
                     }
-
-                    // inform everybody.
-                    for player_to_inform in players_to_inform {
-                      player_to_inform.send(PlayerMessage::SendPacket(
-                        ServerToClientPacket {
-                          information: ServerToClient::LobbyUpdate(
-                            lobby_player_data.clone(),
-                          )
-                        }
-                      )).await.unwrap();
+                    for user in users_to_inform {
+                      user.send(
+                        PlayerMessage::SendPacket(
+                          ServerToClientPacket {
+                            information: ServerToClient::LobbyUpdate(
+                              lobby_info_update.clone(),
+                            )
+                          }
+                        )
+                      ).await.unwrap();
                     }
                   }
                   // MARK: Lobby leave
                   ClientToServer::LobbyLeave => {
-                    let mut people_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
-                    let mut new_lobby_state: Vec<LobbyPlayerInfo> = Vec::new();
+                    let mut users_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
+                    let mut lobby_info_update: Vec<LobbyPlayerInfo> = Vec::new();
                     {
-                      let players = local_players.lock().unwrap();
-                      let player_index = from_user(&username, players.clone()).expect("oopsies");
-                      // if in a lobby
-                      if !players[player_index].queued_with.is_empty() {
-                        if players[player_index].is_party_leader {
-                          // cancel queue
-                          
-                          // if pary leader, assign another random party leader.
-                          
+                      let mut players = local_players.lock().unwrap();
+                      let own_index = from_user(&username, players.clone()).expect("oops");
+
+                      let is_party_leader = players[own_index].is_party_leader;
+                      if is_party_leader {
+                        // we are the party leader so we need to transfer ownership.
+                        if !players[own_index].queued_with.is_empty() {
+                          for player_name in players[own_index].queued_with.clone() {
+
+                            match from_user(&player_name, players.clone()) {
+                              Ok(new_owner_index) => {
+                                players[new_owner_index].is_party_leader = true;
+                                players[new_owner_index].queued_with = players[own_index].queued_with.clone();
+                                players[new_owner_index].queued_with.retain(|element| (element != &username));
+                                for player_name in players[new_owner_index].queued_with.clone() {
+                                  match from_user(&player_name, players.clone()) {
+                                    Ok(index) => {
+                                      players[index].queued_with = players[new_owner_index].queued_with.clone();
+                                    }
+                                    Err(_) => {
+
+                                    }
+                                  }
+                                }
+                                
+
+                                break;
+                              }
+                              Err(_err) => {
+                                // this user encountered an error, let's try again.
+                              }
+                            }
+                          }
                         }
                         else {
-                          // cancel queue
-                          
-                          // if not party leader, just leave.
-
+                          // we are alone in this party, whatever bro
                         }
                       }
-                    }
-                    // inform everybody
-                  }
+                      else {
+                        // we are not a party leader so we're only storing the name of our party leader.
+                        if !players[own_index].queued_with.is_empty() {
+                          let other_player = players[own_index].queued_with[0].clone();
+                          
+                          
+                          // inform everybody
+                          match from_user(&other_player, players.clone()) {
+                            Ok(other_index) => {
+                              
+                              // remove ourselves from the party leader's party
+                              players[other_index].queued_with.retain(|element| (element != &username));
 
-                  _ => {}
+                              // for every username in the other party leader's party, inform of the departure.
+                              for other_username in players[other_index].queued_with.clone() {
+                                // if this isn't us (leaving player)
+                                if other_username != username {
+                                  // inform everybody
+                                  match from_user(&other_username, players.clone()) {
+                                    Ok(index) => {
+                                      users_to_inform.push(players[index].channel.clone());
+                                      lobby_info_update.push(LobbyPlayerInfo {
+                                        username: other_username,
+                                        is_ready: players[index].is_ready,
+                                      })
+                                    }
+                                    Err(_err) => {
+                                      // ignore this.
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                            Err(_err) => {
+                              // the other user is offline, or some other shenanigan. Don't worry about them.
+                            }
+                          }
+                        }
+                        else {
+                          // this shouldn't really happen, the user is asking to leave the lobby when they're
+                          // not in one.
+                        }
+
+                        // reset flags
+                        players[own_index].is_party_leader = true;
+                        players[own_index].queued = false;
+                        players[own_index].queued_with = Vec::new();
+                      }
+                    }
+                    // the leaving client will not be informed of their departure, they already know it happened.
+                  }
+                  _ => {
+                    
+                  }
                 }
               }
             }
           }
-
           thread_message = rx.recv() => {
             if let Some(message) = thread_message {
               match message {

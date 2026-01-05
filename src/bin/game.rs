@@ -592,10 +592,11 @@ async fn main() {
                   RefusalReason::UsernameInexistent => "User Inexistent",
                   RefusalReason::AlreadyFriends => "Already friends",
                   RefusalReason::UsersBlocked => "Users are blocked",
-                  RefusalReason::ThatsYouDummy => "That's you dummy!",
+                  RefusalReason::ThatsYouDummy => "That's you, silly goose!",
                   RefusalReason::UserNotOnline => "User not online",
                   RefusalReason::NotFriends => "Not friends with user",
                   RefusalReason::InvalidInvite => "Invite expired/invalid",
+                  RefusalReason::AlreadyInPary => "Already in a party, leave first.",
                   //there is no reason for these to exist here
                   RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
                   RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",

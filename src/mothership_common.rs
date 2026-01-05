@@ -119,7 +119,10 @@ pub enum RefusalReason {
   /// The user's request is invalidated because the concerned peer
   /// is not a friend.
   NotFriends,
+  /// If the invite was invalid in any way.
   InvalidInvite,
+  /// You are already in a party and cannot join another party.
+  AlreadyInPary,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
