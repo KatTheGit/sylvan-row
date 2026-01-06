@@ -984,8 +984,9 @@ async fn main() {
                     }
                     // the leaving client will not be informed of their departure, they already know it happened.
                   }
+                  // packets that shouldn't arrive.
                   _ => {
-                    
+                    // ignore
                   }
                 }
               }
