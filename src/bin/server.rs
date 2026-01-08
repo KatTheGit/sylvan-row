@@ -285,7 +285,6 @@ async fn main() {
                             queued_with: Vec::new(),
                             is_party_leader: true, // pary leader by default. demoted if invited. promoted back if you leave the party.
                             invited_by: Vec::new(),
-                            is_ready: false,
                           }
                         );
                       }
@@ -317,51 +316,164 @@ async fn main() {
                 match packet.information {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
+                    if data.gamemodes.len() > 2 {
+                      continue;
+                    }
+
+                    // perform 1 (one) matchmaking check
+
                     let players_copy: Vec<PlayerInfo>;
                     let mut players_to_match: Vec<usize> = Vec::new();
 
+                    let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
+                    let mut new_lobby_info: Vec<LobbyPlayerInfo> = Vec::new();
+
+
                     {
-                      // add the player to the queue
+                      // Find players to match.
+                      // I'm not smart enough to make this modular. Hardcoded it is!
                       let mut players = local_players.lock().unwrap();
-                      // this player's index
-                      let p_index = match from_user(&username, players.clone()) {
-                        Ok(index) => index,
-                        Err(()) => {
-                          // this has no reason to happen lowkey.
+                      players_copy = players.clone();
+
+                      let own_index = from_user(&username, players.clone()).expect("oops");
+                      players[own_index].queued = true;
+                      
+
+                      players[own_index].queued_gamemodes = data.gamemodes;
+                      players[own_index].queued_gamemodes.truncate(2);
+                      
+                      let mut queued_1v1: Vec<usize> = Vec::new();
+                      let mut queued_2v2_solo: Vec<usize> = Vec::new();
+                      let mut queued_2v2_duo: Vec<usize> = Vec::new();
+                      
+                      for player_index in 0..players.len() {
+                        // add players to the queue
+                        if players[player_index].queued {
+                          
+                          
+                          // if solo queueing
+                          if players[player_index].queued_with.is_empty() {
+                            if players[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
+                              queued_1v1.push(player_index);
+                            }
+                            if players[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
+                              queued_2v2_solo.push(player_index);
+                            }
+                            
+                          }
+                          // if non-solo queueing (duo)
+                          else {
+
+                            let lobby_owner_index;
+                            if players[player_index].is_party_leader {
+                              lobby_owner_index = player_index;
+                            } else {
+                              match players[player_index].queued_with.get(0) {
+                                Some(lobby_owner_username) => {
+                                  match from_user(&lobby_owner_username, players.clone()) {
+                                    Ok(index) => {
+                                      lobby_owner_index = index;
+                                    }
+                                    Err(_err) => {
+                                      // idc rn
+                                      continue;
+                                    }
+                                  }
+                                }
+                                None => {
+                                  // idc rn
+                                  continue;
+                                }
+                              }
+                            }
+
+                            let mut lobby_players: Vec<usize> = Vec::new();
+                            let mut all_ready: bool = true;
+
+                            for player_username in players[lobby_owner_index].queued_with.clone() {
+                              match from_user(&player_username, players.clone()) {
+                                Ok(index) => {
+                                  lobby_players.push(index);
+                                  if !players[index].queued {
+                                    all_ready = false;
+                                    continue;
+                                  }
+                                }
+                                Err(_) => {
+                                  // idk lowkey
+                                }
+                              }
+                            }
+                            if all_ready {
+                              // if there are more than 2 players, put them in a private game.
+                              // only needs to be bigger than 1 since party owner is not included
+                              if lobby_players.len() > 1 {
+                                for player in lobby_players {
+                                  players_to_match.push(player);
+                                }
+                                players_to_match.push(lobby_owner_index);
+                                continue;
+                              }
+                              // standard matchmaking
+                              else {
+                                queued_2v2_duo.push(lobby_owner_index);
+                                queued_2v2_duo.push(lobby_players[0]);
+                              }
+                            }
+                          }
+                        }
+                        
+                        // match players
+                        let player_count_1v1 = 2;
+                        let player_count_2v2 = 4;
+                        
+                        // 1v1 matchmaking
+                        if queued_1v1.len() >= player_count_1v1 {
+                          for _ in 0..player_count_1v1 {
+                            // unset queued status
+                            players[queued_1v1[0]].queued = false;
+                            players_to_match.push(queued_1v1[0]);
+                            queued_1v1.remove(0);
+                            continue;
+                          }
+                        }
+
+                        // 2v2 matchmaking
+
+                        // soloq vs soloq
+                        if queued_2v2_solo.len() >= 4 {
+                          for _ in 0..4 {
+                            players[queued_2v2_solo[0]].queued = false;
+                            players_to_match.push(queued_2v2_solo[0]);
+                            queued_2v2_solo.remove(0);
+                          }
                           continue;
                         }
-                      };
-                      players[p_index].queued = true;
-                      if data.gamemodes.len() <= 2{ players[p_index].queued_gamemodes = data.gamemodes; }
-                      players[p_index].selected_character = data.character;
-
-                      // finally
-                      players_copy = players.clone();
-                      // do matchmaking checks
-                      let mut queued_1v1: Vec<usize> = Vec::new();
-                      let mut queued_2v2: Vec<usize> = Vec::new();
-                      for player_index in 0..players_copy.len() {
-                        if !players_copy[player_index].queued { continue; }
-                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
-                          queued_2v2.push(player_index);
+                        // duoq vs duoq
+                        if queued_2v2_duo.len() >= 4 {
+                          for _ in 0..4 {
+                            players[queued_2v2_duo[0]].queued = false;
+                            players_to_match.push(queued_2v2_duo[0]);
+                            queued_2v2_duo.remove(0);
+                            continue;
+                          }
                         }
-                        if players_copy[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
-                          queued_1v1.push(player_index);
+                        // duoq vs soloq
+                        if queued_2v2_duo.len() >= 2 && queued_2v2_solo.len() >= 2 {
+                          // first the 2 solo players
+                          for _ in 0..2 {
+                            players[queued_2v2_solo[0]].queued = false;
+                            players_to_match.push(queued_2v2_solo[0]);
+                            queued_2v2_solo.remove(0);
+                          }
+                          // then the duo
+                          for _ in 0..2 {
+                            players[queued_2v2_duo[0]].queued = false;
+                            players_to_match.push(queued_2v2_duo[0]);
+                            queued_2v2_duo.remove(0);
+                          }
+                          continue;
                         }
-                      }
-                      // debug
-                      let player_count_1v1: usize = if MATCHMAKE_ALONE { 1 } else { 2 };
-
-                      if queued_2v2.len() >= 4 {
-                        queued_2v2.truncate(4);
-                      players_to_match = queued_2v2;
-                      }
-                      else if queued_1v1.len() >= player_count_1v1 {
-                        queued_1v1.truncate(player_count_1v1);
-                        players_to_match = queued_1v1;
-                      }
-                      for matched_player in players_to_match.clone() {
-                        players[matched_player].queued = false;
                       }
                     }
                     // Create a game
@@ -416,7 +528,9 @@ async fn main() {
                         players_copy[pm_index].channel.send(PlayerMessage::SendPacket(
                           ServerToClientPacket {
                             information: ServerToClient::MatchAssignment(
-                              MatchAssignmentData { port: port }
+                              MatchAssignmentData {
+                                port: port,
+                              }
                             )
                           }
                         )).await.unwrap();
@@ -836,7 +950,7 @@ async fn main() {
                                     lobby_info_update.push(
                                       LobbyPlayerInfo {
                                         username: players[index].username.clone(),
-                                        is_ready: players[index].is_ready.clone(),
+                                        is_ready: players[index].queued.clone(),
                                       }
                                     );
                                   }
@@ -956,7 +1070,7 @@ async fn main() {
                                       users_to_inform.push(players[index].channel.clone());
                                       lobby_info_update.push(LobbyPlayerInfo {
                                         username: other_username,
-                                        is_ready: players[index].is_ready,
+                                        is_ready: players[index].queued,
                                       })
                                     }
                                     Err(_err) => {

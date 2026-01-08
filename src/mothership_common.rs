@@ -163,8 +163,6 @@ pub struct PlayerInfo {
   pub queued_gamemodes: Vec<GameMode>,
   pub selected_character: Character,
   pub assigned_team: common::Team,
-  /// In a party, this must be true for every player to start the match.
-  pub is_ready: bool,
 }
 
 /// Possible messages between player threads.
