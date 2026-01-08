@@ -5,23 +5,24 @@ A twin-stick hero shooter, with the ambition of avoiding hard-counter interactio
 
 ## Play
 
-The game's development highly relies on player feedback, and the game is currently having scheduled playtests on [discord](https://discord.gg/4SbwGZeYcx).
+If you're interesting in playtesting we'd love to have you over at our [discord](https://discord.gg/4SbwGZeYcx)!
 
-There is a playable release, but you'll need to host your own server if you want to try the game (by downloading server.exe). When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP address in there.
+Otherwise there is a playable release, but you'll need to host your own server if you want to try the game (by downloading server.exe). When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP(v4) address in there.
 
 ## Compile and run it yourself
 
-Run the game:
+You can build the binaries with cargo
+```sh
+cargo build --release
+```
+
+Or directly run the game:
 ```sh
 cargo run --bin game --release # or ./client.sh
 ```
-Run the server:
+Or the server:
 ```sh
 cargo run --bin server # or ./server.sh
-```
-Or build the binaries
-```
-cargo build --release
 ```
 
 ### Dependencies
@@ -32,11 +33,11 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 
 The GDD is in `assets/README.md`.
 
-There is no documentation for the code yet.
+There is no documentation for the code yet, as a lot of it is in a temporary state.
 
 Maps are made through `mapmaker.py`.
 
-# To do
+## To do
 
 This is just for me.
 
@@ -196,3 +197,4 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
 - Inspiration
   - Assault Android Cactus
   - Battlerite
+  - League of Legends
