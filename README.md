@@ -44,7 +44,7 @@ This is just for me.
 ## Main
 
 - [ ] Characters
-  - [ ] Rework Hernani secondary
+  - [x] Rework Hernani secondary
   - [ ] Josey aim lazer shows ricochet
 - [ ] Innovate gamemode
 - [x] Rough menu
@@ -60,7 +60,7 @@ This is just for me.
       - [x] Play
       - [x] Heroes
       - [x] Tutorial
-- [ ] Matchmaking server ![mindmap](mm-mindmap.png)
+- [ ] Matchmaking server
   - [ ] **Part 1** (for open beta)
     - [x] Easier and more reliable netcode
       - [x] TCP
@@ -89,9 +89,10 @@ This is just for me.
     - [ ] Chat
       - [ ] Channels
       - [x] Friends (PM)
-        - [ ] Selected friend is a numerical index, which can change the selected friend on refresh.
+        - [ ] ISSUE: Selected friend is a numerical index, which can change the selected friend on refresh.
     - [ ] Game request
       - [ ] Lobby (request with friend)
+        - [x] Serverside (untested)
       - [x] Character
     - [ ] Matchmaking
       - [x] Start game server

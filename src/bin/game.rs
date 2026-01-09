@@ -927,6 +927,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 
   let gamemode_info: GameModeInfo = GameModeInfo::new();
   let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
+  
+  let input_halt: bool = false;
+  let input_halt: Arc<Mutex<bool>> = Arc::new(Mutex::new(input_halt));
 
   let keyboard_mode: bool = true;
   let keyboard_mode: Arc<Mutex<bool>> = Arc::new(Mutex::new(keyboard_mode));
@@ -973,8 +976,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let input_thread_keyboard_mode = Arc::clone(&keyboard_mode);
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
+  let input_halt_listener= Arc::clone(&input_halt);
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key.clone());
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key.clone(), input_halt_listener);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -1024,6 +1028,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
       return;
     }
     drop(killall);
+    {
+      let mut input_halt = input_halt.lock().unwrap();
+      *input_halt = menu_paused;
+    }
 
     // update vw and vh, used to correctly draw things scale to the screen.
     // one vh for example is 1% of screen height.
@@ -1127,6 +1135,13 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     }
     if *keyboard_mode {
       player.aim_direction = aim_direction;
+    }
+    {
+      let input_halt = input_halt.lock().unwrap();
+      if *input_halt {
+        player.aim_direction = Vector2::new();
+        aim_direction = Vector2::new();
+      }
     }
     drop(player);
     drop(keyboard_mode);
@@ -1423,7 +1438,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>, input_halt: Arc<Mutex<bool>>) -> () {
 
   let server_ip: String = get_ip();
   let server_ip: Vec<&str> = server_ip.split(":").collect();
@@ -1768,16 +1783,15 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       movement_vector = movement_vector.normalize();
     }
 
+    let input_halt = input_halt.lock().unwrap();
 
-    //if dashing {
-    //  match player.character {
-    //    Character::Temerity => {
-    //      movement_vector =
-    //        apply_wallride_force(movement_vector, game_objects.clone(), player.position);
-    //    }
-    //    _ => {}
-    //  }
-    //}
+    if *input_halt {
+      movement_vector = Vector2::new();
+      dashing = false;
+      shooting_primary = false;
+      shooting_secondary = false;
+    }
+    drop(input_halt);
 
     // expresses the player's movement without the multiplication
     // by delta time and speed. Sent to the server.

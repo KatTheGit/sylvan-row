@@ -424,8 +424,7 @@ async fn main() {
                         }
                         
                         // match players
-                        let player_count_1v1 = 2;
-                        let player_count_2v2 = 4;
+                        let player_count_1v1 = if MATCHMAKE_ALONE {1} else {2};
                         
                         // 1v1 matchmaking
                         if queued_1v1.len() >= player_count_1v1 {

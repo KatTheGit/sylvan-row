@@ -707,11 +707,11 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       if total_players >= min_players as u8 {
 
         let mut reset = false;
-        if red_alive == 0 {
+        if red_alive == 0 &&(!MATCHMAKE_ALONE | SPAWN_DUMMY) { //debug
           gamemode_info.rounds_won_blue += 1;
           reset = true;
         }
-        if blue_alive == 0 {
+        if blue_alive == 0 &&(!MATCHMAKE_ALONE | SPAWN_DUMMY) {
           gamemode_info.rounds_won_red += 1;
           reset = true;
         }
@@ -1136,36 +1136,56 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           Character::Hernani => {
             // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
             let wall_place_distance = character.secondary_range;
-            let mut desired_placement_position: Vector2 = player_info.position;
+            let mut desired_placement_position_center: Vector2 = player_info.position + player_info.aim_direction * wall_place_distance + Vector2{x: TILE_SIZE/2.0, y:TILE_SIZE/2.0};
             // round to closest 10
-            desired_placement_position.x = ((((desired_placement_position.x + player_info.aim_direction.x * wall_place_distance + TILE_SIZE/2.0) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position.y = ((((desired_placement_position.y + player_info.aim_direction.y * wall_place_distance + TILE_SIZE/2.0) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            let direction_perpendicular = Vector2 {x: player_info.aim_direction.y, y: -player_info.aim_direction.x};
+            let side_offset = 1.0;
+            let mut desired_placement_position_perpendicular_1 = desired_placement_position_center + direction_perpendicular *  side_offset * TILE_SIZE;
+            let mut desired_placement_position_perpendicular_2 = desired_placement_position_center + direction_perpendicular * -side_offset * TILE_SIZE;
+            desired_placement_position_perpendicular_1.x = (((desired_placement_position_perpendicular_1.x / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position_perpendicular_1.y = (((desired_placement_position_perpendicular_1.y / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position_perpendicular_2.x = (((desired_placement_position_perpendicular_2.x / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position_perpendicular_2.y = (((desired_placement_position_perpendicular_2.y / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position_center.x = ((((desired_placement_position_center.x) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            desired_placement_position_center.y = ((((desired_placement_position_center.y) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
 
-            let mut wall_can_be_placed = true;
-            for game_object in game_objects.clone() {
-              match game_object.object_type {
-                GameObjectType::HernaniWall | GameObjectType::UnbreakableWall | GameObjectType::Wall => {
-                  if game_object.position.x == desired_placement_position.x && game_object.position.y == desired_placement_position.y {
-                    wall_can_be_placed = false;
-                  }
-                },
-                _ => {}
+            let mut desired_placement_positions: Vec<Vector2> = Vec::new();
+            desired_placement_positions.push(desired_placement_position_center);
+            desired_placement_positions.push(desired_placement_position_perpendicular_1);
+            desired_placement_positions.push(desired_placement_position_perpendicular_2);
+
+            for (index, desired_placement_position) in desired_placement_positions.iter().enumerate() {
+              let mut wall_can_be_placed = true;
+              
+              for game_object in game_objects.clone() {
+                match game_object.object_type {
+                  GameObjectType::HernaniWall | GameObjectType::UnbreakableWall | GameObjectType::Wall => {
+                    if game_object.position.x == desired_placement_position.x && game_object.position.y == desired_placement_position.y {
+                      if index == 0 {
+                        // if the center wall can't be placed, give up.
+                        break;
+                      }
+                      wall_can_be_placed = false;
+                    }
+                  },
+                  _ => {}
+                }
               }
-            }
-            if wall_can_be_placed {
-              game_objects.push(GameObject {
-                object_type: GameObjectType::HernaniWall,
-                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
-                position: desired_placement_position,
-                direction: Vector2::new(),
-                to_be_deleted: false,
-                owner_port: players[p_index].port,
-                hitpoints: 20,
-                lifetime: 5.0,
-                players: vec![],
-                traveled_distance: 0.0,
-              });
-              secondary_used_successfully = true;
+              if wall_can_be_placed {
+                game_objects.push(GameObject {
+                  object_type: GameObjectType::HernaniWall,
+                  size: Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
+                  position: *desired_placement_position,
+                  direction: Vector2::new(),
+                  to_be_deleted: false,
+                  owner_port: players[p_index].port,
+                  hitpoints: 20,
+                  lifetime: 5.0,
+                  players: vec![],
+                  traveled_distance: 0.0,
+                });
+                secondary_used_successfully = true;
+              }
             }
           },
           // position revert
