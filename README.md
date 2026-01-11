@@ -112,8 +112,8 @@ This is just for me.
     - [ ] Ranked points storage
     - [ ] Ranked points assignment at win/loss
     - [ ] Rank update display at end of game
-  - [ ] Maintain ability to read primary server socket during game
-    - [ ] In-game chat
+  - [x] Maintain ability to read primary server socket during game
+    - [x] In-game chat
     - [ ] Game update (game won/lost)
   - [ ] Server survival
     - [ ] Throttling
