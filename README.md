@@ -75,7 +75,7 @@ This is just for me.
       - [x] Stats
         - [x] Win count
       - [ ] Ban status
-    - [ ] Auth
+    - [x] Auth
       - [x] Create account
         - [x] PAKE register
           - [x] Filters
@@ -88,7 +88,7 @@ This is just for me.
         - [x] Game server
         - [x] Matchmaking server
     - [ ] Chat
-      - [ ] Channels
+      - [x] Channels
       - [x] Friends (PM)
         - [ ] ISSUE: Selected friend is a numerical index, which can change the selected friend on refresh.
     - [ ] Game request

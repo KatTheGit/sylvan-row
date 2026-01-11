@@ -83,7 +83,8 @@ async fn main() {
 
   let mut settings = Settings::load();
 
-  let mut fullscreen: bool = false;
+  let mut fullscreen: bool = settings.fullscreen;
+  set_fullscreen(fullscreen);
   let mut toggle_time: Instant = Instant::now();
 
   // whether we're queueing

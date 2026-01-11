@@ -1,5 +1,5 @@
 use opaque_ke::{CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
-use crate::{common, const_params::DefaultCipherSuite, database::{FriendShipStatus, PlayerData}, gamedata::Character};
+use crate::{common, const_params::DefaultCipherSuite, database::{FriendShipStatus}, gamedata::Character};
 
 // MARK: CLIENT to server
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]

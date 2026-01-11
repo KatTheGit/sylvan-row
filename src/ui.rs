@@ -213,6 +213,12 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
     }
     checkbox(Vector2 { x: vw * 25.0, y: vh * 30.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, &mut settings.camera_smoothing);
     checkbox(Vector2 { x: vw * 25.0, y: vh * 35.0 }, 4.0 * vh, "Display character names instead of usernames", 5.0*vh, vh, &mut settings.display_char_name_instead);
+
+    let previous_fullscreen = settings.fullscreen;
+    checkbox(Vector2 { x: vw * 25.0, y: vh * 40.0 }, 4.0 * vh, "Fullscreen", 5.0*vh, vh, &mut settings.fullscreen);
+    if previous_fullscreen != settings.fullscreen {
+      set_fullscreen(settings.fullscreen);
+    }
   }
 
   return (menu_paused, wants_to_quit)
@@ -257,12 +263,14 @@ pub struct Settings {
   /// If false, usernames are displayed.
   /// If true, character names are displayed.
   pub display_char_name_instead: bool,
+  pub fullscreen: bool,
 }
 impl Settings {
   pub fn new() -> Settings{
     return Settings {
       camera_smoothing: true,
       display_char_name_instead: false,
+      fullscreen: false,
     }
   }
   pub fn load() -> Settings {

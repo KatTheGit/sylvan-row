@@ -318,18 +318,13 @@ async fn main() {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
                     if data.gamemodes.len() > 2 {
+                      // ignore this dumbass
                       continue;
                     }
 
                     // perform 1 (one) matchmaking check
-
                     let players_copy: Vec<PlayerInfo>;
                     let mut players_to_match: Vec<usize> = Vec::new();
-
-                    let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
-                    let mut new_lobby_info: Vec<LobbyPlayerInfo> = Vec::new();
-
-
                     {
                       // Find players to match.
                       // I'm not smart enough to make this modular. Hardcoded it is!
@@ -349,7 +344,6 @@ async fn main() {
                       for player_index in 0..players.len() {
                         // add players to the queue
                         if players[player_index].queued {
-                          
                           
                           // if solo queueing
                           if players[player_index].queued_with.is_empty() {
