@@ -119,6 +119,7 @@ async fn main() {
   let mut username_selected: bool = false;
   let mut password: String = String::from("toyotaprius");
   let mut password_selected: bool = false;
+  let mut show_password: bool = false;
 
   let mut registering: bool = false;
 
@@ -203,14 +204,16 @@ async fn main() {
 
       ui::text_input(
         username_input_position,
-        username_input_size, &mut username, &mut username_selected, 4.0*vh, vh
+        username_input_size, &mut username, &mut username_selected, 4.0*vh, vh,
+        false, &mut false,
       );
       // password
       let password_input_position = Vector2 { x: 35.0*vh, y: 55.0*vh };
       let password_input_size = Vector2 { x: 30.0*vw, y: 7.0*vh };
       ui::text_input(
         password_input_position,
-        password_input_size, &mut password, &mut password_selected, 4.0*vh, vh
+        password_input_size, &mut password, &mut password_selected, 4.0*vh, vh,
+        true, &mut show_password
       );
       //ui::tooltip(password_input_position, password_input_size, "yo wassup");
 
@@ -798,7 +801,8 @@ async fn main() {
       // Friend request form
       ui::text_input(
         Vector2 { x: 15.0*vw, y: 15.0*vh },
-        Vector2 { x: 45.0*vw, y: 7.0*vh }, &mut friend_request_input, &mut friend_request_input_selected, 4.0*vh, vh
+        Vector2 { x: 45.0*vw, y: 7.0*vh }, &mut friend_request_input, &mut friend_request_input_selected, 4.0*vh, vh,
+        false, &mut false,
       );
       let send_request = ui::button_was_pressed(
         Vector2 { x: 60.0*vw, y: 15.0*vh }, Vector2 { x: 25.0*vw, y: 7.0*vh }, "Send friend request", 5.0*vh, vh

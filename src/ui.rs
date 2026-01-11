@@ -484,7 +484,7 @@ pub fn chatbox(
     draw_text(&format!("[TAB] Messaging: {}", displayed_selected_friend), position.x, position.y + size.y - text_input_box_size.y - 1.0 *vh, 3.0 * vh, color);
     
     // draw input textbox
-    text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, chat_input_buffer, chat_input_field_selected, 3.0*vh, vh);
+    text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, chat_input_buffer, chat_input_field_selected, 3.0*vh, vh, false, &mut false);
     
     // Send message if ENTER is pressed and buffer is not empty
     // and a friend can be messaged and input field selected.
@@ -517,7 +517,7 @@ pub fn chatbox(
 // MARK: Text input
 
 /// A text input field.
-pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32) {
+pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active: &mut bool, font_size: f32, vh: f32, hideable: bool, show_password: &mut bool) {
   let margin: f32 = 2.0 * vh;
   let mouse = Vector2 { x: mouse_position().0, y: mouse_position().1 };
 
@@ -536,6 +536,10 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
   let bg = if *active { DARKGRAY } else { GRAY };
   graphics::draw_rectangle(position, size, bg);
 
+  if hideable {
+    checkbox(Vector2 { x: position.x + size.x + margin, y: position.y + size.y * 0.15 }, size.y * 0.7, "show", font_size, vh, show_password);
+  }
+
   if *active {
     if let Some(ch) = get_char_pressed() {
       // extra check not to allow goofy characters like backspace...
@@ -549,6 +553,13 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
     }
   }
   let mut text_to_draw = buffer.clone();
+  if hideable && !*show_password {
+    let len = text_to_draw.len();
+    text_to_draw = String::new();
+    for _ in 0..len {
+      text_to_draw.push('*');
+    }
+  }
   let mut text_size = measure_text(&text_to_draw, TextParams::default().font, font_size as u16, 1.0);
   while text_size.width > size.x - margin * 2.0 {
     text_size = measure_text(&text_to_draw, TextParams::default().font, font_size as u16, 1.0);
@@ -566,5 +577,51 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str) {
   && mouse_pos.1 < position.y + size.y
   && mouse_pos.1 > position.y {
     println!("hello, {}", text);
+  }
+}
+
+//MARK:  Credential store
+use keyring;
+const SERVICE_NAME: &str = "SYLVAN_ROW";
+/// Tries to store password in keyring.
+pub fn save_password(password: &str, username: &str, notifications: &mut Vec<Notification>) {
+  let entry = match keyring::Entry::new(SERVICE_NAME, username) {
+    Ok(entry) => entry,
+    Err(err) => {
+      notifications.push(
+        Notification::new("Failed to access keyring.", 1.0)
+      );
+      println!("1 {:?}", err);
+      return;
+    }
+  };
+  match entry.set_password(password) {
+    Ok(_) => {},
+    Err(err) => {
+      notifications.push(
+        Notification::new("Failed to add password to keyring.", 1.0)
+      );
+      println!("2 {:?}", err);
+    }
+  };
+}
+/// Attempts to load the password from they keyring. If it fails, it returns nothing.
+pub fn load_password(username: &str) -> String {
+
+  let entry = match keyring::Entry::new(SERVICE_NAME, username) {
+    Ok(entry) => {entry}
+    Err(err) => {
+      println!("3 {:?}", err);
+      return String::new();
+    }
+  };
+  match entry.get_password() {
+    Ok(password) => {
+      return password;
+    },
+    Err(err) => {
+      println!("4 {:?}", err);
+      return String::new();
+    }
   }
 }
