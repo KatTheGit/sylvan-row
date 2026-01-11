@@ -614,6 +614,7 @@ async fn main() {
                   RefusalReason::NotFriends => "Not friends with user",
                   RefusalReason::InvalidInvite => "Invite expired/invalid",
                   RefusalReason::AlreadyInPary => "Already in a party, leave first.",
+                  RefusalReason::InvalidChannel => "Invalid selected channel.",
                   //there is no reason for these to exist here
                   RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
                   RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",

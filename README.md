@@ -1,11 +1,12 @@
 # Sylvan Row
-A twin-stick hero shooter, with the ambition of avoiding hard-counter interactions, having simple but unique characters, and being easy to learn but hard to master.
+
+A multiplayer twin-stick hero shooter designed to be fair and fun while still allowing a high skill ceiling.
 
 <img src="assets/characters/cynewynn/textures/banner.png" width="370" title="Preliminary art of Cynewynn" alt="An anthro lioness in armor, preliminary art for the game"/> <img src="assets/characters/temerity/textures/banner.png" width="300" title="Preliminary art of Temerity" alt="An anthro hyena in semi-casual police uniform wielding a rocket launcher, preliminary art for the game"/>
 
 ## Play
 
-If you're interesting in playtesting we'd love to have you over at our [discord](https://discord.gg/4SbwGZeYcx)!
+If you're interested in playtesting we'd love to have you over at our [discord](https://discord.gg/4SbwGZeYcx)!
 
 Otherwise there is a playable release, but you'll need to host your own server if you want to try the game (by downloading server.exe). When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP(v4) address in there.
 
@@ -166,7 +167,6 @@ This is just for me.
 - [ ] Change game engine
 - [ ] Clean up code
   - [x] IMPORTANT: Reorganise mutexes to avoid deadlocks
-    - Current implementation is silly
   - [ ] Health u8 -> f16
   - [ ] Server vulnerabilities
   - [ ] Variable names, readability

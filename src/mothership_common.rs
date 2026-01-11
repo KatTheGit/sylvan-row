@@ -1,5 +1,5 @@
 use opaque_ke::{CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
-use crate::{common, const_params::DefaultCipherSuite, database::FriendShipStatus, gamedata::Character};
+use crate::{common, const_params::DefaultCipherSuite, database::{FriendShipStatus, PlayerData}, gamedata::Character};
 
 // MARK: CLIENT to server
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
@@ -123,6 +123,8 @@ pub enum RefusalReason {
   InvalidInvite,
   /// You are already in a party and cannot join another party.
   AlreadyInPary,
+  /// The selected chat channel is not valid.
+  InvalidChannel,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
@@ -163,6 +165,7 @@ pub struct PlayerInfo {
   pub queued_gamemodes: Vec<GameMode>,
   pub selected_character: Character,
   pub assigned_team: common::Team,
+  pub in_game_with: Vec<PlayerInfo>,
 }
 
 /// Possible messages between player threads.

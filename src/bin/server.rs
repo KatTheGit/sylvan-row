@@ -285,6 +285,7 @@ async fn main() {
                             queued_with: Vec::new(),
                             is_party_leader: true, // pary leader by default. demoted if invited. promoted back if you leave the party.
                             invited_by: Vec::new(),
+                            in_game_with: Vec::new(),
                           }
                         );
                       }
@@ -474,6 +475,16 @@ async fn main() {
                           continue;
                         }
                       }
+                      // for each player, store who they're in this match with.
+                      let mut other_players = Vec::new();
+                      for player_index in players_to_match.clone() {
+                        other_players.push(players[player_index].clone());
+                      }
+                      for player_index in players_to_match.clone() {
+                        let mut other_players_without_self = other_players.clone();
+                        other_players_without_self.retain(|element| element.username != players[player_index].username);
+                        players[player_index].in_game_with = other_players_without_self;
+                      }
                     }
                     // Create a game
                     if !players_to_match.is_empty() {
@@ -492,16 +503,22 @@ async fn main() {
                             player_info.push(player);
                           }
                         }
+                        {
+                          let mut players = local_players.lock().unwrap();
+
+                        }
                         // MARK: Game Server
                         let thread_database = Arc::clone(&local_database);
+                        let thread_players = Arc::clone(&local_players);
                         fleet.push(
                           std::thread::spawn(move || {
-                            let players = player_info.clone();
-                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info)}){
+                            let player_info = player_info.clone();
+                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info.clone())}){
+                              // game ended successfully.
                               Ok(winning_team) => {
                                 let mut database = thread_database.lock().unwrap();
                                 // assign victories.
-                                for player in players {
+                                for player in player_info.clone() {
                                   if player.assigned_team == winning_team {
                                     // put the victory in the database
                                     let mut player_data: PlayerData = match database::get_player(&database, &player.username) {
@@ -512,6 +529,21 @@ async fn main() {
                                     match database::create_player(&mut database, &player.username, player_data) {
                                       Ok(_) => {},
                                       Err(_err) => {},
+                                    }
+                                  }
+                                }
+                                // reset "in game with"
+                                {
+                                  let mut players = thread_players.lock().unwrap();
+                                  for player in player_info.clone() {
+                                    let server_player = from_user(&player.username, players.clone());
+                                    match server_player {
+                                      Ok(player) => {
+                                        players[player].in_game_with = Vec::new();
+                                      }
+                                      Err(_) => {
+                                        
+                                      }
                                     }
                                   }
                                 }
@@ -764,6 +796,60 @@ async fn main() {
                     println!("Chat message: {} : {}", peer_username, message);
                     let mut peers_are_friends: bool = false;
                     let mut internal_error_occurred: bool = false;
+                    let mut channel_invalid: bool = false;
+
+                    // team chat and all chat
+                    if peer_username == String::from("tc") || peer_username == String::from("ac") {
+                      let mut message_type = ChatMessageType::All;
+                      let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
+                      {
+                        let players = local_players.lock().unwrap();
+                        let own_index = from_user(&username, players.clone()).expect("oops");
+
+                        if players[own_index].in_game_with.is_empty() {
+                          channel_invalid = true;
+                        }
+                        else {
+                          for other_player in players[own_index].in_game_with.clone() {
+                            // team chat, so only teammates
+                            if peer_username == String::from("tc") {
+                              if other_player.assigned_team == players[own_index].assigned_team {
+                                message_type = ChatMessageType::Team;
+                                players_to_inform.push(other_player.channel.clone());
+                              }
+                            }
+                            // all chat, so inform everyone
+                            else {
+                              players_to_inform.push(other_player.channel.clone());
+                            }
+                          }
+                        }
+                      }
+                      if channel_invalid {
+                        tx.send(
+                          PlayerMessage::SendPacket(
+                            ServerToClientPacket {
+                              information: ServerToClient::InteractionRefused(
+                                RefusalReason::InvalidChannel,
+                              )
+                            }
+                          )
+                        ).await.unwrap();
+                        continue;
+                      }
+                      for player in players_to_inform {
+                        match player.send(
+                          PlayerMessage::SendPacket(
+                            ServerToClientPacket { information: 
+                            ServerToClient::ChatMessage(username.clone(), message.clone(), message_type.clone()) }
+                          )
+                        ).await {
+                          Ok(_) => {},
+                          Err(_err) => {},
+                        };
+                      }
+                      continue;
+                    }
                     {
                       let database = local_database.lock().unwrap();
                       match database::get_friend_status(&database, &peer_username, &username) {
