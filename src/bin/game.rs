@@ -32,6 +32,18 @@ fn rmb_index() -> usize {
   return 2;
 }
 
+struct MainServerInteraction {
+  // chat fields
+  server_stream: Option<TcpStream>,
+  is_chatbox_open: bool,
+  selected_friend: usize,
+  recv_messages_buffer: Vec<(String, String)>,
+  chat_input_buffer: String,
+  chat_selected: bool,
+  chat_scroll_index: usize,
+  friend_list: Vec<(String, FriendShipStatus, bool)>,
+}
+
 fn window_conf() -> Conf {
   Conf {
     window_title: "Sylvan Row".to_owned(),
@@ -98,8 +110,6 @@ async fn main() {
 
   let server_ip = get_ip();
 
-  let mut server_stream: Option<TcpStream> = None;
-
   let mut friend_request_input: String = String::from("");
   let mut friend_request_input_selected: bool = false;
 
@@ -123,24 +133,27 @@ async fn main() {
   let mut confirm_button_check: bool = false;
 
   let mut player_stats: PlayerStatistics = PlayerStatistics::new();
-  let mut friend_list: Vec<(String, FriendShipStatus, bool)> = Vec::new();
   let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
 
-  // chat fields
-  let mut is_chatbox_open = false;
-  let mut selected_friend = 0;
-  let mut recv_messages_buffer = Vec::new();
-  let mut chat_input_buffer = String::new();
-  let mut chat_selected: bool = false;
-  let mut chat_scroll_index: usize = 0;
+  // for anything shared between game and main menu.
+  let mut server_interaction = MainServerInteraction {
+    server_stream: None,
+    is_chatbox_open: false,
+    selected_friend: 0,
+    recv_messages_buffer: Vec::new(),
+    chat_input_buffer: String::new(),
+    chat_selected: false,
+    chat_scroll_index: 0,
+    friend_list: Vec::new(),
+  };
 
   loop {
-    if server_stream.is_none() {
+    if server_interaction.server_stream.is_none() {
 
       match TcpStream::connect(&server_ip) {
         Ok(stream) => {
-          server_stream = Some(stream);
-          if let Some(ref server_stream) = server_stream {
+          server_interaction.server_stream = Some(stream);
+          if let Some(ref server_stream) = server_interaction.server_stream {
             server_stream.set_nonblocking(true).expect("idk");
           }
         },
@@ -207,7 +220,7 @@ async fn main() {
       if !confirm { confirm_button_check = false; }
 
       // if button pressed
-      if let Some(ref mut server_stream) = server_stream { if confirm && !confirm_button_check {
+      if let Some(ref mut server_stream) = server_interaction.server_stream { if confirm && !confirm_button_check {
         confirm_button_check = true;
 
         let timeout_timer: Instant = Instant::now();
@@ -557,8 +570,11 @@ async fn main() {
       tab_friends = true;
     }
 
+    let mut start_game = false;
+    let mut game_port = 0;
+
     // MARK: Listen-Write
-    if let Some(ref mut server_stream) = server_stream {
+    if let Some(ref mut server_stream) = server_interaction.server_stream {
       let mut buffer: [u8; 2048] = [0; 2048];
       match server_stream.read(&mut buffer) {
         Ok(len) => {
@@ -575,7 +591,8 @@ async fn main() {
             match packet.information {
               ServerToClient::MatchAssignment(info) => {
                 if info.port != 0 {
-                  game(characters[selected_char], port, info.port, cipher_key.clone(), username.clone(), &mut settings).await;
+                  start_game = true;
+                  game_port = info.port;
                 }
                 queue = false;
               },
@@ -583,7 +600,7 @@ async fn main() {
                 player_stats = recv_player_stats;
               }
               ServerToClient::FriendListResponse(recv_friend_list) => {
-                friend_list = recv_friend_list;
+                server_interaction.friend_list = recv_friend_list;
               }
               ServerToClient::InteractionRefused(refusal_reason) => {
                 let text = match refusal_reason {
@@ -606,7 +623,7 @@ async fn main() {
               ServerToClient::FriendRequestSuccessful => {
                 notifications.push(Notification::new("Friend request sent", 1.0));
                 // update friend list
-                friend_list.push(
+                server_interaction.friend_list.push(
                   (friend_request_input.clone(), get_friend_request_type(&username, &friend_request_input), false)
                 );
                 friend_request_input = String::new();
@@ -614,21 +631,21 @@ async fn main() {
               ServerToClient::FriendshipSuccessful => {
                 notifications.push(Notification::new("You are now friends!", 1.0));
                 // update friend list
-                for f_index in 0..friend_list.len() {
-                  if database::get_friend_name(&username, &friend_list[f_index].0) == friend_request_input {
-                    friend_list[f_index].1 = FriendShipStatus::Friends;
+                for f_index in 0..server_interaction.friend_list.len() {
+                  if database::get_friend_name(&username, &server_interaction.friend_list[f_index].0) == friend_request_input {
+                    server_interaction.friend_list[f_index].1 = FriendShipStatus::Friends;
                   }
                 }
                 friend_request_input = String::new();
               }
               ServerToClient::ChatMessage(sender, message, _message_type) => {
                 // update friend list
-                for f_index in 0..friend_list.len() {
-                  if sender == database::get_friend_name(&username, &friend_list[f_index].0) {
-                    friend_list[f_index].2 = true;
+                for f_index in 0..server_interaction.friend_list.len() {
+                  if sender == database::get_friend_name(&username, &server_interaction.friend_list[f_index].0) {
+                    server_interaction.friend_list[f_index].2 = true;
                   }
                 }
-                recv_messages_buffer.push((sender, message));
+                server_interaction.recv_messages_buffer.push((sender, message));
               }
               _ => {}
             }
@@ -654,6 +671,9 @@ async fn main() {
       packet_queue = Vec::new();
     }
 
+    if start_game {
+      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce).await;
+    }
 
     if tab_play {
       if !queue {
@@ -814,8 +834,8 @@ async fn main() {
 
       // FRIEND LIST
       let y_offset = 6.0 * vh;
-      for f_index in 0..friend_list.len() {
-        let friend = &friend_list[f_index];
+      for f_index in 0..server_interaction.friend_list.len() {
+        let friend = &server_interaction.friend_list[f_index];
         let current_offset = y_offset * f_index as f32;
         let peer_username;
         let split: Vec<&str> = friend.0.split(":").collect();
@@ -869,7 +889,7 @@ async fn main() {
     // chat box
     let chatbox_position = Vector2{x: 5.0 * vw, y: 20.0 * vh};
     let chatbox_size = Vector2{x: 30.0 * vw, y: 70.0 * vh};
-    ui::chatbox(chatbox_position, chatbox_size, friend_list.clone(), &mut is_chatbox_open, &mut selected_friend, &mut recv_messages_buffer, &mut chat_input_buffer, &mut chat_selected, vh, username.clone(), &mut packet_queue, &mut chat_scroll_index);
+    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index);
 
     // draw NOTIFICATIONS
     for n_index in 0..notifications.len() {
@@ -915,8 +935,7 @@ async fn main() {
   }
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings) {
-
+async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32) {
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
@@ -924,6 +943,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 
   let kill_all_threads: bool = false;
   let kill_all_threads: Arc<Mutex<bool>> = Arc::new(Mutex::new(kill_all_threads));
+
+  let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
 
   let gamemode_info: GameModeInfo = GameModeInfo::new();
   let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
@@ -949,7 +970,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   // temporary: define character. In the future this will be given by the server and given to this function (game()) as an argument
   player.character = character;
   player.position = Vector2 { x: 10.0, y: 10.0 };
-  player.username = username;
+  player.username = username.clone();
   let player: Arc<Mutex<ClientPlayer>> = Arc::new(Mutex::new(player));
   
 
@@ -977,8 +998,9 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let network_listener_other_players = Arc::clone(&other_players);
   let gamemode_info_listener= Arc::clone(&gamemode_info);
   let input_halt_listener= Arc::clone(&input_halt);
+  let cipher_key_copy = cipher_key.clone();
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key.clone(), input_halt_listener);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key_copy, input_halt_listener);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -1030,7 +1052,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     drop(killall);
     {
       let mut input_halt = input_halt.lock().unwrap();
-      *input_halt = menu_paused;
+      *input_halt = menu_paused | server_interaction.is_chatbox_open;
     }
 
     // update vw and vh, used to correctly draw things scale to the screen.
@@ -1404,6 +1426,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
       draw_text(format!("Not connected to server").as_str(), 20.0, 80.0, 40.0, RED);
     }
 
+    // chat box
+    let chatbox_position = Vector2{x: 5.0 * vw, y: 20.0 * vh};
+    let chatbox_size = Vector2{x: 30.0 * vw, y: 70.0 * vh};
+    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, player_copy.username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index);
+
+
     // Draw pause menu
     if menu_paused {
       let mut kill_all_threads = kill_all_threads.lock().unwrap();
@@ -1425,6 +1453,54 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
       draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 32.0, WHITE);
       draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 45.0, 32.0, WHITE);
       draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 70.0, 32.0, WHITE);
+    }
+
+
+    // MARK: Listen-Write
+    if let Some(ref mut server_stream) = server_interaction.server_stream {
+      let mut buffer: [u8; 2048] = [0; 2048];
+      match server_stream.read(&mut buffer) {
+        Ok(len) => {
+          let packets = network::tcp_decode_decrypt::<ServerToClientPacket>(buffer[..len].to_vec(), cipher_key.clone(), &mut main_last_nonce);
+          let packets = match packets {
+            Ok(packets) => packets,
+            Err(_) => {
+              continue;
+            }
+          };
+          for packet in packets {
+            match packet.information {
+              ServerToClient::ChatMessage(sender, message, _message_type) => {
+                // update friend list
+                for f_index in 0..server_interaction.friend_list.len() {
+                  if sender == database::get_friend_name(&username, &server_interaction.friend_list[f_index].0) {
+                    server_interaction.friend_list[f_index].2 = true;
+                  }
+                }
+                server_interaction.recv_messages_buffer.push((sender, message));
+              }
+              _ => {}
+            }
+          }
+        },
+        Err(error) => {
+          match error.kind() {
+            ErrorKind::WouldBlock => {
+              
+            }
+            _ => {
+              //println!("{:?}", error);
+            }
+          }
+        }
+      }
+      for packet in packet_queue.clone() {
+        server_stream.write_all(
+          &network::tcp_encode_encrypt(packet, cipher_key.clone(), *main_nonce).expect("oops")
+        ).expect("idk 1");
+        *main_nonce += 1;
+      }
+      packet_queue = Vec::new();
     }
     next_frame().await;
   }
