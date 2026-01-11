@@ -1,5 +1,5 @@
 use redb::{Database, Result};
-use sylvan_row::{common, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, mothership_common::*, network} ;
+use sylvan_row::{common::{self, Team}, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, mothership_common::*, network} ;
 use std::{sync::{Arc, Mutex}, thread::JoinHandle};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
@@ -334,7 +334,6 @@ async fn main() {
                       // Find players to match.
                       // I'm not smart enough to make this modular. Hardcoded it is!
                       let mut players = local_players.lock().unwrap();
-                      players_copy = players.clone();
 
                       let own_index = from_user(&username, players.clone()).expect("oops");
                       players[own_index].queued = true;
@@ -475,6 +474,15 @@ async fn main() {
                           continue;
                         }
                       }
+                      // assigm teams
+                      let mut team_counter: usize = 0;
+                      for player_index in players_to_match.clone() {
+                        if team_counter < (players_to_match.len() / 2) {
+                          players[player_index].assigned_team = common::Team::Red;
+                          println!("yo");
+                          team_counter += 1;
+                        }
+                      }
                       // for each player, store who they're in this match with.
                       let mut other_players = Vec::new();
                       for player_index in players_to_match.clone() {
@@ -485,6 +493,7 @@ async fn main() {
                         other_players_without_self.retain(|element| element.username != players[player_index].username);
                         players[player_index].in_game_with = other_players_without_self;
                       }
+                      players_copy = players.clone();
                     }
                     // Create a game
                     if !players_to_match.is_empty() {
@@ -492,20 +501,11 @@ async fn main() {
                       {
                         let mut fleet = local_fleet.lock().unwrap();
                         let mut player_info = Vec::new();
-                        let mut team_counter = 0;
                         for player_index in 0..players_copy.len() {
                           if players_to_match.contains(&player_index) {
-                            let mut player = players_copy[player_index].clone();
-                            if team_counter < (players_to_match.len() / 2) {
-                              player.assigned_team = common::Team::Red;
-                              team_counter += 1;
-                            }
+                            let player = players_copy[player_index].clone();
                             player_info.push(player);
                           }
-                        }
-                        {
-                          let mut players = local_players.lock().unwrap();
-
                         }
                         // MARK: Game Server
                         let thread_database = Arc::clone(&local_database);
@@ -540,6 +540,7 @@ async fn main() {
                                     match server_player {
                                       Ok(player) => {
                                         players[player].in_game_with = Vec::new();
+                                        players[player].assigned_team = Team::Blue;
                                       }
                                       Err(_) => {
                                         

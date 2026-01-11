@@ -37,7 +37,7 @@ struct MainServerInteraction {
   server_stream: Option<TcpStream>,
   is_chatbox_open: bool,
   selected_friend: usize,
-  recv_messages_buffer: Vec<(String, String)>,
+  recv_messages_buffer: Vec<(String, String, ChatMessageType)>,
   chat_input_buffer: String,
   chat_selected: bool,
   chat_scroll_index: usize,
@@ -639,14 +639,14 @@ async fn main() {
                 }
                 friend_request_input = String::new();
               }
-              ServerToClient::ChatMessage(sender, message, _message_type) => {
+              ServerToClient::ChatMessage(sender, message, message_type) => {
                 // update friend list
                 for f_index in 0..server_interaction.friend_list.len() {
                   if sender == database::get_friend_name(&username, &server_interaction.friend_list[f_index].0) {
                     server_interaction.friend_list[f_index].2 = true;
                   }
                 }
-                server_interaction.recv_messages_buffer.push((sender, message));
+                server_interaction.recv_messages_buffer.push((sender, message, message_type));
               }
               _ => {}
             }
@@ -890,7 +890,7 @@ async fn main() {
     // chat box
     let chatbox_position = Vector2{x: 5.0 * vw, y: 20.0 * vh};
     let chatbox_size = Vector2{x: 30.0 * vw, y: 70.0 * vh};
-    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index);
+    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index, false);
 
     // draw NOTIFICATIONS
     for n_index in 0..notifications.len() {
@@ -1430,7 +1430,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // chat box
     let chatbox_position = Vector2{x: 5.0 * vw, y: 20.0 * vh};
     let chatbox_size = Vector2{x: 30.0 * vw, y: 70.0 * vh};
-    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, player_copy.username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index);
+    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, player_copy.username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index, true);
 
 
     // Draw pause menu
@@ -1471,14 +1471,14 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
           };
           for packet in packets {
             match packet.information {
-              ServerToClient::ChatMessage(sender, message, _message_type) => {
+              ServerToClient::ChatMessage(sender, message, message_type) => {
                 // update friend list
                 for f_index in 0..server_interaction.friend_list.len() {
                   if sender == database::get_friend_name(&username, &server_interaction.friend_list[f_index].0) {
                     server_interaction.friend_list[f_index].2 = true;
                   }
                 }
-                server_interaction.recv_messages_buffer.push((sender, message));
+                server_interaction.recv_messages_buffer.push((sender, message, message_type));
               }
               _ => {}
             }

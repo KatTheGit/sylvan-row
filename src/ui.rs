@@ -10,6 +10,7 @@ use crate::database::FriendShipStatus;
 use crate::graphics;
 use crate::maths::*;
 use crate::graphics::*;
+use crate::mothership_common::ChatMessageType;
 use crate::mothership_common::ClientToServer;
 use crate::mothership_common::ClientToServerPacket;
 
@@ -327,19 +328,26 @@ pub fn chatbox(
   friends:                   Vec<(String, FriendShipStatus, bool)>,
   is_chatbox_open:           &mut bool,
   selected_friend:           &mut usize,
-  recv_messages_buffer:      &mut Vec<(String, String)>,
+  recv_messages_buffer:      &mut Vec<(String, String, ChatMessageType)>,
   chat_input_buffer:         &mut String,
   chat_input_field_selected: &mut bool,
   vh:                        f32,
   username:                  String,
   packet_queue:              &mut Vec<ClientToServerPacket>,
   scroll_index:              &mut usize,
+  is_in_game:                bool,
 ) {
 
   let margin: f32 = 1.5 * vh;
 
+  let mut message_type = ChatMessageType::Private;
+
   // get a list of online friends (which we can chat to).
   let mut online_friends: Vec<String> = Vec::new();
+  if is_in_game {
+    online_friends.push(String::from("tc"));
+    online_friends.push(String::from("ac"));
+  }
   for friend in friends {
     if friend.1 == FriendShipStatus::Friends
     && friend.2 == true  {
@@ -385,19 +393,26 @@ pub fn chatbox(
 
     // draw all messages
     let y_start = position.y + size.y - text_input_box_size.y - 5.0 * vh;
-    let mut formatted_messages: Vec<String> = Vec::new();
-    let mut reversed_recv_messages: Vec<(String, String)> = recv_messages_buffer.clone();
+    let mut formatted_messages: Vec<(String, ChatMessageType)> = Vec::new();
+    let mut reversed_recv_messages: Vec<(String, String, ChatMessageType)> = recv_messages_buffer.clone();
     reversed_recv_messages.reverse();
     for message in reversed_recv_messages {
-      let mut formatted_message = format!("{}: {}", message.0, message.1);
+      let message_type = match message.2 {
+        ChatMessageType::Administrative => {"Admin"},
+        ChatMessageType::Private => {"Message"},
+        ChatMessageType::Group => {"Group"},
+        ChatMessageType::Team => {"Team"},
+        ChatMessageType::All => {"All"},
+      };
+      let mut formatted_message = format!("[{}] {}: {}", message_type, message.0, message.1);
       while measure_text(&formatted_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width > size.x - margin {
         let mut new_message = String::new();
         while measure_text(&new_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width < size.x - margin {
           new_message.insert(0, formatted_message.pop().expect("oopsies"));
         }
-        formatted_messages.push(new_message);
+        formatted_messages.push((new_message, message.2.clone()));
       }
-      formatted_messages.push(formatted_message);
+      formatted_messages.push((formatted_message, message.2.clone()));
     }
 
     if *scroll_index > formatted_messages.len() {
@@ -409,7 +424,14 @@ pub fn chatbox(
         if pos_y < position.y {
           break;
         }
-        draw_text(&formatted_messages[m_index], position.x, pos_y, 3.0 * vh, PINK);
+        let color = match formatted_messages[m_index].1 {
+          ChatMessageType::Administrative => YELLOW,
+          ChatMessageType::Private => PINK,
+          ChatMessageType::Group => GREEN,
+          ChatMessageType::Team => BLUE,
+          ChatMessageType::All => ORANGE,
+        };
+        draw_text(&formatted_messages[m_index].0, position.x, pos_y, 3.0 * vh, color);
       }
     }
     let mouse_wheel = mouse_wheel();
@@ -424,7 +446,7 @@ pub fn chatbox(
     
     // draw selected friend indicator
     //let selected_friend_indicator_size = Vector2 {x: size.x}
-    let displayed_selected_friend = if online_friends.len() > 0 {
+    let mut displayed_selected_friend = if online_friends.len() > 0 {
       let peer_username;
       let split: Vec<&str> = (*online_friends[*selected_friend]).split(":").collect();
       if *split[0] == username {
@@ -436,7 +458,22 @@ pub fn chatbox(
     } else {
       "No friends online."
     };
-    draw_text(&format!("[TAB] Messaging: {}", displayed_selected_friend), position.x, position.y + size.y - text_input_box_size.y - 1.0 *vh, 3.0 * vh, Color { r: 0.0, g: 1.0, b: 0.1, a: 1.0 });
+    if displayed_selected_friend == "tc" {
+      message_type = ChatMessageType::Team;
+      displayed_selected_friend = "Team";
+    }
+    if displayed_selected_friend == "ac" {
+      message_type = ChatMessageType::All;
+      displayed_selected_friend = "All";
+    }
+    let color = match message_type {
+      ChatMessageType::Administrative => YELLOW,
+      ChatMessageType::Private => PINK,
+      ChatMessageType::Group => GREEN,
+      ChatMessageType::Team => BLUE,
+      ChatMessageType::All => ORANGE,
+    };
+    draw_text(&format!("[TAB] Messaging: {}", displayed_selected_friend), position.x, position.y + size.y - text_input_box_size.y - 1.0 *vh, 3.0 * vh, color);
     
     // draw input textbox
     text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, chat_input_buffer, chat_input_field_selected, 3.0*vh, vh);
@@ -463,7 +500,7 @@ pub fn chatbox(
       );
 
       // reset things
-      recv_messages_buffer.push((username, chat_input_buffer.clone()));
+      recv_messages_buffer.push((username, chat_input_buffer.clone(), message_type));
       *chat_input_buffer = String::new();
     }
   }
