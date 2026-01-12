@@ -63,7 +63,19 @@ pub enum ServerToClient {
   /// Lobby invitation from a user (String)
   LobbyInvite(String),
   /// Update users about everyone else in the lobby.
-  LobbyUpdate(Vec<LobbyPlayerInfo>)
+  LobbyUpdate(Vec<LobbyPlayerInfo>),
+  MatchEnded(MatchEndResult),
+}
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub struct MatchEndResult {
+
+}
+impl MatchEndResult {
+  pub fn new() -> MatchEndResult {
+    return MatchEndResult {
+
+    }
+  }
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct LobbyPlayerInfo {

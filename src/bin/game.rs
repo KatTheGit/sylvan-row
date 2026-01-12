@@ -42,6 +42,8 @@ struct MainServerInteraction {
   chat_selected: bool,
   chat_scroll_index: usize,
   friend_list: Vec<(String, FriendShipStatus, bool)>,
+  lobby_invites: Vec<String>,
+  lobby: Vec<LobbyPlayerInfo>,
 }
 
 fn window_conf() -> Conf {
@@ -152,6 +154,8 @@ async fn main() {
     chat_selected: false,
     chat_scroll_index: 0,
     friend_list: Vec::new(),
+    lobby_invites: Vec::new(),
+    lobby: Vec::new(),
   };
 
   loop {
@@ -244,9 +248,9 @@ async fn main() {
           settings.saved_username = username.clone();
           save_password(&password, &username, &mut notifications);
           settings.save();
-          notifications.push(
-            Notification::new("Credentials saved.", 0.5)
-          );
+          //notifications.push(
+          //  Notification::new("Credentials saved.", 0.5)
+          //);
         }
 
         let timeout_timer: Instant = Instant::now();
@@ -646,8 +650,8 @@ async fn main() {
                   RefusalReason::UserNotOnline => "User not online",
                   RefusalReason::NotFriends => "Not friends with user",
                   RefusalReason::InvalidInvite => "Invite expired/invalid",
-                  RefusalReason::AlreadyInPary => "Already in a party, leave first.",
-                  RefusalReason::InvalidChannel => "Invalid selected channel.",
+                  RefusalReason::AlreadyInPary => "Already in a party",
+                  RefusalReason::InvalidChannel => "Invalid selected channel",
                   //there is no reason for these to exist here
                   RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
                   RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",
@@ -680,6 +684,20 @@ async fn main() {
                   }
                 }
                 server_interaction.recv_messages_buffer.push((sender, message, message_type));
+              }
+              // lobby
+              ServerToClient::LobbyInvite(inviting_user) => {
+                server_interaction.lobby_invites.retain(|element| element != &inviting_user);
+                server_interaction.lobby_invites.push(inviting_user.clone());
+                notifications.push(
+                  Notification::new(&format!("{} invited you", inviting_user), 4.0)
+                );
+              }
+              ServerToClient::LobbyUpdate(data) => {
+                //println!("{:?}", data);
+                server_interaction.lobby = data;
+                // if we're in this list, delete us
+                server_interaction.lobby.retain(|element| element.username != username);
               }
               _ => {}
             }
@@ -755,6 +773,46 @@ async fn main() {
             ClientToServerPacket {
               information: ClientToServer::MatchRequestCancel,
             },
+          )
+        }
+      }
+      // draw lobby
+
+      let mut lobby = server_interaction.lobby.clone();
+      // insert self
+      lobby.insert(
+        0, 
+        LobbyPlayerInfo {
+          username: username.clone(),
+          is_ready: queue,
+        }
+      );
+
+      let lobby_position: Vector2 = Vector2 { x: 5.0*vw, y: 19.0*vh };
+      let lobby_size: Vector2 = Vector2 { x: 30.0*vw, y: 7.0*vh };
+      let y_offset = lobby_size.y;
+      let inner_shrink: f32 = 1.0 * vh;
+      draw_text("Lobby", lobby_position.x, lobby_position.y-1.0*vh, 5.0*vh, BLACK);
+      for (i, player) in lobby.iter().enumerate() {
+        graphics::draw_rectangle(lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, BLUE);
+        graphics::draw_rectangle(lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, SKYBLUE);
+        let is_ready_color = if player.is_ready {LIME} else {RED};
+        let is_ready_text = if player.is_ready {"Ready"} else {"Not Ready"};
+        draw_text(&format!("{}", player.username), lobby_position.x, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 5.0*vh, BLACK);
+        draw_text(&format!("{}", is_ready_text), lobby_position.x + lobby_size.x * 0.61, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 5.0*vh, is_ready_color);
+      }
+      // lobby leave button
+      if lobby.len() > 1 {
+        let leave = ui::button_was_pressed(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh, vh);
+        if leave {
+          packet_queue.push(
+            ClientToServerPacket {
+              information: ClientToServer::LobbyLeave,
+            },
+          );
+          server_interaction.lobby = Vec::new();
+          notifications.push(
+            Notification::new("Left the party.", 1.0)
           )
         }
       }
@@ -912,7 +970,36 @@ async fn main() {
           }
           FriendShipStatus::Friends => {
             status = "Friends";
-            draw_text(match friend.2 {true => "Online", false => "Offline"}, 70.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
+            let online = friend.2;
+            draw_text(match online {true => "Online", false => "Offline"}, 70.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
+            // if we were invited by this user, show accept button
+            if server_interaction.lobby_invites.contains(&String::from(peer_username)) {
+              let accept_button = ui::button_was_pressed(
+                Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Join", 5.0*vh, vh
+              );
+              if accept_button {
+                packet_queue.push(
+                  ClientToServerPacket { information: ClientToServer::LobbyInviteAccept(String::from(peer_username)) }
+                );
+                server_interaction.lobby_invites.retain(|element| element != peer_username);  
+              }
+            }
+            // invite user button
+            else {
+              if online {
+                let invite_button = ui::button_was_pressed(
+                  Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Invite", 5.0*vh, vh
+                );
+                if invite_button {
+                  packet_queue.push(
+                    ClientToServerPacket { information: ClientToServer::LobbyInvite(String::from(peer_username)) }
+                  );
+                  notifications.push(
+                    Notification::new(&format!("Invited {} to lobby.", peer_username), 1.5)
+                  );
+                }
+              }
+            }
           }
         }
         draw_text(status, 40.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
@@ -1491,7 +1578,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     }
 
 
-    // MARK: Listen-Write
+    // MARK: MMS Listen
     if let Some(ref mut server_stream) = server_interaction.server_stream {
       let mut buffer: [u8; 2048] = [0; 2048];
       match server_stream.read(&mut buffer) {
@@ -1513,6 +1600,16 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
                   }
                 }
                 server_interaction.recv_messages_buffer.push((sender, message, message_type));
+              }
+              ServerToClient::MatchEnded(_data) => {
+                // wait a bit to give the player time to process what happened.
+                std::thread::sleep(Duration::from_secs_f32(2.0));
+                {
+                  // close the game and go back to the menu.
+                  // kill_all_threads is like "return" but gracefully stops all other threads.
+                  let mut kill_all_threads = kill_all_threads.lock().unwrap();
+                  *kill_all_threads = true;
+                }
               }
               _ => {}
             }

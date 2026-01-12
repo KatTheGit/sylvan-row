@@ -11,6 +11,6 @@ SECONDARY - Rectify
 DASH - Combat Leap
   Dashes forward, taking reduced damage.
 
-PASSIVE - Dedication and Exhaustion
+PASSIVE - Dedication
   The higher her secondary charge, the faster
   her attack rate.
