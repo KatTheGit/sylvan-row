@@ -115,7 +115,6 @@ async fn main() {
   let mut friend_request_input_selected: bool = false;
 
   // login fields
-  println!("{:?}", settings.store_credentials);
   let mut username: String = if settings.store_credentials {settings.saved_username.clone()} else {String::new()};
   let mut username_selected: bool = false;
   let mut password: String = String::from("");
@@ -225,10 +224,9 @@ async fn main() {
 
       let save_pass_check_position = Vector2 { x: 35.0*vh, y: 59.0*vh };
       let save_pass_check_size = 5.0*vh;
-      let previous_store_credentials = settings.store_credentials;
-      ui::checkbox(save_pass_check_position, save_pass_check_size, "Save credentials", 4.0*vh, vh, &mut settings.store_credentials);
+      let credentials_checkbox_changed = ui::checkbox(save_pass_check_position, save_pass_check_size, "Remember me", 4.0*vh, vh, &mut settings.store_credentials);
       // save;
-      if previous_store_credentials != settings.store_credentials {
+      if credentials_checkbox_changed {
         settings.save();
       }
       // confirm button for either action
@@ -243,7 +241,6 @@ async fn main() {
 
         // save credentials
         if settings.store_credentials {
-          println!("{:?}", username);
           settings.saved_username = username.clone();
           save_password(&password, &username, &mut notifications);
           settings.save();
@@ -439,7 +436,7 @@ async fn main() {
 
                 // login finish (step 3)
                 ServerToClient::LoginResponse1(server_response) => {
-
+                  println!("reached step 3");
                   let client_login_finish_result = match client_login_start_result.clone().state.finish(
                     &mut client_rng,
                     password.as_bytes(),
@@ -449,9 +446,12 @@ async fn main() {
                     Ok(result) => {result},
                     Err(_err) => {
                       notifications.push(
-                        Notification { start_time: Instant::now(), text: String::from("Wrong password"), duration: 1.0 }
+                        Notification { start_time: Instant::now(), text: String::from("Wrong password"), duration: 1.5 }
                       );
-                      continue;
+                      println!("yo, wrong password");
+                      next_frame().await;
+                      error_occurred = true;
+                      break;
                     }
                   };
                   let session_key = client_login_finish_result.session_key;
@@ -473,7 +473,8 @@ async fn main() {
                   match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
                     Ok(_) => {}
                     Err(_) => {
-                      continue;
+                      error_occurred = true;
+                      break;
                     }
                   }
                   logged_in = true;
@@ -491,7 +492,7 @@ async fn main() {
                       RefusalReason::UsernameTaken => String::from("Username Taken"),
                       RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
                       _ => String::from("Unexpected Error"),
-                    }, duration: 1.0 }
+                    }, duration: 1.5 }
                   );
                   error_occurred = true;
                   break;

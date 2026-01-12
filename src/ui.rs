@@ -73,9 +73,9 @@ pub fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f
 }
 /// A checkbox.
 /// 
-/// Reads a `selected` boolean, returns the same bool if it wasn't
-/// pressed, and returns the opposite if it was.
-pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool) {
+/// Reads a `selected` boolean and modifies it. If the value was changed this frame,
+/// returns `true`.
+pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool) -> bool {
   graphics::draw_rectangle(position, Vector2 { x: size, y: size }, BLUE);
   let inner_shrink: f32 = 0.2 * vh;
   graphics::draw_rectangle(position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2{x: size, y:size} - Vector2{ x: inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
@@ -92,9 +92,11 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
       graphics::draw_rectangle(position, Vector2 { x: size, y: size },Color { r: 0.05, g: 0.0, b: 0.1, a: 0.2 });
       if is_mouse_button_pressed(MouseButton::Left) {
         *selected = !*selected;
+        return true;
       }
     }
   }
+  return false;
 }
 
 // MARK: In-game
@@ -209,15 +211,17 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
     let back_button = button(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 15.0*vh }, Vector2 { x: 25.0 * vh, y: 9.0 * vh }, "Back", button_font_size, vh);
     if back_button {
       *settings_open = false;
-      settings.save();
     }
-    checkbox(Vector2 { x: vw * 25.0, y: vh * 30.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, &mut settings.camera_smoothing);
-    checkbox(Vector2 { x: vw * 25.0, y: vh * 35.0 }, 4.0 * vh, "Display character names instead of usernames", 5.0*vh, vh, &mut settings.display_char_name_instead);
+    let c1 = checkbox(Vector2 { x: vw * 25.0, y: vh * 30.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, &mut settings.camera_smoothing);
+    let c2 = checkbox(Vector2 { x: vw * 25.0, y: vh * 35.0 }, 4.0 * vh, "Display character names instead of usernames", 5.0*vh, vh, &mut settings.display_char_name_instead);
 
-    let previous_fullscreen = settings.fullscreen;
-    checkbox(Vector2 { x: vw * 25.0, y: vh * 40.0 }, 4.0 * vh, "Fullscreen", 5.0*vh, vh, &mut settings.fullscreen);
-    if previous_fullscreen != settings.fullscreen {
+    let c3 = checkbox(Vector2 { x: vw * 25.0, y: vh * 40.0 }, 4.0 * vh, "Fullscreen", 5.0*vh, vh, &mut settings.fullscreen);
+    if c3 {
       set_fullscreen(settings.fullscreen);
+    }
+    // if the settings were modified, save them.
+    if c1 || c2 || c3 {
+      settings.save();
     }
   }
 
@@ -611,7 +615,6 @@ pub fn save_password(password: &str, username: &str, notifications: &mut Vec<Not
 }
 /// Attempts to load the password from they keyring. If it fails, it returns nothing.
 pub fn load_password(username: &str) -> String {
-  println!("{:?}", username);
 
   let entry = match keyring::Entry::new(SERVICE_NAME, username) {
     Ok(entry) => {entry}
