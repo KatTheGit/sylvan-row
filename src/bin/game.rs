@@ -345,7 +345,10 @@ async fn main() {
                       continue;
                     }
                   }
-                  // registed successful
+                  // register successful
+                  notifications.push(
+                    Notification::new("Account created!", 1.5)
+                  );
                   registering = false;  
                 }
 

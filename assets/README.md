@@ -287,18 +287,18 @@ The format that surrounds the fighting itself.
 
 ## 5.2. Ranked System
 
-The rank of a player is determined entirely through their winrate, since no skill-based or ranked-only matchmaking exists (yet).
+The rank of a player is determined entirely through their winrate, since no skill-based or ranked-only matchmaking exists (yet), so RP gain/loss values are adjusted accordingly.
 
 Each rank has 3 divisions (III to I). Going up a division requires 100 rp. In the last division of a rank, the rp gain/loss is equal to that of the rank above.
 
-| num | RP | name | winrate | win | loss
-|---|---|---|---|---|---|
-1 | 0 | Bronze | 0% | 50 | 0
-2 | 300 | Silver | 25% | 60 | 20
-3 | 600 | Gold | 50% | 50 | 50
-4 | 900 | ??? | 60% | 34 | 50
-5 | 1200 | ??? | 70% | 21 | 50
-6 | 1500 | Mystic (n) | 80% | 13-0 ($\frac{100}{0.2 * (RP - 1500) + 0.13}$) | 50
+| num | RP | name | winrate
+|---|---|---|---|
+1 | 0 | Bronze | 20% |
+2 | 300 | Silver | 30% |
+3 | 600 | Gold | 50% |
+4 | 900 | ??? | 60% |
+5 | 1200 | ??? | 70% |
+6 | 1500 | Mystic (n) | 80% |
 
 Mystic rank has your leaderboard position appended, and doesn't have any divisions.
 
