@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 
 use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, Notification, Settings}};
+use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -115,11 +115,17 @@ async fn main() {
   let mut friend_request_input_selected: bool = false;
 
   // login fields
-  let mut username: String = String::from("ornit");
+  println!("{:?}", settings.store_credentials);
+  let mut username: String = if settings.store_credentials {settings.saved_username.clone()} else {String::new()};
   let mut username_selected: bool = false;
-  let mut password: String = String::from("toyotaprius");
+  let mut password: String = String::from("");
   let mut password_selected: bool = false;
   let mut show_password: bool = false;
+
+  // load password from keyring.
+  if settings.store_credentials {
+    password = load_password(&username);
+  }
 
   let mut registering: bool = false;
 
@@ -182,14 +188,14 @@ async fn main() {
     // MARK: Login
     if !logged_in {
 
-      draw_text("Username", 35.0 * vh, 38.0*vh, 4.0*vh, BLACK);
-      draw_text("Password", 35.0 * vh, 53.0*vh, 4.0*vh, BLACK);
+      draw_text("Username", 35.0 * vh, 32.0*vh, 4.0*vh, BLACK);
+      draw_text("Password", 35.0 * vh, 47.0*vh, 4.0*vh, BLACK);
 
       let register_button = ui::one_way_button(
-        Vector2 { x: 35.0*vh, y: 30.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Register", 4.0*vh, vh, registering
+        Vector2 { x: 35.0*vh, y: 20.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Register", 4.0*vh, vh, registering
       );
       let login_button = ui::one_way_button(
-        Vector2 { x: 55.0*vh, y: 30.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Login", 4.0*vh, vh, !registering
+        Vector2 { x: 55.0*vh, y: 20.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Login", 4.0*vh, vh, !registering
       );
       if register_button {
         registering = true;
@@ -199,7 +205,7 @@ async fn main() {
       }
 
       // username
-      let username_input_position = Vector2 { x: 35.0*vh, y: 40.0*vh };
+      let username_input_position = Vector2 { x: 35.0*vh, y: 35.0*vh };
       let username_input_size = Vector2 { x: 30.0*vw, y: 7.0*vh };
 
       ui::text_input(
@@ -208,7 +214,7 @@ async fn main() {
         false, &mut false,
       );
       // password
-      let password_input_position = Vector2 { x: 35.0*vh, y: 55.0*vh };
+      let password_input_position = Vector2 { x: 35.0*vh, y: 50.0*vh };
       let password_input_size = Vector2 { x: 30.0*vw, y: 7.0*vh };
       ui::text_input(
         password_input_position,
@@ -217,6 +223,14 @@ async fn main() {
       );
       //ui::tooltip(password_input_position, password_input_size, "yo wassup");
 
+      let save_pass_check_position = Vector2 { x: 35.0*vh, y: 59.0*vh };
+      let save_pass_check_size = 5.0*vh;
+      let previous_store_credentials = settings.store_credentials;
+      ui::checkbox(save_pass_check_position, save_pass_check_size, "Save credentials", 4.0*vh, vh, &mut settings.store_credentials);
+      // save;
+      if previous_store_credentials != settings.store_credentials {
+        settings.save();
+      }
       // confirm button for either action
       let confirm = ui::button(
         Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh, vh
@@ -226,6 +240,17 @@ async fn main() {
       // if button pressed
       if let Some(ref mut server_stream) = server_interaction.server_stream { if confirm && !confirm_button_check {
         confirm_button_check = true;
+
+        // save credentials
+        if settings.store_credentials {
+          println!("{:?}", username);
+          settings.saved_username = username.clone();
+          save_password(&password, &username, &mut notifications);
+          settings.save();
+          notifications.push(
+            Notification::new("Credentials saved.", 0.5)
+          );
+        }
 
         let timeout_timer: Instant = Instant::now();
 

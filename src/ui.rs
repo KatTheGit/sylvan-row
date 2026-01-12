@@ -257,13 +257,15 @@ impl Notification {
 
 // MARK: Settings
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Copy)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Settings {
   pub camera_smoothing: bool,
   /// If false, usernames are displayed.
   /// If true, character names are displayed.
   pub display_char_name_instead: bool,
   pub fullscreen: bool,
+  pub saved_username: String,
+  pub store_credentials: bool,
 }
 impl Settings {
   pub fn new() -> Settings{
@@ -271,6 +273,8 @@ impl Settings {
       camera_smoothing: true,
       display_char_name_instead: false,
       fullscreen: false,
+      saved_username: String::new(),
+      store_credentials: false,
     }
   }
   pub fn load() -> Settings {
@@ -607,6 +611,7 @@ pub fn save_password(password: &str, username: &str, notifications: &mut Vec<Not
 }
 /// Attempts to load the password from they keyring. If it fails, it returns nothing.
 pub fn load_password(username: &str) -> String {
+  println!("{:?}", username);
 
   let entry = match keyring::Entry::new(SERVICE_NAME, username) {
     Ok(entry) => {entry}
