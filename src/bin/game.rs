@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 
 use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
+use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -216,6 +216,7 @@ async fn main() {
         username_input_size, &mut username, &mut username_selected, 4.0*vh, vh,
         false, &mut false,
       );
+      username.truncate(20);
       // password
       let password_input_position = Vector2 { x: 35.0*vh, y: 50.0*vh };
       let password_input_size = Vector2 { x: 30.0*vw, y: 7.0*vh };
@@ -271,6 +272,13 @@ async fn main() {
           if !valid_password(password.clone()) {
             notifications.push(
               Notification::new("Unsafe password", 1.0)
+            );
+            next_frame().await;
+            continue;
+          }
+          if !valid_username(username.clone()) {
+            notifications.push(
+              Notification::new("Invalid username", 1.0)
             );
             next_frame().await;
             continue;
@@ -798,8 +806,8 @@ async fn main() {
         graphics::draw_rectangle(lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, SKYBLUE);
         let is_ready_color = if player.is_ready {LIME} else {RED};
         let is_ready_text = if player.is_ready {"Ready"} else {"Not Ready"};
-        draw_text(&format!("{}", player.username), lobby_position.x, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 5.0*vh, BLACK);
-        draw_text(&format!("{}", is_ready_text), lobby_position.x + lobby_size.x * 0.61, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 5.0*vh, is_ready_color);
+        draw_text(&format!("{}", player.username), lobby_position.x, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 4.0*vh, BLACK);
+        draw_text(&format!("{}", is_ready_text), lobby_position.x + lobby_size.x * 0.67, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 4.0*vh, is_ready_color);
       }
       // lobby leave button
       if lobby.len() > 1 {
