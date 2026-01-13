@@ -275,7 +275,7 @@ impl Settings {
   pub fn new() -> Settings{
     return Settings {
       camera_smoothing: true,
-      display_char_name_instead: false,
+      display_char_name_instead: true,
       fullscreen: false,
       saved_username: String::new(),
       store_credentials: false,

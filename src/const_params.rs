@@ -14,7 +14,7 @@ pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjec
 /// Whether to spawn one dummy in the game
 pub const SPAWN_DUMMY: bool = false;
 /// Whether the server allows to start a game with only 1 player in queue
-pub const MATCHMAKE_ALONE: bool = true;
+pub const MATCHMAKE_ALONE: bool = false;
 
 pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 

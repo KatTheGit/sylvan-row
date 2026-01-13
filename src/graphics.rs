@@ -5,6 +5,7 @@ use strum::IntoEnumIterator;
 use crate::maths::*;
 use crate::common;
 
+#[macro_export]
 macro_rules! load {
   ($file:expr $(,)?) => {
     Texture2D::from_file_with_format(include_bytes!(concat!("../assets/", $file)), None)

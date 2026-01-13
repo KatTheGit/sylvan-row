@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 
 use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
+use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -81,6 +81,14 @@ async fn main() {
     include_str!("../../assets/characters/wiro/description.txt"),
     include_str!("../../assets/characters/elizabeth/description.txt"),
     include_str!("../../assets/characters/temerity/description.txt"),
+  ];
+  let temporary_profiles: Vec<Texture2D> = vec![
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/cynewynn/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/wiro/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/elizabeth/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/temerity/textures/mini-profile.png"), None),
   ];
 
   let mut settings = Settings::load();
@@ -817,7 +825,7 @@ async fn main() {
         graphics::draw_rectangle(lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, SKYBLUE);
         let is_ready_color = if player.is_ready {LIME} else {RED};
         let is_ready_text = if player.is_ready {"Ready"} else {"Not Ready"};
-        draw_text(&format!("{}", player.username), lobby_position.x, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 4.0*vh, BLACK);
+        draw_text(&format!("{}", player.username), lobby_position.x + 2.0*vh, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 4.0*vh, BLACK);
         draw_text(&format!("{}", is_ready_text), lobby_position.x + lobby_size.x * 0.67, lobby_position.y + (i as f32)*y_offset + lobby_size.y*0.65, 4.0*vh, is_ready_color);
       }
       // lobby leave button
@@ -866,6 +874,8 @@ async fn main() {
       draw_multiline_text_ex(descriptions[selected_char],20.0*vh, 15.0*vh, Some(0.7), 
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
+      let image_size = 45.0;
+      draw_image(&temporary_profiles[selected_char], (71.0/vh)*vw, 18.0, image_size*0.9, image_size, vh, Vector2::new(), WHITE);
     }
     if tab_tutorial {
       let text: &str =
