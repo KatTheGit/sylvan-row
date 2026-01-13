@@ -413,7 +413,6 @@ async fn main() {
             }
           }
 
-
           loop {
             clear_background(WHITE);
             draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
