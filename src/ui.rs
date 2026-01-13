@@ -352,6 +352,7 @@ pub fn chatbox(
   packet_queue:              &mut Vec<ClientToServerPacket>,
   scroll_index:              &mut usize,
   is_in_game:                bool,
+  timer:                     &mut Instant,
 ) {
 
   let margin: f32 = 1.5 * vh;
@@ -401,64 +402,11 @@ pub fn chatbox(
     }
   }
 
-  if *is_chatbox_open {
-    let text_input_box_size = Vector2 {x: size.x, y: 5.5 * vh};
+  let text_input_box_size = Vector2 {x: size.x, y: 5.5 * vh};
 
+  if *is_chatbox_open {
     // draw frame
     graphics::draw_rectangle(position, size, Color { r: 0.025, g: 0.0, b: 0.05, a: 0.45 });
-
-    // draw all messages
-    let y_start = position.y + size.y - text_input_box_size.y - 5.0 * vh;
-    let mut formatted_messages: Vec<(String, ChatMessageType)> = Vec::new();
-    let mut reversed_recv_messages: Vec<(String, String, ChatMessageType)> = recv_messages_buffer.clone();
-    reversed_recv_messages.reverse();
-    for message in reversed_recv_messages {
-      let message_type = match message.2 {
-        ChatMessageType::Administrative => {"Admin"},
-        ChatMessageType::Private => {"Message"},
-        ChatMessageType::Group => {"Group"},
-        ChatMessageType::Team => {"Team"},
-        ChatMessageType::All => {"All"},
-      };
-      let mut formatted_message = format!("[{}] {}: {}", message_type, message.0, message.1);
-      while measure_text(&formatted_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width > size.x - margin {
-        let mut new_message = String::new();
-        while measure_text(&new_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width < size.x - margin {
-          new_message.insert(0, formatted_message.pop().expect("oopsies"));
-        }
-        formatted_messages.push((new_message, message.2.clone()));
-      }
-      formatted_messages.push((formatted_message, message.2.clone()));
-    }
-
-    if *scroll_index > formatted_messages.len() {
-      *scroll_index = formatted_messages.len() -1;
-    }
-    if formatted_messages.len() > 0 {
-      for m_index in *scroll_index..(*formatted_messages).len() {
-        let pos_y = y_start - ((m_index - *scroll_index) as f32) * 3.0 * vh;
-        if pos_y < position.y {
-          break;
-        }
-        let color = match formatted_messages[m_index].1 {
-          ChatMessageType::Administrative => YELLOW,
-          ChatMessageType::Private => PINK,
-          ChatMessageType::Group => GREEN,
-          ChatMessageType::Team => BLUE,
-          ChatMessageType::All => ORANGE,
-        };
-        draw_text(&formatted_messages[m_index].0, position.x, pos_y, 3.0 * vh, color);
-      }
-    }
-    let mouse_wheel = mouse_wheel();
-    if mouse_wheel.1 > 0.0
-    && *scroll_index < formatted_messages.len() {
-      *scroll_index += 1;
-    }
-    if mouse_wheel.1 < 0.0
-    && *scroll_index > 0 {
-      *scroll_index -= 1;
-    }
     
     // draw selected friend indicator
     //let selected_friend_indicator_size = Vector2 {x: size.x}
@@ -518,6 +466,61 @@ pub fn chatbox(
       // reset things
       recv_messages_buffer.push((username, chat_input_buffer.clone(), message_type));
       *chat_input_buffer = String::new();
+      *timer = Instant::now();
+    }
+  }
+  if *is_chatbox_open || timer.elapsed().as_secs_f32() < 10.0 {
+    // draw all messages
+    let y_start = position.y + size.y - text_input_box_size.y - 5.0 * vh;
+    let mut formatted_messages: Vec<(String, ChatMessageType)> = Vec::new();
+    let mut reversed_recv_messages: Vec<(String, String, ChatMessageType)> = recv_messages_buffer.clone();
+    reversed_recv_messages.reverse();
+    for message in reversed_recv_messages {
+      let message_type = match message.2 {
+        ChatMessageType::Administrative => {"Admin"},
+        ChatMessageType::Private => {"Message"},
+        ChatMessageType::Group => {"Group"},
+        ChatMessageType::Team => {"Team"},
+        ChatMessageType::All => {"All"},
+      };
+      let mut formatted_message = format!("[{}] {}: {}", message_type, message.0, message.1);
+      while measure_text(&formatted_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width > size.x - margin {
+        let mut new_message = String::new();
+        while measure_text(&new_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width < size.x - margin {
+          new_message.insert(0, formatted_message.pop().expect("oopsies"));
+        }
+        formatted_messages.push((new_message, message.2.clone()));
+      }
+      formatted_messages.push((formatted_message, message.2.clone()));
+    }
+
+    if *scroll_index > formatted_messages.len() {
+      *scroll_index = formatted_messages.len() -1;
+    }
+    if formatted_messages.len() > 0 {
+      for m_index in *scroll_index..(*formatted_messages).len() {
+        let pos_y = y_start - ((m_index - *scroll_index) as f32) * 3.0 * vh;
+        if pos_y < position.y {
+          break;
+        }
+        let color = match formatted_messages[m_index].1 {
+          ChatMessageType::Administrative => YELLOW,
+          ChatMessageType::Private => PINK,
+          ChatMessageType::Group => GREEN,
+          ChatMessageType::Team => BLUE,
+          ChatMessageType::All => ORANGE,
+        };
+        draw_text(&formatted_messages[m_index].0, position.x, pos_y, 3.0 * vh, color);
+      }
+    }
+    let mouse_wheel = mouse_wheel();
+    if mouse_wheel.1 > 0.0
+    && *scroll_index < formatted_messages.len() {
+      *scroll_index += 1;
+    }
+    if mouse_wheel.1 < 0.0
+    && *scroll_index > 0 {
+      *scroll_index -= 1;
     }
   }
 }

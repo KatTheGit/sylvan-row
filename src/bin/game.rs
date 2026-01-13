@@ -116,6 +116,8 @@ async fn main() {
   let mut friend_request_input: String = String::from("");
   let mut friend_request_input_selected: bool = false;
 
+  let mut chat_timer: Instant = Instant::now();
+
   // login fields
   let mut username: String = if settings.store_credentials {settings.saved_username.clone()} else {String::new()};
   let mut username_selected: bool = false;
@@ -304,7 +306,10 @@ async fn main() {
             // recieve packet
             let mut buffer: [u8; 2048] = [0; 2048];
             let len: usize = match server_stream.read(&mut buffer) {
-              Ok(0) => {println!("crap"); continue;}
+              Ok(0) => {
+                server_interaction.server_stream = None;
+                break;
+              }
               Ok(n) => {n}
               Err(err) => {
                 match err.kind() {
@@ -416,7 +421,10 @@ async fn main() {
             // recieve packet
             let mut buffer: [u8; 2048] = [0; 2048];
             let len: usize = match server_stream.read(&mut buffer) {
-              Ok(0) => {println!("crap"); continue;}
+              Ok(0) => {
+                server_interaction.server_stream = None;
+                break;
+              }
               Ok(n) => {n}
               Err(err) => {
                 match err.kind() {
@@ -622,6 +630,9 @@ async fn main() {
     if let Some(ref mut server_stream) = server_interaction.server_stream {
       let mut buffer: [u8; 2048] = [0; 2048];
       match server_stream.read(&mut buffer) {
+        Ok(0) => {
+          logged_in = false;
+        }
         Ok(len) => {
           let packets = network::tcp_decode_decrypt::<ServerToClientPacket>(buffer[..len].to_vec(), cipher_key.clone(), &mut last_nonce);
           let packets = match packets {
@@ -692,6 +703,7 @@ async fn main() {
                   }
                 }
                 server_interaction.recv_messages_buffer.push((sender, message, message_type));
+                chat_timer = Instant::now();
               }
               // lobby
               ServerToClient::LobbyInvite(inviting_user) => {
@@ -1019,7 +1031,7 @@ async fn main() {
     // chat box
     let chatbox_position = Vector2{x: 5.0 * vw, y: 20.0 * vh};
     let chatbox_size = Vector2{x: 30.0 * vw, y: 70.0 * vh};
-    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index, false);
+    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index, false, &mut chat_timer);
 
     // draw NOTIFICATIONS
     for n_index in 0..notifications.len() {
@@ -1075,6 +1087,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let kill_all_threads: Arc<Mutex<bool>> = Arc::new(Mutex::new(kill_all_threads));
 
   let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
+
+  let mut chat_timer: Instant = Instant::now();
 
   let gamemode_info: GameModeInfo = GameModeInfo::new();
   let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
@@ -1559,7 +1573,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // chat box
     let chatbox_position = Vector2{x: 5.0 * vw, y: 20.0 * vh};
     let chatbox_size = Vector2{x: 30.0 * vw, y: 70.0 * vh};
-    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, player_copy.username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index, true);
+    ui::chatbox(chatbox_position, chatbox_size, server_interaction.friend_list.clone(), &mut server_interaction.is_chatbox_open, &mut server_interaction.selected_friend, &mut server_interaction.recv_messages_buffer, &mut server_interaction.chat_input_buffer, &mut server_interaction.chat_selected, vh, player_copy.username.clone(), &mut packet_queue, &mut server_interaction.chat_scroll_index, true, &mut chat_timer);
 
 
     // Draw pause menu
@@ -1608,6 +1622,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
                   }
                 }
                 server_interaction.recv_messages_buffer.push((sender, message, message_type));
+                chat_timer = Instant::now();
               }
               ServerToClient::MatchEnded(_data) => {
                 // wait a bit to give the player time to process what happened.
