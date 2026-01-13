@@ -427,7 +427,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 let time_left = player.buffs[b_index].duration;
                 let strength = player.buffs[b_index].value;
                 raw_movement += direction * f32::powi(time_left, 1) * strength;
-                movement_legal = false;
+                //movement_legal = false;
               }
             }
 

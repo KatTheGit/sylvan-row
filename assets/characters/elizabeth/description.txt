@@ -5,7 +5,7 @@ PRIMARY - Cunning Knives
   Throws a knife that can bounce off walls. At
   the end of its trajectory, the knife stays
   on the ground. Only two knives can be on the
-  ground at one.
+  ground at once.
 SECONDARY - Thingymajig
   Creates a walking turret that moves in a
   direction and pinballs around while shooting

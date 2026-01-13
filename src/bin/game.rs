@@ -2079,6 +2079,14 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
           extra_speed += buff.value;
         }
+        if buff.buff_type == BuffType::Impulse {
+          // yeet
+          let direction = buff.direction.normalize();
+          // time left serves as impulse decay
+          let time_left = buff.duration;
+          let strength = buff.value;
+          movement_vector += direction * f32::powi(time_left, 1) * strength;
+        }
       }
       
       movement_vector.x *= (movement_speed + extra_speed) * delta_time;
