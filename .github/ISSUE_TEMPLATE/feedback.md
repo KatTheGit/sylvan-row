@@ -1,7 +1,7 @@
 ---
 name: Feedback
 about: Ideas, suggestions, balance complaints, bad UIs, anything you didn't like or
-  liked.
+  did like.
 title: ''
 labels: Game Feedback
 assignees: ''
