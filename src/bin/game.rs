@@ -249,6 +249,8 @@ async fn main() {
       // if button pressed
       if confirm && !confirm_button_check {
         confirm_button_check = true;
+        draw_text("Attempting connection...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
+        next_frame().await;
   
         if server_interaction.server_stream.is_none() {
   
