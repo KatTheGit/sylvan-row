@@ -169,23 +169,6 @@ async fn main() {
   };
 
   loop {
-    if server_interaction.server_stream.is_none() {
-
-      match TcpStream::connect(&server_ip) {
-        Ok(stream) => {
-          server_interaction.server_stream = Some(stream);
-          if let Some(ref server_stream) = server_interaction.server_stream {
-            server_stream.set_nonblocking(true).expect("idk");
-          }
-        },
-        Err(_err) => {
-          //println!("{:?}", err);
-          notifications.push(
-            ui::Notification { start_time: Instant::now(), text: String::from("Not connected to server."), duration: 0.0 }
-          );
-        },
-      };
-    }
 
     set_mouse_cursor(miniquad::CursorIcon::Default);
     vw = screen_width() / 100.0;
@@ -262,308 +245,328 @@ async fn main() {
           confirm = true;
         }
       }
-
+      
       // if button pressed
-      if let Some(ref mut server_stream) = server_interaction.server_stream { if confirm && !confirm_button_check {
+      if confirm && !confirm_button_check {
         confirm_button_check = true;
-
-        // save credentials
-        if settings.store_credentials {
-          settings.saved_username = username.clone();
-          save_password(&password, &username, &mut notifications);
-          settings.save();
-          //notifications.push(
-          //  Notification::new("Credentials saved.", 0.5)
-          //);
+  
+        if server_interaction.server_stream.is_none() {
+  
+          match TcpStream::connect(&server_ip) {
+            Ok(stream) => {
+              server_interaction.server_stream = Some(stream);
+              if let Some(ref server_stream) = server_interaction.server_stream {
+                server_stream.set_nonblocking(true).expect("idk");
+              }
+            },
+            Err(_err) => {
+              //println!("{:?}", err);
+              notifications.push(
+                ui::Notification { start_time: Instant::now(), text: String::from("No connection."), duration: 3.0 }
+              );
+            },
+          };
         }
 
-        let timeout_timer: Instant = Instant::now();
-
-        // all data
-        let mut client_rng = OsRng;
-
-        // used inside the listener loops to perform
-        // a double break
-        let mut error_occurred: bool = false;
-
-        // register
-        if registering {
-          // password check
-          // this is only a clientside check because:
-          // 1. the server doesn't know the plaintext password
-          // 2. if you bypass this just to have a shit password, you do you...
-          if !valid_password(password.clone()) {
-            notifications.push(
-              Notification::new("Unsafe password", 1.0)
-            );
-            username_selected = false;
-            password_selected = true;
-            next_frame().await;
-            continue;
+        if let Some(ref mut server_stream) = server_interaction.server_stream {
+          // save credentials
+          if settings.store_credentials {
+            settings.saved_username = username.clone();
+            save_password(&password, &username, &mut notifications);
+            settings.save();
+            //notifications.push(
+            //  Notification::new("Credentials saved.", 0.5)
+            //);
           }
-          if !valid_username(username.clone()) {
-            notifications.push(
-              Notification::new("Invalid username", 1.0)
-            );
-            username_selected = true;
-            password_selected = false;
-            next_frame().await;
-            continue;
-          }
-          // step 1
-          let client_registration_start_result = ClientRegistration::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("oops");
-          let message = client_registration_start_result.clone().message;
-          let message = ClientToServerPacket {
-            information: ClientToServer::RegisterRequestStep1(username.clone(), message)
-          };
-          match server_stream.write_all(&network::tcp_encode(message).expect("oops")) {
-            Ok(_) => {}
-            Err(_) => {
-              //registration failed.
+
+          let timeout_timer: Instant = Instant::now();
+
+          // all data
+          let mut client_rng = OsRng;
+
+          // used inside the listener loops to perform
+          // a double break
+          let mut error_occurred: bool = false;
+
+          // register
+          if registering {
+            // password check
+            // this is only a clientside check because:
+            // 1. the server doesn't know the plaintext password
+            // 2. if you bypass this just to have a shit password, you do you...
+            if !valid_password(password.clone()) {
+              notifications.push(
+                Notification::new("Unsafe password", 1.0)
+              );
+              username_selected = false;
+              password_selected = true;
               next_frame().await;
               continue;
             }
-          }
-          loop {
-            clear_background(WHITE);
-            draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
-
-            // recieve packet
-            let mut buffer: [u8; 2048] = [0; 2048];
-            let len: usize = match server_stream.read(&mut buffer) {
-              Ok(0) => {
-                server_interaction.server_stream = None;
-                break;
-              }
-              Ok(n) => {n}
-              Err(err) => {
-                match err.kind() {
-                  ErrorKind::WouldBlock => {
-                    if timeout_timer.elapsed().as_secs_f32() > 10.0 {
-                      notifications.push(Notification::new("Timed out", 1.0));
-                      break;
-                    }
-                    next_frame().await;
-                    continue;
-                  }
-                  _ => {
-                    break;
-                  }
-                }
-              }
+            if !valid_username(username.clone()) {
+              notifications.push(
+                Notification::new("Invalid username", 1.0)
+              );
+              username_selected = true;
+              password_selected = false;
+              next_frame().await;
+              continue;
+            }
+            // step 1
+            let client_registration_start_result = ClientRegistration::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("oops");
+            let message = client_registration_start_result.clone().message;
+            let message = ClientToServerPacket {
+              information: ClientToServer::RegisterRequestStep1(username.clone(), message)
             };
-            if len > 2048 {
-              next_frame().await;
-              continue;
-            }
-            let packets = network::tcp_decode::<ServerToClientPacket>(buffer[..len].to_vec());
-            let packets = match packets {
-              Ok(packets) => packets,
-              Err(_err) => {
+            match server_stream.write_all(&network::tcp_encode(message).expect("oops")) {
+              Ok(_) => {}
+              Err(_) => {
+                //registration failed.
                 next_frame().await;
                 continue;
               }
-            };
-            for packet in packets {
-              match packet.information {
+            }
+            loop {
+              clear_background(WHITE);
+              draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
 
-                // register finish (step 3)
-                ServerToClient::RegisterResponse1(server_message) => {
-                  let client_registration_finish_result = client_registration_start_result.clone().state.finish(
-                    &mut client_rng,
-                    password.as_bytes(),
-                    server_message,
-                    ClientRegistrationFinishParameters::default(),
-                  ).expect("idgaf");
-                  let registration_upload = client_registration_finish_result.message;
-                  let message = ClientToServerPacket {
-                    information: ClientToServer::RegisterRequestStep2(registration_upload)
-                  };
-                  match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
-                    Ok(_) => {}
-                    Err(_) => {
-                      //registration failed.
-                      println!("hello");
+              // recieve packet
+              let mut buffer: [u8; 2048] = [0; 2048];
+              let len: usize = match server_stream.read(&mut buffer) {
+                Ok(0) => {
+                  server_interaction.server_stream = None;
+                  break;
+                }
+                Ok(n) => {n}
+                Err(err) => {
+                  match err.kind() {
+                    ErrorKind::WouldBlock => {
+                      if timeout_timer.elapsed().as_secs_f32() > 10.0 {
+                        notifications.push(Notification::new("Timed out", 1.0));
+                        break;
+                      }
+                      next_frame().await;
                       continue;
                     }
-                  }
-                  // register successful
-                  notifications.push(
-                    Notification::new("Account created!", 1.5)
-                  );
-                  registering = false;  
-                }
-
-                // error
-                ServerToClient::InteractionRefused(reason) => {
-                  notifications.push(
-                    Notification { start_time: Instant::now(), text: match reason {
-                      RefusalReason::InternalError => String::from("Internal Server Error"),
-                      RefusalReason::InvalidUsername => String::from("Invalid Username"),
-                      RefusalReason::UsernameTaken => String::from("Username Taken"),
-                      RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
-                      _ => String::from("Unexpected Error"),
-                    }, duration: 1.0 }
-                  );
-                  error_occurred = true;
-                  username_selected = true;
-                  password_selected = false;
-                  break;
-                }
-                // any other packet
-                _ => {}
-              }
-            }
-            if error_occurred {
-              break;
-            }
-            if registering == false {
-              break;
-            }
-            next_frame().await;
-          }
-        }
-        // login
-        else {
-          let client_login_start_result = ClientLogin::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("Oops");
-
-          let message = client_login_start_result.message.clone();
-          let message = ClientToServerPacket {
-            information: ClientToServer::LoginRequestStep1(username.clone(), message)
-          };
-          match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
-            Ok(_) => {}
-            Err(_) => {
-              //registration failed.
-              println!("hello");
-              continue;
-            }
-          }
-
-          loop {
-            clear_background(WHITE);
-            draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
-
-            // recieve packet
-            let mut buffer: [u8; 2048] = [0; 2048];
-            let len: usize = match server_stream.read(&mut buffer) {
-              Ok(0) => {
-                server_interaction.server_stream = None;
-                break;
-              }
-              Ok(n) => {n}
-              Err(err) => {
-                match err.kind() {
-                  ErrorKind::WouldBlock => {
-                    if timeout_timer.elapsed().as_secs_f32() > 10.0 {
-                      notifications.push(Notification::new("Timed out", 1.0));
+                    _ => {
                       break;
                     }
-                    next_frame().await;
-                    continue;
-                  }
-                  _ => {
-                    break;
                   }
                 }
-              }
-            };
-            if len > 2048 {
-              next_frame().await;
-              continue;
-            }
-            let packets = network::tcp_decode::<ServerToClientPacket>(buffer[..len].to_vec());
-            let packets = match packets {
-              Ok(packets) => packets,
-              Err(_err) => {
+              };
+              if len > 2048 {
                 next_frame().await;
                 continue;
               }
-            };
-            for packet in packets {
-              match packet.information {
+              let packets = network::tcp_decode::<ServerToClientPacket>(buffer[..len].to_vec());
+              let packets = match packets {
+                Ok(packets) => packets,
+                Err(_err) => {
+                  next_frame().await;
+                  continue;
+                }
+              };
+              for packet in packets {
+                match packet.information {
 
-                // login finish (step 3)
-                ServerToClient::LoginResponse1(server_response) => {
-                  println!("reached step 3");
-                  let client_login_finish_result = match client_login_start_result.clone().state.finish(
-                    &mut client_rng,
-                    password.as_bytes(),
-                    server_response,
-                    ClientLoginFinishParameters::default(),
-                  ) {
-                    Ok(result) => {result},
-                    Err(_err) => {
-                      notifications.push(
-                        Notification { start_time: Instant::now(), text: String::from("Wrong password"), duration: 1.5 }
-                      );
-                      username_selected = false;
-                      password_selected = true;
-                      println!("yo, wrong password");
-                      next_frame().await;
-                      error_occurred = true;
-                      break;
+                  // register finish (step 3)
+                  ServerToClient::RegisterResponse1(server_message) => {
+                    let client_registration_finish_result = client_registration_start_result.clone().state.finish(
+                      &mut client_rng,
+                      password.as_bytes(),
+                      server_message,
+                      ClientRegistrationFinishParameters::default(),
+                    ).expect("idgaf");
+                    let registration_upload = client_registration_finish_result.message;
+                    let message = ClientToServerPacket {
+                      information: ClientToServer::RegisterRequestStep2(registration_upload)
+                    };
+                    match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
+                      Ok(_) => {}
+                      Err(_) => {
+                        //registration failed.
+                        println!("hello");
+                        continue;
+                      }
                     }
-                  };
-                  let session_key = client_login_finish_result.session_key;
-                  
-                  // Shrink PAKE key
-                  // put this in a function later
-                  let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
-                  let prk = salt.extract(&session_key);
-                  let okm = prk.expand(&[], hkdf::HKDF_SHA256).unwrap();
-                  let mut key_bytes = [0u8; 32];
-                  okm.fill(&mut key_bytes).unwrap();
-                  let key = Vec::from(&key_bytes);
-                  cipher_key = key;
-                  
-                  let credential_finalization = client_login_finish_result.message;
-                  let message = ClientToServerPacket {
-                    information: ClientToServer::LoginRequestStep2(credential_finalization)
-                  };
-                  match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
-                    Ok(_) => {}
-                    Err(_) => {
-                      error_occurred = true;
+                    // register successful
+                    notifications.push(
+                      Notification::new("Account created!", 1.5)
+                    );
+                    registering = false;  
+                  }
+
+                  // error
+                  ServerToClient::InteractionRefused(reason) => {
+                    notifications.push(
+                      Notification { start_time: Instant::now(), text: match reason {
+                        RefusalReason::InternalError => String::from("Internal Server Error"),
+                        RefusalReason::InvalidUsername => String::from("Invalid Username"),
+                        RefusalReason::UsernameTaken => String::from("Username Taken"),
+                        RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
+                        _ => String::from("Unexpected Error"),
+                      }, duration: 1.0 }
+                    );
+                    error_occurred = true;
+                    username_selected = true;
+                    password_selected = false;
+                    break;
+                  }
+                  // any other packet
+                  _ => {}
+                }
+              }
+              if error_occurred {
+                break;
+              }
+              if registering == false {
+                break;
+              }
+              next_frame().await;
+            }
+          }
+          // login
+          else {
+            let client_login_start_result = ClientLogin::<DefaultCipherSuite>::start(&mut client_rng, password.as_bytes()).expect("Oops");
+
+            let message = client_login_start_result.message.clone();
+            let message = ClientToServerPacket {
+              information: ClientToServer::LoginRequestStep1(username.clone(), message)
+            };
+            match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
+              Ok(_) => {}
+              Err(_) => {
+                //registration failed.
+                println!("hello");
+                continue;
+              }
+            }
+
+            loop {
+              clear_background(WHITE);
+              draw_text("Processing...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
+
+              // recieve packet
+              let mut buffer: [u8; 2048] = [0; 2048];
+              let len: usize = match server_stream.read(&mut buffer) {
+                Ok(0) => {
+                  server_interaction.server_stream = None;
+                  break;
+                }
+                Ok(n) => {n}
+                Err(err) => {
+                  match err.kind() {
+                    ErrorKind::WouldBlock => {
+                      if timeout_timer.elapsed().as_secs_f32() > 10.0 {
+                        notifications.push(Notification::new("Timed out", 1.0));
+                        break;
+                      }
+                      next_frame().await;
+                      continue;
+                    }
+                    _ => {
                       break;
                     }
                   }
-                  logged_in = true;
-                  // break out of this loop, to complete login by going back
-                  // to the main loop
-                  break;
                 }
-
-                // error
-                ServerToClient::InteractionRefused(reason) => {
-                  notifications.push(
-                    Notification { start_time: Instant::now(), text: match reason {
-                      RefusalReason::InternalError => String::from("Internal Server Error"),
-                      RefusalReason::InvalidUsername => String::from("Invalid Username"),
-                      RefusalReason::UsernameTaken => String::from("Username Taken"),
-                      RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
-                      _ => String::from("Unexpected Error"),
-                    }, duration: 1.5 }
-                  );
-                  username_selected = true;
-                  password_selected = false;
-                  error_occurred = true;
-                  break;
-                }
-                // any other packet
-                _ => {}
+              };
+              if len > 2048 {
+                next_frame().await;
+                continue;
               }
+              let packets = network::tcp_decode::<ServerToClientPacket>(buffer[..len].to_vec());
+              let packets = match packets {
+                Ok(packets) => packets,
+                Err(_err) => {
+                  next_frame().await;
+                  continue;
+                }
+              };
+              for packet in packets {
+                match packet.information {
+
+                  // login finish (step 3)
+                  ServerToClient::LoginResponse1(server_response) => {
+                    println!("reached step 3");
+                    let client_login_finish_result = match client_login_start_result.clone().state.finish(
+                      &mut client_rng,
+                      password.as_bytes(),
+                      server_response,
+                      ClientLoginFinishParameters::default(),
+                    ) {
+                      Ok(result) => {result},
+                      Err(_err) => {
+                        notifications.push(
+                          Notification { start_time: Instant::now(), text: String::from("Wrong password"), duration: 1.5 }
+                        );
+                        username_selected = false;
+                        password_selected = true;
+                        println!("yo, wrong password");
+                        next_frame().await;
+                        error_occurred = true;
+                        break;
+                      }
+                    };
+                    let session_key = client_login_finish_result.session_key;
+                    
+                    // Shrink PAKE key
+                    // put this in a function later
+                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+                    let prk = salt.extract(&session_key);
+                    let okm = prk.expand(&[], hkdf::HKDF_SHA256).unwrap();
+                    let mut key_bytes = [0u8; 32];
+                    okm.fill(&mut key_bytes).unwrap();
+                    let key = Vec::from(&key_bytes);
+                    cipher_key = key;
+                    
+                    let credential_finalization = client_login_finish_result.message;
+                    let message = ClientToServerPacket {
+                      information: ClientToServer::LoginRequestStep2(credential_finalization)
+                    };
+                    match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
+                      Ok(_) => {}
+                      Err(_) => {
+                        error_occurred = true;
+                        break;
+                      }
+                    }
+                    logged_in = true;
+                    // break out of this loop, to complete login by going back
+                    // to the main loop
+                    break;
+                  }
+
+                  // error
+                  ServerToClient::InteractionRefused(reason) => {
+                    notifications.push(
+                      Notification { start_time: Instant::now(), text: match reason {
+                        RefusalReason::InternalError => String::from("Internal Server Error"),
+                        RefusalReason::InvalidUsername => String::from("Invalid Username"),
+                        RefusalReason::UsernameTaken => String::from("Username Taken"),
+                        RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
+                        _ => String::from("Unexpected Error"),
+                      }, duration: 1.5 }
+                    );
+                    username_selected = true;
+                    password_selected = false;
+                    error_occurred = true;
+                    break;
+                  }
+                  // any other packet
+                  _ => {}
+                }
+              }
+              if error_occurred {
+                break;
+              }
+              if logged_in {
+                break;
+              }
+              next_frame().await;
             }
-            if error_occurred {
-              break;
-            }
-            if logged_in {
-              break;
-            }
-            next_frame().await;
           }
         }
-      }}
+      }
       // draw notifications
       for n_index in 0..notifications.len() {
         notifications[n_index].draw(vh, vw, 5.0*vh, n_index);
@@ -578,9 +581,9 @@ async fn main() {
       // client spins a lot and lags out the whole user's desktop which isn't
       // very "i promise my game is not malware"-like.
       // this is an ugly fix.
-      if get_frame_time() < (1.0 / 30.0) {
-        std::thread::sleep(Duration::from_secs_f32(1.0/30.0 - get_frame_time()));
-      }
+      //if get_frame_time() < (1.0 / 30.0) {
+      //  std::thread::sleep(Duration::from_secs_f32(1.0/30.0 - get_frame_time()));
+      //}
       next_frame().await;
       // end early
       continue;
