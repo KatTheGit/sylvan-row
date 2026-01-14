@@ -128,7 +128,7 @@ async fn main() {
 
   // login fields
   let mut username: String = if settings.store_credentials {settings.saved_username.clone()} else {String::new()};
-  let mut username_selected: bool = false;
+  let mut username_selected: bool = true;
   let mut password: String = String::from("");
   let mut password_selected: bool = false;
   let mut show_password: bool = false;
@@ -245,10 +245,23 @@ async fn main() {
         settings.save();
       }
       // confirm button for either action
-      let confirm = ui::button(
+      let mut confirm = ui::button(
         Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh, vh
       );
       if !confirm { confirm_button_check = false; }
+
+      if get_keys_pressed().contains(&KeyCode::Enter) {
+        if username_selected {
+          username_selected = false;
+          password_selected = true;
+        }
+        else if password_selected {
+          confirm = true;
+        }
+        else {
+          confirm = true;
+        }
+      }
 
       // if button pressed
       if let Some(ref mut server_stream) = server_interaction.server_stream { if confirm && !confirm_button_check {
@@ -283,6 +296,8 @@ async fn main() {
             notifications.push(
               Notification::new("Unsafe password", 1.0)
             );
+            username_selected = false;
+            password_selected = true;
             next_frame().await;
             continue;
           }
@@ -290,6 +305,8 @@ async fn main() {
             notifications.push(
               Notification::new("Invalid username", 1.0)
             );
+            username_selected = true;
+            password_selected = false;
             next_frame().await;
             continue;
           }
@@ -389,6 +406,8 @@ async fn main() {
                     }, duration: 1.0 }
                   );
                   error_occurred = true;
+                  username_selected = true;
+                  password_selected = false;
                   break;
                 }
                 // any other packet
@@ -478,6 +497,8 @@ async fn main() {
                       notifications.push(
                         Notification { start_time: Instant::now(), text: String::from("Wrong password"), duration: 1.5 }
                       );
+                      username_selected = false;
+                      password_selected = true;
                       println!("yo, wrong password");
                       next_frame().await;
                       error_occurred = true;
@@ -524,6 +545,8 @@ async fn main() {
                       _ => String::from("Unexpected Error"),
                     }, duration: 1.5 }
                   );
+                  username_selected = true;
+                  password_selected = false;
                   error_occurred = true;
                   break;
                 }
