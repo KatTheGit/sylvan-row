@@ -170,6 +170,11 @@ async fn main() {
 
   loop {
 
+    if get_keys_pressed().contains(&KeyCode::F11) {
+      fullscreen = !fullscreen;
+      set_fullscreen(fullscreen);
+    }
+
     set_mouse_cursor(miniquad::CursorIcon::Default);
     vw = screen_width() / 100.0;
     vh = screen_height() / 100.0;
@@ -1092,7 +1097,8 @@ async fn main() {
       //return;
     } else {
       escape_already_pressed = false;
-    } if keys.contains(&Keycode::F11) {
+    }
+    if keys.contains(&Keycode::F11) {
       if toggle_time.elapsed().as_secs_f32() > 0.05 {
         fullscreen = !fullscreen;
         set_fullscreen(fullscreen);
@@ -1202,6 +1208,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 
   let mut prev_gamemode_info: GameModeInfo = GameModeInfo::new();
 
+  let mut game_ended: bool = false;
+  let mut game_ended_timer = Instant::now();
+  let mut winning_team = Team::Blue;
+
   // Main thread
   loop {
 
@@ -1284,9 +1294,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // for now this is just simple linear interpolation, no shenanigans yet.
     for player in other_players.iter_mut() {
       let distance = player.interpol_next - player.interpol_prev;
-      let period = PACKET_INTERVAL;
-      let speed = distance / period;
-      player.position += speed * get_frame_time();
+      //let period = PACKET_INTERVAL;
+      //let speed = distance / period;
+      let speed = character_properties[&player.character].speed * player.movement_direction.magnitude();
+      player.position += distance.normalize() * speed * get_frame_time();
     }
 
     let mut game_objects_copy = game_objects.clone();
@@ -1536,12 +1547,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     } else if gamemode_info_main.time < 5 {
       prev_gamemode_info = gamemode_info_main.clone();
     }
-    if gamemode_info_main.rounds_won_red >= ROUNDS_TO_WIN {
-      draw_text("Red wins the game!", 20.0*vh, 50.0*vh, 15.0*vh, RED);
-    }
-    if gamemode_info_main.rounds_won_blue >= ROUNDS_TO_WIN {
-      draw_text("Blue wins the game!", 20.0*vh, 50.0*vh, 15.0*vh, BLUE);
-    }
+    //if gamemode_info_main.rounds_won_red >= ROUNDS_TO_WIN {
+    //  draw_text("Red wins the game!", 20.0*vh, 50.0*vh, 15.0*vh, RED);
+    //}
+    //if gamemode_info_main.rounds_won_blue >= ROUNDS_TO_WIN {
+    //  draw_text("Blue wins the game!", 20.0*vh, 50.0*vh, 15.0*vh, BLUE);
+    //}
 
     // let timer_width: f32 = 5.0;
     draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.5 });
@@ -1659,15 +1670,11 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
                 server_interaction.recv_messages_buffer.push((sender, message, message_type));
                 chat_timer = Instant::now();
               }
-              ServerToClient::MatchEnded(_data) => {
+              ServerToClient::MatchEnded(data) => {
                 // wait a bit to give the player time to process what happened.
-                std::thread::sleep(Duration::from_secs_f32(2.0));
-                {
-                  // close the game and go back to the menu.
-                  // kill_all_threads is like "return" but gracefully stops all other threads.
-                  let mut kill_all_threads = kill_all_threads.lock().unwrap();
-                  *kill_all_threads = true;
-                }
+                game_ended = true;
+                game_ended_timer = Instant::now();
+                winning_team = data.winning_team;
               }
               _ => {}
             }
@@ -1691,6 +1698,22 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
         *main_nonce += 1;
       }
       packet_queue = Vec::new();
+    }
+    if game_ended {
+      if winning_team == player_copy.team {
+        draw_text("Victory", 40.0*vw, 50.0*vh, 15.0*vh, BLUE);
+      }
+      else {
+        draw_text("Defeat", 40.0*vw, 50.0*vh, 15.0*vh, RED);
+      }
+    }
+    if game_ended && game_ended_timer.elapsed().as_secs_f32() > 4.0 {
+      {
+        // close the game and go back to the menu.
+        // kill_all_threads is like "return" but gracefully stops all other threads.
+        let mut kill_all_threads = kill_all_threads.lock().unwrap();
+        *kill_all_threads = true;
+      }
     }
     next_frame().await;
   }
@@ -1868,6 +1891,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
           // previous position
           recieved_players[player_index].position = other_players[player_index].position;
           recieved_players[player_index].interpol_prev = other_players[player_index].position;
+          //recieved_players[player_index].position = other_players[player_index].interpol_next;
+          //recieved_players[player_index].interpol_prev = other_players[player_index].interpol_next;
         }
         *other_players = recieved_players;
         drop(other_players);

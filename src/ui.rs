@@ -497,6 +497,9 @@ pub fn chatbox(
     if *scroll_index > formatted_messages.len() {
       *scroll_index = formatted_messages.len() -1;
     }
+    if !*is_chatbox_open {
+      formatted_messages.truncate(5);
+    }
     if formatted_messages.len() > 0 {
       for m_index in *scroll_index..(*formatted_messages).len() {
         let pos_y = y_start - ((m_index - *scroll_index) as f32) * 3.0 * vh;

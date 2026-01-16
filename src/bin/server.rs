@@ -588,7 +588,7 @@ async fn main() {
                                       ServerToClientPacket {
                                         information: ServerToClient::MatchEnded(
                                           MatchEndResult {
-
+                                            winning_team,
                                           }
                                         )
                                       }
