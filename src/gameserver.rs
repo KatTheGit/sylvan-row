@@ -169,7 +169,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           let mut movement_legal = true;
           let previous_position = player.position.clone();
 
-          //let wait_time = 0.03 * crappy_random();
+          //let wait_time = 0.02 * crappy_random();
           //std::thread::sleep(Duration::from_secs_f64(wait_time));
           
           // (vscode) MARK: Dashing Legality
@@ -271,7 +271,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                           position: player.position,
                           direction: Vector2::new(),
                           to_be_deleted: false,
-                          owner_port: players[p_index].port,
+                          owner_username: players[p_index].username.clone(),
                           hitpoints: 1,
                           lifetime: characters[&Character::Hernani].dash_cooldown,
                           players: Vec::new(),
@@ -290,7 +290,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                             position: player.position,
                             direction: Vector2::new(),
                             to_be_deleted: false,
-                            owner_port: players[p_index].port,
+                            owner_username: players[p_index].username.clone(),
                             hitpoints: 0,
                             lifetime: characters[&Character::Hernani].dash_distance / characters[&Character::Hernani].dash_speed + 0.25, // give it a "grace" period because I'm bored
                             players: Vec::new(),
@@ -305,7 +305,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                       // that follows her.
                       for index in 0..game_objects.len() {
                         if game_objects[index].object_type == GameObjectType::ElizabethProjectileGround
-                        && game_objects[index].owner_port == player.port {
+                        && game_objects[index].owner_username == player.username {
                           game_objects[index].to_be_deleted = true;
                           let object_clone = game_objects[index].clone();
                           game_objects.push(
@@ -315,7 +315,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                               position: object_clone.position,
                               direction: Vector2::new(),
                               to_be_deleted: false,
-                              owner_port: object_clone.owner_port,
+                              owner_username: object_clone.owner_username,
                               hitpoints: 0,
                               lifetime: 15.0,
                               players: Vec::new(),
@@ -918,8 +918,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         let mut objects_to_consider: Vec<usize> = Vec::new();
         for o_index in 0..game_objects.len() {
           if game_objects[o_index].object_type == GameObjectType::ElizabethProjectileGround {
-            if index_by_port(game_objects[o_index].owner_port, players.clone())
-            == p_index {
+            if game_objects[o_index].owner_username == players[p_index].username {
               objects_to_consider.push(o_index);
             }
           }
@@ -992,7 +991,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -1011,7 +1010,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -1031,7 +1030,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -1045,7 +1044,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               position: players[p_index].position,
               direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               hitpoints: 1, // ricochet projectiles use hitpoints to keep track of wether they've already bounced
               lifetime: character.primary_range / character.primary_shot_speed,
               players: vec![],
@@ -1063,7 +1062,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 direction: players[p_index].aim_direction,
                 to_be_deleted: false,
                 hitpoints: 0,
-                owner_port: players[p_index].port,
+                owner_username: players[p_index].username.clone(),
                 lifetime: character.primary_range / character.primary_shot_speed,
                 players: Vec::new(),
                 traveled_distance: 0.0,
@@ -1079,7 +1078,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               lifetime: match players[p_index].stacks {
                 0 => character.primary_range   / character.primary_shot_speed,
                 1 => character.primary_range_2 / character.primary_shot_speed,
@@ -1099,7 +1098,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               direction: players[p_index].aim_direction,
               to_be_deleted: false,
               hitpoints: 0,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               lifetime: character.primary_range / character.primary_shot_speed,
               players: Vec::new(),
               traveled_distance: 0.0,
@@ -1127,7 +1126,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               position: player_info.position,
               direction: Vector2::new(),
               to_be_deleted: false,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               hitpoints: 0,
               lifetime: 5.0,
               players: vec![],
@@ -1181,7 +1180,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                   position: *desired_placement_position,
                   direction: Vector2::new(),
                   to_be_deleted: false,
-                  owner_port: players[p_index].port,
+                  owner_username: players[p_index].username.clone(),
                   hitpoints: 20,
                   lifetime: 5.0,
                   players: vec![],
@@ -1209,9 +1208,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             // (but for copyright reasons it only looks like one and isn't one!!!!!!)
 
             // beforehand we need to check if there's already one in the game, and delete it.
-            for index in 0..game_objects.len() {
-              if game_objects[index].owner_port == players[p_index].port {
-                game_objects[index].to_be_deleted = true;
+            for o_index in 0..game_objects.len() {
+              if game_objects[o_index].owner_username == players[p_index].username {
+                game_objects[o_index].to_be_deleted = true;
               }
             }
 
@@ -1223,7 +1222,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               position: players[p_index].position,
               direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              owner_port: players[p_index].port,
+              owner_username: players[p_index].username.clone(),
               hitpoints: 0,
               lifetime: character.secondary_cooldown,
               players: vec![],
@@ -1235,47 +1234,46 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             if players[p_index].secondary_charge > 0 
             && players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
 
-                // spawn a shield object, if one can't be found already.
-                
-                // look for a shield
-                let position: Vector2 = Vector2 {
-                  x: players[p_index].position.x + players[p_index].aim_direction.x * TILE_SIZE,
-                  y: players[p_index].position.y + players[p_index].aim_direction.y * TILE_SIZE,
-                };
-                let mut shield_found = false;
-                for object_index in 0..game_objects.len() {
-                  // if it's a shield, and it's ours
-                  if game_objects[object_index].object_type == GameObjectType::WiroShield
-                  && index_by_port(game_objects[object_index].owner_port, players.clone()) == p_index {
-                    
-                    game_objects[object_index].direction = players[p_index].aim_direction;
-                    game_objects[object_index].position = position;
-                    shield_found = true;
-                    break;
-                  }
+              // spawn a shield object, if one can't be found already.
+              
+              // look for a shield
+              let position: Vector2 = Vector2 {
+                x: players[p_index].position.x + players[p_index].aim_direction.x * TILE_SIZE,
+                y: players[p_index].position.y + players[p_index].aim_direction.y * TILE_SIZE,
+              };
+              let mut shield_found = false;
+              for o_index in 0..game_objects.len() {
+                // if it's a shield, and it's ours
+                if game_objects[o_index].object_type == GameObjectType::WiroShield
+                && game_objects[o_index].owner_username == players[p_index].username {
+                  
+                  game_objects[o_index].direction = players[p_index].aim_direction;
+                  game_objects[o_index].position = position;
+                  shield_found = true;
+                  break;
                 }
-                if !shield_found {
-                  game_objects.push(GameObject {
-                    object_type: GameObjectType::WiroShield,
-                    size: Vector2 { x: TILE_SIZE*0.5, y: characters[&Character::Wiro].secondary_range },
-                    position: position,
-                    direction: players[p_index].aim_direction,
-                    to_be_deleted: false,
-                    owner_port: players[p_index].port,
-                    hitpoints: 0,
-                    lifetime: f32::INFINITY,
-                    players: vec![],
-                    traveled_distance: 0.0,
-                  });
-                
+              }
+              if !shield_found {
+                game_objects.push(GameObject {
+                  object_type: GameObjectType::WiroShield,
+                  size: Vector2 { x: TILE_SIZE*0.5, y: characters[&Character::Wiro].secondary_range },
+                  position: position,
+                  direction: players[p_index].aim_direction,
+                  to_be_deleted: false,
+                  owner_username: players[p_index].username.clone(),
+                  hitpoints: 0,
+                  lifetime: f32::INFINITY,
+                  players: vec![],
+                  traveled_distance: 0.0,
+                });
               }
             } else {
               // delete the shield, if it exists.
-              for object_index in 0..game_objects.len() {
+              for o_index in 0..game_objects.len() {
                 // if it's a shield, and it's ours
-                if game_objects[object_index].object_type == GameObjectType::WiroShield
-                && index_by_port(game_objects[object_index].owner_port, players.clone()) == p_index {
-                  game_objects[object_index].to_be_deleted = true;
+                if game_objects[o_index].object_type == GameObjectType::WiroShield
+                && game_objects[o_index].owner_username == players[p_index].username {
+                  game_objects[o_index].to_be_deleted = true;
                   // if our secondary charge is 0, also set the cooldown
                   if players[p_index].secondary_charge == 0 {
                     players[p_index].secondary_cast_time = Instant::now();
@@ -1301,7 +1299,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 position: players[p_index].position + players[p_index].aim_direction * characters[&Character::Temerity].secondary_range,
                 direction: players[p_index].aim_direction * -1.0,
                 to_be_deleted: false,
-                owner_port: players[p_index].port,
+                owner_username: players[p_index].username.clone(),
                 hitpoints: 0,
                 lifetime,
                 players: vec![],
@@ -1321,11 +1319,11 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       else {
         match players[p_index].character {
           Character::Wiro => {
-            for object_index in 0..game_objects.len() {
+            for o_index in 0..game_objects.len() {
               // if it's a shield, and it's ours
-              if game_objects[object_index].object_type == GameObjectType::WiroShield
-              && index_by_port(game_objects[object_index].owner_port, players.clone()) == p_index {
-                game_objects[object_index].to_be_deleted = true;
+              if game_objects[o_index].object_type == GameObjectType::WiroShield
+              && game_objects[o_index].owner_username == players[p_index].username {
+                game_objects[o_index].to_be_deleted = true;
                 players[p_index].secondary_cast_time = Instant::now();
                 break;
               }
@@ -1370,7 +1368,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             position: orb_position,
             direction: Vector2::new(),
             to_be_deleted: false,
-            owner_port: 0,
+            owner_username: String::new(),
             hitpoints: 60,
             lifetime: f32::INFINITY,
             players: Vec::new(),
@@ -1392,20 +1390,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         GameObjectType::HernaniLandmine => {
           // if the landmine has existed for long enough...
           //if game_objects[o_index].lifetime < (characters[&Character::Hernani].dash_cooldown - 0.5) {
-            for p_index in 0..players.len() {
-              // if not on same team
-              if players[p_index].team != players[index_by_port(game_objects[o_index].owner_port,players.clone())].team {
-                // if within range
-                let landmine_range = characters[&Character::Hernani].primary_range_2;
-                if Vector2::distance(game_objects[o_index].position, players[p_index].position)
-                < landmine_range {
-                  players[p_index].damage(characters[&Character::Hernani].primary_damage_2, characters.clone());
-                  game_objects[o_index].to_be_deleted = true;
-                  break;
-                }
+          for p_index in 0..players.len() {
+            // if not on same team
+            if players[p_index].team != players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team {
+              // if within range
+              let landmine_range = characters[&Character::Hernani].primary_range_2;
+              if Vector2::distance(game_objects[o_index].position, players[p_index].position)
+              < landmine_range {
+                players[p_index].damage(characters[&Character::Hernani].primary_damage_2, characters.clone());
+                game_objects[o_index].to_be_deleted = true;
+                break;
               }
             }
-          //}
+          }
         }
 
         // HEALER GIRL primary
@@ -1419,11 +1416,11 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               let range: f32 = characters[&Character::Raphaelle].primary_range;
               if Vector2::distance(
                 players[p_index].position,
-                players[index_by_port(game_objects[o_index].owner_port,players.clone())].position
+                players[index_by_username(&game_objects[o_index].owner_username,players.clone())].position
               ) < range &&
-                players[p_index].team == players[index_by_port(game_objects[o_index].owner_port,players.clone())].team {
+                players[p_index].team == players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team {
                 // Anyone within range
-                if p_index == index_by_port(game_objects[o_index].owner_port,players.clone()) {
+                if p_index == index_by_username(&game_objects[o_index].owner_username,players.clone()) {
                   // if self, heal less
                   let heal_self: u8 = characters[&Character::Raphaelle].primary_lifesteal;
                   players[p_index].heal(heal_self, characters.clone());
@@ -1447,7 +1444,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             characters[&Character::Raphaelle].primary_damage_2, 255, false, f32::INFINITY, f32::INFINITY);
           if hit {
             // restore dash charge (0.5s)
-            let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
+            let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
             players[owner_index].last_dash_time -= Duration::from_millis(450);
           }
         }
@@ -1458,9 +1455,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           // every second apply heal
           for p_index in 0..players.len() {
             // if on same team
-            if players[p_index].team == players[index_by_port(game_objects[o_index].owner_port,players.clone())].team {
+            if players[p_index].team == players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team {
               // if within range
-              if Vector2::distance(game_objects[o_index].position, players[index_by_port(game_objects[o_index].owner_port,players.clone())].position)
+              if Vector2::distance(game_objects[o_index].position, players[index_by_username(&game_objects[o_index].owner_username,players.clone())].position)
               < (game_objects[o_index].size.x / 2.0) {
                 // heal up
                 if tick {
@@ -1504,8 +1501,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         // ELIZABETH primary but recalled
         GameObjectType::ElizabethProjectileGroundRecalled => {
           // needs to move towards owner
-          let owner_port = game_objects[o_index].owner_port;
-          let owner_index = index_by_port(owner_port, players.clone());
+          let owner_username = game_objects[o_index].owner_username.clone();
+          let owner_index = index_by_username(&owner_username, players.clone());
           let target_position: Vector2 = players[owner_index].position;
           let object_position: Vector2 = game_objects[o_index].position;
           let speed = characters[&players[owner_index].character].primary_shot_speed;
@@ -1556,7 +1553,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         GameObjectType::ElizabethTurret => {
           // PROJECTILES
           // shoot projectiles. use secondary_cast_time as cooldown counter.
-          let owner = index_by_port(game_objects[o_index].owner_port, players.clone());
+          let owner = index_by_username(&game_objects[o_index].owner_username,players.clone());
           let owner_team = players[owner].team;
           let object_pos = game_objects[o_index].position;
           let range = characters[&Character::Elizabeth].secondary_range;
@@ -1574,7 +1571,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                   position: object_pos,
                   direction: Vector2::difference(object_pos, player.position).normalize(),
                   to_be_deleted: false,
-                  owner_port: players[owner].port,
+                  owner_username: players[owner].username.clone(),
                   hitpoints: 0,
                   lifetime: range/speed,
                   players: vec![],
@@ -1653,10 +1650,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             let object_type = game_objects[victim_object_index].object_type;
             // if one of these objects is one we can counter...
             if countered_projectiles.contains(&object_type) {
-              let obj1_owner_team = players[index_by_port(game_objects[o_index  ].owner_port, players.clone())].team;
-              let obj1_owner_index = index_by_port(game_objects[o_index  ].owner_port, players.clone());
-              let obj2_owner_team = players[index_by_port(game_objects[victim_object_index].owner_port, players.clone())].team;
-              let obj2_owner_character = players[index_by_port(game_objects[victim_object_index].owner_port, players.clone())].character;
+              let obj1_owner_team = players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team;
+              let obj1_owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
+              let obj2_owner_team = players[index_by_username(&game_objects[victim_object_index].owner_username,players.clone())].team;
+              let obj2_owner_character = players[index_by_username(&game_objects[victim_object_index].owner_username,players.clone())].character;
               if obj1_owner_team != obj2_owner_team {
                 let hits_shield = hits_shield(
                   game_objects[o_index].position,
@@ -1700,18 +1697,18 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           (players, *game_objects, hit) = apply_simple_bullet_logic_extra(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true, 
             damage, 255, false, f32::INFINITY, f32::INFINITY);
           if hit {
-            let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
+            let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
             players[owner_index].stacks = 1;
           }
         }
         // WIRO'S DASH
         GameObjectType::WiroDashProjectile => {
           // lock it to wiro's position
-          let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
+          let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
           let range = characters[&Character::Wiro].primary_range_3;
           let heal = characters[&Character::Wiro].secondary_heal;
           let damage = characters[&Character::Wiro].secondary_damage;
-          game_objects[o_index].position = players[index_by_port(game_objects[o_index].owner_port, players.clone())].position;
+          game_objects[o_index].position = players[index_by_username(&game_objects[o_index].owner_username,players.clone())].position;
           for victim_index in 0..players.len() {
             // if we get a hit, and we didn't already hit
             if Vector2::distance(players[victim_index].position, game_objects[o_index].position) < range
@@ -1729,7 +1726,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         GameObjectType::TemerityRocket => {
           let hit: bool;
           (players, *game_objects, hit) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false);
-          let owner_index = index_by_port(game_objects[o_index].owner_port, players.clone());
+          let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
           if hit && players[owner_index].stacks < 2 {
             players[owner_index].stacks += 1;
           }
@@ -1772,7 +1769,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 position: game_object.position,
                 direction: Vector2::new(),
                 to_be_deleted: false,
-                owner_port: game_object.owner_port,
+                owner_username: game_object.owner_username,
                 hitpoints: 0,
                 lifetime: 5.0,
                 players: Vec::new(),
@@ -1784,7 +1781,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           // back to its first projectile
           GameObjectType::TemerityRocket => {
             if game_object.players.is_empty() {
-              let owner_index = index_by_port(game_object.owner_port, players.clone());
+              let owner_index = index_by_username(&game_object.owner_username,players.clone());
               players[owner_index].stacks = 0;
             }
           }

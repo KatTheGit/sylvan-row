@@ -317,8 +317,8 @@ pub fn apply_simple_bullet_logic_extra(
   special_hit_radius:    f32,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   let game_object = game_objects[o_index].clone();
-  let owner_port = game_object.owner_port;
-  let player = players[index_by_port(owner_port, players.clone())].clone();
+  let owner_username = game_object.owner_username;
+  let player = players[index_by_username(&owner_username, players.clone())].clone();
   let character = player.character;
   let character_properties = characters[&character].clone();
   let wall_hit_radius: f32 = character_properties.primary_wall_hit_radius;
@@ -475,7 +475,7 @@ pub fn apply_simple_bullet_logic_extra(
     }
     // If we hit a bloke
     if Vector2::distance(game_object.position, players[p_index].position) < hit_radius &&
-    owner_port != players[p_index].port {
+    owner_username != players[p_index].username {
       // And if we didn't hit this bloke before
       if !(game_object.players.contains(&p_index)) {
         // Apply bullet damage
@@ -499,7 +499,7 @@ pub fn apply_simple_bullet_logic_extra(
           }
         }
         // Apply appropriate secondary charge
-        let owner_index = index_by_port(owner_port, players.clone());
+        let owner_index = index_by_username(&owner_username, players.clone());
         players[owner_index].add_charge(character_properties.secondary_hit_charge);
       }
     }

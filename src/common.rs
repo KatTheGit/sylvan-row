@@ -394,9 +394,9 @@ impl ServerPlayer {
   }
 }
 
-pub fn index_by_port(port: u16, players: Vec<ServerPlayer>) -> usize{
+pub fn index_by_username(username: &str, players: Vec<ServerPlayer>) -> usize{
   for p_index in 0..players.len() {
-    if players[p_index].port == port {
+    if players[p_index].username == username {
       return p_index;
     }
   }

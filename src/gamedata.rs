@@ -209,7 +209,7 @@ pub struct GameObject {
   pub direction: Vector2,
   pub to_be_deleted: bool,
   /// pikmin
-  pub owner_port: u16,
+  pub owner_username: String,
   pub hitpoints: u8,
   /// Object's left lifetime in seconds.
   pub lifetime: f32,
@@ -315,7 +315,7 @@ pub fn load_map_from_file(map: &str) -> Vec<GameObject> {
       position: Vector2 { x: pos_x, y: pos_y },
       direction: Vector2::new(),
       to_be_deleted: false,
-      owner_port: 200,
+      owner_username: String::new(),
       hitpoints: WALL_HP,
       lifetime: f32::INFINITY,
       players: Vec::new(),

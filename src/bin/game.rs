@@ -1369,7 +1369,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     for game_object_index in 0..game_objects_copy.len() {
       if game_objects_copy[game_object_index].object_type == GameObjectType::WiroShield {
         // if it's ours...
-        if game_objects_copy[game_object_index].owner_port == port {
+        if game_objects_copy[game_object_index].owner_username == username {
           let position: Vector2 = Vector2 {
             x: player_copy.position.x + player_copy.aim_direction.normalize().x * TILE_SIZE,
             y: player_copy.position.y + player_copy.aim_direction.normalize().y * TILE_SIZE,
@@ -1883,10 +1883,16 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
           // new position
           recieved_players[player_index].interpol_next = recieved_players[player_index].position;
           // previous position
-          recieved_players[player_index].position = other_players[player_index].position;
-          recieved_players[player_index].interpol_prev = other_players[player_index].position;
-          //recieved_players[player_index].position = other_players[player_index].interpol_next;
-          //recieved_players[player_index].interpol_prev = other_players[player_index].interpol_next;
+          // if not moving, force a position
+          if recieved_players[player_index].movement_direction == Vector2::new() {
+            recieved_players[player_index].position = other_players[player_index].interpol_next;
+            recieved_players[player_index].interpol_prev = other_players[player_index].interpol_next;
+          }
+          // if moving, keep the interpolation smooth by never forcing positions.
+          else {
+            recieved_players[player_index].position = other_players[player_index].position;
+            recieved_players[player_index].interpol_prev = other_players[player_index].position;
+          }
         }
         *other_players = recieved_players;
         drop(other_players);

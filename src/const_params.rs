@@ -12,9 +12,9 @@ pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjec
 
 // debug constants. disable ALL for prod
 /// Whether to spawn one dummy in the game
-pub const SPAWN_DUMMY: bool = false;
+pub const SPAWN_DUMMY: bool = true;
 /// Whether the server allows to start a game with only 1 player in queue
-pub const MATCHMAKE_ALONE: bool = false;
+pub const MATCHMAKE_ALONE: bool = true;
 
 pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
