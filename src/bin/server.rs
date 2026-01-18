@@ -81,7 +81,6 @@ async fn main() {
                     };
                     players.remove(p_index);
                   }
-                  return;
                 }
                 return
               }
@@ -265,15 +264,15 @@ async fn main() {
                       let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
                       {
                         let mut players = local_players.lock().unwrap();
-                        let p_index = match from_user(&username, players.clone()) {
-                          Ok(index) => {index}
+                        match from_user(&username, players.clone()) {
+                          Ok(p_index) => {
+                            channel_copy = Some(players[p_index].channel.clone());
+                            players.remove(p_index);
+                          },
                           Err(_err) => {
-                            return;
+                            // player doesn't already exist so don't worry about it
                           }
                         };
-                        channel_copy = Some(players[p_index].channel.clone());
-                        players.remove(p_index);
-                        //return;
                       }
                       if let Some(channel) = channel_copy {
                         match channel.send(PlayerMessage::ForceDisconnect).await{

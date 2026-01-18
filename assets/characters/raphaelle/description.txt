@@ -2,12 +2,10 @@ A bunny combat medic who seems to enjoy
 the "combat" part a bit too much.
 
 PRIMARY - Kindness in Blood
-  Raphaelle is always tethered to allies nearby.
-  She shoots a piercing projectile, and if it
-  damages an opponent, her tethered allies
-  recieve health.
-  When empowered by DASH, her projectile doesn't
-  heal allies, does more damage, and reduces the
+  Shoots a piercing projectile. Damaging
+  opponents heals nearby allies.
+  When empowered by DASH, this attack doesn't
+  heal, does more damage, and reduces the
   cooldown of DASH.
 
 SECONDARY - Sanctum

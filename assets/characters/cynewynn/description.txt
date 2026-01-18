@@ -6,7 +6,7 @@ PRIMARY - Wrath
 
 SECONDARY - Rectify
   Teleports a few seconds in the past, and gains
-  a small amount of health.
+  a bit of health.
 
 DASH - Combat Leap
   Dashes forward, taking reduced damage.

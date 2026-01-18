@@ -166,6 +166,7 @@ This is just for me.
 
 - [ ] Parties requeue without consent
 - [ ] 4 players don't always get matchmade 2v2
+- [ ] Gameserver's `owner_index` has to be reworked into `owner_username` to avoid random indexing errors.
 
 ## Side quests
 

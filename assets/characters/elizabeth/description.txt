@@ -2,16 +2,12 @@ A mischevious raccoon who uses gadgets,
 gizmos and fate to his advantage.
 
 PRIMARY - Cunning Knives
-  Throws a knife that can bounce off walls. At
-  the end of its trajectory, the knife stays
-  on the ground. Only two knives can be on the
-  ground at once.
+  Throws a knife that can bounce off walls, and
+  that stays on the ground.
 SECONDARY - Thingymajig
-  Creates a walking turret that moves in a
-  direction and pinballs around while shooting
-  any nearby opponents.
+  Creates a walking turret that pinballs around
+  while shooting any nearby opponents.
 DASH - Recall
-  Dashes and makes all grounded knives return
-  to him. The knives damage opponents in their
-  path. Opponents caught by multiple knives
-  are marginally slowed.
+  Dashes and recalls all grounded knives. The
+  knives damage and slows opponents in their
+  path.

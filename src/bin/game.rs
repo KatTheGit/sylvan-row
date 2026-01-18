@@ -95,7 +95,6 @@ async fn main() {
 
   let mut fullscreen: bool = settings.fullscreen;
   set_fullscreen(fullscreen);
-  let mut toggle_time: Instant = Instant::now();
 
   // whether we're queueing
   let mut queue: bool = false;
@@ -1099,13 +1098,6 @@ async fn main() {
       //return;
     } else {
       escape_already_pressed = false;
-    }
-    if keys.contains(&Keycode::F11) {
-      if toggle_time.elapsed().as_secs_f32() > 0.05 {
-        fullscreen = !fullscreen;
-        set_fullscreen(fullscreen);
-      }
-      toggle_time = Instant::now();
     }
     drop(device_state);
     drop(keys);

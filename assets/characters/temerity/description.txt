@@ -6,7 +6,7 @@ PRIMARY - The Subtle Art of a Rocket Launcher
   in range.
 
 SECONDARY - Rocket Jump
-  Launches a rocket under herself that damages
+  Launches a rocket next to herself that damages
   opponents in an AOE and boosts her forward.
 
 DASH - Hasty Dispatch
