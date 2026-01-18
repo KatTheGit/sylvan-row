@@ -276,7 +276,12 @@ async fn main() {
                         //return;
                       }
                       if let Some(channel) = channel_copy {
-                        channel.send(PlayerMessage::ForceDisconnect).await.unwrap();
+                        match channel.send(PlayerMessage::ForceDisconnect).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                       }
                       {
                         let mut players = local_players.lock().unwrap();
@@ -529,7 +534,9 @@ async fn main() {
                         )
                       ).await {
                         Ok(_) => {},
-                        Err(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
                       };
                     }
                     // Create a game
@@ -613,7 +620,7 @@ async fn main() {
                         ));
                       }
                       for pm_index in players_to_match {
-                        players_copy[pm_index].channel.send(PlayerMessage::SendPacket(
+                        match players_copy[pm_index].channel.send(PlayerMessage::SendPacket(
                           ServerToClientPacket {
                             information: ServerToClient::MatchAssignment(
                               MatchAssignmentData {
@@ -621,7 +628,12 @@ async fn main() {
                               }
                             )
                           }
-                        )).await.unwrap();
+                        )).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                       }
                     }
                   }
@@ -689,7 +701,9 @@ async fn main() {
                         )
                       ).await {
                         Ok(_) => {},
-                        Err(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
                       };
                     }
                   }
@@ -709,9 +723,14 @@ async fn main() {
                         wins: player_data.wins as u16,
                       };
                     }
-                    tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                    match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                       information: ServerToClient::PlayerDataResponse(player_stats),
-                    })).await.unwrap();
+                    })).await{
+                      Ok(_) => {},
+                      Err(err) => {
+                        println!("{:?}", err);
+                      },
+                    };
                   }
                   // MARK: Get Friend List
                   // expensive operation
@@ -747,15 +766,25 @@ async fn main() {
                             final_friend_list.push((friend.0, friend.1, online));
                           }
                         }
-                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::FriendListResponse(final_friend_list),
-                        })).await.unwrap();
+                        })).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                       }
                       Err(err) => {
                         println!("{:?}", err);
-                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                        })).await.unwrap();
+                        })).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                       }
                     }
                   }
@@ -763,9 +792,14 @@ async fn main() {
                   // MARK: FR / FR Accept
                   ClientToServer::SendFriendRequest(other_user) => {
                     if username == other_user {
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::ThatsYouDummy),
-                      })).await.unwrap();
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                       continue;
                     }
                     let username_exists: Result<bool, redb::Error>;
@@ -785,18 +819,28 @@ async fn main() {
                       Ok(exists) => {
                         if !exists {
                           // the requested user doesn't exist.
-                          tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                          match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                             information: ServerToClient::InteractionRefused(RefusalReason::UsernameInexistent),
-                          })).await.unwrap();
+                          })).await{
+                            Ok(_) => {},
+                            Err(err) => {
+                              println!("{:?}", err);
+                            },
+                          };
                           continue;
                         }
                       }
                       Err(err) => {
                         println!("1 Error: {:?}", err);
                         // database error (internal server error)
-                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                        })).await.unwrap();
+                        })).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                         continue;
                       }
                     }
@@ -805,18 +849,28 @@ async fn main() {
                         match status {
                           FriendShipStatus::Friends => {
                             // if they're already friends, ignore
-                            tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                            match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                               information: ServerToClient::InteractionRefused(RefusalReason::AlreadyFriends),
-                            })).await.unwrap();
+                            })).await{
+                              Ok(_) => {},
+                              Err(err) => {
+                                println!("{:?}", err);
+                              },
+                            };
                             continue;
                           }
                           FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
                             let predicted_pending_status: FriendShipStatus = database::get_friend_request_type(&username, &other_user);
                             if predicted_pending_status == status {
                               // this friend request was already made.
-                              tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                              match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                                 information: ServerToClient::InteractionRefused(RefusalReason::FriendRequestAlreadySent),
-                              })).await.unwrap();
+                              })).await{
+                                Ok(_) => {},
+                                Err(err) => {
+                                  println!("{:?}", err);
+                                },
+                              };
                               continue;
                             } else {
                               // the other user also sent a friend request, which means either they
@@ -841,9 +895,14 @@ async fn main() {
                           }
                           FriendShipStatus::Blocked => {
                             // blocked, so ignore.
-                            tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                            match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                               information: ServerToClient::InteractionRefused(RefusalReason::UsersBlocked),
-                            })).await.unwrap();
+                            })).await{
+                              Ok(_) => {},
+                              Err(err) => {
+                                println!("{:?}", err);
+                              },
+                            };
                             continue;
                           }
                         }
@@ -873,9 +932,14 @@ async fn main() {
                           _ => {
                             println!("3 Error: {:?}", err);
                             // some other error happened in the database.
-                            tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                            match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                               information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                            })).await.unwrap();
+                            })).await{
+                              Ok(_) => {},
+                              Err(err) => {
+                                println!("{:?}", err);
+                              },
+                            };
                             continue;
                           }
                         }
@@ -884,21 +948,36 @@ async fn main() {
                     if request_successful {
                       if friendship_achieved {
                         // users are now friends.
-                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::FriendshipSuccessful,
-                        })).await.unwrap();
+                        })).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                       } else {
                         // the friend request was successfully sent to the peer.
-                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::FriendRequestSuccessful,
-                        })).await.unwrap();
+                        })).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                       }
                     }
                     else {
                       // request unsuccessful due to an internal error (db error).
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
-                      })).await.unwrap();
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                     }
                   }
                   // MARK: Chat Message
@@ -936,7 +1015,7 @@ async fn main() {
                         }
                       }
                       if channel_invalid {
-                        tx.send(
+                        match tx.send(
                           PlayerMessage::SendPacket(
                             ServerToClientPacket {
                               information: ServerToClient::InteractionRefused(
@@ -944,7 +1023,12 @@ async fn main() {
                               )
                             }
                           )
-                        ).await.unwrap();
+                        ).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                         continue;
                       }
                       for player in players_to_inform {
@@ -985,11 +1069,16 @@ async fn main() {
                       }
                     }
                     if internal_error_occurred {
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(
                           RefusalReason::InternalError
                         ),
-                      })).await.unwrap();
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                       continue;
                     }
                     // if they indeed are friends, we can proceed.
@@ -1009,27 +1098,42 @@ async fn main() {
                         peer_channel = players[index_of_peer].channel.clone();
                       }
                       if !peer_user_online {
-                        tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(
                             RefusalReason::UserNotOnline
                           ),
-                        })).await.unwrap();
+                        })).await{
+                          Ok(_) => {},
+                          Err(err) => {
+                            println!("{:?}", err);
+                          },
+                        };
                         continue;
                       }
-                      peer_channel.send(
+                      match peer_channel.send(
                         PlayerMessage::SendPacket(
                           ServerToClientPacket { information: 
                           ServerToClient::ChatMessage(username.clone(), message, ChatMessageType::Private) }
                         )
-                      ).await.unwrap();
+                      ).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                     }
                     // peers are not friends.
                     else {
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(
                           RefusalReason::NotFriends
                         ),
-                      })).await.unwrap();
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                     }
                   }
                   // MARK: Lobby invite
@@ -1075,26 +1179,41 @@ async fn main() {
                     }
                     // no exist >:(
                     if player_not_found {
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(
                           RefusalReason::UserNotOnline
                         ),
-                      })).await.unwrap();
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                       continue;
                     }
                     if not_friends {
-                      tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(
                           RefusalReason::NotFriends
                         ),
-                      })).await.unwrap();
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                       continue;
                     }
                     // since everything else went well, operation inform other client is go.
                     if let Some(channel) = other_player_channel {
-                      channel.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      match channel.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::LobbyInvite(username.clone())
-                      })).await.unwrap();
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                     }
                   }
                   // MARK: Lobby accept
@@ -1166,7 +1285,7 @@ async fn main() {
                     }
                     // send error packets
                     if user_not_online {
-                      tx.send(
+                      match tx.send(
                         PlayerMessage::SendPacket(
                           ServerToClientPacket { 
                             information: ServerToClient::InteractionRefused(
@@ -1174,11 +1293,16 @@ async fn main() {
                             )
                           }
                         )
-                      ).await.unwrap();
+                      ).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                       continue;
                     }
                     if already_in_party {
-                      tx.send(
+                      match tx.send(
                         PlayerMessage::SendPacket(
                           ServerToClientPacket { 
                             information: ServerToClient::InteractionRefused(
@@ -1186,11 +1310,16 @@ async fn main() {
                             )
                           }
                         )
-                      ).await.unwrap();
+                      ).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                       continue;
                     }
                     for user in users_to_inform {
-                      user.send(
+                      match user.send(
                         PlayerMessage::SendPacket(
                           ServerToClientPacket {
                             information: ServerToClient::LobbyUpdate(
@@ -1198,7 +1327,12 @@ async fn main() {
                             )
                           }
                         )
-                      ).await.unwrap();
+                      ).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
+                      };
                     }
                   }
                   // MARK: Lobby leave
@@ -1297,7 +1431,9 @@ async fn main() {
                         )
                       ).await {
                         Ok(_) => {},
-                        Err(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                        },
                       };
                     }
                   }
@@ -1317,9 +1453,14 @@ async fn main() {
                 }
                 PlayerMessage::SendPacket(packet) => {
                   nonce += 1;
-                  socket.write_all(
+                  match socket.write_all(
                     &network::tcp_encode_encrypt(packet, cipher_key.clone(), nonce).expect("oops")
-                  ).await.unwrap();
+                  ).await{
+                    Ok(_) => {},
+                    Err(err) => {
+                      println!("{:?}", err);
+                    },
+                  };
                 }
               }
             }
