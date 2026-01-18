@@ -71,13 +71,17 @@ async fn main() {
                 // disconnect
                 // remove player from players.
                 if logged_in {
-                  let mut players = local_players.lock().unwrap();
-                  for p_index in 0..players.len() {
-                    if players[p_index].username == username {
-                      players.remove(p_index);
-                      return;
-                    }
+                  {
+                    let mut players = local_players.lock().unwrap();
+                    let p_index = match from_user(&username, players.clone()) {
+                      Ok(index) => {index}
+                      Err(_err) => {
+                        return;
+                      }
+                    };
+                    players.remove(p_index);
                   }
+                  return;
                 }
                 return
               }
@@ -261,13 +265,15 @@ async fn main() {
                       let mut channel_copy: Option<mpsc::Sender<PlayerMessage>> = None;
                       {
                         let mut players = local_players.lock().unwrap();
-                        for p_index in 0..players.len() {
-                          if players[p_index].username == username {
-                            channel_copy = Some(players[p_index].channel.clone());
-                            players.remove(p_index);
-                            //return;
+                        let p_index = match from_user(&username, players.clone()) {
+                          Ok(index) => {index}
+                          Err(_err) => {
+                            return;
                           }
-                        }
+                        };
+                        channel_copy = Some(players[p_index].channel.clone());
+                        players.remove(p_index);
+                        //return;
                       }
                       if let Some(channel) = channel_copy {
                         channel.send(PlayerMessage::ForceDisconnect).await.unwrap();
