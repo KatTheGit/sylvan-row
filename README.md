@@ -162,6 +162,11 @@ This is just for me.
 - [ ] Android port
   - [ ] Android-specific controls (devicequery doesnt work)
 
+### Bugs
+
+- [ ] Parties requeue without consent
+- [ ] 4 players don't always get matchmade 2v2
+
 ## Side quests
 
 - [ ] Change game engine
