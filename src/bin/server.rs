@@ -1361,42 +1361,59 @@ async fn main() {
                       if !players[own_index].queued_with.is_empty() {
                         // if is party leader
                         if players[own_index].is_party_leader {
-                          match from_user(&players[own_index].queued_with[0], players.clone()) {
-                            Ok(new_owner_index) => {
-                              players[new_owner_index].is_party_leader = true;
-                              let mut queued_with = players[own_index].queued_with.clone();
-                              queued_with.retain(|element| element != &players[new_owner_index].username);
-                              players[new_owner_index].queued_with = queued_with;
-                              players[own_index].queued_with = Vec::new();
-                            users_to_inform.push(players[new_owner_index].channel.clone());
-                            lobby_info_update.push(
-                              LobbyPlayerInfo {
-                                username: players[new_owner_index].username.clone(),
-                                is_ready: players[new_owner_index].queued
+
+                          // if we're with only 1 other player
+                          if players[own_index].queued_with.len() == 1 {
+                            let other_player_name = players[own_index].queued_with[0].clone();
+                            players[own_index].queued_with = Vec::new();
+                            match from_user(&other_player_name, players.clone()) {
+                              Ok(index) => {
+                                players[index].queued_with = Vec::new();
+                                players[index].is_party_leader = true;
                               }
-                            );
-                              for (p_index, player) in players[new_owner_index].queued_with.clone().iter().enumerate() {
-                                players[p_index].queued_with = vec![players[new_owner_index].username.clone()];
-                                match from_user(&player, players.clone()) {
-                                  Ok(index) => {
-                                    users_to_inform.push(players[index].channel.clone());
-                                    lobby_info_update.push(
-                                      LobbyPlayerInfo {
-                                        username: players[index].username.clone(),
-                                        is_ready: players[index].queued
-                                      }
-                                    );
-                                  }
-                                  Err(_) => {
-                                    // whatever
+                              Err(_err) => {
+                                
+                              }
+                            }
+                          }
+                          else {
+                            match from_user(&players[own_index].queued_with[0], players.clone()) {
+                              Ok(new_owner_index) => {
+                                players[new_owner_index].is_party_leader = true;
+                                let mut queued_with = players[own_index].queued_with.clone();
+                                queued_with.retain(|element| element != &players[new_owner_index].username);
+                                players[new_owner_index].queued_with = queued_with;
+                                players[own_index].queued_with = Vec::new();
+                              users_to_inform.push(players[new_owner_index].channel.clone());
+                              lobby_info_update.push(
+                                LobbyPlayerInfo {
+                                  username: players[new_owner_index].username.clone(),
+                                  is_ready: players[new_owner_index].queued
+                                }
+                              );
+                                for (p_index, player) in players[new_owner_index].queued_with.clone().iter().enumerate() {
+                                  players[p_index].queued_with = vec![players[new_owner_index].username.clone()];
+                                  match from_user(&player, players.clone()) {
+                                    Ok(index) => {
+                                      users_to_inform.push(players[index].channel.clone());
+                                      lobby_info_update.push(
+                                        LobbyPlayerInfo {
+                                          username: players[index].username.clone(),
+                                          is_ready: players[index].queued
+                                        }
+                                      );
+                                    }
+                                    Err(_) => {
+                                      // whatever
+                                    }
                                   }
                                 }
                               }
-                            }
-                            Err(_) => {
+                              Err(_) => {
 
-                            }
-                          };
+                              }
+                            };
+                          }
                         }
                         // not party leader
                         else {
@@ -1433,6 +1450,8 @@ async fn main() {
                               }
                             }
                           }
+                          players[own_index].queued_with = Vec::new();
+                          players[own_index].is_party_leader = true;
                         }
                       }
                     }

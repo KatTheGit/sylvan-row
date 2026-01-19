@@ -165,8 +165,8 @@ This is just for me.
 ### Bugs
 
 - [x] Parties requeue without consent
-- [ ] 4 players don't always get matchmade 2v2
-  - [ ] When the party leader leaves the party, other players aren't properly informed of the new leader, it's still the old leader.
+- [x] 4 players don't always get matchmade 2v2
+  - [x] When the party leader leaves the party, other players aren't properly informed of the new leader, it's still the old leader.
 - [x] Gameserver's `owner_port` has to be reworked into `owner_username`.
 - [ ] Weird indexing errors in gameserver.
 
