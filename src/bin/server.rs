@@ -97,6 +97,20 @@ async fn main() {
             if len > buffer.len() {
               continue;
             }
+            {
+              println!("==================================");
+              let players = local_players.lock().unwrap();
+              for player in players.clone() {
+                println!("");
+                println!("name:             {:?}", player.username);
+                println!("queued:           {:?}", player.queued);
+                println!("queued_with:      {:?}", player.queued_with);
+                println!("queued_gamemodes: {:?}", player.queued_gamemodes);
+                println!("is_pary_leader:   {:?}", player.is_party_leader);
+                println!("in_game_with:     {:?}", player.in_game_with);
+              }
+            }
+
             // handle the packet
 
             // not logged in, register, login, and get cipher key.
@@ -432,6 +446,7 @@ async fn main() {
                                 if lobby_players.len() > 1 {
                                   for player in lobby_players {
                                     players_to_match.push(player);
+                                    players[player].queued = false;
                                   }
                                   players_to_match.push(lobby_owner_index);
                                   continue;

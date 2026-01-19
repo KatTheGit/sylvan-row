@@ -164,7 +164,7 @@ This is just for me.
 
 ### Bugs
 
-- [ ] Parties requeue without consent
+- [x] Parties requeue without consent
 - [ ] 4 players don't always get matchmade 2v2
 - [x] Gameserver's `owner_port` has to be reworked into `owner_username`.
 - [ ] Weird indexing errors in gameserver.
