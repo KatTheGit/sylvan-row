@@ -1,3 +1,4 @@
+use crate::mothership_common::MatchEndResult;
 use crate::{common::*, mothership_common::*};
 use core::f32;
 use std::collections::HashMap;
@@ -20,7 +21,7 @@ static SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
 /// Gameplay server. Returns a winning team.
-pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) -> Team {
+pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) -> MatchEndResult {
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
   println!("Loaded character properties.");
@@ -766,10 +767,16 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           }
           // MARK: Game End
           if gamemode_info.rounds_won_blue >= ROUNDS_TO_WIN {
-            return Team::Blue;
+            return MatchEndResult {
+              winning_team: Team::Blue,
+              is_draw: false,
+            };
           }
           if gamemode_info.rounds_won_red >= ROUNDS_TO_WIN {
-            return Team::Red;
+            return MatchEndResult {
+              winning_team: Team::Red,
+              is_draw: false,
+            };
           }
         }
 
@@ -840,6 +847,18 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       // IGNORE ANYTHING BELOW IF PLAYER HAS DIED
       if players[p_index].is_dead {
         continue;
+      }
+
+      if players[p_index].last_packet_time.elapsed().as_secs_f32() > 5.0 {
+        let player_team_copy = players[p_index].team.clone();
+        players.remove(p_index);
+        if players.is_empty() {
+          return MatchEndResult {
+            winning_team: player_team_copy,
+            is_draw: false,
+          };
+        }
+        break;
       }
 
 

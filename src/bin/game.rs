@@ -1890,6 +1890,9 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         for player in recieved_server_info.players {
           recieved_players.push(ClientPlayer::from_otherplayer(player));
         }
+        // if a player left the game, recieved players has one less players, and other_players needs to
+        // be adjusted since we index over other_players.
+        other_players.retain(|element| recieved_players.contains(&element));
         for player_index in 0..other_players.len() {
           // new position
           recieved_players[player_index].interpol_next = recieved_players[player_index].position;

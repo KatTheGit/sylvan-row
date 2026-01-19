@@ -8,7 +8,7 @@ use std::time::Instant;
 use std::collections::HashMap;
 // MARK: Gamemodes
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct Camera {
   pub position: Vector2,
 }
@@ -20,7 +20,7 @@ impl Camera {
 // MARK: Client
 
 /// Information held by client about self and other players.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ClientPlayer {
   pub username: String,
   pub health: u8,

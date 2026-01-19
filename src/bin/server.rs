@@ -573,12 +573,12 @@ async fn main() {
                             let player_info = player_info.clone();
                             match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info.clone())}){
                               // game ended successfully.
-                              Ok(winning_team) => {
+                              Ok(match_result) => {
                                 {
                                   let mut database = thread_database.lock().unwrap();
                                   // assign victories.
                                   for player in player_info.clone() {
-                                    if player.assigned_team == winning_team {
+                                    if player.assigned_team == match_result.winning_team {
                                       // put the victory in the database
                                       let mut player_data: PlayerData = match database::get_player(&database, &player.username) {
                                         Ok(data) => data,
@@ -614,9 +614,7 @@ async fn main() {
                                     PlayerMessage::SendPacket(
                                       ServerToClientPacket {
                                         information: ServerToClient::MatchEnded(
-                                          MatchEndResult {
-                                            winning_team,
-                                          }
+                                          match_result.clone()
                                         )
                                       }
                                     )
