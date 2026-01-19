@@ -55,6 +55,7 @@ fn window_conf() -> Conf {
       medium: Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-medium.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
       big:    Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-big.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
     }),
+    window_resizable: true,
     ..Default::default()
   }
 }
@@ -124,7 +125,7 @@ async fn main() {
   let mut friend_request_input: String = String::from("");
   let mut friend_request_input_selected: bool = false;
 
-  let mut chat_timer: Instant = Instant::now();
+  let mut chat_timer: Instant = Instant::now().checked_sub(Duration::from_secs_f32(10.0)).expect("oops");
 
   // login fields
   let mut username: String = if settings.store_credentials {settings.saved_username.clone()} else {String::new()};
@@ -172,7 +173,6 @@ async fn main() {
 
     if get_keys_pressed().contains(&KeyCode::F11) {
       fullscreen = !fullscreen;
-      set_cursor_grab(fullscreen);
       set_fullscreen(fullscreen);
     }
 
@@ -1020,6 +1020,11 @@ async fn main() {
                     information: ClientToServer::SendFriendRequest(String::from(peer_username)),
                   }
                 );
+                packet_queue.push(
+                  ClientToServerPacket {
+                    information: ClientToServer::GetFriendList,
+                  }
+                );
                 friend_request_input = peer_username.to_string();
               }
 
@@ -1242,7 +1247,6 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 
     if get_keys_pressed().contains(&KeyCode::F11) {
       *fullscreen = !*fullscreen;
-      set_cursor_grab(*fullscreen);
       set_fullscreen(*fullscreen);
     }
 

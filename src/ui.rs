@@ -359,6 +359,8 @@ pub fn chatbox(
 
   let mut message_type = ChatMessageType::Private;
 
+  let chat_remain_displayed_time = 10.0;
+
   // get a list of online friends (which we can chat to).
   let mut online_friends: Vec<String> = Vec::new();
   if is_in_game {
@@ -403,10 +405,14 @@ pub fn chatbox(
   }
 
   let text_input_box_size = Vector2 {x: size.x, y: 5.5 * vh};
-
   if *is_chatbox_open {
     // draw frame
     graphics::draw_rectangle(position, size, Color { r: 0.025, g: 0.0, b: 0.05, a: 0.45 });
+  }
+  if timer.elapsed().as_secs_f32() < chat_remain_displayed_time && !*is_chatbox_open {
+    graphics::draw_rectangle(Vector2 { x: position.x, y: position.y + size.y - 9.0 * vh }, Vector2 { x: size.x, y: -16.0 * vh }, Color { r: 0.025, g: 0.0, b: 0.05, a: 0.20 });
+  }
+  if *is_chatbox_open {
     
     // draw selected friend indicator
     //let selected_friend_indicator_size = Vector2 {x: size.x}
@@ -434,7 +440,7 @@ pub fn chatbox(
       ChatMessageType::Administrative => YELLOW,
       ChatMessageType::Private => PINK,
       ChatMessageType::Group => GREEN,
-      ChatMessageType::Team => BLUE,
+      ChatMessageType::Team => SKYBLUE,
       ChatMessageType::All => ORANGE,
     };
     draw_text(&format!("[TAB] Messaging: {}", displayed_selected_friend), position.x, position.y + size.y - text_input_box_size.y - 1.0 *vh, 3.0 * vh, color);
@@ -467,9 +473,10 @@ pub fn chatbox(
       recv_messages_buffer.push((username, chat_input_buffer.clone(), message_type));
       *chat_input_buffer = String::new();
       *timer = Instant::now();
+      *is_chatbox_open = false;
     }
   }
-  if *is_chatbox_open || timer.elapsed().as_secs_f32() < 10.0 {
+  if *is_chatbox_open || timer.elapsed().as_secs_f32() < chat_remain_displayed_time {
     // draw all messages
     let y_start = position.y + size.y - text_input_box_size.y - 5.0 * vh;
     let mut formatted_messages: Vec<(String, ChatMessageType)> = Vec::new();
@@ -510,7 +517,7 @@ pub fn chatbox(
           ChatMessageType::Administrative => YELLOW,
           ChatMessageType::Private => PINK,
           ChatMessageType::Group => GREEN,
-          ChatMessageType::Team => BLUE,
+          ChatMessageType::Team => SKYBLUE,
           ChatMessageType::All => ORANGE,
         };
         draw_text(&formatted_messages[m_index].0, position.x, pos_y, 3.0 * vh, color);

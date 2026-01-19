@@ -9,7 +9,7 @@ chacha20poly1305 = "0.10.1"
 device_query = "2.1.0"
 gilrs = "0.10.7"
 keyring = {version="3.6.3", features = ["windows-native", "linux-native", "apple-native"]}
-macroquad = "0.4.8"
+macroquad = "0.4.14"
 opaque-ke = {version="4.1.0-pre.1", features = ["argon2", "serde"]}
 pollster = "0.4.0"
 rand = "0.8.5"
