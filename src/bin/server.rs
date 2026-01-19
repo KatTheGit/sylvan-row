@@ -1,6 +1,6 @@
 use redb::{Database, Result};
 use sylvan_row::{common::{self, Team}, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, mothership_common::*, network} ;
-use std::{sync::{Arc, Mutex}, thread::JoinHandle};
+use std::{sync::{Arc, Mutex}, thread::JoinHandle, vec};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
 use opaque_ke::{ServerLoginStartResult};
@@ -1359,6 +1359,7 @@ async fn main() {
                       let mut players = local_players.lock().unwrap();
                       let own_index = from_user(&username, players.clone()).expect("oops");
                       if !players[own_index].queued_with.is_empty() {
+                        // if is party leader
                         if players[own_index].is_party_leader {
                           match from_user(&players[own_index].queued_with[0], players.clone()) {
                             Ok(new_owner_index) => {
@@ -1374,7 +1375,8 @@ async fn main() {
                                 is_ready: players[new_owner_index].queued
                               }
                             );
-                              for player in players[new_owner_index].queued_with.clone() {
+                              for (p_index, player) in players[new_owner_index].queued_with.clone().iter().enumerate() {
+                                players[p_index].queued_with = vec![players[new_owner_index].username.clone()];
                                 match from_user(&player, players.clone()) {
                                   Ok(index) => {
                                     users_to_inform.push(players[index].channel.clone());
@@ -1396,7 +1398,7 @@ async fn main() {
                             }
                           };
                         }
-                        // not party leader 
+                        // not party leader
                         else {
                           let party_leader_index = match from_user(&players[own_index].queued_with[0], players.clone()) {
                             Ok(index) => {
@@ -1452,6 +1454,7 @@ async fn main() {
                     }
                   }
                   // packets that shouldn't arrive.
+                  // MARK: ======
                   _ => {
                     // ignore
                   }

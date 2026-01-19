@@ -91,6 +91,7 @@ async fn main() {
     Texture2D::from_file_with_format(include_bytes!("../../assets/characters/temerity/textures/mini-profile.png"), None),
   ];
 
+
   let mut settings = Settings::load();
 
   let mut fullscreen: bool = settings.fullscreen;
@@ -171,6 +172,7 @@ async fn main() {
 
     if get_keys_pressed().contains(&KeyCode::F11) {
       fullscreen = !fullscreen;
+      set_cursor_grab(fullscreen);
       set_fullscreen(fullscreen);
     }
 
@@ -783,7 +785,7 @@ async fn main() {
     }
 
     if start_game {
-      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce).await;
+      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen).await;
     }
 
     if tab_play {
@@ -1112,7 +1114,7 @@ async fn main() {
   }
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32) {
+async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool) {
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
@@ -1236,6 +1238,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     {
       let mut input_halt = input_halt.lock().unwrap();
       *input_halt = menu_paused | server_interaction.is_chatbox_open;
+    }
+
+    if get_keys_pressed().contains(&KeyCode::F11) {
+      *fullscreen = !*fullscreen;
+      set_cursor_grab(*fullscreen);
+      set_fullscreen(*fullscreen);
     }
 
     // update vw and vh, used to correctly draw things scale to the screen.
@@ -1763,7 +1771,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
   // Ignore mouse pos in controller mode for example.
   let mut keyboard_mode: bool = true;
 
-  let mut fullscreen = false;
   let mut toggle_time: Instant = Instant::now();
 
   let interpolate = true;
@@ -2032,14 +2039,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         Keycode::S => movement_vector.y +=  1.0,
         Keycode::D => movement_vector.x +=  1.0,
         Keycode::Space => dashing = true,
-        Keycode::F11 => {
-          // Dirty solution but works.
-          if toggle_time.elapsed().as_secs_f32() > 0.05 {
-            fullscreen = !fullscreen;
-            set_fullscreen(fullscreen);
-          }
-          toggle_time = Instant::now();
-        },
         Keycode::F10 => {
           // Dirty solution but works.
           if toggle_time.elapsed().as_secs_f32() > 0.05 {
