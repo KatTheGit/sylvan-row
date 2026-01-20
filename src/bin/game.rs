@@ -56,13 +56,14 @@ fn window_conf() -> Conf {
       big:    Image::from_file_with_format(include_bytes!(concat!("../../assets/icon/icon-big.png")), None).expect("File not found").bytes.as_slice().try_into().expect("womp womp"),
     }),
     window_resizable: true,
+    window_height: 504,
+    window_width: 896,
     ..Default::default()
   }
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
-  set_window_size(800, 450);
   let port = get_random_port();
   let mut vw: f32;
   let mut vh: f32;
