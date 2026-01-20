@@ -887,7 +887,7 @@ async fn main() {
         heroes.push(
           ui::one_way_button(
             Vector2 { x: 10.0 * vw + (80.0/(max) as f32) * x as f32 * vw, y: 80.0*vh },
-            Vector2 { x: 80.0/((max) as f32)*vw * 0.7, y: 15.0*vh },
+            Vector2 { x: 80.0/((max) as f32)*vw * 0.7, y: 12.0*vh },
             match x {
               0 => "Hernani",
               1 => "Raphaelle",
@@ -911,6 +911,7 @@ async fn main() {
       );
       let image_size = 45.0;
       draw_image(&temporary_profiles[selected_char], (71.0/vh)*vw, 18.0, image_size*0.9, image_size, vh, Vector2::new(), WHITE);
+      draw_text("Selected", 10.0 * vw + (selected_char as f32) * (80.0/(max) as f32) * vw, 95.0 * vh, 4.0 * vh, BLACK);
     }
     if tab_tutorial {
       let text: &str =
