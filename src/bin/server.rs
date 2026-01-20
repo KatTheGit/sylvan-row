@@ -17,8 +17,7 @@ use std::backtrace::Backtrace;
 #[tokio::main]
 async fn main() {
   // start logger
-  log4rs::init_file("log4rs.yaml", Default::default())
-    .expect("Failed to initialize logging");
+  log4rs::init_file("log4rs.yaml", Default::default()).expect("Failed to initialize logging");
 
   // make sure all panics are fully logged.
   panic::set_hook(Box::new(|info| {
