@@ -1,0 +1,11 @@
+appenders:
+  stdout:
+    kind: file
+    path: "server.log"
+    encoder:
+      pattern: "{d} [{l}] {m}{n}"
+
+root:
+  level: info
+  appenders:
+    - stdout

@@ -87,25 +87,25 @@ This is just for me.
       - [x] Encryption
         - [x] Game server
         - [x] Matchmaking server
-    - [ ] Chat
+    - [x] Chat
       - [x] Channels
       - [x] Friends (PM)
         - [ ] ISSUE: Selected friend is a numerical index, which can change the selected friend on refresh.
-    - [ ] Game request
-      - [ ] Lobby (request with friend)
+    - [x] Game request
+      - [x] Lobby (request with friend)
         - [x] Serverside (untested)
       - [x] Character
-    - [ ] Matchmaking
+    - [x] Matchmaking
       - [x] Start game server
       - [x] Match ends and gives info to server
         - [ ] Info given to clients
-    - [ ] "Fleet" managment
+    - [x] "Fleet" managment
       - [x] Single-machine 
       - [x] Error handling
         - [ ] Apologise to user
-    - [ ] Logs
+    - [x] Logs
       - [ ] Chat logs (for moderation)
-      - [ ] Server crash logs
+      - [x] Server crash logs
   - [ ] UI
     - [x] Text input fields
   - [ ] Ranked system

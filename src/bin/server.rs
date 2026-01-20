@@ -10,9 +10,28 @@ use opaque_ke::{
   ServerLoginParameters, ServerRegistration,
 };
 use pollster::FutureExt as _;
+use log::{info, warn, error};
+use std::panic;
+use std::backtrace::Backtrace;
 
 #[tokio::main]
 async fn main() {
+  // start logger
+  log4rs::init_file("log4rs.yaml", Default::default())
+    .expect("Failed to initialize logging");
+
+  // make sure all panics are fully logged.
+  panic::set_hook(Box::new(|info| {
+    let backtrace = Backtrace::force_capture();
+    let location = info.location().map(|l| format!("{}:{}", l.file(), l.line())).unwrap_or_else(|| String::from("<unknown>"));
+    if let Some(s) = info.payload().downcast_ref::<&str>() {
+      error!("PANIC at {}: {}\n{}", location, s, backtrace);
+    } else if let Some(s) = info.payload().downcast_ref::<String>() {
+      error!("PANIC at {}: {}\n{}", location, s, backtrace);
+    } else {
+      error!("PANIC at {} (unknown payload)\n{}", location, backtrace);
+    }
+  }));
 
   let listener = TcpListener::bind(format!("{}:{}", "0.0.0.0", SERVER_PORT)).await.unwrap();
 
@@ -33,6 +52,7 @@ async fn main() {
 
   // the server is now started so none of the code below should use .expect() or .unwrap(), unless
   // it is perfectly safe to do so.
+  info!("Server started.");
   loop {
     // Accept a new peer.
     let (mut socket, _addr) = match listener.accept().await {
@@ -372,8 +392,9 @@ async fn main() {
                             Ok(index) => {
                               party_leader_index = index;
                             }
-                            Err(_) => {
+                            Err(err) => {
                               // whatever
+                              warn!("{:?}", err);
                             }
                           }
                         }
@@ -395,8 +416,8 @@ async fn main() {
                                 }
                               );
                             }
-                            Err(_err) => {
-                              // whatever
+                            Err(err) => {
+                              warn!("{:?}", err);
                             }
                           }
                         }
@@ -435,8 +456,8 @@ async fn main() {
                                       continue;
                                     }
                                   }
-                                  Err(_) => {
-                                    // idk lowkey
+                                  Err(err) => {
+                                    warn!("{:?}", err);
                                   }
                                 }
                               }
@@ -549,7 +570,7 @@ async fn main() {
                       ).await {
                         Ok(_) => {},
                         Err(err) => {
-                          println!("{:?}", err);
+                          error!("{:?}", err);
                         },
                       };
                     }
@@ -582,12 +603,17 @@ async fn main() {
                                       // put the victory in the database
                                       let mut player_data: PlayerData = match database::get_player(&database, &player.username) {
                                         Ok(data) => data,
-                                        Err(_err) => {continue;}
+                                        Err(err) => {
+                                          warn!("{:?}", err);
+                                          continue;
+                                        }
                                       };
                                       player_data.wins += 1;
                                       match database::create_player(&mut database, &player.username, player_data) {
                                         Ok(_) => {},
-                                        Err(_err) => {},
+                                        Err(err) => {
+                                          error!("{:?}", err);
+                                        },
                                       }
                                     }
                                   }
@@ -602,8 +628,8 @@ async fn main() {
                                         players[player].in_game_with = Vec::new();
                                         players[player].assigned_team = Team::Blue;
                                       }
-                                      Err(_) => {
-                                        
+                                      Err(err) => {
+                                        warn!("{:?}", err);
                                       }
                                     }
                                   }
@@ -620,12 +646,15 @@ async fn main() {
                                     )
                                   ).block_on() { // equivalent to .await but polls instead
                                     Ok(_) => {},
-                                    Err(_err) => {},
+                                    Err(err) => {
+                                      error!("{:?}", err);
+                                    },
                                   };
                                 }
                               },
-                              Err(error) => {
-                                println!("Game server crashed: {:?}", error);
+                              Err(err) => {
+                                println!("Game server crashed: {:?}", err);
+                                error!("Game server: {:?}", err);
                               }
                             };
                           }
@@ -644,6 +673,7 @@ async fn main() {
                           Ok(_) => {},
                           Err(err) => {
                             println!("{:?}", err);
+                            error!("{:?}", err);
                           },
                         };
                       }
@@ -659,8 +689,9 @@ async fn main() {
                       // player's index
                       let own_index = match from_user(&username, players.clone()) {
                         Ok(index) => index,
-                        Err(()) => {
+                        Err(err) => {
                           // this has no reason to happen lowkey.
+                          warn!("{:?}", err);
                           continue;
                         }
                       };
@@ -672,8 +703,8 @@ async fn main() {
                             Ok(index) => {
                               party_leader_index = index;
                             }
-                            Err(_) => {
-                              // whatever
+                            Err(err) => {
+                              warn!("{:?}", err);
                             }
                           }
                         }
@@ -695,8 +726,9 @@ async fn main() {
                                 }
                               );
                             }
-                            Err(_err) => {
+                            Err(err) => {
                               // whatever
+                              warn!("{:?}", err);
                             }
                           }
                         }
@@ -715,6 +747,7 @@ async fn main() {
                         Ok(_) => {},
                         Err(err) => {
                           println!("{:?}", err);
+                          error!("{:?}", err);
                         },
                       };
                     }
@@ -727,7 +760,8 @@ async fn main() {
                       let database = local_database.lock().unwrap();
                       let player_data = match database::get_player(&database, &username) {
                         Ok(data) => data,
-                        Err(_err) => {
+                        Err(err) => {
+                          error!("{:?}", err);
                           continue;
                         }
                       };
@@ -740,6 +774,7 @@ async fn main() {
                     })).await{
                       Ok(_) => {},
                       Err(err) => {
+                        error!("{:?}", err);
                         println!("{:?}", err);
                       },
                     };
@@ -784,17 +819,20 @@ async fn main() {
                           Ok(_) => {},
                           Err(err) => {
                             println!("{:?}", err);
+                            error!("{:?}", err);
                           },
                         };
                       }
                       Err(err) => {
                         println!("{:?}", err);
+                        error!("{:?}", err);
                         match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                         })).await{
                           Ok(_) => {},
                           Err(err) => {
                             println!("{:?}", err);
+                            error!("{:?}", err);
                           },
                         };
                       }
@@ -810,6 +848,7 @@ async fn main() {
                         Ok(_) => {},
                         Err(err) => {
                           println!("{:?}", err);
+                          error!("{:?}", err);
                         },
                       };
                       continue;
@@ -837,6 +876,7 @@ async fn main() {
                             Ok(_) => {},
                             Err(err) => {
                               println!("{:?}", err);
+                              error!("{:?}", err);
                             },
                           };
                           continue;
@@ -844,6 +884,7 @@ async fn main() {
                       }
                       Err(err) => {
                         println!("1 Error: {:?}", err);
+                        error!("{:?}", err);
                         // database error (internal server error)
                         match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                           information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
@@ -851,6 +892,7 @@ async fn main() {
                           Ok(_) => {},
                           Err(err) => {
                             println!("{:?}", err);
+                            error!("{:?}", err);
                           },
                         };
                         continue;
@@ -866,6 +908,7 @@ async fn main() {
                             })).await{
                               Ok(_) => {},
                               Err(err) => {
+                                error!("{:?}", err);
                                 println!("{:?}", err);
                               },
                             };
@@ -880,6 +923,7 @@ async fn main() {
                               })).await{
                                 Ok(_) => {},
                                 Err(err) => {
+                                  error!("{:?}", err);
                                   println!("{:?}", err);
                                 },
                               };
@@ -897,6 +941,7 @@ async fn main() {
                                     friendship_achieved = true;
                                   }
                                   Err(err) => {
+                                    error!("{:?}", err);
                                     println!("2 Error: {:?}", err);
                                     // friendship failed (internal error).
                                     request_successful = false;
@@ -912,6 +957,7 @@ async fn main() {
                             })).await{
                               Ok(_) => {},
                               Err(err) => {
+                                error!("{:?}", err);
                                 println!("{:?}", err);
                               },
                             };
@@ -934,6 +980,7 @@ async fn main() {
                                   }
                                   Err(err) => {
                                     println!("4 Error: {:?}", err);
+                                    error!("{:?}", err);
                                     // friend request failed (internal error).
                                     request_successful = false;
                                   }
@@ -943,12 +990,14 @@ async fn main() {
                           }
                           _ => {
                             println!("3 Error: {:?}", err);
+                            error!("{:?}", err);
                             // some other error happened in the database.
                             match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                               information: ServerToClient::InteractionRefused(RefusalReason::InternalError),
                             })).await{
                               Ok(_) => {},
                               Err(err) => {
+                                error!("{:?}", err);
                                 println!("{:?}", err);
                               },
                             };
@@ -965,6 +1014,7 @@ async fn main() {
                         })).await{
                           Ok(_) => {},
                           Err(err) => {
+                            error!("{:?}", err);
                             println!("{:?}", err);
                           },
                         };
@@ -975,6 +1025,7 @@ async fn main() {
                         })).await{
                           Ok(_) => {},
                           Err(err) => {
+                            error!("{:?}", err);
                             println!("{:?}", err);
                           },
                         };
@@ -987,6 +1038,7 @@ async fn main() {
                       })).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1038,6 +1090,7 @@ async fn main() {
                         ).await{
                           Ok(_) => {},
                           Err(err) => {
+                            error!("{:?}", err);
                             println!("{:?}", err);
                           },
                         };
@@ -1051,7 +1104,9 @@ async fn main() {
                           )
                         ).await {
                           Ok(_) => {},
-                          Err(_err) => {},
+                          Err(err) => {
+                            error!("{:?}", err);
+                          },
                         };
                       }
                       continue;
@@ -1074,6 +1129,7 @@ async fn main() {
                               }
                             }
                             _ => {
+                              error!("{:?}", err);
                               internal_error_occurred = true;
                             }
                           }
@@ -1088,6 +1144,7 @@ async fn main() {
                       })).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1102,7 +1159,8 @@ async fn main() {
                         let players = local_players.lock().unwrap();
                         let index_of_peer: usize = match from_user(&peer_username, players.clone()) {
                           Ok(index) => {index},
-                          Err(()) => {
+                          Err(err) => {
+                            warn!("{:?}", err);
                             peer_user_online = false;
                             0 // return a gibberish value who cares it won't be read.
                           }
@@ -1117,6 +1175,7 @@ async fn main() {
                         })).await{
                           Ok(_) => {},
                           Err(err) => {
+                            error!("{:?}", err);
                             println!("{:?}", err);
                           },
                         };
@@ -1130,6 +1189,7 @@ async fn main() {
                       ).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1143,6 +1203,7 @@ async fn main() {
                       })).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1198,6 +1259,7 @@ async fn main() {
                       })).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1211,6 +1273,7 @@ async fn main() {
                       })).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1223,6 +1286,7 @@ async fn main() {
                       })).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1282,7 +1346,8 @@ async fn main() {
                                       }
                                     );
                                   }
-                                  Err(_err) => {
+                                  Err(err) => {
+                                    warn!("{:?}", err);
                                     // don't bother.
                                   }
                                 }
@@ -1308,6 +1373,7 @@ async fn main() {
                       ).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1325,6 +1391,7 @@ async fn main() {
                       ).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1342,6 +1409,7 @@ async fn main() {
                       ).await{
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1369,8 +1437,8 @@ async fn main() {
                                 players[index].queued_with = Vec::new();
                                 players[index].is_party_leader = true;
                               }
-                              Err(_err) => {
-                                
+                              Err(err) => {
+                                warn!("{:?}", err);
                               }
                             }
                           }
@@ -1401,14 +1469,15 @@ async fn main() {
                                         }
                                       );
                                     }
-                                    Err(_) => {
+                                    Err(err) => {
                                       // whatever
+                                      warn!("{:?}", err);
                                     }
                                   }
                                 }
                               }
-                              Err(_) => {
-
+                              Err(err) => {
+                                warn!("{:?}", err);
                               }
                             };
                           }
@@ -1419,8 +1488,9 @@ async fn main() {
                             Ok(index) => {
                               index
                             }
-                            Err(_err) => {
+                            Err(err) => {
                               // idk bro
+                              warn!("{:?}", err);
                               continue;
                             }
                           };
@@ -1443,7 +1513,8 @@ async fn main() {
                                   }
                                 );
                               }
-                              Err(_) => {
+                              Err(err) => {
+                                warn!("{:?}", err);
                                 // whatever
                               }
                             }
@@ -1465,6 +1536,7 @@ async fn main() {
                       ).await {
                         Ok(_) => {},
                         Err(err) => {
+                          error!("{:?}", err);
                           println!("{:?}", err);
                         },
                       };
@@ -1492,6 +1564,7 @@ async fn main() {
                   ).await{
                     Ok(_) => {},
                     Err(err) => {
+                      error!("{:?}", err);
                       println!("{:?}", err);
                     },
                   };
