@@ -68,10 +68,10 @@ pub fn load_character_textures() -> HashMap<Character, Texture2D> {
         Character::Cynewynn  => load!("characters/cynewynn/textures/main.png"),
         Character::Raphaelle => load!("characters/raphaelle/textures/main.png"),
         Character::Hernani => load!("characters/hernani/textures/main.png"),
-        Character::Elizabeth => load!("characters/dummy/textures/template.png"),
-        Character::Wiro      => load!("characters/dummy/textures/template.png"),
+        Character::Elizabeth => load!("characters/dummy/textures/template1.png"),
+        Character::Wiro      => load!("characters/dummy/textures/template2.png"),
         Character::Dummy      => load!("characters/dummy/textures/template.png"),
-        Character::Temerity      => load!("characters/dummy/textures/template.png"),
+        Character::Temerity      => load!("characters/dummy/textures/template3.png"),
       }
     );
   }
