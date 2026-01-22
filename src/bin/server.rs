@@ -654,6 +654,15 @@ async fn main() {
                               Err(err) => {
                                 println!("Game server crashed: {:?}", err);
                                 error!("Game server: {:?}", err);
+                                for p_index in player_info {
+                                  let _ = p_index.channel.send(
+                                    PlayerMessage::SendPacket(
+                                      ServerToClientPacket {
+                                        information: ServerToClient::GameServerCrashApology,
+                                      }
+                                    )
+                                  ).block_on();
+                                }
                               }
                             };
                           }

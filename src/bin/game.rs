@@ -1212,6 +1212,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let mut prev_gamemode_info: GameModeInfo = GameModeInfo::new();
 
   let mut game_ended: bool = false;
+  let mut server_crashed: bool = false;
   let mut game_ended_timer = Instant::now();
   let mut winning_team = Team::Blue;
 
@@ -1684,6 +1685,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
                 game_ended_timer = Instant::now();
                 winning_team = data.winning_team;
               }
+              ServerToClient::GameServerCrashApology => {
+                game_ended_timer = Instant::now();
+                server_crashed = true;
+              }
               _ => {}
             }
           }
@@ -1715,7 +1720,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
         draw_text("Defeat", 40.0*vw, 50.0*vh, 15.0*vh, RED);
       }
     }
-    if game_ended && game_ended_timer.elapsed().as_secs_f32() > 4.0 {
+    if server_crashed {
+      draw_text("Server crashed. Sorry.", 10.0*vw, 50.0*vh, 15.0*vh, BLUE);
+    }
+    if (game_ended || server_crashed) && game_ended_timer.elapsed().as_secs_f32() > 4.0 {
       {
         // close the game and go back to the menu.
         // kill_all_threads is like "return" but gracefully stops all other threads.

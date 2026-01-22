@@ -3,7 +3,7 @@ appenders:
     kind: file
     path: "server.log"
     encoder:
-      pattern: "{d} [{l}] {m}{n}"
+      pattern: "{d} [{l}] [{f}][{L}] {m}{n}"
 
 root:
   level: info

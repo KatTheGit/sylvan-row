@@ -65,6 +65,8 @@ pub enum ServerToClient {
   /// Update users about everyone else in the lobby.
   LobbyUpdate(Vec<LobbyPlayerInfo>),
   MatchEnded(MatchEndResult),
+  /// The game server crashed.
+  GameServerCrashApology,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchEndResult {
