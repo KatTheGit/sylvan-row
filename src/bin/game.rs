@@ -171,6 +171,7 @@ async fn main() {
   };
 
   loop {
+    let mouse_pos = Vector2 { x: mouse_position().0, y: mouse_position().1 };
 
     if get_keys_pressed().contains(&KeyCode::F11) {
       fullscreen = !fullscreen;
@@ -225,7 +226,6 @@ async fn main() {
         password_input_size, &mut password, &mut password_selected, 4.0*vh, vh,
         true, &mut show_password
       );
-      //ui::tooltip(password_input_position, password_input_size, "yo wassup");
 
       let save_pass_check_position = Vector2 { x: 35.0*vh, y: 59.0*vh };
       let save_pass_check_size = 5.0*vh;
@@ -239,6 +239,11 @@ async fn main() {
         Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh, vh
       );
       if !confirm { confirm_button_check = false; }
+
+      // tooltips
+      ui::tooltip(username_input_position, username_input_size, "3-20 characters", vh, mouse_pos);
+      ui::tooltip(password_input_position, password_input_size, "8 characters minimum", vh, mouse_pos);
+
 
       if get_keys_pressed().contains(&KeyCode::Enter) {
         if username_selected {

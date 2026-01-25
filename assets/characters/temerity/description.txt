@@ -1,6 +1,3 @@
-A hyena cop who was fired for her tendency
-to solve problems with rocket launchers.
-
 PRIMARY - The Subtle Art of a Rocket Launcher
   A three-hit combo, with each attack gaining
   in range.
@@ -10,8 +7,10 @@ SECONDARY - Rocket Jump
   opponents in an AOE and boosts her forward.
 
 DASH - Hasty Dispatch
-  Holding DASH lets her wallride to move quickly
-  alongside walls.
+  Holding DASH lets her wallride.
 
 PASSIVE - Save the City
   Heals nearby damaged walls.
+
+A hyena cop who was fired for her tendency
+to solve problems with rocket launchers.

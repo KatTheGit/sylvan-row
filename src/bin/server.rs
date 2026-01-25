@@ -1327,7 +1327,7 @@ async fn main() {
                             if was_invited {
 
                               // remove the invitation
-                              players[own_index].invited_by.retain(|element| (element != &other_username));
+                              players[own_index].invited_by.retain(|element| element != &other_username);
 
                               // update own player
                               players[own_index].queued_with = vec![other_username.clone()];

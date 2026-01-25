@@ -1,6 +1,3 @@
-A lone wolf, very wary of people around him. He's
-very good with his musket.
-
 PRIMARY - Silver Bullet
   Fires a long range musket.
 
@@ -12,3 +9,6 @@ DASH - Elusive Retreat
 
 PASSIVE
   Has an easier time destroying walls.
+
+A lone wolf, very wary of people around him. He's
+very good with his musket.

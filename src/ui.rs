@@ -8,6 +8,7 @@ use macroquad::prelude::*;
 use crate::common::*;
 use crate::database::FriendShipStatus;
 use crate::graphics;
+use crate::graphics::draw_rectangle;
 use crate::maths::*;
 use crate::graphics::*;
 use crate::mothership_common::ChatMessageType;
@@ -591,13 +592,33 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
 
 /// When the mouse hovers over the given rectangle with `position`
 /// and `size`, it will display the given text.
-pub fn tooltip(position: Vector2, size: Vector2, text: &str) {
-  let mouse_pos = mouse_position();
-  if mouse_pos.0 < position.x + size.x
-  && mouse_pos.0 > position.x
-  && mouse_pos.1 < position.y + size.y
-  && mouse_pos.1 > position.y {
-    println!("hello, {}", text);
+pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, mut mouse_pos: Vector2) {
+  let font_size = 4.0 * vh;
+  if mouse_pos.x < position.x + size.x
+  && mouse_pos.x > position.x
+  && mouse_pos.y < position.y + size.y
+  && mouse_pos.y > position.y {
+    //show_mouse(false);
+    let lines: Vec<&str> = text.split("\n").collect();
+    let y_offset = 4.0 * vh;
+    let y_size = y_offset * (lines.len() as f32) + 2.0 * vh;
+    let mut x_size = 0f32;
+    for line in lines.clone() {
+      let line_len = measure_text(line, TextParams::default().font, font_size as u16, 1.0).width;
+      if line_len > x_size {
+        x_size = line_len;
+      }
+    }
+    // margin
+    x_size += 2.0 * vh;
+    mouse_pos.x += 10.0;
+    draw_rectangle(mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh}, Vector2 { x: x_size + 1.0*vh, y: y_size + 1.0*vh }, BLUE);
+    draw_rectangle(mouse_pos, Vector2 { x: x_size, y: y_size }, SKYBLUE);
+    let text_size_y = measure_text(lines[0], TextParams::default().font, font_size as u16, 1.0).height;
+    let initial_pos = mouse_pos + Vector2 {x: 1.0 *vh, y: 1.0*vh + text_size_y};
+    for (i, line) in lines.iter().enumerate() {
+      draw_text(line, initial_pos.x, initial_pos.y + (i as f32) * y_offset, font_size, BLACK);
+    }
   }
 }
 

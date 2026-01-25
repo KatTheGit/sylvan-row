@@ -1,13 +1,10 @@
-A strong pious deer with the noble mission of
-protecting those who can't defend themselves.
-
 PRIMARY - Buck-Shot
-  Mid-range attack dealing more damage up-close.
-  Hurting an opponent empowers his DASH.
+  Mid-range attack with damage fall-off.
+  Landing it empowers his DASH.
 
 SECONDARY - Guardian Angel
-  Holds up a shield. Taking damage with the
-  shield reduces secondary charge.
+  Holds up a shield. Taking damage costs
+  secondary charge.
   If this ability is active, PASSIVE stops.
 
 DASH - Intervene
@@ -16,3 +13,6 @@ DASH - Intervene
 
 PASSIVE - Inspire
   Makes nearby allies faster.
+
+A strong pious deer with the noble mission of
+protecting those who can't defend themselves.

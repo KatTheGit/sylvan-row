@@ -1,6 +1,3 @@
-A bunny combat medic who seems to enjoy
-the "combat" part a bit too much.
-
 PRIMARY - Kindness in Blood
   Shoots a piercing projectile. Damaging
   opponents heals nearby allies.
@@ -17,3 +14,6 @@ DASH - Enpowering Leap
 
 PASSIVE - Flight
   Gains a small speed buff when she gets hit.
+
+A bunny combat medic who seems to enjoy
+the "combat" part a bit too much. 

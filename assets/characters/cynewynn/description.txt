@@ -1,6 +1,3 @@
-A lioness and a beloved queen, despite her past. No matter
-how powerful her time magic, she can't fix what she did.
-
 PRIMARY - Wrath
   An AOE sword slash.
 
@@ -14,3 +11,6 @@ DASH - Combat Leap
 PASSIVE - Dedication
   The higher her secondary charge, the faster
   her attack rate.
+
+A lioness and a beloved queen, despite her past. No matter
+how powerful her time magic, she can't fix what she did.
