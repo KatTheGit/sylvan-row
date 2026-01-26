@@ -770,12 +770,14 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             return MatchEndResult {
               winning_team: Team::Blue,
               is_draw: false,
+              game_id: 0, // don't worry about this value, the main server handles it.
             };
           }
           if gamemode_info.rounds_won_red >= ROUNDS_TO_WIN {
             return MatchEndResult {
               winning_team: Team::Red,
               is_draw: false,
+              game_id: 0, // don't worry about this value, the main server handles it.
             };
           }
         }
@@ -848,14 +850,15 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       if players[p_index].is_dead {
         continue;
       }
-
-      if players[p_index].last_packet_time.elapsed().as_secs_f32() > 5.0 {
+      if players[p_index].last_packet_time.elapsed().as_secs_f32() > 5.0
+      && players[p_index].character != Character::Dummy {
         let player_team_copy = players[p_index].team.clone();
         players.remove(p_index);
         if players.is_empty() {
           return MatchEndResult {
             winning_team: player_team_copy,
             is_draw: false,
+            game_id: 0, // don't worry about this value, the main server handles it.
           };
         }
         break;
@@ -959,7 +962,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       // Apply wiro's speed boost
       if players[p_index].character == Character::Wiro {
         if !players[p_index].shooting_secondary
-        || players[p_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
+        || players[p_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown
+        || players[p_index].secondary_charge == 0 {
           for victim_index in 0..players.len() {
             if players[victim_index].team == players[p_index].team
             && Vector2::distance(players[victim_index].position, players[p_index].position) < character.passive_range{
@@ -986,7 +990,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       // If someone is shooting, spawn a bullet according to their character.
       let mut cooldown: f32 = character.primary_cooldown;
       if players[p_index].character == Character::Cynewynn {
-        cooldown -= cooldown * ((secondary_charge as f32 / 100.0) * 0.10)
+        cooldown -= cooldown * ((secondary_charge as f32 / 100.0) * characters[&Character::Cynewynn].primary_cooldown_2)
       }
 
       for buff in players[p_index].buffs.clone() {
@@ -1462,9 +1466,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true,
             characters[&Character::Raphaelle].primary_damage_2, 255, false, f32::INFINITY, f32::INFINITY);
           if hit {
-            // restore dash charge (0.5s)
+            // restore dash charge
             let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
-            players[owner_index].last_dash_time -= Duration::from_millis(450);
+            players[owner_index].last_dash_time -= Duration::from_secs_f32(characters[&Character::Raphaelle].primary_cooldown_2);
           }
         }
 

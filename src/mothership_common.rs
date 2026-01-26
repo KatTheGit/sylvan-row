@@ -24,6 +24,8 @@ pub enum ClientToServer {
   LobbyInvite(String),
   LobbyInviteAccept(String),
   LobbyLeave,
+  /// The player left the match
+  MatchLeave,
   // LOGIN
   RegisterRequestStep1(String, RegistrationRequest<DefaultCipherSuite>),
   RegisterRequestStep2(RegistrationUpload<DefaultCipherSuite>),
@@ -72,6 +74,7 @@ pub enum ServerToClient {
 pub struct MatchEndResult {
   pub winning_team: Team,
   pub is_draw: bool,
+  pub game_id: u128,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct LobbyPlayerInfo {
@@ -137,6 +140,7 @@ pub enum RefusalReason {
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
   pub port: u16,
+  pub game_id: u128
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct ServerToClientPacket {

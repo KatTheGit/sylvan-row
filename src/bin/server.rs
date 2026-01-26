@@ -13,6 +13,8 @@ use pollster::FutureExt as _;
 use log::{info, warn, error};
 use std::panic;
 use std::backtrace::Backtrace;
+use rand::Rng;
+
 
 #[tokio::main]
 async fn main() {
@@ -25,10 +27,13 @@ async fn main() {
     let location = info.location().map(|l| format!("{}:{}", l.file(), l.line())).unwrap_or_else(|| String::from("<unknown>"));
     if let Some(s) = info.payload().downcast_ref::<&str>() {
       error!("PANIC at {}: {}\n{}", location, s, backtrace);
+      println!("PANIC at {}: {}\n{}", location, s, backtrace);
     } else if let Some(s) = info.payload().downcast_ref::<String>() {
       error!("PANIC at {}: {}\n{}", location, s, backtrace);
+      println!("PANIC at {}: {}\n{}", location, s, backtrace);
     } else {
       error!("PANIC at {} (unknown payload)\n{}", location, backtrace);
+      println!("PANIC at {} (unknown payload)\n{}", location, backtrace);
     }
   }));
 
@@ -575,6 +580,7 @@ async fn main() {
                     }
                     // Create a game
                     if !players_to_match.is_empty() {
+                      let game_id: u128 = rand::thread_rng().gen_range(0..u128::MAX);
                       let port = common::get_random_port();
                       {
                         let mut fleet = local_fleet.lock().unwrap();
@@ -593,7 +599,9 @@ async fn main() {
                             let player_info = player_info.clone();
                             match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info.clone())}){
                               // game ended successfully.
-                              Ok(match_result) => {
+                              Ok(mut match_result) => {
+                                // update to the correct game_id since the gameserver isn't aware of it.
+                                match_result.game_id = game_id;
                                 {
                                   let mut database = thread_database.lock().unwrap();
                                   // assign victories.
@@ -617,38 +625,35 @@ async fn main() {
                                     }
                                   }
                                 }
-                                // reset "in game with".
+                                // reset "in game with" and inform players.
                                 {
                                   let mut players = thread_players.lock().unwrap();
                                   for player in player_info.clone() {
                                     let server_player = from_user(&player.username, players.clone());
                                     match server_player {
                                       Ok(player) => {
-                                        players[player].in_game_with = Vec::new();
+                                        players[player].in_game_with.clear();
                                         players[player].assigned_team = Team::Blue;
+                                        match players[player].channel.send(
+                                          PlayerMessage::SendPacket(
+                                            ServerToClientPacket {
+                                              information: ServerToClient::MatchEnded(
+                                                match_result.clone()
+                                              )
+                                            }
+                                          )
+                                        ).block_on() { // equivalent to .await but polls instead
+                                          Ok(_) => {},
+                                          Err(err) => {
+                                            error!("{:?}", err);
+                                          },
+                                        };
                                       }
                                       Err(err) => {
                                         warn!("{:?}", err);
                                       }
                                     }
                                   }
-                                }
-                                // inform everyone of the end of the match
-                                for player in player_info.clone() {
-                                  match player.channel.send(
-                                    PlayerMessage::SendPacket(
-                                      ServerToClientPacket {
-                                        information: ServerToClient::MatchEnded(
-                                          match_result.clone()
-                                        )
-                                      }
-                                    )
-                                  ).block_on() { // equivalent to .await but polls instead
-                                    Ok(_) => {},
-                                    Err(err) => {
-                                      error!("{:?}", err);
-                                    },
-                                  };
                                 }
                               },
                               Err(err) => {
@@ -675,6 +680,7 @@ async fn main() {
                             information: ServerToClient::MatchAssignment(
                               MatchAssignmentData {
                                 port: port,
+                                game_id,
                               }
                             )
                           }
@@ -1528,7 +1534,7 @@ async fn main() {
                               }
                             }
                           }
-                          players[own_index].queued_with = Vec::new();
+                          players[own_index].queued_with.clear();
                           players[own_index].is_party_leader = true;
                         }
                       }
@@ -1549,6 +1555,13 @@ async fn main() {
                           println!("{:?}", err);
                         },
                       };
+                    }
+                  }
+                  ClientToServer::MatchLeave => {
+                    {
+                      let mut players = local_players.lock().unwrap();
+                      let p_index = from_user(&username, players.clone()).expect("oops");
+                      players[p_index].in_game_with.clear();
                     }
                   }
                   // packets that shouldn't arrive.

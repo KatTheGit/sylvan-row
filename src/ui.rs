@@ -1,4 +1,5 @@
 use core::panic;
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
@@ -7,6 +8,8 @@ use std::fs::File;
 use macroquad::prelude::*;
 use crate::common::*;
 use crate::database::FriendShipStatus;
+use crate::gamedata::Character;
+use crate::gamedata::CharacterDescription;
 use crate::graphics;
 use crate::graphics::draw_rectangle;
 use crate::maths::*;
@@ -105,14 +108,16 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
 /// - ability index:
 ///   - 1: primary
 ///   - 2: secondary
-///   - 3: dash/movement
+///   - 3: dash
+///   - 4: passive
 /// - squished: whether to slightly shrink the icon to show the ability was used
 /// - progress: cooldown / charge, 0.0-1.0
-pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, font: &Font) -> () {
+pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, font: &Font, character_descriptions: HashMap<Character, CharacterDescription>, character: Character) -> () {
   let icon: Texture2D = match ability_index {
     1 => {Texture2D::from_file_with_format(include_bytes!("../assets/ui/temp_ability_1.png"), None)},
     2 => {Texture2D::from_file_with_format(include_bytes!("../assets/ui/temp_ability_2.png"), None)},
     3 => {Texture2D::from_file_with_format(include_bytes!("../assets/ui/temp_ability_3.png"), None)},
+    4 => {Texture2D::from_file_with_format(include_bytes!("../assets/ui/temp_ability_4.png"), None)},
     _ => {panic!()},
   };
   let squish_offset = match squished {
@@ -135,9 +140,19 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     1 => " LMB ",
     2 => " RMB ",
     3 => "Space",
+    4 => "",
     _ => "Unkown",
   };
   draw_text_ex(text, (position.x + size.y * 0.125) * vh, (position.y + size.y * 1.3) * vh, TextParams { font: Some(font), font_size: (size.x * 0.3 * vh) as u16, ..Default::default() });
+  let ability = match ability_index {
+    1 => character_descriptions[&character].primary.clone(),
+    2 => character_descriptions[&character].secondary.clone(),
+    3 => character_descriptions[&character].dash.clone(),
+    4 => character_descriptions[&character].passive.clone(),
+    _ => character_descriptions[&character].passive.clone(),
+  };
+  let text = ability.to_text();
+  tooltip(position * vh, size * vh, &text, vh, vw, Vector2 {x: mouse_position().0, y: mouse_position().1});
 }
 
 pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Font, vh: f32, settings: Settings) -> () {
@@ -590,9 +605,10 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
   draw_text(text_to_draw.as_str(), position.x + margin, position.y + size.y * 0.65, font_size, WHITE);
 }
 
+// MARK: Tooltip
 /// When the mouse hovers over the given rectangle with `position`
 /// and `size`, it will display the given text.
-pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, mut mouse_pos: Vector2) {
+pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, vw: f32, mut mouse_pos: Vector2) {
   let font_size = 4.0 * vh;
   if mouse_pos.x < position.x + size.x
   && mouse_pos.x > position.x
@@ -611,11 +627,15 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, mut mouse_
     }
     // margin
     x_size += 2.0 * vh;
-    mouse_pos.x += 10.0;
-    draw_rectangle(mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh}, Vector2 { x: x_size + 1.0*vh, y: y_size + 1.0*vh }, BLUE);
-    draw_rectangle(mouse_pos, Vector2 { x: x_size, y: y_size }, SKYBLUE);
+    let visibility_x_offset: f32 = if mouse_pos.x > 60.0 * vw {
+      - x_size - 10.0
+    } else {
+      10.0
+    };
+    draw_rectangle(mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: 0.0}, Vector2 { x: x_size + 1.0*vh, y: y_size + 1.0*vh }, BLUE);
+    draw_rectangle(mouse_pos                                  + Vector2 {x: visibility_x_offset, y: 0.0}, Vector2 { x: x_size,          y: y_size          }, SKYBLUE);
     let text_size_y = measure_text(lines[0], TextParams::default().font, font_size as u16, 1.0).height;
-    let initial_pos = mouse_pos + Vector2 {x: 1.0 *vh, y: 1.0*vh + text_size_y};
+    let initial_pos = mouse_pos + Vector2 {x: 1.0 *vh + visibility_x_offset, y: 1.0*vh + text_size_y};
     for (i, line) in lines.iter().enumerate() {
       draw_text(line, initial_pos.x, initial_pos.y + (i as f32) * y_offset, font_size, BLACK);
     }

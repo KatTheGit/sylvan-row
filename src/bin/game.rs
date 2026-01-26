@@ -156,6 +156,12 @@ async fn main() {
   let mut player_stats: PlayerStatistics = PlayerStatistics::new();
   let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
 
+  //let character_properties: HashMap<Character, CharacterProperties> = load_characters();
+  //let character_descriptions = CharacterDescription::create_all_descriptions(character_properties);
+  //println!("{}", character_descriptions[&Character::Cynewynn].passive.to_text());
+
+
+
   // for anything shared between game and main menu.
   let mut server_interaction = MainServerInteraction {
     server_stream: None,
@@ -241,8 +247,8 @@ async fn main() {
       if !confirm { confirm_button_check = false; }
 
       // tooltips
-      ui::tooltip(username_input_position, username_input_size, "3-20 characters", vh, mouse_pos);
-      ui::tooltip(password_input_position, password_input_size, "8 characters minimum", vh, mouse_pos);
+      ui::tooltip(username_input_position, username_input_size, "3-20 characters", vh, vw, mouse_pos);
+      ui::tooltip(password_input_position, password_input_size, "8 characters minimum", vh, vw, mouse_pos);
 
 
       if get_keys_pressed().contains(&KeyCode::Enter) {
@@ -672,6 +678,7 @@ async fn main() {
 
     let mut start_game = false;
     let mut game_port = 0;
+    let mut game_id = 0;
 
     // MARK: Listen-Write
     if let Some(ref mut server_stream) = server_interaction.server_stream {
@@ -696,6 +703,7 @@ async fn main() {
                 if info.port != 0 {
                   start_game = true;
                   game_port = info.port;
+                  game_id = info.game_id;
                 }
                 queue = false;
               },
@@ -791,7 +799,7 @@ async fn main() {
     }
 
     if start_game {
-      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen).await;
+      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen, game_id).await;
     }
 
     if tab_play {
@@ -1126,7 +1134,7 @@ async fn main() {
   }
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool) {
+async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128) {
   set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
@@ -1197,6 +1205,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
+  let character_descriptions = CharacterDescription::create_all_descriptions(character_properties.clone());
 
   // assets/fonts/Action_Man.ttf
   let health_bar_font = load_ttf_font_from_bytes(include_bytes!("./../../assets/fonts/Action_Man.ttf")).expect("");
@@ -1245,6 +1254,11 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     drop(keys);
     let killall: MutexGuard<bool> = kill_all_threads.lock().unwrap();
     if *killall {
+      packet_queue.push(
+        ClientToServerPacket {
+          information: ClientToServer::MatchLeave,
+        }
+      );
       return;
     }
     drop(killall);
@@ -1598,9 +1612,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     } else {
       1.0
     };
-    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 0.0,  y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 1, player_copy.shooting_primary, primary_cooldown , vh, &health_bar_font);
-    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 12.5, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 3, player_copy.dashing, dash_cooldown , vh, &health_bar_font);
-    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 25.0, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 2, player_copy.shooting_secondary, secondary_cooldown , vh, &health_bar_font);
+    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 37.5, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 2, player_copy.shooting_secondary, secondary_cooldown , vh, vw, &health_bar_font, character_descriptions.clone(), character);
+    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 25.0, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 3, player_copy.dashing, dash_cooldown , vh, vw, &health_bar_font, character_descriptions.clone(), character);
+    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x: 12.5,  y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 1, player_copy.shooting_primary, primary_cooldown , vh, vw, &health_bar_font, character_descriptions.clone(), character);
+    ui::draw_ability_icon(ability_info_box.rel_pos(Vector2 { x:  0.0, y: 0.0 }), Vector2 { x: 10.0, y: 10.0 }, 4, false, 1.0 , vh, vw, &health_bar_font, character_descriptions.clone(), character);
 
     let mut red_team_players: u8  = 0;
     let mut blue_team_players :u8 = 0;
@@ -1685,10 +1700,13 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
                 chat_timer = Instant::now();
               }
               ServerToClient::MatchEnded(data) => {
-                // wait a bit to give the player time to process what happened.
-                game_ended = true;
-                game_ended_timer = Instant::now();
-                winning_team = data.winning_team;
+                // make sure that this game end packet is indeed from this game, and not another one.
+                if data.game_id == game_id {
+                  game_ended = true;
+                  // wait a bit to give the player time to process what happened.
+                  game_ended_timer = Instant::now();
+                  winning_team = data.winning_team;
+                }
               }
               ServerToClient::GameServerCrashApology => {
                 game_ended_timer = Instant::now();
