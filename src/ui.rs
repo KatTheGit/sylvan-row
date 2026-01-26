@@ -608,7 +608,7 @@ pub fn text_input(position: Vector2, size: Vector2, buffer: &mut String, active:
 // MARK: Tooltip
 /// When the mouse hovers over the given rectangle with `position`
 /// and `size`, it will display the given text.
-pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, vw: f32, mut mouse_pos: Vector2) {
+pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, vw: f32, mouse_pos: Vector2) {
   let font_size = 4.0 * vh;
   if mouse_pos.x < position.x + size.x
   && mouse_pos.x > position.x

@@ -170,8 +170,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           let mut movement_legal = true;
           let previous_position = player.position.clone();
 
-          //let wait_time = 0.02 * crappy_random();
-          //std::thread::sleep(Duration::from_secs_f64(wait_time));
+          // let wait_time = 0.02 * crappy_random();
+          // std::thread::sleep(Duration::from_secs_f64(wait_time));
           
           // (vscode) MARK: Dashing Legality
 
