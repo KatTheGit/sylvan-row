@@ -1321,11 +1321,15 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // MARK: Interpolation
     // for now this is just simple linear interpolation, no shenanigans yet.
     for player in other_players.iter_mut() {
-      let distance = player.interpol_next - player.interpol_prev;
+      //let distance = player.interpol_next - player.position;
       //let period = PACKET_INTERVAL;
       //let speed = distance / period;
-      let speed = character_properties[&player.character].speed * player.movement_direction.magnitude();
-      player.position += distance.normalize() * speed * get_frame_time();
+      //let speed = character_properties[&player.character].speed * player.movement_direction.magnitude();
+      //player.position += distance * PACKET_INTERVAL * get_frame_time() * 2.0;
+      
+      // I can't get the interpolation to work, so temporarily I'll swap it with this very simple
+      // extrapolation method.
+      player.position += player.movement_direction * character_properties[&player.character].speed * get_frame_time();
     }
 
     let mut game_objects_copy = game_objects.clone();
@@ -1928,18 +1932,11 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         other_players.retain(|element| recieved_players.contains(&element));
         for player_index in 0..other_players.len() {
           // new position
-          recieved_players[player_index].interpol_next = recieved_players[player_index].position;
+          //recieved_players[player_index].interpol_next = recieved_players[player_index].position;
           // previous position
           // if not moving, force a position
-          if recieved_players[player_index].movement_direction == Vector2::new() {
-            recieved_players[player_index].position = other_players[player_index].interpol_next;
-            recieved_players[player_index].interpol_prev = other_players[player_index].interpol_next;
-          }
-          // if moving, keep the interpolation smooth by never forcing positions.
-          else {
-            recieved_players[player_index].position = other_players[player_index].position;
-            recieved_players[player_index].interpol_prev = other_players[player_index].position;
-          }
+          //recieved_players[player_index].position = other_players[player_index].position;
+          //recieved_players[player_index].interpol_prev = other_players[player_index].position;
         }
         *other_players = recieved_players;
         drop(other_players);
