@@ -1321,15 +1321,17 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // MARK: Interpolation
     // for now this is just simple linear interpolation, no shenanigans yet.
     for player in other_players.iter_mut() {
-      //let distance = player.interpol_next - player.position;
-      //let period = PACKET_INTERVAL;
-      //let speed = distance / period;
+      let distance = player.interpol_next - player.position;
+      let period = PACKET_INTERVAL;
+      let speed = distance / period;
+      player.position += speed * get_frame_time();
       //let speed = character_properties[&player.character].speed * player.movement_direction.magnitude();
       //player.position += distance * PACKET_INTERVAL * get_frame_time() * 2.0;
-      
+      //player.position += distance * get_frame_time();
+      //draw_line(player.position.x, player.position.y, player.interpol_next.x, player.interpol_next.y, 1.0*vh, PURPLE);
       // I can't get the interpolation to work, so temporarily I'll swap it with this very simple
       // extrapolation method.
-      player.position += player.movement_direction * character_properties[&player.character].speed * get_frame_time();
+      //player.position += player.movement_direction * character_properties[&player.character].speed * get_frame_time();
     }
 
     let mut game_objects_copy = game_objects.clone();
@@ -1929,14 +1931,29 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         }
         // if a player left the game, recieved players has one less players, and other_players needs to
         // be adjusted since we index over other_players.
-        other_players.retain(|element| recieved_players.contains(&element));
-        for player_index in 0..other_players.len() {
-          // new position
-          //recieved_players[player_index].interpol_next = recieved_players[player_index].position;
-          // previous position
-          // if not moving, force a position
-          //recieved_players[player_index].position = other_players[player_index].position;
-          //recieved_players[player_index].interpol_prev = other_players[player_index].position;
+        other_players.retain(|element| {
+          for player in recieved_players.clone() {
+            if player.username == element.username {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        // if a new player joins, skip this part, update directly.
+        println!("{:?}, {:?}", other_players.len(), recieved_players.len());
+        if other_players.len() == recieved_players.len() {
+          for player_index in 0..recieved_players.len() {
+            // new position
+            recieved_players[player_index].interpol_prev = other_players[player_index].interpol_next;
+            recieved_players[player_index].interpol_next = recieved_players[player_index].position;
+            recieved_players[player_index].position = other_players[player_index].interpol_prev;
+            // previous position
+            // if not moving, force a position
+            //recieved_players[player_index].position = Vector2 { x: 0.0, y: 0.0 }; //other_players[player_index].position;
+            //recieved_players[player_index].interpol_prev = other_players[player_index].position;
+            println!("{:?}", recieved_players[player_index].position)
+          }
         }
         *other_players = recieved_players;
         drop(other_players);
