@@ -106,13 +106,14 @@ This is just for me.
     - [x] Logs
       - [ ] Chat logs (for moderation)
       - [x] Server crash logs
-  - [ ] UI
+  - [x] UI
     - [x] Text input fields
   - [ ] Ranked system
     - [ ] Ranked queue
     - [ ] Ranked points storage
     - [ ] Ranked points assignment at win/loss
     - [ ] Rank update display at end of game
+    - [ ] Ranked Leaderboard
   - [x] Maintain ability to read primary server socket during game
     - [x] In-game chat
     - [ ] Game update (game won/lost)

@@ -1,6 +1,6 @@
 use redb::{Database, Result};
 use sylvan_row::{common::{self, Team}, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, mothership_common::*, network} ;
-use std::{sync::{Arc, Mutex}, thread::JoinHandle, vec};
+use std::{io::{Write}, sync::{Arc, Mutex}, thread::JoinHandle, vec};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
 use opaque_ke::{ServerLoginStartResult};
@@ -14,12 +14,24 @@ use log::{info, warn, error};
 use std::panic;
 use std::backtrace::Backtrace;
 use rand::Rng;
+use std::fs::File;
 
 
 #[tokio::main]
 async fn main() {
+
   // start logger
-  log4rs::init_file("log4rs.yaml", Default::default()).expect("Failed to initialize logging");
+  let default_file = include_bytes!("../../log4rs.yaml");
+  match File::create_new("log4rs.yaml") {
+    // create a log4rs.yaml file if it can't be found.
+    Ok(mut file) => {
+      file.write_all(default_file).expect("oops");
+    },
+    // otherwise do nothing.
+    Err(_err) => {},
+  };
+  // start logger
+  log4rs::init_file("log4rs.yaml", Default::default()).expect("Could not initialise log4rs.");
 
   // make sure all panics are fully logged.
   panic::set_hook(Box::new(|info| {
