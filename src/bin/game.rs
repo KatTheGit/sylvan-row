@@ -1322,10 +1322,13 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // for now this is just simple linear interpolation, no shenanigans yet.
     for player in other_players.iter_mut() {
       let distance = player.interpol_next - player.position;
-      let period = PACKET_INTERVAL;
-      let speed = distance / period;
-      player.position += speed * get_frame_time();
-      //let speed = character_properties[&player.character].speed * player.movement_direction.magnitude();
+      let cutoff = 7.0 * TILE_SIZE * get_frame_time();
+      if distance.magnitude() > cutoff {
+        let period = PACKET_INTERVAL;
+        let speed = distance / period;
+        //let speed = player.movement_direction * character_properties[&player.character].speed;
+        player.position += distance.normalize() * (70.0 * speed.magnitude().powf(1.0/15.0) + 3.0 * speed.magnitude()) * get_frame_time() * 0.1;
+      }
       //player.position += distance * PACKET_INTERVAL * get_frame_time() * 2.0;
       //player.position += distance * get_frame_time();
       //draw_line(player.position.x, player.position.y, player.interpol_next.x, player.interpol_next.y, 1.0*vh, PURPLE);
@@ -1947,7 +1950,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
             // new position
             recieved_players[player_index].interpol_prev = other_players[player_index].interpol_next;
             recieved_players[player_index].interpol_next = recieved_players[player_index].position;
-            recieved_players[player_index].position = other_players[player_index].interpol_prev;
+            recieved_players[player_index].position = other_players[player_index].position;
             // previous position
             // if not moving, force a position
             //recieved_players[player_index].position = Vector2 { x: 0.0, y: 0.0 }; //other_players[player_index].position;
