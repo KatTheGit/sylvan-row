@@ -65,8 +65,8 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
   let port = get_random_port();
-  let mut vw: f32;
-  let mut vh: f32;
+  let mut vw: f32 = 1.0;
+  let mut vh: f32 = 1.0;
   let mut selected_char = 0;
   let characters: Vec<Character> = vec![
     Character::Hernani,
@@ -101,15 +101,9 @@ async fn main() {
 
   // whether we're queueing
   let mut queue: bool = false;
-  let mut play_released: bool = false;
 
   
   // MARK: main menu
-  let mut tab_play: bool = true;
-  let mut tab_heroes: bool = false;
-  let mut tab_tutorial: bool = false;
-  let mut tab_stats: bool = false;
-  let mut tab_friends: bool = false;
   let mut tab_stats_refresh_flag: bool = false;
   let mut tab_friends_refresh_flag: bool = false;
   let mut menu_paused = false;
@@ -151,16 +145,12 @@ async fn main() {
   let mut last_nonce: u32 = 0;
 
 
-  let mut confirm_button_check: bool = false;
-
   let mut player_stats: PlayerStatistics = PlayerStatistics::new();
   let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
 
-  //let character_properties: HashMap<Character, CharacterProperties> = load_characters();
-  //let character_descriptions = CharacterDescription::create_all_descriptions(character_properties);
-  //println!("{}", character_descriptions[&Character::Cynewynn].passive.to_text());
-
-
+  let mut main_tabs = ui::Tabs::new(Vector2::new(), Vector2::new(), vec!["Play".to_string(), "Heroes".to_string(), "Tutorial".to_string(), "Stats".to_string(), "Friends".to_string()], 5.0*vh);
+  let mut login_tabs = ui::Tabs::new(Vector2::new(), Vector2::new(), vec!["Login".to_string(), "Register".to_string()], 5.0*vh);
+  let mut heroes_tabs = ui::Tabs::new(Vector2::new(), Vector2::new(), characters.iter().map(|x| x.name()).collect(), 5.0*vh);
 
   // for anything shared between game and main menu.
   let mut server_interaction = MainServerInteraction {
@@ -177,6 +167,9 @@ async fn main() {
   };
 
   loop {
+    main_tabs.update_size(Vector2 { x: 5.0 * vw, y: 5.0 * vh}, Vector2 { x: 90.0*vw, y: 6.0*vh }, 5.0*vh);
+    login_tabs.update_size(Vector2 { x: 35.0 * vh, y: 20.0 * vh}, Vector2 { x: 40.0*vw, y: 6.0*vh }, 5.0*vh);
+    heroes_tabs.update_size(Vector2 { x: 5.0 * vw, y: 75.0 * vh}, Vector2 { x: 90.0*vw, y: 15.0*vh }, 5.0*vh);
     let mouse_pos = Vector2 { x: mouse_position().0, y: mouse_position().1 };
 
     if get_keys_pressed().contains(&KeyCode::F11) {
@@ -191,7 +184,7 @@ async fn main() {
     let br_anchor: Vector2 = Vector2 { x: screen_width(), y: screen_height() };
     //let tr_anchor: Vector2 = Vector2 { x: screen_width(), y: 0.0 };
     //let bl_anchor: Vector2 = Vector2 { x: 0.0,            y: screen_height() };
-    let tl_anchor: Vector2 = Vector2 { x: 0.0,            y: 0.0 };
+    //let tl_anchor: Vector2 = Vector2 { x: 0.0,            y: 0.0 };
 
 
     // show login window
@@ -201,16 +194,13 @@ async fn main() {
       draw_text("Username", 35.0 * vh, 32.0*vh, 4.0*vh, BLACK);
       draw_text("Password", 35.0 * vh, 47.0*vh, 4.0*vh, BLACK);
 
-      let register_button = ui::one_way_button(
-        Vector2 { x: 35.0*vh, y: 20.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Register", 4.0*vh, vh, registering
-      );
-      let login_button = ui::one_way_button(
-        Vector2 { x: 55.0*vh, y: 20.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, "Login", 4.0*vh, vh, !registering
-      );
-      if register_button {
+      login_tabs.draw_and_process(vh);
+      // register
+      if login_tabs.selected_tab() == 1 {
         registering = true;
       }
-      if login_button {
+      // login
+      if login_tabs.selected_tab() == 0 {
         registering = false;
       }
 
@@ -241,10 +231,9 @@ async fn main() {
         settings.save();
       }
       // confirm button for either action
-      let mut confirm = ui::button(
-        Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh, vh
-      );
-      if !confirm { confirm_button_check = false; }
+      let confirm_button = ui::Button::new(Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh);
+      confirm_button.draw(vh);
+      let mut confirm = confirm_button.was_pressed();
 
       // tooltips
       ui::tooltip(username_input_position, username_input_size, "3-20 characters", vh, vw, mouse_pos);
@@ -265,8 +254,7 @@ async fn main() {
       }
       
       // if button pressed
-      if confirm && !confirm_button_check {
-        confirm_button_check = true;
+      if confirm {
         draw_text("Attempting connection...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
         next_frame().await;
   
@@ -413,7 +401,8 @@ async fn main() {
                     notifications.push(
                       Notification::new("Account created!", 1.5)
                     );
-                    registering = false;  
+                    registering = false;
+                    login_tabs.set_selected(0);  
                   }
 
                   // error
@@ -609,7 +598,6 @@ async fn main() {
       continue;
     }
     // MARK: Main (logged in)
-
     // Startup
     if !startup_happened {
       startup_happened = true;
@@ -620,61 +608,7 @@ async fn main() {
       );
     }
 
-    let button_count: f32 = 5 as f32;
-    let margin: f32 = 5.0;
-    let offset = (100.0 - margin*2.0)/button_count;
-    let y_offset: f32 = 5.0;
-    let y_size: f32 = 6.0;
-    let play_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: (margin + offset * 0.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Play", 5.0*vh, vh, tab_play
-    );
-    let heroes_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: (margin + offset * 1.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Heroes", 5.0*vh, vh, tab_heroes
-    );
-    let tutorial_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: (margin + offset * 2.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Tutorial", 5.0*vh, vh, tab_tutorial
-    );
-    let stats_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: (margin + offset * 3.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Stats", 5.0*vh, vh, tab_stats
-    );
-    let friends_tab_button = ui::one_way_button(
-      tl_anchor + Vector2 { x: (margin + offset * 4.0)*vw, y: y_offset*vh }, Vector2 { x: offset*vw, y: y_size*vh }, "Friends", 5.0*vh, vh, tab_friends
-    );
-    if play_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key1) && !chat_selected) */ {
-      tab_heroes = false;
-      tab_play = true;
-      tab_tutorial = false;
-      tab_stats = false;
-      tab_friends = false;
-    }
-    if heroes_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key2) && !chat_selected) */ {
-      tab_heroes = true;
-      tab_play = false;
-      tab_tutorial = false;
-      tab_stats = false;
-      tab_friends = false;
-    }
-    if tutorial_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key3) && !chat_selected) */ {
-      tab_heroes = false;
-      tab_play = false;
-      tab_tutorial = true;
-      tab_stats = false;
-      tab_friends = false;
-    }
-    if stats_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key4) && !chat_selected) */ {
-      tab_heroes = false;
-      tab_play = false;
-      tab_tutorial = false;
-      tab_stats = true;
-      tab_friends = false;
-    }
-    if friends_tab_button /* || (get_keys_pressed().contains(&KeyCode::Key5) && !chat_selected) */ {
-      tab_heroes = false;
-      tab_play = false;
-      tab_tutorial = false;
-      tab_stats = false;
-      tab_friends = true;
-    }
+    main_tabs.draw_and_process(vh);
 
     let mut start_game = false;
     let mut game_port = 0;
@@ -802,7 +736,8 @@ async fn main() {
       game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen, game_id).await;
     }
 
-    if tab_play {
+    // play tab
+    if main_tabs.selected_tab() == 0 {
       if !queue {
         ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, &mut checkbox_1v1);
         ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, &mut checkbox_2v2);
@@ -811,18 +746,13 @@ async fn main() {
         ui::checkbox(br_anchor - Vector2 {x: 17.5*vh, y: 21.0*vh }, 4.0*vh, "2v2", 4.0*vh, vh, &mut checkbox_2v2.clone());
       }
 
-      let play_button = ui::button(
-        br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh, vh
-      );
+
+      let play_button = ui::Button::new(br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh);
+      play_button.draw(vh);
       if queue {
-        draw_text("In queue :)", br_anchor.x - 30.0*vh, br_anchor.y - 24.0*vh, 5.0*vh, BLACK);
+        draw_text("In queue...", br_anchor.x - 30.0*vh, br_anchor.y - 24.0*vh, 5.0*vh, BLACK);
       }
-      if play_button {
-        play_released = true;
-      }
-      if !play_button
-      && play_released {
-        play_released = false;
+      if play_button.was_pressed() {
         queue = !queue;
         if queue {
           let mut selected_gamemodes: Vec<GameMode> = Vec::new();
@@ -878,8 +808,9 @@ async fn main() {
       }
       // lobby leave button
       if lobby.len() > 1 {
-        let leave = ui::button_was_pressed(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh, vh);
-        if leave {
+        let leave_button = ui::Button::new(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh);
+        leave_button.draw(vh);
+        if leave_button.was_pressed() {
           packet_queue.push(
             ClientToServerPacket {
               information: ClientToServer::LobbyLeave,
@@ -893,47 +824,30 @@ async fn main() {
       }
     }
 
-    if tab_heroes {
-      let mut heroes: Vec<bool> = Vec::new();
+    // heroes tab
+    if main_tabs.selected_tab() == 1 {
+
+      heroes_tabs.draw_and_process(vh);
       let max = characters.len();
-      for x in 0..max {
-        heroes.push(
-          ui::one_way_button(
-            Vector2 { x: 10.0 * vw + (80.0/(max) as f32) * x as f32 * vw, y: 80.0*vh },
-            Vector2 { x: 80.0/((max) as f32)*vw * 0.7, y: 12.0*vh },
-            match x {
-              0 => "Hernani",
-              1 => "Raphaelle",
-              2 => "Cynewynn",
-              3 => "Wiro",
-              4 => "Josey",
-              5 => "Temerity",
-              _ => panic!(),
-            }, 4.0*vh, vh,
-            (selected_char == x)
-          )
-        );
-      }
-      for hero_index in 0..max {
-        if heroes[hero_index] {
-          selected_char = hero_index;
-        }
-      }
+
+      selected_char = heroes_tabs.selected_tab();
+
       draw_multiline_text_ex(descriptions[selected_char],20.0*vh, 15.0*vh, Some(0.7), 
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
       let image_size = 45.0;
       draw_image(&temporary_profiles[selected_char], (71.0/vh)*vw, 18.0, image_size*0.9, image_size, vh, Vector2::new(), WHITE);
-      draw_text("Selected", 10.0 * vw + (selected_char as f32) * (80.0/(max) as f32) * vw, 95.0 * vh, 4.0 * vh, BLACK);
+      draw_text("Selected", 7.5 * vw + (selected_char as f32) * (90.0/(max) as f32) * vw, 95.0 * vh, 4.0 * vh, BLACK);
     }
-    if tab_tutorial {
+    if main_tabs.selected_tab() == 2 {
       let text: &str =
         "(LMB)   PRIMARY   - Ability on short cooldown.\n(RMB)   SECONDARY - Ability that requires charge. Build charge by hitting opponents.\n(Space) DASH      - Cooldown ability.\n(WASD)  Move";
       draw_multiline_text_ex(text,20.0*vh, 15.0*vh, Some(0.7), 
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
     }
-    if tab_stats {
+    // stats
+    if main_tabs.selected_tab() == 3 {
       // runs once when we click this tab
       if tab_stats_refresh_flag == false {
         tab_stats_refresh_flag = true;
@@ -949,10 +863,11 @@ async fn main() {
       let stats = player_stats.clone();
       draw_text(&format!("{}'s beautiful stats:", username), 20.0*vh, 20.0*vh, 5.0*vh, BLACK);
       draw_text(&format!("Wins: {}", stats.wins), 20.0*vh, 27.0*vh, 5.0*vh, BLACK);
-    } if !tab_stats {
+    } if !main_tabs.selected_tab() == 3 {
       tab_stats_refresh_flag = false;
     }
-    if tab_friends {
+    // friends
+    if main_tabs.selected_tab() == 4 {
       // runs once when we click this tab
       if tab_friends_refresh_flag == false {
         tab_friends_refresh_flag = true;
@@ -969,10 +884,9 @@ async fn main() {
         Vector2 { x: 45.0*vw, y: 7.0*vh }, &mut friend_request_input, &mut friend_request_input_selected, 4.0*vh, vh,
         false, &mut false,
       );
-      let send_request = ui::button_was_pressed(
-        Vector2 { x: 60.0*vw, y: 15.0*vh }, Vector2 { x: 25.0*vw, y: 7.0*vh }, "Send friend request", 5.0*vh, vh
-      );
-      if send_request {
+      let send_request_button = ui::Button::new(Vector2 { x: 60.0*vw, y: 15.0*vh }, Vector2 { x: 25.0*vw, y: 7.0*vh }, "Send friend request", 5.0*vh);
+      send_request_button.draw(vh);
+      if send_request_button.was_pressed() {
         let username_requested = friend_request_input.as_str();
         if username_requested.is_empty() {
           notifications.push(
@@ -1024,10 +938,8 @@ async fn main() {
             if pending_for_you_status != friend.1 {
               // This user is requesting to be friends.
               status = "Awaiting your response.";
-              let accept_button = ui::button_was_pressed(
-                Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Accept", 5.0*vh, vh
-              );
-              if accept_button {
+              let accept_button = ui::Button::new(Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Accept", 5.0*vh);
+              if accept_button.was_pressed() {
                 // Accept the friend request by sending a friend request to this user, which the
                 // server processes as an accept.
                 packet_queue.push(
@@ -1057,10 +969,11 @@ async fn main() {
             draw_text(match online {true => "Online", false => "Offline"}, 70.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
             // if we were invited by this user, show accept button
             if server_interaction.lobby_invites.contains(&String::from(peer_username)) {
-              let accept_button = ui::button_was_pressed(
-                Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Join", 5.0*vh, vh
+              let accept_button = ui::Button::new(
+                Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Join", 5.0*vh
               );
-              if accept_button {
+              accept_button.draw(vh);
+              if accept_button.was_pressed() {
                 packet_queue.push(
                   ClientToServerPacket { information: ClientToServer::LobbyInviteAccept(String::from(peer_username)) }
                 );
@@ -1070,10 +983,11 @@ async fn main() {
             // invite user button
             else {
               if online {
-                let invite_button = ui::button_was_pressed(
-                  Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Invite", 5.0*vh, vh
+                let invite_button = ui::Button::new(
+                  Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Invite", 5.0*vh
                 );
-                if invite_button {
+                invite_button.draw(vh);
+                if invite_button.was_pressed() {
                   packet_queue.push(
                     ClientToServerPacket { information: ClientToServer::LobbyInvite(String::from(peer_username)) }
                   );
@@ -1087,7 +1001,8 @@ async fn main() {
         }
         draw_text(status, 40.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
       }
-    } if !tab_friends {
+      // friends
+    } if !main_tabs.selected_tab() == 4 {
       tab_friends_refresh_flag = false;
     }
 
@@ -1135,7 +1050,7 @@ async fn main() {
 }
 // (vscode) MARK: game
 async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128) {
-  set_mouse_cursor(miniquad::CursorIcon::Crosshair);
+  //set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
   let game_object_tetures = graphics::load_game_object_textures();

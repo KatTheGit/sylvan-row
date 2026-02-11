@@ -6,7 +6,7 @@ A multiplayer twin-stick hero shooter designed to be fair and fun while still al
 
 ## Play
 
-If you're interested in playtesting we'd love to have you over at our [discord](https://discord.gg/4SbwGZeYcx)!
+If you're interested in playtesting we'd love to have you over at our [Discord](https://discord.gg/4SbwGZeYcx)! Or the [Stoat server](https://stt.gg/7GvZ7HfA), if you're chill like that.
 
 Otherwise there is a playable release, but you'll need to host your own server if you want to try the game (by downloading server.exe). When you run the game, a file called `moba_ip.txt` will be created in the same directory. You can put your own server's IP(v4) address in there.
 
