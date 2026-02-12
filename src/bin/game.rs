@@ -150,9 +150,10 @@ async fn main() {
   let mut player_stats: PlayerStatistics = PlayerStatistics::new();
   let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
 
-  let mut main_tabs = ui::Tabs::new(Vector2::new(), Vector2::new(), vec!["Play".to_string(), "Heroes".to_string(), "Tutorial".to_string(), "Stats".to_string(), "Friends".to_string()], 5.0*vh);
-  let mut login_tabs = ui::Tabs::new(Vector2::new(), Vector2::new(), vec!["Login".to_string(), "Register".to_string()], 5.0*vh);
-  let mut heroes_tabs = ui::Tabs::new(Vector2::new(), Vector2::new(), characters.iter().map(|x| x.name()).collect(), 5.0*vh);
+  let mut main_tabs = ui::Tabs::new(vec!["Play".to_string(), "Heroes".to_string(), "Tutorial".to_string(), "Stats".to_string(), "Friends".to_string()], 5.0*vh);
+  let mut login_tabs = ui::Tabs::new(vec!["Login".to_string(), "Register".to_string()], 5.0*vh);
+  let mut heroes_tabs = ui::Tabs::new(characters.iter().map(|x| x.name()).collect(), 5.0*vh);
+  let mut settings_tabs = ui::Tabs::new(vec!["Gameplay".to_string(), "Video".to_string(), "Audio".to_string(), "Controls".to_string()], 5.0*vh);
 
   // for anything shared between game and main menu.
   let mut server_interaction = MainServerInteraction {
@@ -735,7 +736,7 @@ async fn main() {
     }
 
     if start_game {
-      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen, game_id).await;
+      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen, game_id, &mut settings_tabs).await;
     }
 
     // play tab
@@ -1042,7 +1043,7 @@ async fn main() {
     drop(keys);
     let mut quit: bool = false;
     if menu_paused {
-      (menu_paused, quit) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag);
+      (menu_paused, quit) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, &mut settings_tabs);
     }
     if quit {
       exit(0);
@@ -1051,7 +1052,7 @@ async fn main() {
   }
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128) {
+async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128, settings_tabs: &mut ui::Tabs) {
   //set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
@@ -1580,7 +1581,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // Draw pause menu
     if menu_paused {
       let mut kill_all_threads = kill_all_threads.lock().unwrap();
-      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag);
+      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, settings_tabs);
       drop(kill_all_threads);
       // Draw fps, etc
       if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {

@@ -78,6 +78,17 @@ impl Button {
     }
     return false;
   }
+  pub fn was_released(&self) -> bool {
+    let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
+    if mouse.x > self.position.x && mouse.x < (self.position.x + self.size.x) {
+      if mouse.y > self.position.y && mouse.y < (self.position.y + self.size.y) {
+        if is_mouse_button_released(MouseButton::Left) {
+          return true & self.clickable;
+        }
+      }
+    }
+    return false;
+  }
 }
 
 // Represents a row of tabs
@@ -89,7 +100,7 @@ pub struct Tabs {
   font_size: f32,
 }
 impl Tabs {
-  pub fn new(position: Vector2, size: Vector2, tab_names: Vec<String>, font_size: f32) -> Tabs {
+  pub fn new(tab_names: Vec<String>, font_size: f32) -> Tabs {
     let mut selected: Vec<bool> = Vec::new();
     for i in 0..tab_names.len() {
       if i == 0 {
@@ -100,8 +111,8 @@ impl Tabs {
       }
     }
     return Tabs {
-      position,
-      size,
+      position: Vector2::new(),
+      size: Vector2::new(),
       tab_names: tab_names,
       selected,
       font_size,
@@ -203,7 +214,7 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
 /// slider.
 /// 
 /// Returns true if the value was modified.
-pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32) {
+pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32) -> bool {
   let shrink = 1.0*vh;
   graphics::draw_rectangle(position, size, BLUE);
   graphics::draw_rectangle(position + Vector2 {x: shrink, y: shrink}, size - Vector2 {x: shrink*2.0, y:shrink*2.0}, SKYBLUE);
@@ -231,9 +242,11 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
         if *value < value_min {
           *value = value_min
         }
+        return true;
       }
     }
   }
+  return false;
 }
 
 // MARK: In-game
@@ -320,7 +333,7 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
 /// This function is called both in-game and in the main menu
 /// 
 /// returns menu_paused and wants_to_quit
-pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool) -> (bool, bool) {
+pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool, settings_tabs: &mut Tabs) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * vh;
@@ -329,7 +342,7 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
 
   let button_size: Vector2 = Vector2 { x: 25.0 * vh, y: 9.0 * vh };
   // semi-transparent background
-  graphics::draw_rectangle(Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.75 });
+  graphics::draw_rectangle(Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.9 });
   if !*settings_open {
     // buttons
     let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
@@ -344,7 +357,7 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
     let settings_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation };
     let mut settings_button = Button::new(settings_button_position, button_size, "Options", button_font_size);
     settings_button.draw(vh, true);
-    if settings_button.is_down() {
+    if settings_button.was_released() {
       *settings_open = true;
     }
 
@@ -360,20 +373,42 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
 
   }
   if *settings_open {
-    let mut back_button = Button::new(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 15.0*vh }, Vector2 { x: 25.0 * vh, y: 9.0 * vh }, "Back", button_font_size);
+    settings_tabs.update_size(Vector2 { x: 10.0*vw, y: 15.0*vh }, Vector2 { x: 80.0*vw, y: 6.0*vh }, 6.0*vh);
+    settings_tabs.draw_and_process(vh, true);
+    let mut back_button = Button::new(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 3.0*vh }, Vector2 { x: 25.0 * vh, y: 9.0 * vh }, "Back", button_font_size);
     back_button.draw(vh, true);
     if back_button.is_down() {
       *settings_open = false;
     }
-    let c1 = checkbox(Vector2 { x: vw * 25.0, y: vh * 30.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, &mut settings.camera_smoothing);
-    let c2 = checkbox(Vector2 { x: vw * 25.0, y: vh * 35.0 }, 4.0 * vh, "Display character names instead of usernames", 5.0*vh, vh, &mut settings.display_char_name_instead);
 
-    let c3 = checkbox(Vector2 { x: vw * 25.0, y: vh * 40.0 }, 4.0 * vh, "Fullscreen", 5.0*vh, vh, &mut settings.fullscreen);
-    if c3 {
-      set_fullscreen(settings.fullscreen);
+    let mut settings_modified: bool = false;
+
+    // Gameplay
+    if settings_tabs.selected_tab() == 0 {
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: vh * 25.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, &mut settings.camera_smoothing);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: vh * 30.0 }, 4.0 * vh, "Display character names instead of usernames", 5.0*vh, vh, &mut settings.display_char_name_instead);
     }
+    // Video
+    if settings_tabs.selected_tab() == 1 {
+      let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: vh * 25.0 }, 4.0 * vh, "Fullscreen", 5.0*vh, vh, &mut settings.fullscreen);
+      if fullscreen_changed {
+        set_fullscreen(settings.fullscreen);
+      }
+      settings_modified |= fullscreen_changed;
+    }
+    // Audio
+    if settings_tabs.selected_tab() == 2 {
+      settings_modified |= slider(Vector2 { x: vw * 25.0, y: vh * 25.0 }, Vector2 { x: 45.0*vw, y: 7.0*vh }, "Volume", 5.0*vh, vh, &mut settings.master_volume, 0.0, 100.0);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 33.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "Music", 5.0*vh, vh, &mut settings.music_volume, 0.0, 100.0);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "SFX", 5.0*vh, vh, &mut settings.sfx_volume, 0.0, 100.0);
+    }
+    // Other
+    if settings_tabs.selected_tab() == 3 {
+
+    }
+
     // if the settings were modified, save them.
-    if c1 || c2 || c3 {
+    if settings_modified {
       settings.save();
     }
   }
@@ -423,6 +458,9 @@ pub struct Settings {
   pub fullscreen: bool,
   pub saved_username: String,
   pub store_credentials: bool,
+  pub master_volume: f32,
+  pub music_volume: f32,
+  pub sfx_volume: f32,
 }
 impl Settings {
   pub fn new() -> Settings{
@@ -432,6 +470,9 @@ impl Settings {
       fullscreen: false,
       saved_username: String::new(),
       store_credentials: false,
+      master_volume: 50.0,
+      music_volume: 100.0,
+      sfx_volume: 100.0,
     }
   }
   pub fn load() -> Settings {
