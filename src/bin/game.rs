@@ -134,6 +134,8 @@ async fn main() {
     password = load_password(&username);
   }
 
+  let mut idk: f32 = 35.0;
+
   let mut registering: bool = false;
 
   let mut notifications: Vec<ui::Notification> = Vec::new();
@@ -194,7 +196,7 @@ async fn main() {
       draw_text("Username", 35.0 * vh, 32.0*vh, 4.0*vh, BLACK);
       draw_text("Password", 35.0 * vh, 47.0*vh, 4.0*vh, BLACK);
 
-      login_tabs.draw_and_process(vh);
+      login_tabs.draw_and_process(vh, true);
       // register
       if login_tabs.selected_tab() == 1 {
         registering = true;
@@ -231,8 +233,8 @@ async fn main() {
         settings.save();
       }
       // confirm button for either action
-      let confirm_button = ui::Button::new(Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh);
-      confirm_button.draw(vh);
+      let mut confirm_button = ui::Button::new(Vector2 { x: 35.0*vh, y: 70.0*vh }, Vector2 { x: 20.0*vh, y: 5.0*vh }, if registering {"register"} else {"log in"}, 5.0*vh);
+      confirm_button.draw(vh, !menu_paused);
       let mut confirm = confirm_button.was_pressed();
 
       // tooltips
@@ -608,7 +610,7 @@ async fn main() {
       );
     }
 
-    main_tabs.draw_and_process(vh);
+    main_tabs.draw_and_process(vh, !menu_paused);
 
     let mut start_game = false;
     let mut game_port = 0;
@@ -747,8 +749,8 @@ async fn main() {
       }
 
 
-      let play_button = ui::Button::new(br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh);
-      play_button.draw(vh);
+      let mut play_button = ui::Button::new(br_anchor - Vector2 { x: 30.0*vh, y: 15.0*vh }, Vector2 { x: 25.0*vh, y: 13.0*vh }, "Play", 8.0*vh);
+      play_button.draw(vh, !menu_paused);
       if queue {
         draw_text("In queue...", br_anchor.x - 30.0*vh, br_anchor.y - 24.0*vh, 5.0*vh, BLACK);
       }
@@ -808,8 +810,8 @@ async fn main() {
       }
       // lobby leave button
       if lobby.len() > 1 {
-        let leave_button = ui::Button::new(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh);
-        leave_button.draw(vh);
+        let mut leave_button = ui::Button::new(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh);
+        leave_button.draw(vh, !menu_paused);
         if leave_button.was_pressed() {
           packet_queue.push(
             ClientToServerPacket {
@@ -827,7 +829,7 @@ async fn main() {
     // heroes tab
     if main_tabs.selected_tab() == 1 {
 
-      heroes_tabs.draw_and_process(vh);
+      heroes_tabs.draw_and_process(vh, !menu_paused);
       let max = characters.len();
 
       selected_char = heroes_tabs.selected_tab();
@@ -884,8 +886,8 @@ async fn main() {
         Vector2 { x: 45.0*vw, y: 7.0*vh }, &mut friend_request_input, &mut friend_request_input_selected, 4.0*vh, vh,
         false, &mut false,
       );
-      let send_request_button = ui::Button::new(Vector2 { x: 60.0*vw, y: 15.0*vh }, Vector2 { x: 25.0*vw, y: 7.0*vh }, "Send friend request", 5.0*vh);
-      send_request_button.draw(vh);
+      let mut send_request_button = ui::Button::new(Vector2 { x: 60.0*vw, y: 15.0*vh }, Vector2 { x: 25.0*vw, y: 7.0*vh }, "Send friend request", 5.0*vh);
+      send_request_button.draw(vh, !menu_paused);
       if send_request_button.was_pressed() {
         let username_requested = friend_request_input.as_str();
         if username_requested.is_empty() {
@@ -969,10 +971,10 @@ async fn main() {
             draw_text(match online {true => "Online", false => "Offline"}, 70.0*vw, 30.0*vh + current_offset, 5.0*vh, BLACK);
             // if we were invited by this user, show accept button
             if server_interaction.lobby_invites.contains(&String::from(peer_username)) {
-              let accept_button = ui::Button::new(
+              let mut accept_button = ui::Button::new(
                 Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Join", 5.0*vh
               );
-              accept_button.draw(vh);
+              accept_button.draw(vh, !menu_paused);
               if accept_button.was_pressed() {
                 packet_queue.push(
                   ClientToServerPacket { information: ClientToServer::LobbyInviteAccept(String::from(peer_username)) }
@@ -983,10 +985,10 @@ async fn main() {
             // invite user button
             else {
               if online {
-                let invite_button = ui::Button::new(
+                let mut invite_button = ui::Button::new(
                   Vector2 { x: 70.0*vw, y: 26.0*vh + current_offset }, Vector2 { x: 15.0*vw, y: 6.0*vh }, "Invite", 5.0*vh
                 );
-                invite_button.draw(vh);
+                invite_button.draw(vh, !menu_paused);
                 if invite_button.was_pressed() {
                   packet_queue.push(
                     ClientToServerPacket { information: ClientToServer::LobbyInvite(String::from(peer_username)) }

@@ -116,7 +116,7 @@ This is just for me.
     - [ ] Ranked Leaderboard
   - [x] Maintain ability to read primary server socket during game
     - [x] In-game chat
-    - [ ] Game update (game won/lost)
+    - [x] Game update (game won/lost)
   - [ ] Server survival
     - [ ] Throttling
     - [ ] Invalid account deletion
@@ -208,3 +208,12 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
   - Assault Android Cactus
   - Battlerite
   - League of Legends
+
+
+
+1.00
+5.00
+10.0
+15.0
+100
+150

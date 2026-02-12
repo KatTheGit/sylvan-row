@@ -24,6 +24,7 @@ pub struct Button {
   pub size:      Vector2,
   pub text:      String,
   pub font_size: f32,
+  clickable:     bool,
 }
 impl Button {
   pub fn new(position: Vector2, size: Vector2, text: &str, font_size: f32) -> Button {
@@ -32,9 +33,11 @@ impl Button {
       size,
       text: text.to_string(),
       font_size,
+      clickable: true,
     }
   }
-  pub fn draw(&self, vh: f32) {
+  pub fn draw(&mut self, vh: f32, clickable: bool) {
+    self.clickable = clickable;
     let position = self.position;
     let size = self.size;
     let text = self.text.as_str();
@@ -44,10 +47,12 @@ impl Button {
     graphics::draw_rectangle(position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
     draw_text(text, position.x + 1.0*vh, position.y + size.y * 0.65, font_size , BLACK);
     let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
-    if mouse.x > position.x && mouse.x < (position.x + size.x) {
-      if mouse.y > position.y && mouse.y < (position.y + size.y) {
-        graphics::draw_rectangle(position, size,GRAY);
-        draw_text(text, position.x + 10.0, position.y + size.y * 0.65, font_size , BLACK);
+    if self.clickable {
+      if mouse.x > position.x && mouse.x < (position.x + size.x) {
+        if mouse.y > position.y && mouse.y < (position.y + size.y) {
+          graphics::draw_rectangle(position, size,GRAY);
+          draw_text(text, position.x + 10.0, position.y + size.y * 0.65, font_size , BLACK);
+        }
       }
     }
   }
@@ -56,7 +61,7 @@ impl Button {
     if mouse.x > self.position.x && mouse.x < (self.position.x + self.size.x) {
       if mouse.y > self.position.y && mouse.y < (self.position.y + self.size.y) {
         if is_mouse_button_down(MouseButton::Left) {
-          return true;
+          return true & self.clickable;
         }
       }
     }
@@ -67,7 +72,7 @@ impl Button {
     if mouse.x > self.position.x && mouse.x < (self.position.x + self.size.x) {
       if mouse.y > self.position.y && mouse.y < (self.position.y + self.size.y) {
         if is_mouse_button_pressed(MouseButton::Left) {
-          return true;
+          return true & self.clickable;
         }
       }
     }
@@ -112,8 +117,8 @@ impl Tabs {
       self.selected[i] = i == index;
     }
   }
-  pub fn draw_and_process(&mut self, vh: f32) {
-    fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool) -> bool {
+  pub fn draw_and_process(&mut self, vh: f32, clickable: bool) {
+    fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool, clickable: bool) -> bool {
       graphics::draw_rectangle(position, size, BLUE);
       let inner_shrink: f32 = 1.0 * vh;
       graphics::draw_rectangle(position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, SKYBLUE);
@@ -123,12 +128,14 @@ impl Tabs {
         draw_text(text, position.x + 10.0, position.y + size.y * 0.65, font_size , BLACK);
       }
       let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
-      if mouse.x > position.x && mouse.x < (position.x + size.x) {
-        if mouse.y > position.y && mouse.y < (position.y + size.y)   {
-          graphics::draw_rectangle(position, size,GRAY);
-          draw_text(text, position.x + 10.0, position.y + size.y * 0.65, font_size , BLACK);
-          if is_mouse_button_down(MouseButton::Left) {
-            return true;
+      if clickable {
+        if mouse.x > position.x && mouse.x < (position.x + size.x) {
+          if mouse.y > position.y && mouse.y < (position.y + size.y)   {
+            graphics::draw_rectangle(position, size,GRAY);
+            draw_text(text, position.x + 10.0, position.y + size.y * 0.65, font_size , BLACK);
+            if is_mouse_button_down(MouseButton::Left) {
+              return true;
+            }
           }
         }
       }
@@ -140,7 +147,7 @@ impl Tabs {
     let mut buttons: Vec<bool> = Vec::new();
     for i in 0..self.selected.len() {
       buttons.push(
-        one_way_button(Vector2 { x: self.position.x + i as f32 * button_width, y: self.position.y }, Vector2 { x: button_width, y: self.size.y }, &self.tab_names[i], self.font_size, vh, self.selected[i])
+        one_way_button(Vector2 { x: self.position.x + i as f32 * button_width, y: self.position.y }, Vector2 { x: button_width, y: self.size.y }, &self.tab_names[i], self.font_size, vh, self.selected[i], clickable)
       );
     };
     for i in 0..buttons.len() {
@@ -192,6 +199,41 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
     }
   }
   return false;
+}
+/// slider.
+/// 
+/// Returns true if the value was modified.
+pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32) {
+  let shrink = 1.0*vh;
+  graphics::draw_rectangle(position, size, BLUE);
+  graphics::draw_rectangle(position + Vector2 {x: shrink, y: shrink}, size - Vector2 {x: shrink*2.0, y:shrink*2.0}, SKYBLUE);
+  let slider_width = 2.0 * vh;
+  let slider_x_pos = position.x + (size.x - slider_width) * ((*value-value_min) / (value_max - value_min));
+  draw_rectangle(Vector2 { x: slider_x_pos, y: position.y }, Vector2 { x: slider_width, y: size.y }, BLUE);
+  let mut formatted_value: String = format!("{:.2}", value);
+  if *value >= 1.0 {
+    formatted_value = format!("{:.1}", value);
+  }
+  if *value >= 10.0 {
+    formatted_value = format!("{:.0}", value);
+  }
+  draw_text(format!("{}: {}", text, formatted_value).as_str(), position.x + 2.0*vh, position.y + size.y * 0.65, font_size , BLACK);
+
+  let mouse: Vector2 = Vector2 {x:mouse_position().0, y: mouse_position().1};
+  let margin = size.x * 0.1;
+  if mouse.x > (position.x - margin) && mouse.x < (position.x + size.x + margin) {
+    if mouse.y > position.y && mouse.y < (position.y + size.y) {
+      if is_mouse_button_down(MouseButton::Left) {
+        *value = (mouse.x - position.x) / size.x * (value_max - value_min) + value_min;
+        if *value > value_max {
+          *value = value_max
+        }
+        if *value < value_min {
+          *value = value_min
+        }
+      }
+    }
+  }
 }
 
 // MARK: In-game
@@ -287,12 +329,12 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
 
   let button_size: Vector2 = Vector2 { x: 25.0 * vh, y: 9.0 * vh };
   // semi-transparent background
-  graphics::draw_rectangle(Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, Color { r: 0.0, g: 0.0, b: 0.0, a: 0.3 });
+  graphics::draw_rectangle(Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.75 });
   if !*settings_open {
     // buttons
     let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
-    let resume_button = Button::new(resume_button_position, button_size, "Resume", button_font_size);
-    resume_button.draw(vh);
+    let mut resume_button = Button::new(resume_button_position, button_size, "Resume", button_font_size);
+    resume_button.draw(vh, true);
     if resume_button.is_down() {
       menu_paused = false;
       *settings_open = false;
@@ -300,16 +342,16 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
     
     
     let settings_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation };
-    let settings_button = Button::new(settings_button_position, button_size, "Options", button_font_size);
-    settings_button.draw(vh);
+    let mut settings_button = Button::new(settings_button_position, button_size, "Options", button_font_size);
+    settings_button.draw(vh, true);
     if settings_button.is_down() {
       *settings_open = true;
     }
 
     // Quit button
     let quit_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation * 2.0 };
-    let quit_button = Button::new(quit_button_position, button_size, "Quit", button_font_size);
-    quit_button.draw(vh);
+    let mut quit_button = Button::new(quit_button_position, button_size, "Quit", button_font_size);
+    quit_button.draw(vh, true);
     if quit_button.is_down() {
       wants_to_quit = true;
       menu_paused = false;
@@ -318,8 +360,8 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
 
   }
   if *settings_open {
-    let back_button = Button::new(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 15.0*vh }, Vector2 { x: 25.0 * vh, y: 9.0 * vh }, "Back", button_font_size);
-    back_button.draw(vh);
+    let mut back_button = Button::new(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 15.0*vh }, Vector2 { x: 25.0 * vh, y: 9.0 * vh }, "Back", button_font_size);
+    back_button.draw(vh, true);
     if back_button.is_down() {
       *settings_open = false;
     }
