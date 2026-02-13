@@ -3,7 +3,8 @@
 #![allow(unused_parens)]
 
 use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
-use sylvan_row::{common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
+use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBackend};
+use sylvan_row::{audio, common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -134,8 +135,6 @@ async fn main() {
     password = load_password(&username);
   }
 
-  let mut idk: f32 = 35.0;
-
   let mut registering: bool = false;
 
   let mut notifications: Vec<ui::Notification> = Vec::new();
@@ -168,6 +167,11 @@ async fn main() {
     lobby_invites: Vec::new(),
     lobby: Vec::new(),
   };
+
+  // set up audio tracks
+  let mut audio_manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).expect("oops");
+  let mut sfx_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
+  let mut music_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
 
   loop {
     main_tabs.update_size(Vector2 { x: 5.0 * vw, y: 5.0 * vh}, Vector2 { x: 90.0*vw, y: 6.0*vh }, 5.0*vh);
@@ -260,7 +264,7 @@ async fn main() {
       if confirm {
         draw_text("Attempting connection...", 35.0*vh, 80.0*vh, 5.0*vh, BLACK);
         next_frame().await;
-  
+
         if server_interaction.server_stream.is_none() {
   
           match TcpStream::connect(&server_ip) {
@@ -1043,7 +1047,7 @@ async fn main() {
     drop(keys);
     let mut quit: bool = false;
     if menu_paused {
-      (menu_paused, quit) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, &mut settings_tabs);
+      (menu_paused, quit) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, &mut settings_tabs, (&mut sfx_track, &mut music_track));
     }
     if quit {
       exit(0);
@@ -1147,6 +1151,12 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let mut server_crashed: bool = false;
   let mut game_ended_timer = Instant::now();
   let mut winning_team = Team::Blue;
+
+  // set up audio tracks
+  let mut audio_manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).expect("oops");
+  let mut sfx_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
+  let mut music_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
+
 
   // Main thread
   loop {
@@ -1581,7 +1591,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     // Draw pause menu
     if menu_paused {
       let mut kill_all_threads = kill_all_threads.lock().unwrap();
-      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, settings_tabs);
+      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, settings_tabs, (&mut sfx_track, &mut music_track));
       drop(kill_all_threads);
       // Draw fps, etc
       if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {

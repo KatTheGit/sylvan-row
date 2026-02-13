@@ -22,3 +22,5 @@ pub mod database;
 pub mod filter;
 /// Netcode
 pub mod network;
+/// Abstraction for playing sounds & stuff.
+pub mod audio;
