@@ -758,9 +758,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               players[p_index].secondary_charge = 0;
               players[p_index].stacks = 0;
               players[p_index].health = 100;
-              players[p_index].last_dash_time = Instant::now();
-              players[p_index].last_shot_time = Instant::now();
-              players[p_index].secondary_cast_time = Instant::now();
+              //players[p_index].last_dash_time = Instant::now();
+              //players[p_index].last_shot_time = Instant::now();
+              //players[p_index].secondary_cast_time = Instant::now();
             }
             // reset the game objects too
             *game_objects = load_map_from_file(include_str!("../assets/maps/map1.map"));

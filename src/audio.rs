@@ -9,8 +9,9 @@ pub fn play_sound(sound: &[u8], track: &mut track::TrackHandle) {
 }
 /// volume is a value between 0.0-100.0
 pub fn set_volume(volume: f32, track: &mut track::TrackHandle) {
-  let decibels_min = -25.0;
-  let decibels_max = 0.0;
-  let decibel_volume = if volume == 0.0 {-1000.0} else {decibels_min + (volume / 100.0) * (decibels_max - decibels_min)};
+  println!("Volume: {:?}", volume);
+  // 40 * log10(x) - 80
+  let decibel_volume = if volume == 0.0 {-100000.0} else {40.0 * f32::log10(volume) - 80.0};
+  println!("Db Volume: {:?}", decibel_volume);
   track.set_volume(Decibels(decibel_volume), Tween::default());
 }

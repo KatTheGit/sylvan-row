@@ -32,7 +32,6 @@ pub struct ClientPlayer {
   pub shooting_primary: bool,
   pub shooting_secondary: bool,
   pub team: Team,
-  pub time_since_last_dash: f32,
   pub is_dead: bool,
   pub camera: Camera,
   pub buffs: Vec<Buff>,
@@ -40,6 +39,13 @@ pub struct ClientPlayer {
   pub ping: u16,
   pub last_shot_time: f32,
   pub last_secondary_time: f32,
+  pub time_since_last_dash: f32,
+  /// Used for audio
+  pub used_primary: bool,
+  /// Used for audio
+  pub used_secondary: bool,
+  /// Used for audio
+  pub used_dash: bool,
   /// wants to dash
   pub dashing: bool,
   /// is currently dashing
@@ -99,6 +105,9 @@ impl ClientPlayer {
       interpolating: false,
       interpol_next: Vector2::new(),
       interpol_prev: Vector2::new(),
+      used_primary: false,
+      used_secondary: false,
+      used_dash: false,
     }
   }
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties, settings: Settings) {
@@ -199,6 +208,9 @@ impl ClientPlayer {
       interpolating: false,
       interpol_next: Vector2::new(),
       interpol_prev: Vector2::new(),
+      used_dash: true,
+      used_primary: true,
+      used_secondary: true,
     };
   }
 }

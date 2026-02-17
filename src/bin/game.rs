@@ -172,7 +172,11 @@ async fn main() {
   let mut audio_manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).expect("oops");
   let mut sfx_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
   let mut music_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
-
+  let sfx_volume = settings.master_volume * settings.sfx_volume / 100.0;
+  let music_volume = settings.master_volume * settings.music_volume / 100.0;
+  audio::set_volume(sfx_volume, &mut sfx_track);
+  audio::set_volume(music_volume, &mut music_track);
+  
   loop {
     main_tabs.update_size(Vector2 { x: 5.0 * vw, y: 5.0 * vh}, Vector2 { x: 90.0*vw, y: 6.0*vh }, 5.0*vh);
     login_tabs.update_size(Vector2 { x: 35.0 * vh, y: 20.0 * vh}, Vector2 { x: 40.0*vw, y: 6.0*vh }, 5.0*vh);
@@ -1156,7 +1160,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let mut audio_manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).expect("oops");
   let mut sfx_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
   let mut music_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
-
+  let sfx_volume = settings.master_volume * settings.sfx_volume / 100.0;
+  let music_volume = settings.master_volume * settings.music_volume / 100.0;
+  audio::set_volume(sfx_volume, &mut sfx_track);
+  audio::set_volume(music_volume, &mut music_track);
 
   // Main thread
   loop {
@@ -1263,6 +1270,18 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
       // I can't get the interpolation to work, so temporarily I'll swap it with this very simple
       // extrapolation method.
       //player.position += player.movement_direction * character_properties[&player.character].speed * get_frame_time();
+    }
+
+    // MARK: Audio
+    if player.last_shot_time > character_properties[&player.character].primary_cooldown / 2.0 {
+      player.used_primary = false;
+    }
+    else {
+      if !player.used_primary {
+        audio::play_sound(include_bytes!("../../assets/audio/whoosh.mp3"), &mut sfx_track);
+
+        player.used_primary = true;
+      }
     }
 
     let mut game_objects_copy = game_objects.clone();
@@ -1872,13 +1891,16 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         });
 
         // if a new player joins, skip this part, update directly.
-        println!("{:?}, {:?}", other_players.len(), recieved_players.len());
         if other_players.len() == recieved_players.len() {
           for player_index in 0..recieved_players.len() {
             // new position
             recieved_players[player_index].interpol_prev = other_players[player_index].interpol_next;
             recieved_players[player_index].interpol_next = recieved_players[player_index].position;
             recieved_players[player_index].position = other_players[player_index].position;
+
+            recieved_players[player_index].used_primary = other_players[player_index].used_primary;
+            recieved_players[player_index].used_secondary = other_players[player_index].used_secondary;
+            recieved_players[player_index].used_dash = other_players[player_index].used_dash;
             // previous position
             // if not moving, force a position
             //recieved_players[player_index].position = Vector2 { x: 0.0, y: 0.0 }; //other_players[player_index].position;
