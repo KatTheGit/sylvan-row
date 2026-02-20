@@ -21,7 +21,7 @@ static SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
 
 /// Gameplay server. Returns a winning team.
-pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) -> MatchEndResult {
+pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, is_practice: bool) -> MatchEndResult {
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
   println!("Loaded character properties.");
@@ -662,7 +662,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
   
   // part of dummy summoning
   // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = !SPAWN_DUMMY;
+  let mut dummy_summoned: bool = !SPAWN_DUMMY && !is_practice;
 
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);
@@ -729,11 +729,11 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       if total_players >= min_players as u8 {
 
         let mut reset = false;
-        if red_alive == 0 &&(!MATCHMAKE_ALONE | SPAWN_DUMMY) { //debug
+        if red_alive == 0 &&(!(MATCHMAKE_ALONE | is_practice) | SPAWN_DUMMY) { //debug
           gamemode_info.rounds_won_blue += 1;
           reset = true;
         }
-        if blue_alive == 0 &&(!MATCHMAKE_ALONE | SPAWN_DUMMY) {
+        if blue_alive == 0 &&(!(MATCHMAKE_ALONE | is_practice) | SPAWN_DUMMY) {
           gamemode_info.rounds_won_red += 1;
           reset = true;
         }

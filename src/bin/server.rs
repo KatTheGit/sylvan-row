@@ -609,7 +609,7 @@ async fn main() {
                         fleet.push(
                           std::thread::spawn(move || {
                             let player_info = player_info.clone();
-                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info.clone())}){
+                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info.clone(), false)}){
                               // game ended successfully.
                               Ok(mut match_result) => {
                                 // update to the correct game_id since the gameserver isn't aware of it.

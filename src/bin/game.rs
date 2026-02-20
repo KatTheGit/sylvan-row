@@ -4,7 +4,7 @@
 
 use std::{collections::HashMap, fs::File, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, process::exit, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
 use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBackend};
-use sylvan_row::{audio, common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
+use sylvan_row::{audio, common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, gameserver::game_server, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
 use miniquad::{conf::Icon, window::{set_mouse_cursor, set_window_size}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -103,7 +103,8 @@ async fn main() {
   // whether we're queueing
   let mut queue: bool = false;
 
-  
+  let mut offline_mode: bool = false;
+
   // MARK: main menu
   let mut tab_stats_refresh_flag: bool = false;
   let mut tab_friends_refresh_flag: bool = false;
@@ -588,6 +589,16 @@ async fn main() {
         }
       }
       // draw notifications
+
+      let mut offline_button = ui::Button::new(Vector2 { x: 80.0*vw, y: 90.0*vh }, Vector2 { x: 19.0*vw, y: 8.0*vh }, "Offline Mode", 5.0*vh);
+      offline_button.draw(vh, !menu_paused);
+      if offline_button.was_pressed() {
+        offline_mode = true;
+        username = "Player".to_string();
+        cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        logged_in = true;
+      }
+
       for n_index in 0..notifications.len() {
         notifications[n_index].draw(vh, vw, 5.0*vh, n_index);
       }
@@ -744,10 +755,10 @@ async fn main() {
     }
 
     if start_game {
-      game(characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen, game_id, &mut settings_tabs).await;
+      game(server_ip.clone(), characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen, game_id, &mut settings_tabs).await;
     }
 
-    // play tab
+    // PLAY TAB
     if main_tabs.selected_tab() == 0 {
       if !queue {
         ui::checkbox(br_anchor - Vector2 {x: 30.0*vh, y: 21.0*vh }, 4.0*vh, "1v1", 4.0*vh, vh, &mut checkbox_1v1);
@@ -835,7 +846,7 @@ async fn main() {
       }
     }
 
-    // heroes tab
+    // HEROES TAB
     if main_tabs.selected_tab() == 1 {
 
       heroes_tabs.draw_and_process(vh, !menu_paused);
@@ -847,8 +858,38 @@ async fn main() {
         TextParams { font: None, font_size: 16, font_scale: 0.25*vh, font_scale_aspect: 1.0, rotation: 0.0, color: BLACK }
       );
       let image_size = 45.0;
-      draw_image(&temporary_profiles[selected_char], (71.0/vh)*vw, 18.0, image_size*0.9, image_size, vh, Vector2::new(), WHITE);
+      draw_image(&temporary_profiles[selected_char], (71.0/vh)*vw, 16.0, image_size*0.9, image_size, vh, Vector2::new(), WHITE);
       draw_text("Selected", 7.5 * vw + (selected_char as f32) * (90.0/(max) as f32) * vw, 95.0 * vh, 4.0 * vh, BLACK);
+      let mut practice_button = ui::Button::new(Vector2 { x: 71.0*vw, y: 62.0*vh }, Vector2 { x: 35.0*vh, y: 9.0*vh }, "Practice Range", 4.0 * vh);
+      practice_button.draw(vh, !menu_paused);
+      if practice_button.was_pressed() {
+        let game_port = get_random_port();
+        let practice_game_port = game_port.clone();
+        let practice_username = username.clone();
+        let session_key = cipher_key.clone();
+        let practice_character = characters[selected_char].clone();
+        let (tx, mut rx): (tokio::sync::mpsc::Sender<PlayerMessage>, tokio::sync::mpsc::Receiver<PlayerMessage>)
+          = tokio::sync::mpsc::channel(32);
+        let game_server = std::thread::spawn(move || {
+          game_server(1, practice_game_port, vec![
+            PlayerInfo {
+              username: practice_username,
+              session_key: session_key,
+              channel: tx,
+              queued: true,
+              is_party_leader: true,
+              queued_with: Vec::new(),
+              invited_by: Vec::new(),
+              queued_gamemodes: Vec::new(),
+              selected_character: practice_character,
+              assigned_team: Team::Blue,
+              in_game_with: Vec::new(),
+            }
+          ],
+          true)
+        });
+        game(String::from("127.0.0.1"), characters[selected_char], port, game_port, cipher_key.clone(), username.clone(), &mut settings, &mut server_interaction, &mut nonce, &mut last_nonce, &mut fullscreen, game_id, &mut settings_tabs).await;
+      }
     }
     if main_tabs.selected_tab() == 2 {
       let text: &str =
@@ -1060,7 +1101,7 @@ async fn main() {
   }
 }
 // (vscode) MARK: game
-async fn game(/* server_ip: &str */ character: Character, port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128, settings_tabs: &mut ui::Tabs) {
+async fn game(server_ip: String, character: Character, client_port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128, settings_tabs: &mut ui::Tabs) {
   //set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
@@ -1127,7 +1168,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let input_halt_listener= Arc::clone(&input_halt);
   let cipher_key_copy = cipher_key.clone();
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key_copy, input_halt_listener);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, client_port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key_copy, input_halt_listener, server_ip);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -1745,16 +1786,16 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>, input_halt: Arc<Mutex<bool>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, client_port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>, input_halt: Arc<Mutex<bool>>, server_ip: String) -> () {
 
-  let server_ip: String = get_ip();
   let server_ip: Vec<&str> = server_ip.split(":").collect();
   let server_ip: String = format!("{}:{}", server_ip[0], server_port);
 
 
   // let server_ip: String = format!("{}", server_ip);
   // create the socket for sending info.
-  let sending_ip: String = format!("0.0.0.0:{}", port);
+  let sending_ip: String = format!("0.0.0.0:{}", client_port);
+  println!("{:?}, {:?}", client_port, server_port);
   let socket: UdpSocket = UdpSocket::bind(sending_ip)
     .expect("Could not bind client sender socket");
 
