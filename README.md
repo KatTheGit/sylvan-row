@@ -32,11 +32,9 @@ On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-
 
 ## Other info
 
-The GDD is in `assets/README.md`.
-
 There is no documentation for the code yet, as a lot of it is in a temporary state.
 
-Maps are made through `mapmaker.py`.
+The GDD is in `assets/README.md`.
 
 ## To do
 

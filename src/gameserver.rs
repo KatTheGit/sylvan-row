@@ -61,8 +61,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       }
     );
   }
+  let mut game_object_id_counter: u16 = 0;
+  let game_objects:Vec<GameObject> = load_map_from_file(include_str!("../assets/maps/map1.map"), &mut game_object_id_counter);
+  let game_object_id_counter = Arc::new(Mutex::new(game_object_id_counter));
   let players = Arc::new(Mutex::new(players));
-  let game_objects:Vec<GameObject> = load_map_from_file(include_str!("../assets/maps/map1.map"));
   println!("Loaded map game objects.");
   let game_objects = Arc::new(Mutex::new(game_objects));
   // holds game information, to be displayed by client, and modified when shit happens.
@@ -84,6 +86,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
   let listener_players = Arc::clone(&players);
   let listener_gamemode_info = Arc::clone(&general_gamemode_info);
   let listener_game_objects = Arc::clone(&game_objects);
+  let listener_game_object_id_counter = Arc::clone(&game_object_id_counter);
 
   let mut nonce: u32 = 1;
   
@@ -103,9 +106,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
       // claim all the mutexes
       let mut players = listener_players.lock().unwrap();
       let mut game_objects = listener_game_objects.lock().unwrap();
+      let mut game_object_id_counter = listener_game_object_id_counter.lock().unwrap();
       let     gamemode_info = listener_gamemode_info.lock().unwrap();
 
-      
+
       let mut player_found: bool = false;
       
       // iterate through players
@@ -264,19 +268,23 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                       player.stacks = 1;
                     }
                     Character::Hernani => {
-                      // Place down a bomb
+                      // Place down a trap
                       game_objects.push(
                         GameObject {
                           object_type: GameObjectType::HernaniLandmine,
-                          size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
                           position: player.position,
-                          direction: Vector2::new(),
                           to_be_deleted: false,
-                          owner_username: players[p_index].username.clone(),
-                          hitpoints: 1,
-                          lifetime: characters[&Character::Hernani].dash_cooldown,
-                          players: Vec::new(),
-                          traveled_distance: 0.0,
+                          id: game_object_id_counter.increment(),
+                          extra_data: ObjectData::BulletData(
+                            BulletData {
+                              direction: Vector2::new(),
+                              owner_username: players[p_index].username.clone(),
+                              hitpoints: 1,
+                              lifetime: characters[&Character::Hernani].dash_cooldown,
+                              hit_players: Vec::new(),
+                              traveled_distance: 0.0,
+                            }
+                          )
                         }
                       );
                     }
@@ -287,15 +295,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                         game_objects.push(
                           GameObject {
                             object_type: GameObjectType::WiroDashProjectile,
-                            size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
                             position: player.position,
-                            direction: Vector2::new(),
                             to_be_deleted: false,
-                            owner_username: players[p_index].username.clone(),
-                            hitpoints: 0,
-                            lifetime: characters[&Character::Hernani].dash_distance / characters[&Character::Hernani].dash_speed + 0.25, // give it a "grace" period because I'm bored
-                            players: Vec::new(),
-                            traveled_distance: 0.0,
+                            id: game_object_id_counter.increment(),
+                            extra_data: ObjectData::BulletData(
+                              BulletData {
+                                direction: Vector2::new(),
+                                owner_username: players[p_index].username.clone(),
+                                hitpoints: 0,
+                                lifetime: characters[&Character::Hernani].dash_distance / characters[&Character::Hernani].dash_speed + 0.25, // give it a "grace" period because I'm bored
+                                hit_players: Vec::new(),
+                                traveled_distance: 0.0,
+                              }
+                            )
                           }
                         );
                       }
@@ -306,21 +318,25 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                       // that follows her.
                       for index in 0..game_objects.len() {
                         if game_objects[index].object_type == GameObjectType::ElizabethProjectileGround
-                        && game_objects[index].owner_username == player.username {
+                        && game_objects[index].get_bullet_data().owner_username == player.username {
                           game_objects[index].to_be_deleted = true;
                           let object_clone = game_objects[index].clone();
                           game_objects.push(
                             GameObject {
                               object_type: GameObjectType::ElizabethProjectileGroundRecalled,
-                              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
                               position: object_clone.position,
-                              direction: Vector2::new(),
                               to_be_deleted: false,
-                              owner_username: object_clone.owner_username,
-                              hitpoints: 0,
-                              lifetime: 15.0,
-                              players: Vec::new(),
-                              traveled_distance: 0.0,
+                              id: game_object_id_counter.increment(),
+                              extra_data: ObjectData::BulletData(
+                                BulletData {
+                                  direction: Vector2::new(),
+                                  owner_username: object_clone.get_bullet_data().owner_username,
+                                  hitpoints: 0,
+                                  lifetime: 15.0,
+                                  hit_players: Vec::new(),
+                                  traveled_distance: 0.0,
+                                }
+                              )
                             }
                           );
                         }
@@ -625,6 +641,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
   let desired_delta_time: f64 = 1.0 / 120.0;
 
   let main_game_objects = Arc::clone(&game_objects);
+  let main_game_object_id_counter = Arc::clone(&game_object_id_counter);
 
   // start the game with an orb
   let orb_spawn_interval: f32 = 20.0; //seconds
@@ -654,6 +671,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
     // claim all mutexes
     let mut players = main_loop_players.lock().unwrap();
     let mut game_objects = main_game_objects.lock().unwrap();
+    let mut game_object_id_counter = main_game_object_id_counter.lock().unwrap();
     let mut gamemode_info = main_gamemode_info.lock().unwrap();
 
 
@@ -735,7 +753,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           // at the start of this in-between phase...
           if game_start_time.elapsed().as_secs_f32() < 0.5 {
             // force the map with player cages
-            *game_objects = load_map_from_file(include_str!("../assets/maps/map1-cages.map"));
+            *game_objects = load_map_from_file(include_str!("../assets/maps/map1-cages.map"), &mut game_object_id_counter);
             // reset player positions
             for p_index in 0..players.len() {
               players[p_index].is_dead = false;
@@ -763,7 +781,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               //players[p_index].secondary_cast_time = Instant::now();
             }
             // reset the game objects too
-            *game_objects = load_map_from_file(include_str!("../assets/maps/map1.map"));
+            *game_objects = load_map_from_file(include_str!("../assets/maps/map1.map"), &mut game_object_id_counter);
           }
           // MARK: Game End
           if gamemode_info.rounds_won_blue >= ROUNDS_TO_WIN {
@@ -900,11 +918,13 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               let range = characters[&Character::Temerity].passive_range;
               if Vector2::distance(game_objects[o_index].position, players[p_index].position) < range {
                 let heal_value = characters[&Character::Temerity].passive_value;
-                if game_objects[o_index].hitpoints < WALL_HP - heal_value {
-                  game_objects[o_index].hitpoints += heal_value;
+                let mut wall_data = game_objects[o_index].get_wall_data();
+                if wall_data.hitpoints < WALL_HP - heal_value {
+                  wall_data.hitpoints += heal_value;
                 } else {
-                  game_objects[o_index].hitpoints = WALL_HP;
+                  wall_data.hitpoints = WALL_HP;
                 }
+                game_objects[o_index].extra_data = ObjectData::WallData(wall_data);
               }
             } 
           }
@@ -940,7 +960,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         let mut objects_to_consider: Vec<usize> = Vec::new();
         for o_index in 0..game_objects.len() {
           if game_objects[o_index].object_type == GameObjectType::ElizabethProjectileGround {
-            if game_objects[o_index].owner_username == players[p_index].username {
+            if game_objects[o_index].get_bullet_data().owner_username == players[p_index].username {
               objects_to_consider.push(o_index);
             }
           }
@@ -950,8 +970,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           let mut lowest_val: f32 = f32::MAX;
           let mut lowest_index: usize = 0;
           for object_to_consider in objects_to_consider {
-            if game_objects[object_to_consider].lifetime < lowest_val {
-              lowest_val = game_objects[object_to_consider].lifetime;
+            if game_objects[object_to_consider].get_bullet_data().lifetime < lowest_val {
+              lowest_val = game_objects[object_to_consider].get_bullet_data().lifetime;
               lowest_index = object_to_consider;
             }
           }
@@ -1009,15 +1029,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           Character::Hernani => {
             game_objects.push(GameObject {
               object_type: GameObjectType::HernaniBullet,
-              size: Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
               position: players[p_index].position,
-              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              hitpoints: 0,
-              owner_username: players[p_index].username.clone(),
-              lifetime: character.primary_range / character.primary_shot_speed,
-              players: Vec::new(),
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  owner_username: players[p_index].username.clone(),
+                  lifetime: character.primary_range / character.primary_shot_speed,
+                  hit_players: Vec::new(),
+                  traveled_distance: 0.0,
+                  hitpoints: 0,
+                }
+              )
             });
             shot_successful = true;
           }
@@ -1028,15 +1052,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 0 => {GameObjectType::RaphaelleBullet},
                 _ => panic!()
               },
-              size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
               position: players[p_index].position,
-              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              hitpoints: 0,
-              owner_username: players[p_index].username.clone(),
-              lifetime: character.primary_range / character.primary_shot_speed,
-              players: Vec::new(),
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  hitpoints: 0,
+                  owner_username: players[p_index].username.clone(),
+                  lifetime: character.primary_range / character.primary_shot_speed,
+                  hit_players: Vec::new(),
+                  traveled_distance: 0.0,
+                }
+              ),
             });
             if players[p_index].stacks == 1 {
               players[p_index].stacks = 0;
@@ -1046,32 +1074,41 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           Character::Cynewynn => {
             game_objects.push(GameObject {
               object_type: GameObjectType::CynewynnSword,
-              size: Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
               position: Vector2 {
-                x: players[p_index].position.x + players[p_index].aim_direction.x * 5.0 ,
-                y: players[p_index].position.y + players[p_index].aim_direction.y * 5.0 },
-              direction: players[p_index].aim_direction,
+                x: players[p_index].position.x + players[p_index].aim_direction.x * 5.0,
+                y: players[p_index].position.y + players[p_index].aim_direction.y * 5.0
+              },
               to_be_deleted: false,
-              hitpoints: 0,
-              owner_username: players[p_index].username.clone(),
-              lifetime: character.primary_range / character.primary_shot_speed,
-              players: Vec::new(),
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  hitpoints: 0,
+                  owner_username: players[p_index].username.clone(),
+                  lifetime: character.primary_range / character.primary_shot_speed,
+                  hit_players: Vec::new(),
+                  traveled_distance: 0.0,
+                }
+              ),
             });
             shot_successful = true;
           }
           Character::Elizabeth => {
             game_objects.push(GameObject {
               object_type: GameObjectType::ElizabethProjectileRicochet,
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: players[p_index].position,
-              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              owner_username: players[p_index].username.clone(),
-              hitpoints: 1, // ricochet projectiles use hitpoints to keep track of wether they've already bounced
-              lifetime: character.primary_range / character.primary_shot_speed,
-              players: vec![],
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  owner_username: players[p_index].username.clone(),
+                  hitpoints: 1, // ricochet projectiles use hitpoints to keep track of wether they've already bounced
+                  lifetime: character.primary_range / character.primary_shot_speed,
+                  hit_players: vec![],
+                  traveled_distance: 0.0,
+                }
+              )
             });
             shot_successful = true;
           }
@@ -1080,15 +1117,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             || players[p_index].secondary_cast_time.elapsed().as_secs_f32() < character.secondary_cooldown {
               game_objects.push(GameObject {
                 object_type: GameObjectType::WiroGunShot,
-                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
                 position: players[p_index].position,
-                direction: players[p_index].aim_direction,
                 to_be_deleted: false,
-                hitpoints: 0,
-                owner_username: players[p_index].username.clone(),
-                lifetime: character.primary_range / character.primary_shot_speed,
-                players: Vec::new(),
-                traveled_distance: 0.0,
+                id: game_object_id_counter.increment(),
+                extra_data: ObjectData::BulletData(
+                  BulletData {
+                    hitpoints: 0,
+                    direction: players[p_index].aim_direction,
+                    owner_username: players[p_index].username.clone(),
+                    lifetime: character.primary_range / character.primary_shot_speed,
+                    hit_players: Vec::new(),
+                    traveled_distance: 0.0,
+                  }
+                )
               });
               shot_successful = true;
             }
@@ -1096,35 +1137,43 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           Character::Temerity => {
             game_objects.push(GameObject {
               object_type: GameObjectType::TemerityRocket,
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: players[p_index].position,
-              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              hitpoints: 0,
-              owner_username: players[p_index].username.clone(),
-              lifetime: match players[p_index].stacks {
-                0 => character.primary_range   / character.primary_shot_speed,
-                1 => character.primary_range_2 / character.primary_shot_speed,
-                2 => character.primary_range_3 / character.primary_shot_speed,
-                _ => panic!()
-              },
-              players: Vec::new(),
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  hitpoints: 0,
+                  owner_username: players[p_index].username.clone(),
+                  lifetime: match players[p_index].stacks {
+                    0 => character.primary_range   / character.primary_shot_speed,
+                    1 => character.primary_range_2 / character.primary_shot_speed,
+                    2 => character.primary_range_3 / character.primary_shot_speed,
+                    _ => panic!()
+                  },
+                  hit_players: Vec::new(),
+                  traveled_distance: 0.0,
+                }
+              ),
             });
             shot_successful = true;
           }
           Character::Dummy => {
             game_objects.push(GameObject {
               object_type: GameObjectType::HernaniBullet,
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: players[p_index].position,
-              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              hitpoints: 0,
-              owner_username: players[p_index].username.clone(),
-              lifetime: character.primary_range / character.primary_shot_speed,
-              players: Vec::new(),
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  hitpoints: 0,
+                  owner_username: players[p_index].username.clone(),
+                  lifetime: character.primary_range / character.primary_shot_speed,
+                  hit_players: Vec::new(),
+                  traveled_distance: 0.0,
+                }
+              ),
             });
             shot_successful = true;
           }
@@ -1145,15 +1194,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             // Create a bullet type and then define its actions in the next loop that handles bullets
             game_objects.push(GameObject {
               object_type: GameObjectType::RaphaelleAura,
-              size: Vector2 { x: 60.0, y: 60.0 },
               position: player_info.position,
-              direction: Vector2::new(),
               to_be_deleted: false,
-              owner_username: players[p_index].username.clone(),
-              hitpoints: 0,
-              lifetime: 5.0,
-              players: vec![],
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: Vector2::new(),
+                  owner_username: players[p_index].username.clone(),
+                  hitpoints: 0,
+                  lifetime: 5.0,
+                  hit_players: vec![],
+                  traveled_distance: 0.0,
+                }
+              ),
             });
             secondary_used_successfully = true;
           },
@@ -1199,15 +1252,15 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               if wall_can_be_placed {
                 game_objects.push(GameObject {
                   object_type: GameObjectType::HernaniWall,
-                  size: Vector2 { x: TILE_SIZE, y: TILE_SIZE*2.0 },
                   position: *desired_placement_position,
-                  direction: Vector2::new(),
                   to_be_deleted: false,
-                  owner_username: players[p_index].username.clone(),
-                  hitpoints: 20,
-                  lifetime: 5.0,
-                  players: vec![],
-                  traveled_distance: 0.0,
+                  id: game_object_id_counter.increment(),
+                  extra_data: ObjectData::WallData(
+                    WallData {
+                      hitpoints: 20,
+                      lifetime: 5.0,
+                    }
+                  ),
                 });
                 secondary_used_successfully = true;
               }
@@ -1232,7 +1285,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
 
             // beforehand we need to check if there's already one in the game, and delete it.
             for o_index in 0..game_objects.len() {
-              if game_objects[o_index].owner_username == players[p_index].username {
+              if game_objects[o_index].object_type == GameObjectType::ElizabethTurret
+              && game_objects[o_index].get_bullet_data().owner_username == players[p_index].username {
                 game_objects[o_index].to_be_deleted = true;
               }
             }
@@ -1241,15 +1295,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             // spawn the new one
             game_objects.push(GameObject {
               object_type: GameObjectType::ElizabethTurret,
-              size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
               position: players[p_index].position,
-              direction: players[p_index].aim_direction,
               to_be_deleted: false,
-              owner_username: players[p_index].username.clone(),
-              hitpoints: 0,
-              lifetime: character.secondary_cooldown,
-              players: vec![],
-              traveled_distance: 0.0,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  owner_username: players[p_index].username.clone(),
+                  hitpoints: 0,
+                  lifetime: character.secondary_cooldown,
+                  hit_players: vec![],
+                  traveled_distance: 0.0,
+                }
+              )
             });
             secondary_used_successfully = true;
           }
@@ -1268,9 +1326,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               for o_index in 0..game_objects.len() {
                 // if it's a shield, and it's ours
                 if game_objects[o_index].object_type == GameObjectType::WiroShield
-                && game_objects[o_index].owner_username == players[p_index].username {
-                  
-                  game_objects[o_index].direction = players[p_index].aim_direction;
+                && game_objects[o_index].get_bullet_data().owner_username == players[p_index].username {
+                  let mut shield_data = game_objects[o_index].get_bullet_data();
+                  shield_data.direction = players[p_index].aim_direction;
+                  game_objects[o_index].extra_data = ObjectData::BulletData(shield_data);
                   game_objects[o_index].position = position;
                   shield_found = true;
                   break;
@@ -1279,15 +1338,20 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               if !shield_found {
                 game_objects.push(GameObject {
                   object_type: GameObjectType::WiroShield,
-                  size: Vector2 { x: TILE_SIZE*0.5, y: characters[&Character::Wiro].secondary_range },
+                  //size: Vector2 { x: TILE_SIZE*0.5, y: characters[&Character::Wiro].secondary_range },
                   position: position,
-                  direction: players[p_index].aim_direction,
                   to_be_deleted: false,
-                  owner_username: players[p_index].username.clone(),
-                  hitpoints: 0,
-                  lifetime: f32::INFINITY,
-                  players: vec![],
-                  traveled_distance: 0.0,
+                  id: game_object_id_counter.increment(),
+                  extra_data: ObjectData::BulletData(
+                    BulletData {
+                      direction: players[p_index].aim_direction,
+                      owner_username: players[p_index].username.clone(),
+                      hitpoints: 0,
+                      lifetime: f32::INFINITY,
+                      hit_players: vec![],
+                      traveled_distance: 0.0,
+                    }
+                  )
                 });
               }
             } else {
@@ -1295,7 +1359,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               for o_index in 0..game_objects.len() {
                 // if it's a shield, and it's ours
                 if game_objects[o_index].object_type == GameObjectType::WiroShield
-                && game_objects[o_index].owner_username == players[p_index].username {
+                && game_objects[o_index].get_bullet_data().owner_username == players[p_index].username {
                   game_objects[o_index].to_be_deleted = true;
                   // if our secondary charge is 0, also set the cooldown
                   if players[p_index].secondary_charge == 0 {
@@ -1318,15 +1382,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               );
               game_objects.push(GameObject {
                 object_type: GameObjectType::TemerityRocketSecondary,
-                size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
                 position: players[p_index].position + players[p_index].aim_direction * characters[&Character::Temerity].secondary_range,
-                direction: players[p_index].aim_direction * -1.0,
                 to_be_deleted: false,
-                owner_username: players[p_index].username.clone(),
-                hitpoints: 0,
-                lifetime,
-                players: vec![],
-                traveled_distance: 0.0,
+                id: game_object_id_counter.increment(),
+                extra_data: ObjectData::BulletData(
+                  BulletData {
+                    direction: players[p_index].aim_direction * -1.0,
+                    owner_username: players[p_index].username.clone(),
+                    hitpoints: 0,
+                    lifetime,
+                    hit_players: vec![],
+                    traveled_distance: 0.0,
+                  }
+                ),
               });
               secondary_used_successfully = true;
             }
@@ -1345,7 +1413,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             for o_index in 0..game_objects.len() {
               // if it's a shield, and it's ours
               if game_objects[o_index].object_type == GameObjectType::WiroShield
-              && game_objects[o_index].owner_username == players[p_index].username {
+              && game_objects[o_index].get_bullet_data().owner_username == players[p_index].username {
                 game_objects[o_index].to_be_deleted = true;
                 players[p_index].secondary_cast_time = Instant::now();
                 break;
@@ -1387,22 +1455,22 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         game_objects.push(
           GameObject {
             object_type: GameObjectType::CenterOrb,
-            size: Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
             position: orb_position,
-            direction: Vector2::new(),
             to_be_deleted: false,
-            owner_username: String::new(),
-            hitpoints: 60,
-            lifetime: f32::INFINITY,
-            players: Vec::new(),
-            traveled_distance: 0.0
+            id: game_object_id_counter.increment(),
+            extra_data: ObjectData::WallData(
+              WallData {
+                hitpoints: 60,
+                lifetime: f32::INFINITY,
+              }
+            ),
           }
         );
       }
     }
 
     for o_index in 0..game_objects.len() {
-      let game_object_type = game_objects[o_index].object_type;
+      let game_object_type = game_objects[o_index].object_type.clone();
       match game_object_type {
 
         // WOLF primary
@@ -1415,7 +1483,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           //if game_objects[o_index].lifetime < (characters[&Character::Hernani].dash_cooldown - 0.5) {
           for p_index in 0..players.len() {
             // if not on same team
-            if players[p_index].team != players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team {
+            if players[p_index].team != players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].team {
               // if within range
               let landmine_range = characters[&Character::Hernani].primary_range_2;
               if Vector2::distance(game_objects[o_index].position, players[p_index].position)
@@ -1439,11 +1507,11 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
               let range: f32 = characters[&Character::Raphaelle].primary_range;
               if Vector2::distance(
                 players[p_index].position,
-                players[index_by_username(&game_objects[o_index].owner_username,players.clone())].position
+                players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].position
               ) < range &&
-                players[p_index].team == players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team {
+                players[p_index].team == players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].team {
                 // Anyone within range
-                if p_index == index_by_username(&game_objects[o_index].owner_username,players.clone()) {
+                if p_index == index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone()) {
                   // if self, heal less
                   let heal_self: u8 = characters[&Character::Raphaelle].primary_lifesteal;
                   players[p_index].heal(heal_self, characters.clone());
@@ -1467,7 +1535,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             characters[&Character::Raphaelle].primary_damage_2, 255, false, f32::INFINITY, f32::INFINITY);
           if hit {
             // restore dash charge
-            let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
+            let owner_index = index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone());
             players[owner_index].last_dash_time -= Duration::from_secs_f32(characters[&Character::Raphaelle].primary_cooldown_2);
           }
         }
@@ -1478,10 +1546,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           // every second apply heal
           for p_index in 0..players.len() {
             // if on same team
-            if players[p_index].team == players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team {
+            if players[p_index].team == players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].team {
               // if within range
-              if Vector2::distance(game_objects[o_index].position, players[index_by_username(&game_objects[o_index].owner_username,players.clone())].position)
-              < (game_objects[o_index].size.x / 2.0) {
+              if Vector2::distance(game_objects[o_index].position, players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].position)
+              < (characters[&Character::Raphaelle].secondary_range) {
                 // heal up
                 if tick {
                   let heal_amount = characters[&players[p_index].character].secondary_heal;
@@ -1524,7 +1592,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         // ELIZABETH primary but recalled
         GameObjectType::ElizabethProjectileGroundRecalled => {
           // needs to move towards owner
-          let owner_username = game_objects[o_index].owner_username.clone();
+          let owner_username = game_objects[o_index].get_bullet_data().owner_username.clone();
           let owner_index = index_by_username(&owner_username, players.clone());
           let target_position: Vector2 = players[owner_index].position;
           let object_position: Vector2 = game_objects[o_index].position;
@@ -1544,16 +1612,23 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             // if we hit a player
             if Vector2::distance(player_position, object_position) < hit_radius
             // and we haven't already
-            && !game_objects[o_index].players.contains(&p_index) {
+            && !game_objects[o_index].get_bullet_data().hit_players.contains(&p_index) {
               // damage them
               players[p_index].damage(damage, characters.clone());
               // and check if they were already hit by a projectile.
               let mut was_already_hit: bool = false;
               for o_index_2 in 0..game_objects.len() {
-                if game_objects[o_index_2].players.contains(&p_index)
-                && o_index_2 != o_index {
-                  was_already_hit = true;
-                  break;
+                match game_objects[o_index_2].get_bullet_data_safe() {
+                  Ok(bullet_data) => {
+                    if bullet_data.hit_players.contains(&p_index)
+                    && o_index_2 != o_index {
+                      was_already_hit = true;
+                      break;
+                    }
+                  }
+                  Err(()) => {
+
+                  }
                 }
               }
               if was_already_hit {
@@ -1568,7 +1643,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 );
               }
               // Finally, update the game object to know this player was already hit
-              game_objects[o_index].players.push(p_index);
+              let mut bullet_data = game_objects[o_index].get_bullet_data();
+              bullet_data.hit_players.push(p_index);
+              game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
             }
           }
         }
@@ -1576,7 +1653,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         GameObjectType::ElizabethTurret => {
           // PROJECTILES
           // shoot projectiles. use secondary_cast_time as cooldown counter.
-          let owner = index_by_username(&game_objects[o_index].owner_username,players.clone());
+          let owner = index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone());
           let owner_team = players[owner].team;
           let object_pos = game_objects[o_index].position;
           let range = characters[&Character::Elizabeth].secondary_range;
@@ -1590,15 +1667,19 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 // shoot
                 game_objects.push(GameObject {
                   object_type: GameObjectType::ElizabethTurretProjectile,
-                  size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
                   position: object_pos,
-                  direction: Vector2::difference(object_pos, player.position).normalize(),
                   to_be_deleted: false,
-                  owner_username: players[owner].username.clone(),
-                  hitpoints: 0,
-                  lifetime: range/speed,
-                  players: vec![],
-                  traveled_distance: 0.0,
+                  id: game_object_id_counter.increment(),
+                  extra_data: ObjectData::BulletData(
+                    BulletData {
+                      direction: Vector2::difference(object_pos, player.position).normalize(),
+                      owner_username: players[owner].username.clone(),
+                      hitpoints: 0,
+                      lifetime: range/speed,
+                      hit_players: vec![],
+                      traveled_distance: 0.0,
+                    }
+                  )
                 });
 
                 // reset CD
@@ -1612,7 +1693,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
 
           // check for collisions with walls
           let pos = game_objects[o_index].position;
-          let direction = game_objects[o_index].direction;
+          let direction = game_objects[o_index].get_bullet_data().direction;
 
           let check_distance = TILE_SIZE * 0.1;
           let buffer = 0.5 * 2.0;
@@ -1632,20 +1713,24 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
                 // flip horizontally
                 // also check that we're going in opposing directions :)
                 if direction.x * obj_distance.x < 0.0 {
-                  game_objects[o_index].direction.x *= -1.0;
+                  let mut bullet_data = game_objects[o_index].get_bullet_data();
+                  bullet_data.direction.x *= -1.0;
+                  game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
                 }
               } else {
                 // also check that we're going in opposing directions :)
                 if direction.y * obj_distance.y < 0.0 {
-                  game_objects[o_index].direction.y *= -1.0;
+                  let mut bullet_data = game_objects[o_index].get_bullet_data();
+                  bullet_data.direction.y *= -1.0;
+                  game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
                 }
               }
               break;
             }
           }
           // move
-          game_objects[o_index].position.x += game_objects[o_index].direction.x * speed * true_delta_time as f32;
-          game_objects[o_index].position.y += game_objects[o_index].direction.y * speed * true_delta_time as f32;
+          game_objects[o_index].position.x += game_objects[o_index].get_bullet_data().direction.x * speed * true_delta_time as f32;
+          game_objects[o_index].position.y += game_objects[o_index].get_bullet_data().direction.y * speed * true_delta_time as f32;
 
         }
         // ELIZABETH TURRET PROJECTILE
@@ -1670,17 +1755,17 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             GameObjectType::WiroGunShot,                      // wiro
           ];
           for victim_object_index in 0..game_objects.len() {
-            let object_type = game_objects[victim_object_index].object_type;
+            let object_type = game_objects[victim_object_index].object_type.clone();
             // if one of these objects is one we can counter...
             if countered_projectiles.contains(&object_type) {
-              let obj1_owner_team = players[index_by_username(&game_objects[o_index].owner_username,players.clone())].team;
-              let obj1_owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
-              let obj2_owner_team = players[index_by_username(&game_objects[victim_object_index].owner_username,players.clone())].team;
-              let obj2_owner_character = players[index_by_username(&game_objects[victim_object_index].owner_username,players.clone())].character;
+              let obj1_owner_team = players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].team;
+              let obj1_owner_index = index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone());
+              let obj2_owner_team = players[index_by_username(&game_objects[victim_object_index].get_bullet_data().owner_username,players.clone())].team;
+              let obj2_owner_character = players[index_by_username(&game_objects[victim_object_index].get_bullet_data().owner_username,players.clone())].character;
               if obj1_owner_team != obj2_owner_team {
                 let hits_shield = hits_shield(
                   game_objects[o_index].position,
-                  game_objects[o_index].direction,
+                  game_objects[o_index].get_bullet_data().direction,
                   game_objects[victim_object_index].position,
                   characters[&Character::Wiro].secondary_range,
                   5.0, // temporary
@@ -1709,7 +1794,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         }
         // WIRO'S PRIMARY FIRE
         GameObjectType::WiroGunShot => {
-          let distance_traveled = game_objects[o_index].traveled_distance;
+          let distance_traveled = game_objects[o_index].get_bullet_data().traveled_distance;
           let damage: u8;
           if distance_traveled > characters[&Character::Wiro].primary_range_2 {
             damage = characters[&Character::Wiro].primary_damage_2;
@@ -1720,28 +1805,30 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
           (players, *game_objects, hit) = apply_simple_bullet_logic_extra(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true, 
             damage, 255, false, f32::INFINITY, f32::INFINITY);
           if hit {
-            let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
+            let owner_index = index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone());
             players[owner_index].stacks = 1;
           }
         }
         // WIRO'S DASH
         GameObjectType::WiroDashProjectile => {
           // lock it to wiro's position
-          let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
+          let owner_index = index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone());
           let range = characters[&Character::Wiro].primary_range_3;
           let heal = characters[&Character::Wiro].secondary_heal;
           let damage = characters[&Character::Wiro].secondary_damage;
-          game_objects[o_index].position = players[index_by_username(&game_objects[o_index].owner_username,players.clone())].position;
+          game_objects[o_index].position = players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].position;
           for victim_index in 0..players.len() {
             // if we get a hit, and we didn't already hit
             if Vector2::distance(players[victim_index].position, game_objects[o_index].position) < range
-            && !game_objects[o_index].players.contains(&victim_index) {
+            && !game_objects[o_index].get_bullet_data().hit_players.contains(&victim_index) {
               if players[victim_index].team == players[owner_index].team {
                 players[victim_index].heal(heal, characters.clone());
               } else {
                 players[victim_index].damage(damage, characters.clone());
               }
-              game_objects[o_index].players.push(victim_index);
+              let mut bullet_data = game_objects[o_index].get_bullet_data();
+              bullet_data.hit_players.push(victim_index);
+              game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
             }
           }
         }
@@ -1749,7 +1836,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         GameObjectType::TemerityRocket => {
           let hit: bool;
           (players, *game_objects, hit) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false);
-          let owner_index = index_by_username(&game_objects[o_index].owner_username,players.clone());
+          let owner_index = index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone());
           if hit && players[owner_index].stacks < 2 {
             players[owner_index].stacks += 1;
           }
@@ -1770,9 +1857,17 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
         }
         _ => {}
       }
-      game_objects[o_index].lifetime -= true_delta_time as f32;
-      if game_objects[o_index].lifetime < 0.0 {
-        game_objects[o_index].to_be_deleted = true;
+      match game_objects[o_index].get_bullet_data_safe() {
+        Ok(mut bullet_data) => {
+          bullet_data.lifetime -= true_delta_time as f32;
+          game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
+          if game_objects[o_index].get_bullet_data().lifetime < 0.0 {
+            game_objects[o_index].to_be_deleted = true;
+          }
+        },
+        Err(()) => {
+
+        }
       }
     }
 
@@ -1788,23 +1883,28 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>) 
             cleansed_game_objects.push(
               GameObject {
                 object_type: GameObjectType::ElizabethProjectileGround,
-                size: Vector2 { x: TILE_SIZE, y: TILE_SIZE },
                 position: game_object.position,
-                direction: Vector2::new(),
                 to_be_deleted: false,
-                owner_username: game_object.owner_username,
-                hitpoints: 0,
-                lifetime: 5.0,
-                players: Vec::new(),
-                traveled_distance: 0.0,
+                id: game_object_id_counter.increment(),
+                extra_data: ObjectData::BulletData(
+                  BulletData {
+
+                    direction: Vector2::new(),
+                    owner_username: game_object.get_bullet_data().owner_username,
+                    hitpoints: 0,
+                    lifetime: 5.0,
+                    hit_players: Vec::new(),
+                    traveled_distance: 0.0,
+                  }
+                ),
               }
             );
           },
           // If we didn't hit anybody, take away all stacks, to bring the combo
           // back to its first projectile
           GameObjectType::TemerityRocket => {
-            if game_object.players.is_empty() {
-              let owner_index = index_by_username(&game_object.owner_username,players.clone());
+            if game_object.get_bullet_data().hit_players.is_empty() {
+              let owner_index = index_by_username(&game_object.get_bullet_data().owner_username,players.clone());
               players[owner_index].stacks = 0;
             }
           }

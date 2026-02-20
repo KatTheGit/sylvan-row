@@ -1104,7 +1104,7 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
   let player_textures: HashMap<Character, Texture2D> = graphics::load_character_textures();
 
   // modified by network listener thread, accessed by input handler and game thread
-  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"));
+  let game_objects: Vec<GameObject> = load_map_from_file(include_str!("../../assets/maps/map1.map"), &mut 0);
   let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::new(Mutex::new(game_objects));
 
   // accessed by game thread, modified by network listener thread.
@@ -1246,8 +1246,8 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
             GameObjectType::TemerityRocket => Character::Temerity,
             _ => panic!()
           })].primary_shot_speed;
-          game_object.position.x += speed * game_object.direction.x * get_frame_time();
-          game_object.position.y += speed * game_object.direction.y * get_frame_time();
+          game_object.position.x += speed * game_object.get_bullet_data().direction.x * get_frame_time();
+          game_object.position.y += speed * game_object.get_bullet_data().direction.y * get_frame_time();
         }
         _ => {},
       }
@@ -1359,14 +1359,16 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     for game_object_index in 0..game_objects_copy.len() {
       if game_objects_copy[game_object_index].object_type == GameObjectType::WiroShield {
         // if it's ours...
-        if game_objects_copy[game_object_index].owner_username == username {
+        if game_objects_copy[game_object_index].get_bullet_data().owner_username == username {
           let position: Vector2 = Vector2 {
             x: player_copy.position.x + player_copy.aim_direction.normalize().x * TILE_SIZE,
             y: player_copy.position.y + player_copy.aim_direction.normalize().y * TILE_SIZE,
           };
 
           game_objects_copy[game_object_index].position = position;
-          game_objects_copy[game_object_index].direction = player_copy.aim_direction.normalize();
+          let mut shield_data = game_objects_copy[game_object_index].get_bullet_data();
+          shield_data.direction = player_copy.aim_direction.normalize();
+          game_objects_copy[game_object_index].extra_data = ObjectData::BulletData(shield_data);
         }
       }
     }
@@ -1375,7 +1377,20 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
     game_objects_copy = sort_by_depth(game_objects_copy);
     for game_object in game_objects_copy.clone() {
       let texture = &game_object_tetures[&game_object.object_type];
-      let size = game_object.size;
+      let size = match game_object.object_type {
+        GameObjectType::Wall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+        GameObjectType::UnbreakableWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+        GameObjectType::HernaniWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+        GameObjectType::HernaniBullet => Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
+        GameObjectType::RaphaelleBullet => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+        GameObjectType::RaphaelleBulletEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+        GameObjectType::RaphaelleAura => Vector2 {x: character_properties[&Character::Raphaelle].secondary_range*2.0, y: character_properties[&Character::Raphaelle].secondary_range*2.0,},
+        GameObjectType::WiroShield => Vector2 { x: TILE_SIZE*0.5, y: character_properties[&Character::Wiro].secondary_range },
+        GameObjectType::TemerityRocketSecondary => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+        GameObjectType::CenterOrb => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+        GameObjectType::CynewynnSword => Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
+        _ => Vector2 {x: 1.0 * TILE_SIZE, y: 1.0* TILE_SIZE},
+      };
       let shadow_offset: f32 = 5.0;
 
       // Draw shadows on certain objects
@@ -1386,6 +1401,14 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
                                                      GameObjectType::CenterOrb,
                                                      GameObjectType::ElizabethProjectileRicochet,
                                                     ];
+      let rotation: Vector2 = match game_object.get_bullet_data_safe() {
+        Ok(data) => {
+          data.direction
+        }
+        Err(()) => {
+          Vector2::new()
+        }
+      };
       if shaded_objects.contains(&game_object.object_type) {
         graphics::draw_image_relative(
           texture,
@@ -1394,10 +1417,10 @@ async fn game(/* server_ip: &str */ character: Character, port: u16, server_port
           size.x,
           size.y,
           vh, player_copy.camera.position,
-          game_object.direction,
+          rotation,
           Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 });
       }
-      graphics::draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, game_object.direction, WHITE);
+      graphics::draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, rotation, WHITE);
     }
 
 
@@ -1905,7 +1928,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
             // if not moving, force a position
             //recieved_players[player_index].position = Vector2 { x: 0.0, y: 0.0 }; //other_players[player_index].position;
             //recieved_players[player_index].interpol_prev = other_players[player_index].position;
-            println!("{:?}", recieved_players[player_index].position)
           }
         }
         *other_players = recieved_players;
@@ -2268,9 +2290,9 @@ fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile
       let pos_y: i16 = y.try_into().unwrap();
       let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 * TILE_SIZE + TILE_SIZE*0.5;
       if (x + y) % 2 == 1 {
-        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num] });
+        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num].clone() });
       } else {
-        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: dark_tiles[random_num] });
+        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: dark_tiles[random_num].clone() });
       }
     }
   }

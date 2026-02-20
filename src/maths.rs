@@ -117,7 +117,7 @@ impl ops::Div<f32> for Vector2 {
 }
 
 // MARK: Extras (f32)
-impl Extras for f32 {
+impl ExtrasF32 for f32 {
   /// Same as signum but returns 0 if the number is 0.
   fn sign(&self) -> f32 {
     let mut sign: f32 = 0.0;
@@ -140,8 +140,20 @@ impl Extras for f32 {
     }
   }
 }
+impl ExtrasU16 for u16 {
+  /// Increments the number and returns its
+  /// value (pre-incrementation).
+  fn increment(&mut self) -> u16 {
+      let current = self.clone();
+      *self += 1;
+      return current;
+  }
+}
+pub trait ExtrasU16 {
+  fn increment(&mut self) -> u16;
+}
 
-pub trait Extras {
+pub trait ExtrasF32 {
   fn sign(&self) -> f32;
   fn clean(&mut self);
 }
@@ -317,7 +329,8 @@ pub fn apply_simple_bullet_logic_extra(
   special_hit_radius:    f32,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   let game_object = game_objects[o_index].clone();
-  let owner_username = game_object.owner_username;
+  let mut bullet_data = game_object.get_bullet_data();
+  let owner_username = bullet_data.owner_username.clone();
   let player = players[index_by_username(&owner_username, players.clone())].clone();
   let character = player.character;
   let character_properties = characters[&character].clone();
@@ -352,7 +365,7 @@ pub fn apply_simple_bullet_logic_extra(
     // if it's a wall
     if WALL_TYPES.contains(&game_objects[victim_object_index].object_type) {
       // if it's colliding
-      if !ricochet || (ricochet && game_object.hitpoints == 0){
+      if !ricochet || (ricochet && bullet_data.hitpoints == 0){
         let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
         let buffer = 0.5 * 1.2;
         if distance < (TILE_SIZE*buffer + wall_hit_radius) {
@@ -360,20 +373,21 @@ pub fn apply_simple_bullet_logic_extra(
           game_objects[o_index].to_be_deleted = true;
           // damage the wall if it's not unbreakable
           if game_objects[victim_object_index].object_type != GameObjectType::UnbreakableWall {
-            
-            if game_objects[victim_object_index].hitpoints < wall_damage {
+            let mut wall_data = game_objects[victim_object_index].get_wall_data();
+            if wall_data.hitpoints < wall_damage {
               game_objects[victim_object_index].to_be_deleted = true;
             } else {
-              game_objects[victim_object_index].hitpoints -= wall_damage;
+              wall_data.hitpoints -= wall_damage;
             }
+            game_objects[victim_object_index].extra_data = ObjectData::WallData(wall_data)
           }
           return (players, game_objects, false); // return early
         }
       }
 
-      if ricochet && game_object.hitpoints > 0 {
+      if ricochet && bullet_data.hitpoints > 0 {
         let pos = game_object.position;
-        let direction = game_object.direction;
+        let direction = bullet_data.direction;
         let check_distance = TILE_SIZE * 0.1;
         let buffer = 0.5 * 1.6;
         let check_position: Vector2 = Vector2 {
@@ -383,11 +397,11 @@ pub fn apply_simple_bullet_logic_extra(
         let distance = Vector2::distance(check_position, game_objects[victim_object_index].position);
         if distance < (TILE_SIZE*buffer + wall_hit_radius) {
           
-          if game_objects[o_index].hitpoints == 0 {
+          if bullet_data.hitpoints == 0 {
             return (players, game_objects, false);
           }
-          if game_objects[o_index].hitpoints != 0 {
-            game_objects[o_index].hitpoints = 0;
+          if bullet_data.hitpoints != 0 {
+            bullet_data.hitpoints = 0;
             // we need to flip x direction or flip y direction
             // |distance.x| - |distance.y|
             // negative => flip horizontal
@@ -395,24 +409,24 @@ pub fn apply_simple_bullet_logic_extra(
             if f32::abs(distance.x) - f32::abs(distance.y) > 0.0 {
               // flip horizontal
               // also check that we're going in opposing directions :)
-              if game_object.direction.x * -distance.x < 0.0 {
-                game_objects[o_index].direction.x *= -1.0;
+              if bullet_data.direction.x * -distance.x < 0.0 {
+                bullet_data.direction.x *= -1.0;
               }
             } else {
               // flip vertical
               // also check that we're going in opposing directions :)
-              if game_object.direction.y * -distance.y < 0.0 {
-                game_objects[o_index].direction.y *= -1.0;
+              if bullet_data.direction.y * -distance.y < 0.0 {
+                bullet_data.direction.y *= -1.0;
               }
             }
             //game_objects[o_index].lifetime = characters[&character].primary_range / characters[&character].primary_shot_speed;
-            game_objects[o_index].position.x += game_objects[o_index].direction.x * (TILE_SIZE*0.3); // this might break at very low freq like 26Hz
-            game_objects[o_index].position.y += game_objects[o_index].direction.y * (TILE_SIZE*0.3);
+            game_objects[o_index].position.x += bullet_data.direction.x * (TILE_SIZE*0.3); // this might break at very low freq like 26Hz
+            game_objects[o_index].position.y += bullet_data.direction.y * (TILE_SIZE*0.3);
 
             // reset the lifetime (which in turn resets its range)
             let distance = characters[&character].primary_range;
             let speed = bullet_speed;
-            game_objects[o_index].lifetime = distance / speed;
+            bullet_data.lifetime = distance / speed;
             game_objects[o_index].to_be_deleted = false;
           }
         }
@@ -428,26 +442,27 @@ pub fn apply_simple_bullet_logic_extra(
       // if it's colliding
       let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
       if distance < (0.5 * TILE_SIZE + wall_hit_radius) {
-        if game_objects[o_index].players.contains(&548) {
+        if bullet_data.hit_players.contains(&548) {
           continue;
         }
-        let mut direction: Vector2 = game_object.direction;
+        let mut direction: Vector2 = bullet_data.direction;
         direction.x *= damage as f32 / 2.0;
         direction.y *= damage as f32 / 2.0;
 
-        if game_objects[victim_object_index].hitpoints > damage {
+        let mut orb_wall_data = game_objects[victim_object_index].get_wall_data();
+        if orb_wall_data.hitpoints > damage {
           // hurt the orb :(
-          game_objects[victim_object_index].hitpoints -= damage
+          orb_wall_data.hitpoints -= damage
         } else {
           // KILL THE ORB
-          game_objects[victim_object_index].hitpoints = 0;
+          orb_wall_data.hitpoints = 0;
           game_objects[victim_object_index].to_be_deleted = true;
         }
         // apply knockback to the orb
         game_objects[victim_object_index].position.y += direction.y;
         game_objects[victim_object_index].position.x += direction.x;
         // apply orb healing
-        if game_objects[victim_object_index].hitpoints == 0 {
+        if orb_wall_data.hitpoints == 0 {
           let team = player.team;
           for p_index in 0..players.len() {
             if players[p_index].team == team {
@@ -459,11 +474,12 @@ pub fn apply_simple_bullet_logic_extra(
           }
         }
         // 548 IS THE NUMBER OF THE ORB
-        game_objects[o_index].players.push(548);
+        bullet_data.hit_players.push(548);
         if !pierceing_shot {
           game_objects[o_index].to_be_deleted = true;
         }
         hit = true;
+        game_objects[victim_object_index].extra_data = ObjectData::WallData(orb_wall_data)
       }
     }
   }
@@ -477,13 +493,13 @@ pub fn apply_simple_bullet_logic_extra(
     if Vector2::distance(game_object.position, players[p_index].position) < hit_radius &&
     owner_username != players[p_index].username {
       // And if we didn't hit this bloke before
-      if !(game_object.players.contains(&p_index)) {
+      if !(bullet_data.hit_players.contains(&p_index)) {
         // Apply bullet damage
         if players[p_index].team != player.team {
           // Confirmed hit.
           hit = true;
           players[p_index].damage(damage, characters.clone());
-          game_objects[o_index].players.push(p_index);
+          bullet_data.hit_players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
             game_objects[o_index].to_be_deleted = true;
@@ -492,7 +508,7 @@ pub fn apply_simple_bullet_logic_extra(
         // Apply bullet healing, only if in the same team
         if players[p_index].team == player.team && healing > 0 {
           players[p_index].heal(healing, characters.clone());
-          game_objects[o_index].players.push(p_index);
+          bullet_data.hit_players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
             game_objects[o_index].to_be_deleted = true;
@@ -504,9 +520,11 @@ pub fn apply_simple_bullet_logic_extra(
       }
     }
   }
-  game_objects[o_index].position.x += game_objects[o_index].direction.x * true_delta_time as f32 * bullet_speed;
-  game_objects[o_index].position.y += game_objects[o_index].direction.y * true_delta_time as f32 * bullet_speed;
-  game_objects[o_index].traveled_distance += true_delta_time as f32 * bullet_speed;
+  game_objects[o_index].position.x += bullet_data.direction.x * true_delta_time as f32 * bullet_speed;
+  game_objects[o_index].position.y += bullet_data.direction.y * true_delta_time as f32 * bullet_speed;
+  bullet_data.traveled_distance += true_delta_time as f32 * bullet_speed;
+  // update the game object's bullet data.
+  game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
   return (players, game_objects, hit);
 }
 
