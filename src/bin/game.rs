@@ -103,7 +103,7 @@ async fn main() {
   // whether we're queueing
   let mut queue: bool = false;
 
-  let mut offline_mode: bool = false;
+  //let mut offline_mode: bool = false;
 
   // MARK: main menu
   let mut tab_stats_refresh_flag: bool = false;
@@ -593,7 +593,7 @@ async fn main() {
       let mut offline_button = ui::Button::new(Vector2 { x: 80.0*vw, y: 90.0*vh }, Vector2 { x: 19.0*vw, y: 8.0*vh }, "Offline Mode", 5.0*vh);
       offline_button.draw(vh, !menu_paused);
       if offline_button.was_pressed() {
-        offline_mode = true;
+        //offline_mode = true;
         username = "Player".to_string();
         cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
         logged_in = true;
@@ -868,11 +868,12 @@ async fn main() {
         let practice_username = username.clone();
         let session_key = cipher_key.clone();
         let practice_character = characters[selected_char].clone();
-        let (tx, mut rx): (tokio::sync::mpsc::Sender<PlayerMessage>, tokio::sync::mpsc::Receiver<PlayerMessage>)
+        let (tx, mut _rx): (tokio::sync::mpsc::Sender<PlayerMessage>, tokio::sync::mpsc::Receiver<PlayerMessage>)
           = tokio::sync::mpsc::channel(32);
-        let game_server = std::thread::spawn(move || {
+        let _game_server = std::thread::spawn(move || {
           game_server(1, practice_game_port, vec![
             PlayerInfo {
+              // a lot of dummy data.
               username: practice_username,
               session_key: session_key,
               channel: tx,

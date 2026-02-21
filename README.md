@@ -115,6 +115,8 @@ This is just for me.
   - [x] Maintain ability to read primary server socket during game
     - [x] In-game chat
     - [x] Game update (game won/lost)
+  - [x] Practice mode
+  - [x] Offline mode
   - [ ] Server survival
     - [ ] Throttling
     - [ ] Invalid account deletion

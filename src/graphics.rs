@@ -12,7 +12,7 @@ macro_rules! load {
   };
 }
 pub fn load_game_object_textures() -> HashMap<GameObjectType, Texture2D>  {
-  let mut game_object_tetures: HashMap<GameObjectType, Texture2D> = HashMap::from([
+  let game_object_tetures: HashMap<GameObjectType, Texture2D> = HashMap::from([
     (GameObjectType::Wall                             , load!("gameobjects/wall.png")),
     (GameObjectType::HernaniWall                      , load!("characters/hernani/textures/wall.png")),
     (GameObjectType::RaphaelleAura                    , load!("characters/raphaelle/textures/secondary.png")),

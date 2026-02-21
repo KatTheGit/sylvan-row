@@ -866,6 +866,11 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
 
       // IGNORE ANYTHING BELOW IF PLAYER HAS DIED
       if players[p_index].is_dead {
+        if is_practice {
+          if players[p_index].death_timer_start.elapsed().as_secs_f32() > 1.0 {
+            players[p_index].is_dead = false;
+          }
+        }
         continue;
       }
       if players[p_index].last_packet_time.elapsed().as_secs_f32() > 5.0
