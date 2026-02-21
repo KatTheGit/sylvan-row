@@ -442,7 +442,7 @@ impl CharacterDescription {
         }
         Character::Temerity => {
           CharacterDescription {
-            primary:   AbilityDescription { description: String::from("Performs a three-hit combo dealing {0} damage, with each attack\ngaining in range ( {1} | {2} | {3} )."), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_range, character_properties[&character].primary_range_2, character_properties[&character].primary_range_3] },
+            primary:   AbilityDescription { description: String::from("A three-hit combo dealing {0} damage, with each attack\ngaining in range ( {1} | {2} | {3} )."), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_range, character_properties[&character].primary_range_2, character_properties[&character].primary_range_3] },
             secondary: AbilityDescription { description: String::from("Launches a rocket under herself, dealing {0} damage and\nboosting herself backwads."), values: vec![character_properties[&character].secondary_damage as f32] },
             dash:      AbilityDescription { description: String::from("Can hold DASH near walls to initiate a wallride."), values: vec![] },
             passive:   AbilityDescription { description: String::from("Heals nearby walls by {0} every second."), values: vec![character_properties[&character].passive_value as f32] },
@@ -458,7 +458,7 @@ impl CharacterDescription {
         }
         Character::Wiro => {
           CharacterDescription {
-            primary:   AbilityDescription { description: String::from("Performs an attack dealing {0} damage up-close and {1} damage at range.\nLanding this ability empowers DASH"), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_damage_2 as f32] },
+            primary:   AbilityDescription { description: String::from("An attack dealing {0} damage up-close and {1} damage at range.\nLanding this ability empowers DASH"), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_damage_2 as f32] },
             secondary: AbilityDescription { description: String::from("Holds up a shield, damage taken with it costs secondary charge.\nIf active, PASSIVE no longer applies."), values: vec![] },
             dash:      AbilityDescription { description: String::from("A long dash. If empowered, heals allies in his path by {0} and\ndamages opponents by {1}"), values: vec![character_properties[&character].secondary_heal as f32, character_properties[&character].secondary_damage as f32] },
             passive:   AbilityDescription { description: String::from("Nearby allies gain a small speed buff. Disabled if SECONDARY\nis active."), values: vec![] },

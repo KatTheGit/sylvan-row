@@ -21,7 +21,7 @@ wall_damage_multiplier = 1.0
 
 secondary_damage = 5
 secondary_heal = 5
-secondary_hit_charge = 3
+secondary_hit_charge = 5
 secondary_heal_charge = 0 
 secondary_passive_charge = 0
 secondary_range = 3.5
