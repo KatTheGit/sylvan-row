@@ -819,10 +819,15 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, vw: f32, m
     } else {
       10.0
     };
-    draw_rectangle(mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: 0.0}, Vector2 { x: x_size + 1.0*vh, y: y_size + 1.0*vh }, BLUE);
-    draw_rectangle(mouse_pos                                  + Vector2 {x: visibility_x_offset, y: 0.0}, Vector2 { x: x_size,          y: y_size          }, SKYBLUE);
+    let visibility_y_offset: f32 = if mouse_pos.y > 60.0 * vh {
+      - y_size - 10.0
+    } else {
+      10.0
+    };
+    draw_rectangle(mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: x_size + 1.0*vh, y: y_size + 1.0*vh }, BLUE);
+    draw_rectangle(mouse_pos                                  + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: x_size,          y: y_size          }, SKYBLUE);
     let text_size_y = measure_text(lines[0], TextParams::default().font, font_size as u16, 1.0).height;
-    let initial_pos = mouse_pos + Vector2 {x: 1.0 *vh + visibility_x_offset, y: 1.0*vh + text_size_y};
+    let initial_pos = mouse_pos + Vector2 {x: 1.0 *vh + visibility_x_offset, y: 1.0*vh + text_size_y + visibility_y_offset};
     for (i, line) in lines.iter().enumerate() {
       draw_text(line, initial_pos.x, initial_pos.y + (i as f32) * y_offset, font_size, BLACK);
     }

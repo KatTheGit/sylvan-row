@@ -1690,9 +1690,9 @@ async fn game(server_ip: String, character: Character, client_port: u16, server_
 
         slow_ping = player_copy.ping;
       }
-      draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 32.0, WHITE);
-      draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 45.0, 32.0, WHITE);
-      draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 70.0, 32.0, WHITE);
+      draw_text(format!("{} draw fps", slow_draw_fps).as_str(), 20.0, 20.0, 32.0, BLACK);
+      draw_text(format!("{} input fps", slow_sender_fps).as_str(), 20.0, 45.0, 32.0, BLACK);
+      draw_text(format!("{} ms ping", slow_ping).as_str(), 20.0, 70.0, 32.0, BLACK);
     }
 
 

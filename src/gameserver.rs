@@ -1862,6 +1862,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
         }
         _ => {}
       }
+      // lifetimes
       match game_objects[o_index].get_bullet_data_safe() {
         Ok(mut bullet_data) => {
           bullet_data.lifetime -= true_delta_time as f32;
@@ -1871,7 +1872,18 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           }
         },
         Err(()) => {
+          match game_objects[o_index].get_wall_data_safe() {
+            Ok(mut wall_data) => {
+              wall_data.lifetime -= true_delta_time as f32;
+              game_objects[o_index].extra_data = ObjectData::WallData(wall_data);
+              if game_objects[o_index].get_wall_data().lifetime < 0.0 {
+                game_objects[o_index].to_be_deleted = true;
+              }
+            }
+            Err(()) => {
 
+            }
+          }
         }
       }
     }

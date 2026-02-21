@@ -115,8 +115,9 @@ This is just for me.
   - [x] Maintain ability to read primary server socket during game
     - [x] In-game chat
     - [x] Game update (game won/lost)
-  - [x] Practice mode
   - [x] Offline mode
+  - [x] Practice mode
+    - [ ] Client complies to match assignments even if in practice range.
   - [ ] Server survival
     - [ ] Throttling
     - [ ] Invalid account deletion

@@ -317,6 +317,16 @@ impl GameObject {
       }
     }
   }
+  pub fn get_wall_data_safe(&self) -> Result<WallData, ()> {
+    match self.extra_data.clone() {
+      ObjectData::WallData(data) => {
+        return Ok(data);
+      }
+      _ => {
+        return Err(())
+      }
+    }
+  }
 }
 
 /// Loads any map from a properly formatted string: `<object> [posX] [posY]`
