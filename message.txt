@@ -1,0 +1,102 @@
+2026-02-20T21:53:32.742958752+00:00 [INFO] [src/bin/server.rs][71] Server started.
+2026-02-21T15:13:53.082775131+00:00 [INFO] [src/bin/server.rs][71] Server started.
+2026-02-21T15:21:53.493611365+00:00 [ERROR] [src/bin/server.rs][41] PANIC at src/gameserver.rs:1787: explicit panic
+   0: server::main::{{closure}}::{{closure}}
+             at /home/ornit/Programming/sylvan-row/src/bin/server.rs:38:21
+   1: <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/alloc/src/boxed.rs:2220:9
+   2: std::panicking::panic_with_hook
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/panicking.rs:833:13
+   3: std::panicking::panic_handler::{{closure}}
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/panicking.rs:691:13
+   4: std::sys::backtrace::__rust_end_short_backtrace
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/sys/backtrace.rs:176:18
+   5: __rustc::rust_begin_unwind
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/panicking.rs:689:5
+   6: core::panicking::panic_fmt
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/core/src/panicking.rs:80:14
+   7: core::panicking::panic
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/core/src/panicking.rs:150:5
+   8: sylvan_row::gameserver::game_server
+             at /home/ornit/Programming/sylvan-row/src/gameserver.rs:1787:27
+   9: server::main::{{closure}}::{{closure}}::{{closure}}::{{closure}}
+             at /home/ornit/Programming/sylvan-row/src/bin/server.rs:612:64
+  10: std::panicking::catch_unwind::do_call
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:581:40
+  11: std::panicking::catch_unwind
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:544:19
+  12: std::panic::catch_unwind
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:359:14
+  13: server::main::{{closure}}::{{closure}}::{{closure}}
+             at /home/ornit/Programming/sylvan-row/src/bin/server.rs:612:35
+  14: std::sys::backtrace::__rust_begin_short_backtrace
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sys/backtrace.rs:160:18
+  15: std::thread::lifecycle::spawn_unchecked::{{closure}}::{{closure}}
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/thread/lifecycle.rs:92:13
+  16: <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panic/unwind_safe.rs:274:9
+  17: std::panicking::catch_unwind::do_call
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:581:40
+  18: std::panicking::catch_unwind
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:544:19
+  19: std::panic::catch_unwind
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:359:14
+  20: std::thread::lifecycle::spawn_unchecked::{{closure}}
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/thread/lifecycle.rs:90:26
+  21: core::ops::function::FnOnce::call_once{{vtable.shim}}
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+  22: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/alloc/src/boxed.rs:2206:9
+  23: std::sys::thread::unix::Thread::new::thread_start
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/sys/thread/unix.rs:118:17
+  24: <unknown>
+  25: <unknown>
+
+2026-02-21T15:21:53.645779858+00:00 [ERROR] [src/bin/server.rs][673] Game server: Any { .. }
+2026-02-21T15:21:53.645797144+00:00 [WARN] [src/bin/server.rs][675] Player "ornit123" from crashed game server was playing: Wiro
+2026-02-21T15:21:53.645820138+00:00 [WARN] [src/bin/server.rs][675] Player "EpsteinFuckNiggers" from crashed game server was playing: Elizabeth
+2026-02-21T15:21:53.645824660+00:00 [ERROR] [src/bin/server.rs][44] PANIC at src/gameserver.rs:107: called `Result::unwrap()` on an `Err` value: PoisonError { .. }
+   0: server::main::{{closure}}::{{closure}}
+             at /home/ornit/Programming/sylvan-row/src/bin/server.rs:38:21
+   1: <alloc::boxed::Box<F,A> as core::ops::function::Fn<Args>>::call
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/alloc/src/boxed.rs:2220:9
+   2: std::panicking::panic_with_hook
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/panicking.rs:833:13
+   3: std::panicking::panic_handler::{{closure}}
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/panicking.rs:698:13
+   4: std::sys::backtrace::__rust_end_short_backtrace
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/sys/backtrace.rs:176:18
+   5: __rustc::rust_begin_unwind
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/panicking.rs:689:5
+   6: core::panicking::panic_fmt
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/core/src/panicking.rs:80:14
+   7: core::result::unwrap_failed
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/core/src/result.rs:1867:5
+   8: core::result::Result<T,E>::unwrap
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:1233:23
+   9: sylvan_row::gameserver::game_server::{{closure}}
+             at /home/ornit/Programming/sylvan-row/src/gameserver.rs:107:49
+  10: std::sys::backtrace::__rust_begin_short_backtrace
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sys/backtrace.rs:160:18
+  11: std::thread::lifecycle::spawn_unchecked::{{closure}}::{{closure}}
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/thread/lifecycle.rs:92:13
+  12: <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panic/unwind_safe.rs:274:9
+  13: std::panicking::catch_unwind::do_call
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:581:40
+  14: std::panicking::catch_unwind
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panicking.rs:544:19
+  15: std::panic::catch_unwind
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:359:14
+  16: std::thread::lifecycle::spawn_unchecked::{{closure}}
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/thread/lifecycle.rs:90:26
+  17: core::ops::function::FnOnce::call_once{{vtable.shim}}
+             at /home/ornit/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+  18: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/alloc/src/boxed.rs:2206:9
+  19: std::sys::thread::unix::Thread::new::thread_start
+             at /rustc/254b59607d4417e9dffbc307138ae5c86280fe4c/library/std/src/sys/thread/unix.rs:118:17
+  20: <unknown>
+  21: <unknown>
+
+2026-02-21T15:49:02.397113248+00:00 [WARN] [src/bin/server.rs][665] ()

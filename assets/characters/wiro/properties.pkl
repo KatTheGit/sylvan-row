@@ -2,9 +2,9 @@ health = 100
 
 speed = 4.0
 
-primary_damage = 10
+primary_damage = 11
 primary_heal = 0
-primary_damage_2 = 5
+primary_damage_2 = 7
 primary_heal_2 = 0
 primary_lifesteal = 0
 primary_lifesteal_2 = 0
@@ -21,7 +21,7 @@ wall_damage_multiplier = 1.0
 
 secondary_damage = 5
 secondary_heal = 5
-secondary_hit_charge = 5
+secondary_hit_charge = 7
 secondary_heal_charge = 0 
 secondary_passive_charge = 0
 secondary_range = 3.5

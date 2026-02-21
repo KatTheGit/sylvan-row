@@ -21,6 +21,7 @@ This document specifies guidelines to aid with the development of this game from
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
     - [4.2.2. Temerity](#422-temerity)
+    - [4.2.3 Leo's idea](#423-leos-idea)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Josey](#432-josey)
@@ -232,6 +233,13 @@ Intended playstyle:
 - Reward people for getting close by giving them two safe shots
 - ROCKET LAUNCHER RAHHHHHH
 - Combo heavy
+
+### 4.2.3 Leo's idea
+
+- **Primary**
+  - A two-part combo.
+    - The first cast throws a mid-to-long range dagger, if it lands on the opponent, dashes back, resets cooldown of **Primary**, and adds a stack.
+    - The second cast throws an identical dagger, but if it hits, blink on top of the opponent.
 
 ## 4.3. Ranged/Control
 

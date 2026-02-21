@@ -1784,7 +1784,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                     | GameObjectType::RaphaelleBullet           => { characters[&obj2_owner_character].primary_damage }
                     GameObjectType::ElizabethProjectileGroundRecalled
                     | GameObjectType::RaphaelleBulletEmpowered  => { characters[&obj2_owner_character].primary_damage_2 }
-                    _ => {panic!()}
+                    GameObjectType::ElizabethTurretProjectile => { characters[&obj2_owner_character].secondary_damage }
+                    _ => {panic!("{:?}", game_objects[victim_object_index].object_type)}
                   } as f32) as u8;
                   if players[obj1_owner_index].secondary_charge > damage{
                     players[obj1_owner_index].secondary_charge -= damage;
