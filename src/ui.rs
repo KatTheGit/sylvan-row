@@ -335,7 +335,12 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
 /// This function is called both in-game and in the main menu
 /// 
 /// returns menu_paused and wants_to_quit
-pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool, settings_tabs: &mut Tabs, mut tracks: (&mut TrackHandle, &mut TrackHandle)) -> (bool, bool) {
+/// 
+/// Track order:
+/// - sfx self
+/// - sfx other
+/// - music
+pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool, settings_tabs: &mut Tabs, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle)) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * vh;
@@ -402,13 +407,16 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
     if settings_tabs.selected_tab() == 2 {
       settings_modified |= slider(Vector2 { x: vw * 25.0, y: vh * 25.0 }, Vector2 { x: 45.0*vw, y: 7.0*vh }, "Volume", 5.0*vh, vh, &mut settings.master_volume, 0.0, 100.0);
       settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 33.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "Music", 5.0*vh, vh, &mut settings.music_volume, 0.0, 100.0);
-      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "SFX", 5.0*vh, vh, &mut settings.sfx_volume, 0.0, 100.0);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "SFX (You)", 5.0*vh, vh, &mut settings.sfx_self_volume, 0.0, 100.0);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 49.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "SFX (Others)", 5.0*vh, vh, &mut settings.sfx_other_volume, 0.0, 100.0);
       if settings_modified {
         // update volumes.
-        let sfx_volume = settings.master_volume * settings.sfx_volume / 100.0;
+        let sfx_self_volume = settings.master_volume * settings.sfx_self_volume / 100.0;
+        let sfx_other_volume = settings.master_volume * settings.sfx_other_volume / 100.0;
         let music_volume = settings.master_volume * settings.music_volume / 100.0;
-        audio::set_volume(sfx_volume, &mut tracks.0);
-        audio::set_volume(music_volume, &mut tracks.1);
+        audio::set_volume(sfx_self_volume, &mut tracks.0);
+        audio::set_volume(sfx_other_volume, &mut tracks.1);
+        audio::set_volume(music_volume, &mut tracks.2);
       }
     }
     // Other
@@ -469,7 +477,8 @@ pub struct Settings {
   pub store_credentials: bool,
   pub master_volume: f32,
   pub music_volume: f32,
-  pub sfx_volume: f32,
+  pub sfx_self_volume: f32,
+  pub sfx_other_volume: f32,
 }
 impl Settings {
   pub fn new() -> Settings{
@@ -479,9 +488,10 @@ impl Settings {
       fullscreen: false,
       saved_username: String::new(),
       store_credentials: false,
-      master_volume: 100.0,
+      master_volume: 80.0,
       music_volume: 100.0,
-      sfx_volume: 100.0,
+      sfx_self_volume: 100.0,
+      sfx_other_volume: 50.0,
     }
   }
   pub fn load() -> Settings {

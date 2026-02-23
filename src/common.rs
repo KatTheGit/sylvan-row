@@ -177,7 +177,9 @@ impl ClientPlayer {
     draw_text_relative(&displayed_name, self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera_position, Color { r: color.r, g: color.g, b: color.b, a: 1.0 });
     let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -21.0 };
     for buff in self.buffs.clone() {
-      draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+      if !vec![BuffType::Impulse].contains(&buff.buff_type) {
+        draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+      }
       buff_offset.y -= 3.0;
     }
   }
@@ -269,8 +271,8 @@ pub struct ServerPacket {
 
 pub fn get_random_port() -> u16 {
   // Find a random free port and use it
-  let min_port: u16 = 49152; // start of dynamic port range
-  let max_port: u16 = 65535;
+  let min_port: u16 = 30000;
+  let max_port: u16 = 30300;
   let mut port: u16;
   loop {
     let y = crappy_random();

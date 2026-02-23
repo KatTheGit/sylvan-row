@@ -26,7 +26,7 @@ secondary_heal_charge = 0
 secondary_passive_charge = 3
 secondary_range = 4.0
 secondary_charge_use = 100
-secondary_cooldown = 10.0
+secondary_cooldown = 12.0
 
 dash_distance = 3.5
 dash_cooldown = 2.5

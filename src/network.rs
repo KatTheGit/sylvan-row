@@ -1,3 +1,6 @@
+use std::io::{Read, Write};
+use std::fs::File;
+use crate::const_params::*;
 use opaque_ke::generic_array::GenericArray;
 use chacha20poly1305::{
   aead::{Aead, KeyInit},
@@ -148,3 +151,52 @@ pub fn tcp_decode_decrypt<T: serde::de::DeserializeOwned>(mut data: Vec<u8>, key
 //pub fn udp_decode_decrypt<T>(data: Vec<u8>) {
 //  
 //}
+
+pub fn get_ip() -> String {
+  let mut server_ip: String;
+  let ip_file_name = "moba_ip.txt";
+  let ip_file = File::open(ip_file_name);
+  let default_ip: String = format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT);
+  match ip_file {
+    // file exists
+    Ok(mut file) => {
+      let mut data = vec![];
+      match file.read_to_end(&mut data) {
+        // could read file
+        Ok(_) => {
+          server_ip = String::from_utf8(data).expect("Couldn't read IP in file.");
+          server_ip.retain(|c| !c.is_whitespace());
+          // if smaller than smallest possible length: we have a problem (file might be empty)
+          if server_ip.len() < String::from("0.0.0.0:0").len() {
+            println!("IP address was invalid (are you using X.X.X.X:X format?). Defaulting to {}", default_ip);
+            server_ip = default_ip;
+          }
+        }
+        // couldnt read file
+        Err(_) => {
+          println!("Couldn't read IP. defaulting to {}.", default_ip);
+          server_ip = default_ip;
+        }
+      }
+    }
+    // file doesn't exist
+    Err(error) => {
+      println!("Config file not found, attempting to creating one... Error: {}", error);
+      match File::create(ip_file_name) {
+        // Could create file
+        Ok(mut file) => {
+          let _ = file.write_all(default_ip.as_bytes());
+          println!("Config file created with default ip {}", default_ip);
+          server_ip = default_ip;
+        }
+        // Couldn't create file
+        Err(error) => {
+          println!("Could not create config file. Defaulting to {}\nReason:\n{}", default_ip, error);
+          server_ip = default_ip;
+        }
+      }
+    }
+  }
+  println!("{:?}", server_ip);
+  return server_ip
+}

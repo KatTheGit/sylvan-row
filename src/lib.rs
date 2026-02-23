@@ -24,3 +24,5 @@ pub mod filter;
 pub mod network;
 /// Abstraction for playing sounds & stuff.
 pub mod audio;
+/// The actual game, once it's connected to the server.
+pub mod game;

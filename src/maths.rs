@@ -476,7 +476,8 @@ pub fn apply_simple_bullet_logic_extra(
         // 548 IS THE NUMBER OF THE ORB
         bullet_data.hit_players.push(548);
         if !pierceing_shot {
-          game_objects[o_index].to_be_deleted = true;
+          //game_objects[o_index].to_be_deleted = true;
+          bullet_data.lifetime = 0.05;
         }
         hit = true;
         game_objects[victim_object_index].extra_data = ObjectData::WallData(orb_wall_data)
@@ -502,7 +503,8 @@ pub fn apply_simple_bullet_logic_extra(
           bullet_data.hit_players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
-            game_objects[o_index].to_be_deleted = true;
+            //game_objects[o_index].to_be_deleted = true;
+            bullet_data.lifetime = 0.05;
           }
         }
         // Apply bullet healing, only if in the same team
@@ -511,7 +513,8 @@ pub fn apply_simple_bullet_logic_extra(
           bullet_data.hit_players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
-            game_objects[o_index].to_be_deleted = true;
+            //game_objects[o_index].to_be_deleted = true;
+            bullet_data.lifetime = 0.05;
           }
         }
         // Apply appropriate secondary charge
