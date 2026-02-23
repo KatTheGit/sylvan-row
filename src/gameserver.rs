@@ -1783,6 +1783,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                     | GameObjectType::ElizabethProjectileRicochet
                     | GameObjectType::RaphaelleBullet           => { characters[&obj2_owner_character].primary_damage }
                     GameObjectType::ElizabethProjectileGroundRecalled
+                    | GameObjectType::WiroGunShot
                     | GameObjectType::RaphaelleBulletEmpowered  => { characters[&obj2_owner_character].primary_damage_2 }
                     GameObjectType::ElizabethTurretProjectile => { characters[&obj2_owner_character].secondary_damage }
                     _ => {panic!("{:?}", game_objects[victim_object_index].object_type)}
