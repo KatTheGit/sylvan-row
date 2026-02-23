@@ -1617,7 +1617,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             // if we hit a player
             if Vector2::distance(player_position, object_position) < hit_radius
             // and we haven't already
-            && !game_objects[o_index].get_bullet_data().hit_players.contains(&p_index) {
+            && !game_objects[o_index].get_bullet_data().hit_players.contains(&p_index)
+            && players[p_index].team != players[owner_index].team {
               // damage them
               players[p_index].damage(damage, characters.clone());
               // and check if they were already hit by a projectile.
