@@ -17,11 +17,12 @@ This document specifies guidelines to aid with the development of this game from
   - [4.1. Support/Tank](#41-supporttank)
     - [4.1.1. Raphaelle](#411-raphaelle)
     - [4.1.2. Wiro](#412-wiro)
-    - [4.1.3. Alita \[not implemented\]](#413-alita-not-implemented)
+    - [4.1.3. Robot (not implemented)](#413-robot-not-implemented)
+    - [4.1.4. Alita (not implemented)](#414-alita-not-implemented)
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
     - [4.2.2. Temerity](#422-temerity)
-    - [4.2.3 Leo's idea](#423-leos-idea)
+    - [4.2.3. Leo's idea (not implemented)](#423-leos-idea-not-implemented)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Josey](#432-josey)
@@ -167,7 +168,14 @@ Intended playstyle:
   - Ganked
   - Ignored
 
-### 4.1.3. Alita [not implemented]
+### 4.1.3. Robot (not implemented)
+
+- **Primary** - does something different based on form
+- **Secondary** - amplifies whatever the current form does
+- **Dash** - switches forms
+- **Passive** - does something different based on form
+
+### 4.1.4. Alita (not implemented)
 
 - **Primary - Form 1**
   - A long range projectile which can heal allies or damage opponents.
@@ -215,11 +223,7 @@ Intended playstyle:
 ### 4.2.2. Temerity
 
 - **Primary** - The Subtle Art of a Rocket Launcher
-  - A three-hit combo:
-    - A short range attack
-    - A mid-range attack
-    - A difficult to hit long-range attack
-  - If you hit an opponent, you switch to the next attack. Hitting an opponent with the last attack doesn't switch attacks. Missing any attack resets it to the first one.
+  - A three-hit combo with each attack gaining in range, with the last one matching the range of snipers.
 - **Secondary** - Rocket Jump
   - Launch a rocket under yourself that damages opponents in an AOE and boosts you forward.
 - **Dash** - Hasty Dispatch
@@ -232,14 +236,24 @@ Intended playstyle:
 - zoop in and out weeee
 - Reward people for getting close by giving them two safe shots
 - ROCKET LAUNCHER RAHHHHHH
-- Combo heavy
 
-### 4.2.3 Leo's idea
+### 4.2.3. Leo's idea (not implemented)
 
 - **Primary**
-  - A two-part combo.
-    - The first cast throws a mid-to-long range dagger, if it lands on the opponent, dashes back, resets cooldown of **Primary**, and adds a stack.
-    - The second cast throws an identical dagger, but if it hits, blink on top of the opponent.
+  - A two-part combo. Resets on miss / after a few seconds.
+    - The first cast throws a mid range dagger, if it lands on the opponent, dashes back.
+    - The second cast throws a long range dagger. If it hits, blink on top of the opponent.
+- **Secondary**
+  - A close-range high-damage attack with DOT.
+- **Dash**
+  - A short dash on a longer cooldown.
+  - Resets the cooldown of **Primary**
+- **Passive**
+  - Gain speed after dealing damage to enemies.
+
+Intended Playstyle:
+- Dive, burst, retreat.
+- Punished through poking and good cooldown managment.
 
 ## 4.3. Ranged/Control
 
@@ -295,7 +309,7 @@ The format that surrounds the fighting itself.
 
 ## 5.2. Ranked System
 
-The rank of a player is determined entirely through their winrate, since no skill-based or ranked-only matchmaking exists (yet), so RP gain/loss values are adjusted accordingly.
+The rank of a player is determined entirely through their winrate, since no skill-based or ranked-only matchmaking exists (yet), RP gain/loss values are adjusted accordingly.
 
 Each rank has 3 divisions (III to I). Going up a division requires 100 rp. In the last division of a rank, the rp gain/loss is equal to that of the rank above.
 
@@ -306,7 +320,7 @@ Each rank has 3 divisions (III to I). Going up a division requires 100 rp. In th
 3 | 600 | Gold | 50% |
 4 | 900 | ??? | 60% |
 5 | 1200 | ??? | 70% |
-6 | 1500 | Mystic (n) | 80% |
+6 | 1500 | Mystic (n) | 80%+ |
 
 Mystic rank has your leaderboard position appended, and doesn't have any divisions.
 

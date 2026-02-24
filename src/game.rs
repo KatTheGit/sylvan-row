@@ -82,7 +82,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
   let mut vh: f32;
 
   // used to allow other thread to play sounds (which are managed by main thread)
-  let mut sound_queue: Vec<(&[u8], AudioTrack)> = Vec::new();
+  let sound_queue: Vec<(&[u8], AudioTrack)> = Vec::new();
   let sound_queue: Arc<Mutex<Vec<(&[u8], AudioTrack)>>> = Arc::new(Mutex::new(sound_queue));
 
   // start the input listener and network sender thread.
@@ -817,7 +817,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
 
 
     // MARK: recieve packet
-    let mut recieved_server_info: ServerPacket;
+    let recieved_server_info: ServerPacket;
     match socket.recv_from(&mut buffer) {
       Ok(data) => {
         let (amt, _): (usize, std::net::SocketAddr) = data;
@@ -961,7 +961,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
             }
           }
         }
-        for (i, new_object) in recieved_server_info.game_objects.clone().iter().enumerate() {
+        for (new_object) in recieved_server_info.game_objects.clone() {
           // if this object is NEW...
           if new_object.id > highest_id {
             // check if it's ours. If it is, skip it.
