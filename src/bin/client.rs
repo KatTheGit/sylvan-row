@@ -4,7 +4,7 @@
 
 use std::{io::{ErrorKind, Read, Write}, net::{TcpStream}, process::exit, time::{Duration, Instant}};
 use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBackend};
-use sylvan_row::{game, audio, common::*, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, gameserver::game_server, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
+use sylvan_row::{game, audio, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, gameserver::game_server, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
 use miniquad::{conf::Icon, window::set_mouse_cursor};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::prelude::*;
@@ -209,6 +209,8 @@ async fn main() {
       let save_pass_check_position = Vector2 { x: 35.0*vh, y: 59.0*vh };
       let save_pass_check_size = 5.0*vh;
       let credentials_checkbox_changed = ui::checkbox(save_pass_check_position, save_pass_check_size, "Remember me", 4.0*vh, vh, &mut settings.store_credentials);
+      // credentials tooltip
+      ui::tooltip(save_pass_check_position, Vector2 { x: save_pass_check_size, y: save_pass_check_size }, "Stores the credentials in your OS keyring,\nlike most browers.", vh, vw, mouse_pos);
       // save;
       if credentials_checkbox_changed {
         settings.save();

@@ -1,5 +1,5 @@
 use opaque_ke::{CredentialFinalization, CredentialRequest, CredentialResponse, RegistrationRequest, RegistrationResponse, RegistrationUpload};
-use crate::{common::{self, Team}, const_params::DefaultCipherSuite, database::FriendShipStatus, gamedata::Character};
+use crate::{const_params::DefaultCipherSuite, database::FriendShipStatus, gamedata::*};
 
 // MARK: CLIENT to server
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
@@ -176,7 +176,7 @@ pub struct PlayerInfo {
   /// Will be truncated if longer than the total amount of gamemodes.
   pub queued_gamemodes: Vec<GameMode>,
   pub selected_character: Character,
-  pub assigned_team: common::Team,
+  pub assigned_team: Team,
   pub in_game_with: Vec<PlayerInfo>,
 }
 

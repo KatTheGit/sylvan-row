@@ -17,7 +17,7 @@ This document specifies guidelines to aid with the development of this game from
   - [4.1. Support/Tank](#41-supporttank)
     - [4.1.1. Raphaelle](#411-raphaelle)
     - [4.1.2. Wiro](#412-wiro)
-    - [4.1.3. Robot (not implemented)](#413-robot-not-implemented)
+    - [4.1.3. Sága (not implemented)](#413-sága-not-implemented)
     - [4.1.4. Alita (not implemented)](#414-alita-not-implemented)
   - [4.2. Assassin/Brawler](#42-assassinbrawler)
     - [4.2.1. Cynewynn](#421-cynewynn)
@@ -26,6 +26,7 @@ This document specifies guidelines to aid with the development of this game from
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Josey](#432-josey)
+    - [4.3.3 Pirate #1](#433-pirate-1)
 - [5. Gameplay](#5-gameplay)
   - [5.1. Gamemode](#51-gamemode)
   - [5.2. Ranked System](#52-ranked-system)
@@ -168,12 +169,18 @@ Intended playstyle:
   - Ganked
   - Ignored
 
-### 4.1.3. Robot (not implemented)
+### 4.1.3. Sága (not implemented)
 
-- **Primary** - does something different based on form
-- **Secondary** - amplifies whatever the current form does
-- **Dash** - switches forms
-- **Passive** - does something different based on form
+- **Primary** - 
+  - Base: 
+    - Empowered, form 1: gain huge range.
+    - Empowered, form 2: 
+- **Secondary** - 
+  - Reset the cooldown of **Dash**.
+- **Dash** - 
+  - Dash.
+  - Switch between two forms and empower the next primary.
+- **Passive** - 
 
 ### 4.1.4. Alita (not implemented)
 
@@ -291,6 +298,10 @@ Intended playstyle:
 - Controls chokeholds and can force people around obstacles.
 - Countered by getting rid of walls and chasing.
 
+### 4.3.3 Pirate #1
+
+
+
 # 5. Gameplay
 
 The format that surrounds the fighting itself.
@@ -347,6 +358,8 @@ Both the City and the forest are home to a group of anarchists. Some of them lac
 
 High in the skies a small civilisation of automatons peacefully resides, in a small city with a large windmill that looks like it was ripped out of the ground as its centerpiece, held up by multiple surrounding airships. The inhabitants are varied "rescued" automatons, most of which over many iterations have refined their sentience. They live peacefully in the skies and ever so often descend to terra firma and roam the lands, searching for tales to tell of the beautiful world below, for once they get back home. Their haven is too high in the sky for any human to dare visit. They are few in number and despite most of their posessions being stolen goods are entirely peaceful and pose no threat.
 
+Airships are often used to trade with the city and its surrounding villages, especially in places where rail can't be built. The city's port hosts many docks and forestbound villages only need a clearing big enough for the airship to land. However trading craft on these routes often get intercepted by pirates. Nobody loves telling stories more than pirates, but nobody is willing to listen to them, on behalf of the pirates being... pirates. Since the skybound automatons have nothing to offer to except for their love for stories and unending attention, they get along incredibly well and are exceptionally welcoming to pirates.
+
 The forest is also home to Eternals, a group of creatures of unknown origin to God herself, who have roamed for as long as any scripture remembers.
 
 ## 6.2. Characters
@@ -364,6 +377,8 @@ Hernani is a bandit and an anarchist, convinced of being shunned by society. He 
 Josey was born with the power to partially intuit coincidence, and manipulate it into deterministic outcomes. In his early years he used this power to make a living through his holistic assasination agency, whose main selling point was the lack of evidence left behind by his "coincidental" methods. As the world changed around him, he took the opportunity to stop his evil trade and become an engineer instead. His intuition made of him a great mechanic, and if he ever had to fight, he'd do it semi-reluctantly, relying on his contraptions to do his bidding. Him and Hernani are rivals, and constantly try to assassinate eachother, but there's something about the way they do it...
 
 Temerity used to be part of the City's police force, but after the changes brought by Cynewynn's reign she was fired due to her methods being too "old school". In fairness, her habit of solving every issue with rocket launchers and her proficiency at crashing police-issued jets was already somewhat frowned upon even in the "old days". However she still performs her duties as a law enforcement officer by stealing equipment from the headquarters and enforcing whatever the current legal code may be, despite the entire task force dedicated to her.
+
+Sága is one of the skybound automatons.
 
 One of the eternals is an odd ornithoid creature which experiences constant, insufferable pain, and exists for the sole purpose of being in pain. Anyone who crosses their path is struck with a sickening feeling of empathy, scarring even the hardest of souls and most weathered of warriors. Nobody leaves the encounter unchanged. The eternal's reaction to pain varies, often being passive and defeated, but in other times erratic and agitated.
 

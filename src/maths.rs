@@ -4,7 +4,6 @@ use macroquad::math::Vec2;
 use std::time::SystemTime;
 use crate::const_params::*;
 use crate::gamedata::*;
-use crate::common::*;
 use std::sync::MutexGuard;
 use std::collections::HashMap;
 
@@ -299,12 +298,12 @@ pub fn hits_shield(shield_position: Vector2, shield_direction: Vector2, projecti
 /// This is a wrapper for `apply_simple_bullet_logic_extra`, with just
 /// the simplest parameters.
 pub fn apply_simple_bullet_logic(
-  players:     MutexGuard<Vec<ServerPlayer>>,
-  characters:            HashMap<Character, CharacterProperties>,
-  game_objects:          Vec<GameObject>,
-  o_index:     usize,
-  true_delta_time:       f64,
-  pierceing_shot:        bool,
+  players:         MutexGuard<Vec<ServerPlayer>>,
+  characters:      HashMap<Character, CharacterProperties>,
+  game_objects:    Vec<GameObject>,
+  o_index:         usize,
+  true_delta_time: f64,
+  pierceing_shot:  bool,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
   return apply_simple_bullet_logic_extra(players, characters, game_objects, o_index, true_delta_time, pierceing_shot, 255, 255, false, f32::INFINITY, f32::INFINITY);
 }
@@ -316,18 +315,19 @@ pub fn apply_simple_bullet_logic(
 /// Same with `special_healing`. Setting it to 0 will nullify it.
 /// Set `special_speed` to f32::INFINITY to use default.
 pub fn apply_simple_bullet_logic_extra(
-  mut players: MutexGuard<Vec<ServerPlayer>>,
-  characters:            HashMap<Character, CharacterProperties>,
-  mut game_objects:      Vec<GameObject>,
-  o_index:     usize,
-  true_delta_time:       f64,
-  pierceing_shot:        bool,
-  special_damage:        u8,
-  special_healing:       u8,
-  ricochet:              bool,
-  special_speed:         f32,
-  special_hit_radius:    f32,
+  mut players:        MutexGuard<Vec<ServerPlayer>>,
+  characters:         HashMap<Character, CharacterProperties>,
+  mut game_objects:   Vec<GameObject>,
+  o_index:            usize,
+  true_delta_time:    f64,
+  pierceing_shot:     bool,
+  special_damage:     u8,
+  special_healing:    u8,
+  ricochet:           bool,
+  special_speed:      f32,
+  special_hit_radius: f32,
 ) -> (MutexGuard<Vec<ServerPlayer>>, Vec<GameObject>, bool) {
+
   let game_object = game_objects[o_index].clone();
   let mut bullet_data = game_object.get_bullet_data();
   let owner_username = bullet_data.owner_username.clone();
@@ -476,8 +476,7 @@ pub fn apply_simple_bullet_logic_extra(
         // 548 IS THE NUMBER OF THE ORB
         bullet_data.hit_players.push(548);
         if !pierceing_shot {
-          //game_objects[o_index].to_be_deleted = true;
-          bullet_data.lifetime = 0.05;
+          game_objects[o_index].to_be_deleted = true;
         }
         hit = true;
         game_objects[victim_object_index].extra_data = ObjectData::WallData(orb_wall_data)
@@ -499,12 +498,12 @@ pub fn apply_simple_bullet_logic_extra(
         if players[p_index].team != player.team {
           // Confirmed hit.
           hit = true;
+          add_event_all(GameEvent::AttackHit(game_object.object_type.clone(), owner_username.clone(), players[p_index].username.clone()), &mut players);
           players[p_index].damage(damage, characters.clone());
           bullet_data.hit_players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
-            //game_objects[o_index].to_be_deleted = true;
-            bullet_data.lifetime = 0.05;
+            game_objects[o_index].to_be_deleted = true;
           }
         }
         // Apply bullet healing, only if in the same team
@@ -513,8 +512,7 @@ pub fn apply_simple_bullet_logic_extra(
           bullet_data.hit_players.push(p_index);
           // Destroy the bullet if it doesn't pierce.
           if !pierceing_shot {
-            //game_objects[o_index].to_be_deleted = true;
-            bullet_data.lifetime = 0.05;
+            game_objects[o_index].to_be_deleted = true;
           }
         }
         // Apply appropriate secondary charge

@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
 use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBackend};
-use crate::{audio, common::*, const_params::*, database::{self, FriendShipStatus}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, Settings}};
+use crate::{audio, const_params::*, database::{self, FriendShipStatus}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, Settings}};
 use miniquad::window::set_window_size;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -82,8 +82,8 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
   let mut vh: f32;
 
   // used to allow other thread to play sounds (which are managed by main thread)
-  let sound_queue: Vec<(&[u8], AudioTrack)> = Vec::new();
-  let sound_queue: Arc<Mutex<Vec<(&[u8], AudioTrack)>>> = Arc::new(Mutex::new(sound_queue));
+  let sound_queue: Vec<(&[u8], AudioTrack, f32)> = Vec::new();
+  let sound_queue: Arc<Mutex<Vec<(&[u8], AudioTrack, f32)>>> = Arc::new(Mutex::new(sound_queue));
 
   // start the input listener and network sender thread.
   // give it all necessary references to shared mutexes
@@ -195,11 +195,11 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 
     // access and lock all necessary mutexes
     let player: Arc<Mutex<ClientPlayer>> = Arc::clone(&player);
-    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     let game_objects: Arc<Mutex<Vec<GameObject>>> = Arc::clone(&game_objects);
-    let mut game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
     let other_players: Arc<Mutex<Vec<ClientPlayer>>> = Arc::clone(&other_players);
+    let mut game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
     let mut other_players: MutexGuard<Vec<ClientPlayer>> = other_players.lock().unwrap();
+    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
 
     // (vscode) MARK: Extrapolation
 
@@ -248,40 +248,14 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 
     // MARK: Audio
 
-    // Primary fire cast.
-    if player.last_shot_time > character_properties[&player.character].primary_cooldown / 2.0 {
-      player.used_primary = false;
-    }
-    else {
-      if !player.used_primary {
-        let sound: &[u8] = match player.character {
-          Character::Hernani =>    include_bytes!("../assets/audio/gunshot.mp3"),
-          Character::Cynewynn =>   include_bytes!("../assets/audio/whoosh.mp3"),
-          Character::Raphaelle =>  {
-            if player.stacks == 0 {
-              include_bytes!("../assets/audio/whoosh.mp3")
-            } else {
-              include_bytes!("../assets/audio/whoosh.mp3")
-            }
-          },
-          Character::Elizabeth =>  include_bytes!("../assets/audio/whoosh.mp3"),
-          Character::Wiro =>       include_bytes!("../assets/audio/whoosh.mp3"),
-          Character::Temerity =>   include_bytes!("../assets/audio/rpgshot.mp3"),
-          Character::Dummy =>      include_bytes!("../assets/audio/whoosh.mp3"),
-        };
-        audio::play_sound(sound, &mut sfx_self_track);
-        player.used_primary = true;
-      }
-    }
-
     {
       let mut sound_queue = sound_queue.lock().unwrap();
       for (i, sound) in sound_queue.clone().iter().enumerate() {
-        audio::play_sound(sound.0, match sound.1 {
+        audio::play_sound_distance(sound.0, match sound.1 {
           AudioTrack::Music => &mut music_track,
           AudioTrack::SoundEffectSelf => &mut sfx_self_track,
           AudioTrack::SoundEffectOther => &mut sfx_other_track,
-        });
+        }, sound.2);
         // don't play too many sounds.
         if i > 10 {
           break;
@@ -754,7 +728,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, client_port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>, input_halt: Arc<Mutex<bool>>, server_ip: String, sound_queue: Arc<Mutex<Vec<(&[u8], AudioTrack)>>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, client_port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>, input_halt: Arc<Mutex<bool>>, server_ip: String, sound_queue: Arc<Mutex<Vec<(&[u8], AudioTrack, f32)>>>) -> () {
 
   let server_ip: Vec<&str> = server_ip.split(":").collect();
   let server_ip: String = format!("{}:{}", server_ip[0], server_port);
@@ -899,129 +873,77 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.time_since_last_dash;
         player.last_secondary_time = recieved_server_info.player_packet_is_sent_to.time_since_last_secondary;
         player.stacks = recieved_server_info.player_packet_is_sent_to.stacks;
-
-
+        
+        
         let mut game_objects = game_objects.lock().unwrap();
+        let mut other_players = other_players.lock().unwrap();
         let mut sound_queue = sound_queue.lock().unwrap();
-        // update game objects and calculate sound.
+
         // MARK: Sound
-        let mut highest_id = 0;
-        for prev_object in game_objects.clone() {
-          if prev_object.id > highest_id {
-            highest_id = prev_object.id;
-          }
-          let mut new_object_found: bool = false;
-          for new_object in recieved_server_info.game_objects.clone() {
-            // if this object was UPDATED...
-            if new_object.id == prev_object.id {
-              new_object_found = true;
-              println!("1");
-              match new_object.get_bullet_data_safe() {
-                Ok(new_bullet_data) => {
-                println!("2");
-
-                  // this bullet hit a player.
-                  if new_bullet_data.hit_players.len() > prev_object.get_bullet_data().hit_players.len() {
-                    println!("3");
-
-                    let track: AudioTrack;
-                    // if this is our own bullet
-                    if new_bullet_data.owner_username == player.username {
-                      track = AudioTrack::SoundEffectSelf;
-                    } else {
-                      track = AudioTrack::SoundEffectOther;
-                    }
-                    sound_queue.push(match new_object.object_type {
-                      GameObjectType::HernaniBullet =>               (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      GameObjectType::CynewynnSword =>               (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      GameObjectType::ElizabethProjectileRicochet => (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      GameObjectType::ElizabethTurretProjectile =>   (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      GameObjectType::RaphaelleBullet =>             (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      GameObjectType::RaphaelleBulletEmpowered =>    (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      GameObjectType::TemerityRocket =>              (include_bytes!("../assets/audio/explosion.mp3"), track),
-                      GameObjectType::TemerityRocketSecondary =>     (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      GameObjectType::WiroGunShot =>                 (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                      _ => {continue;}
-                    });
-                  }
-                }
-                Err(()) => {
-
-                }
+        let events = recieved_server_info.events;
+        for event in events {
+          println!("{:?}", event);
+          match event {
+            GameEvent::AttackHit(object_type, owner, victim) => {
+              // if the bullet is ours
+              if owner == player.username {
+                let sound: &[u8] = match object_type {
+                  GameObjectType::HernaniBullet =>               include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::CynewynnSword =>               include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::ElizabethProjectileRicochet => include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::ElizabethTurretProjectile =>   include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::RaphaelleBullet =>             include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::RaphaelleBulletEmpowered =>    include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::TemerityRocket =>              include_bytes!("../assets/audio/explosion.mp3"),
+                  GameObjectType::TemerityRocketSecondary =>     include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::WiroGunShot =>                 include_bytes!("../assets/audio/sword-hit.mp3"),
+                  _ => continue
+                };
+                sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
               }
-              match prev_object.object_type {
-                _ => {}
+              // if it hit us
+              if victim == player.username {
+
               }
             }
-          }
-          // if this object was DELETED...
-          if !new_object_found {
-            match prev_object.object_type {
-              _ => {}
-            }
-          }
-        }
-        for (new_object) in recieved_server_info.game_objects.clone() {
-          // if this object is NEW...
-          if new_object.id > highest_id {
-            // check if it's ours. If it is, skip it.
-            let mut track: AudioTrack = AudioTrack::SoundEffectOther;
-            let mut is_own: bool = false;
-            match new_object.get_bullet_data_safe() {
-              Ok(data) => {
-
-                if data.owner_username == player.username {
-                  track = AudioTrack::SoundEffectSelf;
-                  is_own = true;
-                }
-              }
-              Err(()) => { }
-            }
-            if !is_own {
-              sound_queue.push(match new_object.object_type {
-                GameObjectType::HernaniBullet =>               {(include_bytes!("../assets/audio/gunshot.mp3"), track)}
-                GameObjectType::CynewynnSword =>               {(include_bytes!("../assets/audio/whoosh.mp3"), track)}
-                GameObjectType::ElizabethProjectileRicochet => {(include_bytes!("../assets/audio/whoosh.mp3"), track)}
-                GameObjectType::ElizabethTurretProjectile =>   {(include_bytes!("../assets/audio/whoosh.mp3"), track)}
-                GameObjectType::RaphaelleBullet =>             {(include_bytes!("../assets/audio/whoosh.mp3"), track)}
-                GameObjectType::RaphaelleBulletEmpowered =>    {(include_bytes!("../assets/audio/whoosh.mp3"), track)}
-                GameObjectType::WiroGunShot =>                 {(include_bytes!("../assets/audio/whoosh.mp3"), track)}
-                GameObjectType::TemerityRocket =>              {(include_bytes!("../assets/audio/rpgshot.mp3"), track)}
-                GameObjectType::TemerityRocketSecondary =>     {(include_bytes!("../assets/audio/rpgshot.mp3"), track)}
+            GameEvent::AttackFired(object_type, owner) => {
+              let sound: &[u8] = match object_type {
+                GameObjectType::HernaniBullet =>               include_bytes!("../assets/audio/gunshot.mp3"),
+                GameObjectType::CynewynnSword =>               include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::ElizabethProjectileRicochet => include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::ElizabethTurretProjectile =>   include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::RaphaelleBullet =>             include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::RaphaelleBulletEmpowered =>    include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::WiroGunShot =>                 include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::TemerityRocket =>              include_bytes!("../assets/audio/rpgshot.mp3"),
+                GameObjectType::TemerityRocketSecondary =>     include_bytes!("../assets/audio/rpgshot.mp3"),
                 _ => {
                   continue;
                 }
-              });
-            }
-            // if this object spawned with a player already in hit_players, remove it,
-            // so next frame the object update can register it as a hit.
-            match new_object.get_bullet_data_safe() {
-              Ok(data) => {
-                if !data.hit_players.is_empty() {
-                  sound_queue.push(match new_object.object_type {
-                    GameObjectType::HernaniBullet =>               (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    GameObjectType::CynewynnSword =>               (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    GameObjectType::ElizabethProjectileRicochet => (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    GameObjectType::ElizabethTurretProjectile =>   (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    GameObjectType::RaphaelleBullet =>             (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    GameObjectType::RaphaelleBulletEmpowered =>    (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    GameObjectType::TemerityRocket =>              (include_bytes!("../assets/audio/explosion.mp3"), track),
-                    GameObjectType::TemerityRocketSecondary =>     (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    GameObjectType::WiroGunShot =>                 (include_bytes!("../assets/audio/sword-hit.mp3"), track),
-                    _ => {continue;}
-                  });
+              };
+              if owner == player.username {
+                sound_queue.push((sound, AudioTrack::SoundEffectOther, 0.0));
+              }
+              else {
+                for other_player in other_players.clone() {
+                  if other_player.username == owner {
+                    let distance = (player.position - other_player.position).magnitude();
+                    sound_queue.push((sound, AudioTrack::SoundEffectOther, distance));
+                  }
                 }
               }
-              Err(()) => {}
+            }
+            GameEvent::WallHit(_object_type, _owner) => {
+
             }
           }
         }
+
         *game_objects = recieved_server_info.game_objects;
+        drop(game_objects);
         drop(player); // free mutex guard ASAP for other thread to access player.
         drop(sound_queue);
-        drop(game_objects);
-
-        let mut other_players = other_players.lock().unwrap();
+        
         let mut recieved_players: Vec<ClientPlayer> = Vec::new();
         for player in recieved_server_info.players {
           recieved_players.push(ClientPlayer::from_otherplayer(player));
@@ -1075,8 +997,8 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       active_gamepad = Some(id);
     }
 
-    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     let real_game_objects: MutexGuard<Vec<GameObject>> = game_objects.lock().unwrap();
+    let mut player: MutexGuard<ClientPlayer> = player.lock().unwrap();
     let game_objects = real_game_objects.clone();
     drop(real_game_objects);
 

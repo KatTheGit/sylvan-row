@@ -1,5 +1,5 @@
 use redb::{Database, Result};
-use sylvan_row::{common::{self, Team}, const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::Character, mothership_common::*, network} ;
+use sylvan_row::{const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::*, mothership_common::*, network} ;
 use std::{io::{Write}, sync::{Arc, Mutex}, thread::JoinHandle, vec};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
@@ -342,7 +342,7 @@ async fn main() {
                             queued: false,
                             queued_gamemodes: Vec::new(),
                             selected_character: Character::Hernani,
-                            assigned_team: common::Team::Blue,
+                            assigned_team: Team::Blue,
                             queued_with: Vec::new(),
                             is_party_leader: true, // pary leader by default. demoted if invited. promoted back if you leave the party.
                             invited_by: Vec::new(),
@@ -557,7 +557,7 @@ async fn main() {
                       let mut team_counter: usize = 0;
                       for player_index in players_to_match.clone() {
                         if team_counter < (players_to_match.len() / 2) {
-                          players[player_index].assigned_team = common::Team::Red;
+                          players[player_index].assigned_team = Team::Red;
                           println!("yo");
                           team_counter += 1;
                         }
@@ -593,7 +593,7 @@ async fn main() {
                     // Create a game
                     if !players_to_match.is_empty() {
                       let game_id: u128 = rand::thread_rng().gen_range(0..u128::MAX);
-                      let port = common::get_random_port();
+                      let port = get_random_port();
                       {
                         let mut fleet = local_fleet.lock().unwrap();
                         let mut player_info = Vec::new();

@@ -1,5 +1,5 @@
 use crate::mothership_common::MatchEndResult;
-use crate::{common::*, mothership_common::*};
+use crate::mothership_common::*;
 use core::{f32, panic};
 use std::collections::HashMap;
 use std::net::UdpSocket;
@@ -58,6 +58,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
         stacks: 0,
         buffs: Vec::new(),
         last_packet_time: Instant::now(),
+        events: Vec::new(),
       }
     );
   }
@@ -555,8 +556,12 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
               game_objects: game_objects.clone(),
               gamemode_info: gamemode_info.clone(),
               timestamp: recieved_player_info.timestamp, // pong!
+              events: player.events.clone(), // inform the player of events...
             };
-            players[p_index].had_illegal_position = false;
+            // and clear the events.
+            player.events.clear();
+            // reset had_illegal_position
+            player.had_illegal_position = false;
             
             let mut player_ip = player.ip.clone();
             let split_player_ip: Vec<&str> = player_ip.split(":").collect();
@@ -840,6 +845,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           stacks: 0,
           buffs: Vec::new(),
           last_packet_time: Instant::now(),
+          events: Vec::new(),
         }
       );
     }
@@ -1048,15 +1054,17 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 }
               )
             });
+            add_event_all(GameEvent::AttackFired(GameObjectType::HernaniBullet, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
           Character::Raphaelle => {
+            let object_type = match players[p_index].stacks {
+              1  => {GameObjectType::RaphaelleBulletEmpowered},
+              0 => {GameObjectType::RaphaelleBullet},
+              _ => panic!()
+            };
             game_objects.push(GameObject {
-              object_type: match players[p_index].stacks {
-                1  => {GameObjectType::RaphaelleBulletEmpowered},
-                0 => {GameObjectType::RaphaelleBullet},
-                _ => panic!()
-              },
+              object_type: object_type.clone(),
               position: players[p_index].position,
               to_be_deleted: false,
               id: game_object_id_counter.increment(),
@@ -1074,7 +1082,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             if players[p_index].stacks == 1 {
               players[p_index].stacks = 0;
             }
+            add_event_all(GameEvent::AttackFired(object_type, players[p_index].username.clone()), &mut players);
             shot_successful = true;
+
           }
           Character::Cynewynn => {
             game_objects.push(GameObject {
@@ -1096,6 +1106,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 }
               ),
             });
+            add_event_all(GameEvent::AttackFired(GameObjectType::CynewynnSword, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
           Character::Elizabeth => {
@@ -1115,6 +1126,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 }
               )
             });
+            add_event_all(GameEvent::AttackFired(GameObjectType::ElizabethProjectileRicochet, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
           Character::Wiro => {
@@ -1136,6 +1148,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                   }
                 )
               });
+            add_event_all(GameEvent::AttackFired(GameObjectType::WiroGunShot, players[p_index].username.clone()), &mut players);
               shot_successful = true;
             }
           }
@@ -1161,6 +1174,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 }
               ),
             });
+            add_event_all(GameEvent::AttackFired(GameObjectType::TemerityRocket, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
           Character::Dummy => {
@@ -1180,6 +1194,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 }
               ),
             });
+            add_event_all(GameEvent::AttackFired(GameObjectType::HernaniBullet, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
         }
