@@ -911,20 +911,20 @@ impl CharacterDescription {
             passive:   AbilityDescription { description: String::from("Nearby allies gain a small speed buff if SECONDARY is inactive.\nSECONDARY can only charge passively {0} seconds after use."), values: vec![character_properties[&character].passive_cooldown] },
           }
         }
-        Character::Dummy => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("dummy."), values: vec![] },
-            secondary: AbilityDescription { description: String::from("dummy."), values: vec![] },
-            dash:      AbilityDescription { description: String::from("dummy."), values: vec![] },
-            passive:   AbilityDescription { description: String::from("dummy."), values: vec![] },
-          }
-        }
         Character::Koldo => {
           CharacterDescription {
             primary:   AbilityDescription { description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m)\nto a wall boosts you backwards."), values: vec![character_properties[&character].primary_damage as f32,character_properties[&character].primary_range_3 ] },
             secondary: AbilityDescription { description: String::from("Reset the cooldown of PRIMARY and empower the next two\nPRIMARIES with PASSIVE's effects, with the first one additionally\nslowing enemies and being able to pierce."), values: vec![] },
             dash:      AbilityDescription { description: String::from("A short dash that resets the cooldown of PRIMARY."), values: vec![] },
             passive:   AbilityDescription { description: String::from("Standing still for {0}s gives your PRIMARY recoil,\nincreased range ({1}m) and increased damage ({2})."), values: vec![character_properties[&character].passive_cooldown as f32, character_properties[&character].primary_range_2/TILE_SIZE, character_properties[&character].primary_damage_2 as f32] },
+          }
+        }
+        Character::Dummy => {
+          CharacterDescription {
+            primary:   AbilityDescription { description: String::from("dummy."), values: vec![] },
+            secondary: AbilityDescription { description: String::from("dummy."), values: vec![] },
+            dash:      AbilityDescription { description: String::from("dummy."), values: vec![] },
+            passive:   AbilityDescription { description: String::from("dummy."), values: vec![] },
           }
         }
       });

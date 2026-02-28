@@ -26,7 +26,7 @@ This document specifies guidelines to aid with the development of this game from
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Josey](#432-josey)
-    - [4.3.3 Koldo (not implemented)](#433-koldo-not-implemented)
+    - [4.3.3 Koldo](#433-koldo)
 - [5. Gameplay](#5-gameplay)
   - [5.1. Gamemode](#51-gamemode)
   - [5.2. Ranked System](#52-ranked-system)
@@ -299,7 +299,7 @@ Intended playstyle:
 - Controls chokeholds and can force people around obstacles.
 - Countered by getting rid of walls and chasing.
 
-### 4.3.3 Koldo (not implemented)
+### 4.3.3 Koldo
 
 - **Primary** - Cannonball
   - Fire a long range cannon.
