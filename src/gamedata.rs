@@ -318,9 +318,7 @@ pub struct ServerPlayer {
   pub position:             Vector2,
   pub shooting:             bool,
   /// To calculate cooldowns
-  pub last_shot_time:       Instant,
   pub shooting_secondary:   bool,
-  pub secondary_cast_time:  Instant,
   pub secondary_charge:     u8,
   pub aim_direction:        Vector2,
   pub move_direction:       Vector2,
@@ -328,11 +326,14 @@ pub struct ServerPlayer {
   pub is_dashing:           bool,
   pub dash_direction:       Vector2,
   pub dashed_distance:      f32,
-  pub last_dash_time:       Instant,
   pub previous_positions:   Vec<Vector2>,
   /// bro forgor to live
   pub is_dead:              bool,
+  pub last_shot_time:       Instant,
+  pub secondary_cast_time:  Instant,
+  pub last_dash_time:       Instant,
   pub death_timer_start:    Instant,  
+  pub passive_timer:        Instant,
   /// Remember to apply appropriate logic after check.
   /// 
   /// General counter to keep track of ability stacks. Helps determine things
@@ -550,6 +551,7 @@ pub struct CharacterProperties {
 
   pub passive_range:                f32,
   pub passive_value:                u8,
+  pub passive_cooldown:             f32,
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
@@ -605,6 +607,7 @@ impl CharacterProperties {
       dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed"               ).unwrap())*TILE_SIZE,
       passive_range:            pkl_f32(find_parameter(&pkl, "passive_range"            ).unwrap())*TILE_SIZE,
       passive_value:            pkl_u8( find_parameter(&pkl, "passive_value"            ).unwrap()),
+      passive_cooldown:         pkl_f32(find_parameter(&pkl, "passive_cooldown"         ).unwrap()),
     }
   }
 }
@@ -887,9 +890,9 @@ impl CharacterDescription {
         Character::Wiro => {
           CharacterDescription {
             primary:   AbilityDescription { description: String::from("An attack dealing {0} damage up-close and {1} damage at range.\nLanding this ability empowers DASH"), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_damage_2 as f32] },
-            secondary: AbilityDescription { description: String::from("Holds up a shield, damage taken with it costs secondary charge.\nIf active, PASSIVE no longer applies."), values: vec![] },
+            secondary: AbilityDescription { description: String::from("Holds up a shield, damage taken with it costs secondary charge.\nIf active, PASSIVE's speed no longer applies."), values: vec![] },
             dash:      AbilityDescription { description: String::from("A long dash. If empowered, heals allies in his path by {0} and\ndamages opponents by {1}"), values: vec![character_properties[&character].secondary_heal as f32, character_properties[&character].secondary_damage as f32] },
-            passive:   AbilityDescription { description: String::from("Nearby allies gain a small speed buff. Disabled if SECONDARY\nis active."), values: vec![] },
+            passive:   AbilityDescription { description: String::from("Nearby allies gain a small speed buff if SECONDARY is inactive.\nSECONDARY can only charge passively {0} seconds after use."), values: vec![character_properties[&character].passive_cooldown] },
           }
         }
         Character::Dummy => {

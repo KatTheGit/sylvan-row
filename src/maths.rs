@@ -445,6 +445,9 @@ pub fn apply_simple_bullet_logic_extra(
         if bullet_data.hit_players.contains(&548) {
           continue;
         }
+        // confirmed hit on orb
+        add_event_all(GameEvent::AttackHit(game_object.object_type.clone(), owner_username.clone(), "o".to_string()), &mut players);
+
         let mut direction: Vector2 = bullet_data.direction;
         direction.x *= damage as f32 / 2.0;
         direction.y *= damage as f32 / 2.0;

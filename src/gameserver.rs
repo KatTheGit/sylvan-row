@@ -59,6 +59,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
         buffs: Vec::new(),
         last_packet_time: Instant::now(),
         events: Vec::new(),
+        passive_timer: Instant::now(),
       }
     );
   }
@@ -208,7 +209,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                   let difference = player.position - closest_pos;
                   // perpendicular vector (tangent vector)
                   let difference_perpendicular: Vector2 = Vector2 { x: difference.y, y: -difference.x };
-                  let player_direction = player.move_direction;
+                  let player_direction = recieved_player_info.movement;
                   // use the dot product to get the direction as a rotation
                   let dot_product: f32 = player_direction.x * difference_perpendicular.x + player_direction.y * difference_perpendicular.y;
                   // kinda lame that trigonometrical direction is the opposite of clockwise,
@@ -846,6 +847,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           buffs: Vec::new(),
           last_packet_time: Instant::now(),
           events: Vec::new(),
+          passive_timer: Instant::now(),
         }
       );
     }
@@ -945,7 +947,16 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
       // increase secondary charge passively
       if tick {
         let charge_amount = characters[&players[p_index].character].secondary_passive_charge;
-        players[p_index].add_charge(charge_amount);
+        match players[p_index].character {
+          Character::Wiro => {
+            if players[p_index].passive_timer.elapsed().as_secs_f32() > characters[&Character::Wiro].passive_cooldown {
+              players[p_index].add_charge(charge_amount);
+            }
+          }
+          _ => {
+            players[p_index].add_charge(charge_amount);
+          }
+        }
       }
 
       // Get stuck player out of walls
@@ -1334,6 +1345,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           Character::Wiro => {
             if players[p_index].secondary_charge > 0 
             && players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
+
+              // update his passive.
+              players[p_index].passive_timer = Instant::now();
 
               // spawn a shield object, if one can't be found already.
               

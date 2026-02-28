@@ -26,7 +26,7 @@ This document specifies guidelines to aid with the development of this game from
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
     - [4.3.2. Josey](#432-josey)
-    - [4.3.3 Pirate #1](#433-pirate-1)
+    - [4.3.3 Koldo (not implemented)](#433-koldo-not-implemented)
 - [5. Gameplay](#5-gameplay)
   - [5.1. Gamemode](#51-gamemode)
   - [5.2. Ranked System](#52-ranked-system)
@@ -152,13 +152,14 @@ Intended playstyle:
   - If he damages an opponent, it empowers the next **Dash**.
 - **Secondary** - Guardian
   - Holds a shield in front of himself that absorbs damage. If damage is absorbed, secondary charge is decreased.
-  - Raising his shield disables **Primary** and **Passive**.
+  - Raising his shield disables **Primary** and **Passive**'s speed.
   - After raising his shield, he cannot raise it again for a few seconds.
 - **Dash** - Intervene
   - A long-ish dash on a medium cooldown.
   - If empowered, heals the allies he passes through and damages the opponents he passes through.
 - **Passive** - Inspire
   - Provides a small movement buff to nearby allies (including himself)
+  - His secondary can only charge passively after a few seconds of not using it.
 
 Intended playstyle:
 - Protect allies with shield or empower them.
@@ -298,9 +299,19 @@ Intended playstyle:
 - Controls chokeholds and can force people around obstacles.
 - Countered by getting rid of walls and chasing.
 
-### 4.3.3 Pirate #1
+### 4.3.3 Koldo (not implemented)
 
-
+- **Primary** - Cannonball
+  - Fire a long range cannon.
+  - Firing close to a boosts you in the opposite direction.
+- **Secondary** - Flow State
+  - Reset the cooldown of **Primary**.
+  - Empower your next 2 **Primaries** to unconditionally have **Passive's** effects, with the first one also slowing enemies and being able to pierce.
+- **Dash** - Barrel Roll
+  - A very short dash on a long cooldown.
+  - Resets the cooldown of **Primary**.
+- **Passive** - Concentrate
+  - Standing still for a bit increases **Primary**'s range and damage, and gives it recoil.
 
 # 5. Gameplay
 

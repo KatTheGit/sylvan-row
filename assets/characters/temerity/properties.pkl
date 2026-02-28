@@ -35,3 +35,4 @@ dash_speed = 8.0
 
 passive_value = 3
 passive_range = 2.0
+passive_cooldown = 0.0

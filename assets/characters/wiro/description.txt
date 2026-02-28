@@ -5,7 +5,8 @@ PRIMARY - Buck-Shot
 SECONDARY - Guardian Angel
   Holds up a shield. Taking damage costs
   secondary charge.
-  If this ability is active, PASSIVE stops.
+  If this ability is active, PASSIVE's speed
+  is no longer applied.
 
 DASH - Intervene
   A long dash. If empowered, heals allies
@@ -13,6 +14,8 @@ DASH - Intervene
 
 PASSIVE - Inspire
   Makes nearby allies faster.
+  SECONDARY can only charge passively
+  a few seconds after use.
 
 A strong pious deer with the noble mission of
 protecting those who can't defend themselves.

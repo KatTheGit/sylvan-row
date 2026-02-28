@@ -922,7 +922,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
                 }
               };
               if owner == player.username {
-                sound_queue.push((sound, AudioTrack::SoundEffectOther, 0.0));
+                sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
               }
               else {
                 for other_player in other_players.clone() {

@@ -13,6 +13,7 @@ pub fn play_sound(sound: &[u8], track: &mut track::TrackHandle) {
 pub fn play_sound_distance(sound: &[u8], track: &mut track::TrackHandle, distance: f32) {
   let cursor = Cursor::new(sound.to_owned());
   let sound_data = StaticSoundData::from_cursor(cursor.clone()).expect("oops");
+  //https://www.desmos.com/calculator/ar7w5afy1s
   // the range (in tiles) at which we hear the full sound
   let full_sound_cutoff = 5.0;
   // decibels the sound falls off per tile.
