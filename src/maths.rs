@@ -313,7 +313,8 @@ pub fn apply_simple_bullet_logic(
 /// 
 /// Set `special_samage` to `255` to use default character damage number.
 /// Same with `special_healing`. Setting it to 0 will nullify it.
-/// Set `special_speed` to f32::INFINITY to use default.
+/// 
+/// Set `special_speed` or `special_hit_radius` to f32::INFINITY to use default.
 pub fn apply_simple_bullet_logic_extra(
   mut players:        MutexGuard<Vec<ServerPlayer>>,
   characters:         HashMap<Character, CharacterProperties>,

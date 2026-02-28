@@ -205,25 +205,28 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 
     // for game objects
     for game_object in game_objects.iter_mut() {
-      match game_object.object_type {
-        GameObjectType::RaphaelleBullet | GameObjectType::CynewynnSword | GameObjectType::HernaniBullet | GameObjectType::RaphaelleBulletEmpowered
-        | GameObjectType::ElizabethProjectileGroundRecalled | GameObjectType::ElizabethProjectileRicochet | GameObjectType::WiroGunShot
-        | GameObjectType::TemerityRocket => {
-          let speed: f32 = character_properties[&(match game_object.object_type {
-            GameObjectType::RaphaelleBullet => Character::Raphaelle,
-            GameObjectType::RaphaelleBulletEmpowered => Character::Raphaelle,
-            GameObjectType::HernaniBullet => Character::Hernani,
-            GameObjectType::CynewynnSword => Character::Cynewynn,
-            GameObjectType::ElizabethProjectileRicochet => Character::Elizabeth,
-            GameObjectType::ElizabethProjectileGroundRecalled => Character::Elizabeth,
-            GameObjectType::WiroGunShot => Character::Wiro,
-            GameObjectType::TemerityRocket => Character::Temerity,
-            _ => panic!()
-          })].primary_shot_speed;
-          game_object.position.x += speed * game_object.get_bullet_data().direction.x * get_frame_time();
-          game_object.position.y += speed * game_object.get_bullet_data().direction.y * get_frame_time();
+
+      match game_object.get_bullet_data_safe() {
+        Ok(bullet_data) => {
+          let speed: f32 = match game_object.object_type {
+            GameObjectType::RaphaelleBullet                   => character_properties[&Character::Raphaelle].primary_shot_speed,
+            GameObjectType::RaphaelleBulletEmpowered          => character_properties[&Character::Raphaelle].primary_shot_speed,
+            GameObjectType::HernaniBullet                     => character_properties[&Character::Hernani].primary_shot_speed,
+            GameObjectType::CynewynnSword                     => character_properties[&Character::Cynewynn].primary_shot_speed,
+            GameObjectType::ElizabethProjectileRicochet       => character_properties[&Character::Elizabeth].primary_shot_speed,
+            GameObjectType::ElizabethProjectileGroundRecalled => character_properties[&Character::Elizabeth].primary_shot_speed,
+            GameObjectType::WiroGunShot                       => character_properties[&Character::Wiro].primary_shot_speed,
+            GameObjectType::TemerityRocket                    => character_properties[&Character::Temerity].primary_shot_speed,
+            GameObjectType::KoldoCannonBall                   => character_properties[&Character::Koldo].primary_shot_speed,
+            GameObjectType::KoldoCannonBallEmpowered          => character_properties[&Character::Koldo].primary_shot_speed,
+            GameObjectType::KoldoCannonBallEmpoweredUltimate  => character_properties[&Character::Koldo].primary_shot_speed,
+            _ => 0.0,
+          };
+          
+          game_object.position.x += speed * bullet_data.direction.x * get_frame_time();
+          game_object.position.y += speed * bullet_data.direction.y * get_frame_time();
         }
-        _ => {},
+        Err(()) => {}
       }
     }
 
@@ -409,13 +412,19 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     let mut range = character_properties[&player_copy.character].primary_range;
     if player_copy.character == Character::Temerity {
       if player_copy.stacks == 0 {
-        range = character_properties[&player_copy.character].primary_range
+        range = character_properties[&Character::Temerity].primary_range
       }
       if player_copy.stacks == 1 {
-        range = character_properties[&player_copy.character].primary_range_2
+        range = character_properties[&Character::Temerity].primary_range_2
       }
       if player_copy.stacks == 2 {
-        range = character_properties[&player_copy.character].primary_range_3
+        range = character_properties[&Character::Temerity].primary_range_3
+      }
+    }
+    if player_copy.character == Character::Koldo {
+      if player_copy.passive_elapsed > character_properties[&Character::Koldo].passive_cooldown
+      || player_copy.stacks > 0 {
+        range = character_properties[&Character::Koldo].primary_range_2;
       }
     }
     let relative_position_x = 50.0 * (16.0/9.0) + player_copy.position.x - player_copy.camera.position.x; //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
@@ -873,6 +882,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.time_since_last_dash;
         player.last_secondary_time = recieved_server_info.player_packet_is_sent_to.time_since_last_secondary;
         player.stacks = recieved_server_info.player_packet_is_sent_to.stacks;
+        player.passive_elapsed = recieved_server_info.player_packet_is_sent_to.passive_elapsed;
         
         
         let mut game_objects = game_objects.lock().unwrap();
@@ -888,15 +898,18 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
               // if the bullet is ours
               if owner == player.username {
                 let sound: &[u8] = match object_type {
-                  GameObjectType::HernaniBullet =>               include_bytes!("../assets/audio/sword-hit.mp3"),
-                  GameObjectType::CynewynnSword =>               include_bytes!("../assets/audio/sword-hit.mp3"),
-                  GameObjectType::ElizabethProjectileRicochet => include_bytes!("../assets/audio/sword-hit.mp3"),
-                  GameObjectType::ElizabethTurretProjectile =>   include_bytes!("../assets/audio/sword-hit.mp3"),
-                  GameObjectType::RaphaelleBullet =>             include_bytes!("../assets/audio/sword-hit.mp3"),
-                  GameObjectType::RaphaelleBulletEmpowered =>    include_bytes!("../assets/audio/sword-hit.mp3"),
-                  GameObjectType::TemerityRocket =>              include_bytes!("../assets/audio/explosion.mp3"),
-                  GameObjectType::TemerityRocketSecondary =>     include_bytes!("../assets/audio/sword-hit.mp3"),
-                  GameObjectType::WiroGunShot =>                 include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::HernaniBullet =>                    include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::CynewynnSword =>                    include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::ElizabethProjectileRicochet =>      include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::ElizabethTurretProjectile =>        include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::RaphaelleBullet =>                  include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::RaphaelleBulletEmpowered =>         include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::TemerityRocket =>                   include_bytes!("../assets/audio/explosion.mp3"),
+                  GameObjectType::TemerityRocketSecondary =>          include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::WiroGunShot =>                      include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::KoldoCannonBall =>                  include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::KoldoCannonBallEmpowered =>         include_bytes!("../assets/audio/sword-hit.mp3"),
+                  GameObjectType::KoldoCannonBallEmpoweredUltimate => include_bytes!("../assets/audio/sword-hit.mp3"),
                   _ => continue
                 };
                 sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
@@ -908,15 +921,18 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
             }
             GameEvent::AttackFired(object_type, owner) => {
               let sound: &[u8] = match object_type {
-                GameObjectType::HernaniBullet =>               include_bytes!("../assets/audio/gunshot.mp3"),
-                GameObjectType::CynewynnSword =>               include_bytes!("../assets/audio/whoosh.mp3"),
-                GameObjectType::ElizabethProjectileRicochet => include_bytes!("../assets/audio/whoosh.mp3"),
-                GameObjectType::ElizabethTurretProjectile =>   include_bytes!("../assets/audio/whoosh.mp3"),
-                GameObjectType::RaphaelleBullet =>             include_bytes!("../assets/audio/whoosh.mp3"),
-                GameObjectType::RaphaelleBulletEmpowered =>    include_bytes!("../assets/audio/whoosh.mp3"),
-                GameObjectType::WiroGunShot =>                 include_bytes!("../assets/audio/whoosh.mp3"),
-                GameObjectType::TemerityRocket =>              include_bytes!("../assets/audio/rpgshot.mp3"),
-                GameObjectType::TemerityRocketSecondary =>     include_bytes!("../assets/audio/rpgshot.mp3"),
+                GameObjectType::HernaniBullet =>                    include_bytes!("../assets/audio/gunshot.mp3"),
+                GameObjectType::CynewynnSword =>                    include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::ElizabethProjectileRicochet =>      include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::ElizabethTurretProjectile =>        include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::RaphaelleBullet =>                  include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::RaphaelleBulletEmpowered =>         include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::WiroGunShot =>                      include_bytes!("../assets/audio/whoosh.mp3"),
+                GameObjectType::TemerityRocket =>                   include_bytes!("../assets/audio/rpgshot.mp3"),
+                GameObjectType::TemerityRocketSecondary =>          include_bytes!("../assets/audio/rpgshot.mp3"),
+                GameObjectType::KoldoCannonBall =>                  include_bytes!("../assets/audio/rpgshot.mp3"),
+                GameObjectType::KoldoCannonBallEmpowered =>         include_bytes!("../assets/audio/rpgshot.mp3"),
+                GameObjectType::KoldoCannonBallEmpoweredUltimate => include_bytes!("../assets/audio/rpgshot.mp3"),
                 _ => {
                   continue;
                 }
@@ -1211,7 +1227,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       let mut extra_speed: f32 = 0.0;
       for buff in player.buffs.clone() {
         if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
-          extra_speed += buff.value;
+          extra_speed += buff.value * TILE_SIZE;
         }
         if buff.buff_type == BuffType::Impulse {
           // yeet

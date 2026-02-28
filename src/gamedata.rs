@@ -62,6 +62,7 @@ pub struct ClientPlayer {
   pub interpolating: bool,
   pub interpol_prev: Vector2,
   pub interpol_next: Vector2,
+  pub passive_elapsed: f32,
 }
 /// Information sent by server to client about other players.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -114,6 +115,7 @@ impl ClientPlayer {
       used_primary: false,
       used_secondary: false,
       used_dash: false,
+      passive_elapsed: 0.0,
     }
   }
   pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties, settings: Settings) {
@@ -219,6 +221,7 @@ impl ClientPlayer {
       used_dash: true,
       used_primary: true,
       used_secondary: true,
+      passive_elapsed: 0.0,
     };
   }
 }
@@ -261,8 +264,9 @@ pub struct ServerRecievingPlayerPacket {
   pub time_since_last_primary: f32,
   pub time_since_last_dash: f32,
   pub time_since_last_secondary: f32,
-  pub stacks: u8,
-  pub is_dashing: bool,
+  pub stacks:             u8,
+  pub is_dashing:         bool,
+  pub passive_elapsed:    f32,
 }
 
 /// information sent by server to client
@@ -479,24 +483,26 @@ impl GameModeInfo {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Character {
   /// Used for testing.
-  Dummy,
-  Hernani,
-  Raphaelle,
   Cynewynn,
+  Dummy,
   Elizabeth,
-  Wiro,
+  Hernani,
+  Koldo,
+  Raphaelle,
   Temerity,
+  Wiro,
 }
 impl Character {
   pub fn name(self) -> String {
     return match self {
       Character::Cynewynn => String::from("Cynewynn"),
+      Character::Dummy => String::from("Dummy"),
       Character::Elizabeth => String::from("Josey"),
+      Character::Hernani => String::from("Hernani"),
+      Character::Koldo => String::from("Koldo"),
+      Character::Raphaelle => String::from("Raphaelle"),
       Character::Temerity => String::from("Temerity"),
       Character::Wiro => String::from("Wiro"),
-      Character::Hernani => String::from("Hernani"),
-      Character::Raphaelle => String::from("Raphaelle"),
-      Character::Dummy => String::from("Dummy"),
     }
   }
 }
@@ -564,6 +570,7 @@ pub fn load_characters() -> HashMap<Character, CharacterProperties> {
       Character::Cynewynn =>  CharacterProperties::from_pkl(include_str!("../assets/characters/cynewynn/properties.pkl")),
       Character::Elizabeth =>  CharacterProperties::from_pkl(include_str!("../assets/characters/elizabeth/properties.pkl")),
       Character::Wiro =>  CharacterProperties::from_pkl(include_str!("../assets/characters/wiro/properties.pkl")),
+      Character::Koldo =>  CharacterProperties::from_pkl(include_str!("../assets/characters/koldo/properties.pkl")),
       Character::Temerity =>  CharacterProperties::from_pkl(include_str!("../assets/characters/temerity/properties.pkl")),
     };
 
@@ -702,6 +709,12 @@ pub enum GameObjectType {
   /// ROCKET LAUNCHA
   TemerityRocket,
   TemerityRocketSecondary,
+  /// Normal primary.
+  KoldoCannonBall,
+  /// Normal primary boosted by passive and second primary in the ultimate.
+  KoldoCannonBallEmpowered,
+  /// The first primary in the ultimate.
+  KoldoCannonBallEmpoweredUltimate,
 }
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct BulletData {
@@ -828,6 +841,9 @@ pub enum BuffType {
   WiroSpeed,
   FireRate,
   Impulse,
+  /// Increases the player's speed by `value`'s amount.
+  /// 
+  /// Use negative value for slow.
   Speed,
 }
 #[derive(Debug, Clone)]
@@ -897,10 +913,18 @@ impl CharacterDescription {
         }
         Character::Dummy => {
           CharacterDescription {
-            primary:   AbilityDescription { description: String::from("dummy."), values: vec![character_properties[&character].primary_damage as f32] },
-            secondary: AbilityDescription { description: String::from("dummy."), values: vec![character_properties[&character].primary_damage as f32] },
-            dash:      AbilityDescription { description: String::from("dummy."), values: vec![character_properties[&character].primary_damage as f32] },
-            passive:   AbilityDescription { description: String::from("dummy."), values: vec![character_properties[&character].primary_damage as f32] },
+            primary:   AbilityDescription { description: String::from("dummy."), values: vec![] },
+            secondary: AbilityDescription { description: String::from("dummy."), values: vec![] },
+            dash:      AbilityDescription { description: String::from("dummy."), values: vec![] },
+            passive:   AbilityDescription { description: String::from("dummy."), values: vec![] },
+          }
+        }
+        Character::Koldo => {
+          CharacterDescription {
+            primary:   AbilityDescription { description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m)\nto a wall boosts you backwards."), values: vec![character_properties[&character].primary_damage as f32,character_properties[&character].primary_range_3 ] },
+            secondary: AbilityDescription { description: String::from("Reset the cooldown of PRIMARY and empower the next two\nPRIMARIES with PASSIVE's effects, with the first one additionally\nslowing enemies and being able to pierce."), values: vec![] },
+            dash:      AbilityDescription { description: String::from("A short dash that resets the cooldown of PRIMARY."), values: vec![] },
+            passive:   AbilityDescription { description: String::from("Standing still for {0}s gives your PRIMARY recoil,\nincreased range ({1}m) and increased damage ({2})."), values: vec![character_properties[&character].passive_cooldown as f32, character_properties[&character].primary_range_2/TILE_SIZE, character_properties[&character].primary_damage_2 as f32] },
           }
         }
       });

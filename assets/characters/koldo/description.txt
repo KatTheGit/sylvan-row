@@ -1,0 +1,18 @@
+PRIMARY - Cannonball
+  Fire a long range cannon. Firing close to a
+  boosts you in the opposite direction.
+
+SECONDARY - Flow State
+  Reset the cooldown of **Primary**.
+  Empower your next 2 **Primaries** to
+  unconditionally have **Passive's** effects,
+  with the first one also slowing enemies
+  and being able to pierce.
+
+DASH - Barrel Roll
+  A very short dash on a long cooldown.
+  Resets the cooldown of **Primary**.
+
+PASSIVE - Concentrate
+  Standing still for a bit increases PRIMARY's
+  range and damage, and gives it recoil.

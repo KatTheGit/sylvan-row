@@ -347,6 +347,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                     Character::Temerity => {
                       // technically this is redundant. She should never show up here.
                     }
+                    Character::Koldo => {
+                      // reset the cooldown of PRIMARY.
+                      player.last_shot_time -= Duration::from_secs_f32(characters[&Character::Koldo].primary_cooldown)
+                    }
                     Character::Dummy => {}
                   }
                 }
@@ -440,7 +444,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             let mut extra_speed: f32 = 0.0;
             for b_index in 0..player.buffs.len() {
               if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&player.buffs[b_index].buff_type) {
-                extra_speed += player.buffs[b_index].value;
+                extra_speed += player.buffs[b_index].value * TILE_SIZE;
               }
               if player.buffs[b_index].buff_type == BuffType::Impulse {
                 // yeet
@@ -552,6 +556,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 time_since_last_secondary: player.secondary_cast_time.elapsed().as_secs_f32(),
                 stacks: player.stacks,
                 is_dashing: player.is_dashing,
+                passive_elapsed: player.passive_timer.elapsed().as_secs_f32(),
               },
               players: other_players,
               game_objects: game_objects.clone(),
@@ -943,6 +948,14 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           }
         }
       }
+      // KOLDO - reset passive cooldown if movement is detected.
+      if players[p_index].character == Character::Koldo {
+        // if player moved
+        if players[p_index].move_direction != Vector2::new() {
+          // reset timer.
+          players[p_index].passive_timer = Instant::now();
+        }
+      }
 
       // increase secondary charge passively
       if tick {
@@ -1015,12 +1028,12 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 if players[victim_index].buffs[buff_index].buff_type == BuffType::WiroSpeed {
                   buff_found = true;
                   players[victim_index].buffs.remove(buff_index);
-                  players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed, direction: Vector2::new() });
+                  players[victim_index].buffs.push(Buff { value: 0.6, duration: 0.25, buff_type: BuffType::WiroSpeed, direction: Vector2::new() });
                   break; // exit early
                 }
               }
               if !buff_found {
-                players[victim_index].buffs.push(Buff { value: 5.0, duration: 0.25, buff_type: BuffType::WiroSpeed, direction: Vector2::new() });
+                players[victim_index].buffs.push(Buff { value: 0.6, duration: 0.25, buff_type: BuffType::WiroSpeed, direction: Vector2::new() });
               }
             }
           }
@@ -1206,6 +1219,65 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
               ),
             });
             add_event_all(GameEvent::AttackFired(GameObjectType::HernaniBullet, players[p_index].username.clone()), &mut players);
+            shot_successful = true;
+          }
+          Character::Koldo => {
+            let object_type: GameObjectType;
+            // first cast of the ulti
+            if players[p_index].stacks == 2 {
+              object_type = GameObjectType::KoldoCannonBallEmpoweredUltimate;
+              players[p_index].stacks -= 1;
+            }
+            // second cast of the ulti
+            else if players[p_index].stacks == 1 {
+              object_type = GameObjectType::KoldoCannonBallEmpowered;
+              players[p_index].stacks -= 1;
+            }
+            // passive empowered cast
+            else if players[p_index].passive_timer.elapsed().as_secs_f32() > character.passive_cooldown {
+              object_type = GameObjectType::KoldoCannonBallEmpowered;
+              players[p_index].passive_timer = Instant::now();
+            }
+            // normal cast
+            else {
+              object_type = GameObjectType::KoldoCannonBall;
+            }
+            // apply recoil if empowered
+            if object_type == GameObjectType::KoldoCannonBallEmpowered
+            || object_type == GameObjectType::KoldoCannonBallEmpoweredUltimate {
+              let direction = players[p_index].aim_direction * -1.0;
+              players[p_index].buffs.push(
+                Buff {
+                  value: character.passive_range,
+                  duration: character.primary_cooldown/2.0,
+                  buff_type: BuffType::Impulse,
+                  direction,
+                }
+              );
+            }
+            // spawn it
+            game_objects.push(GameObject {
+              object_type: object_type.clone(),
+              position: players[p_index].position,
+              to_be_deleted: false,
+              id: game_object_id_counter.increment(),
+              extra_data: ObjectData::BulletData(
+                BulletData {
+                  direction: players[p_index].aim_direction,
+                  hitpoints: 0,
+                  owner_username: players[p_index].username.clone(),
+                  lifetime: if object_type == GameObjectType::KoldoCannonBall {
+                    character.primary_range / character.primary_shot_speed
+                  } else {
+                    character.primary_range_2 / character.primary_shot_speed
+                  },
+                  hit_players: Vec::new(),
+                  traveled_distance: 0.0,
+                }
+              ),
+            });
+            // inform
+            add_event_all(GameEvent::AttackFired(object_type, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
         }
@@ -1433,7 +1505,14 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
               secondary_used_successfully = true;
             }
           }
-          Character::Dummy => {}  
+          Character::Koldo => {
+            // reset primary's cooldown.
+            players[p_index].last_shot_time -= Duration::from_secs_f32(character.primary_cooldown);
+            // empower the next two primaries by adding stacks
+            players[p_index].stacks = 2;
+            secondary_used_successfully = true;
+          }
+          Character::Dummy => {}
         }
         if secondary_used_successfully {
           players[p_index].secondary_charge -= character.secondary_charge_use;
@@ -1670,7 +1749,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 // apply a debuff
                 players[p_index].buffs.push(
                   Buff {
-                    value: -2.5 ,
+                    value: -0.3,
                     duration: 0.25,
                     buff_type: BuffType::Speed,
                     direction: Vector2::new(),
@@ -1892,6 +1971,52 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             characters[&Character::Temerity].secondary_range,
           );
         }
+        GameObjectType::KoldoCannonBall => {
+          (players, *game_objects, _) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false);
+        }
+        GameObjectType::KoldoCannonBallEmpowered => {
+          (players, *game_objects, _) = apply_simple_bullet_logic_extra(
+            players, characters.clone(),
+            game_objects.clone(),
+            o_index,
+            true_delta_time,
+            false,
+            characters[&Character::Koldo].primary_damage_2,
+            255, // default (0)
+            false,
+            f32::INFINITY, // default
+            f32::INFINITY, // default
+          );
+        }
+        GameObjectType::KoldoCannonBallEmpoweredUltimate => {
+          let hit;
+          (players, *game_objects, hit) = apply_simple_bullet_logic_extra(
+            players, characters.clone(),
+            game_objects.clone(),
+            o_index,
+            true_delta_time,
+            true,
+            characters[&Character::Koldo].primary_damage_2,
+            255, // default (0)
+            false,
+            f32::INFINITY, // default
+            f32::INFINITY, // default
+          );
+          if hit {
+            let bullet_data = game_objects[o_index].get_bullet_data().clone();
+            let most_recent_victim_index = bullet_data.hit_players.last();
+            if let Some(most_recent_victim_index) = most_recent_victim_index {
+              players[*most_recent_victim_index].buffs.push(
+                Buff {
+                  value: -0.3,
+                  duration: 0.25,
+                  buff_type: BuffType::Speed,
+                  direction: Vector2::new(),
+                }
+              );
+            }
+          }
+        }
         _ => {}
       }
       // lifetimes
@@ -1955,6 +2080,22 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             if game_object.get_bullet_data().hit_players.is_empty() {
               let owner_index = index_by_username(&game_object.get_bullet_data().owner_username,players.clone());
               players[owner_index].stacks = 0;
+            }
+          }
+          GameObjectType::KoldoCannonBall | GameObjectType::KoldoCannonBallEmpowered | GameObjectType::KoldoCannonBallEmpoweredUltimate => {
+            if game_object.get_bullet_data().hit_players.is_empty() {
+              let owner_index = index_by_username(&game_object.get_bullet_data().owner_username, players.clone());
+              let distance = players[owner_index].position - game_object.position;
+              if distance.magnitude() < characters[&Character::Koldo].primary_range_3 {
+                players[owner_index].buffs.push(
+                  Buff {
+                    value: characters[&Character::Koldo].passive_range,
+                    duration: 0.5,
+                    buff_type: BuffType::Impulse,
+                    direction: distance.normalize(),
+                  }
+                );
+              }
             }
           }
           _ => {},

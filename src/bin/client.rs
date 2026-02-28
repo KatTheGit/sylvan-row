@@ -38,28 +38,31 @@ async fn main() {
   let mut vh: f32 = 1.0;
   let mut selected_char = 0;
   let characters: Vec<Character> = vec![
-    Character::Hernani,
-    Character::Raphaelle,
     Character::Cynewynn,
-    Character::Wiro,
     Character::Elizabeth,
+    Character::Hernani,
+    Character::Koldo,
+    Character::Raphaelle,
     Character::Temerity,
+    Character::Wiro,
   ];
   let descriptions: Vec<&str> = vec![
-    include_str!("../../assets/characters/hernani/description.txt"),
-    include_str!("../../assets/characters/raphaelle/description.txt"),
     include_str!("../../assets/characters/cynewynn/description.txt"),
-    include_str!("../../assets/characters/wiro/description.txt"),
     include_str!("../../assets/characters/elizabeth/description.txt"),
+    include_str!("../../assets/characters/hernani/description.txt"),
+    include_str!("../../assets/characters/koldo/description.txt"),
+    include_str!("../../assets/characters/raphaelle/description.txt"),
     include_str!("../../assets/characters/temerity/description.txt"),
+    include_str!("../../assets/characters/wiro/description.txt"),
   ];
   let temporary_profiles: Vec<Texture2D> = vec![
-    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/mini-profile.png"), None),
-    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/mini-profile.png"), None),
     Texture2D::from_file_with_format(include_bytes!("../../assets/characters/cynewynn/textures/mini-profile.png"), None),
-    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/wiro/textures/mini-profile.png"), None),
     Texture2D::from_file_with_format(include_bytes!("../../assets/characters/elizabeth/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/hernani/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/koldo/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/raphaelle/textures/mini-profile.png"), None),
     Texture2D::from_file_with_format(include_bytes!("../../assets/characters/temerity/textures/mini-profile.png"), None),
+    Texture2D::from_file_with_format(include_bytes!("../../assets/characters/wiro/textures/mini-profile.png"), None),
   ];
 
 

@@ -49,6 +49,9 @@ pub fn load_game_object_textures() -> HashMap<GameObjectType, Texture2D>  {
     (GameObjectType::WiroDashProjectile               , load!("empty.png")),
     (GameObjectType::TemerityRocket                   , load!("ui/temp_ability_1.png")),
     (GameObjectType::TemerityRocketSecondary          , load!("ui/temp_ability_1.png")),
+    (GameObjectType::KoldoCannonBall                  , load!("characters/raphaelle/textures/bullet.png")),
+    (GameObjectType::KoldoCannonBallEmpowered         , load!("characters/raphaelle/textures/bullet-empowered.png")),
+    (GameObjectType::KoldoCannonBallEmpoweredUltimate , load!("characters/raphaelle/textures/bullet-empowered.png")),
   ]);
   return game_object_tetures;
 }
@@ -60,11 +63,12 @@ pub fn load_character_textures() -> HashMap<Character, Texture2D> {
       match character {
         Character::Cynewynn  => load!("characters/cynewynn/textures/main.png"),
         Character::Raphaelle => load!("characters/raphaelle/textures/main.png"),
-        Character::Hernani => load!("characters/hernani/textures/main.png"),
+        Character::Hernani   => load!("characters/hernani/textures/main.png"),
         Character::Elizabeth => load!("characters/dummy/textures/template1.png"),
         Character::Wiro      => load!("characters/dummy/textures/template2.png"),
-        Character::Dummy      => load!("characters/dummy/textures/template.png"),
-        Character::Temerity      => load!("characters/dummy/textures/template3.png"),
+        Character::Dummy     => load!("characters/dummy/textures/template.png"),
+        Character::Temerity  => load!("characters/dummy/textures/template3.png"),
+        Character::Koldo     => load!("characters/koldo/textures/template4.png"),
       }
     );
   }
