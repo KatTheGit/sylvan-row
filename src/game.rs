@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
 use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBackend};
-use crate::{audio, const_params::*, database::{self, FriendShipStatus}, gamedata::*, graphics, maths::*, mothership_common::*, network, ui::{self, Settings}};
+use crate::{audio, const_params::*, database::{self, FriendShipStatus}, gamedata::{Camera, *}, graphics::{self, draw_rectangle_relative}, maths::*, mothership_common::*, network, ui::{self, Settings}};
 use miniquad::window::set_window_size;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -302,13 +302,13 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     // This hot garbage WILL be removed once camera is implemented correctly. Mayhaps.
     // But what this does is turn the mouse's screen coordinates into game coordinates,
     // the same type of coordinates the player uses
-    //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related         center
-    //                        conversion.                           coords     ratio       to cropping.
-    //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.   ,-------'----------,
-    mouse_position.x =((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width() - 50.0 * (16.0 / 9.0) + player_copy.camera.position.x; 
-    mouse_position.y =((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height()- 50.0                + player_copy.camera.position.y;
+    //                        [-1;+1] range to [0;1] range          world      aspect      correct shenanigans related          center
+    //                        conversion.                           coords     ratio       to cropping.                      
+    //                     .------------------'-----------------.   ,-'-.   .----'---.  .---------------'--------------.    ,-------'----------.
+    mouse_position.x =(((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0)) / player_copy.camera.zoom + player_copy.camera.position.x; 
+    mouse_position.y =(((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0               ) / player_copy.camera.zoom + player_copy.camera.position.y;
     let keyboard_mode: MutexGuard<bool> = keyboard_mode.lock().unwrap();
-    let mut aim_direction: Vector2 = Vector2::difference(player_copy.position, Vector2::from(mouse_position.clone()));
+    let mut aim_direction: Vector2 = Vector2::from(mouse_position.clone()) - player_copy.position;
     if !*keyboard_mode {
       aim_direction = player_copy.aim_direction;
     }
@@ -322,6 +322,20 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
         aim_direction = Vector2::new();
       }
     }
+    if get_keys_down().contains(&KeyCode::Period) {
+      player.camera.zoom += player.camera.zoom * 1.0 * delta_time;
+    }
+    if get_keys_down().contains(&KeyCode::Comma) {
+      player.camera.zoom -= player.camera.zoom * 1.0 * delta_time;
+    }
+    player.camera.zoom += player.camera.zoom * 3.0 * mouse_wheel().1 * delta_time;
+    if player.camera.zoom < 0.5 {
+      player.camera.zoom = 0.5
+    }
+    if player.camera.zoom > 2.0 {
+      player.camera.zoom = 2.0
+    }
+
     drop(player);
     drop(keyboard_mode);
 
@@ -334,7 +348,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     for background_tile in background_tiles.clone() {
       let texture = &game_object_tetures[&background_tile.object_type];
       let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
-      graphics::draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, Vector2::new(), WHITE);
+      graphics::draw_image_relative(texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.clone(), Vector2::new(), WHITE);
     }
 
     // adjust certain positions.
@@ -372,6 +386,9 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
         GameObjectType::TemerityRocketSecondary => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
         GameObjectType::CenterOrb => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
         GameObjectType::CynewynnSword => Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
+        GameObjectType::KoldoCannonBall => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+        GameObjectType::KoldoCannonBallEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+        GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
         _ => Vector2 {x: 1.0 * TILE_SIZE, y: 1.0* TILE_SIZE},
       };
       let shadow_offset: f32 = 5.0;
@@ -399,36 +416,36 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
           game_object.position.y - size.y/2.0 + shadow_offset,
           size.x,
           size.y,
-          vh, player_copy.camera.position,
+          vh, player_copy.camera.clone(),
           rotation,
           Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 });
       }
-      graphics::draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.position, rotation, WHITE);
+      graphics::draw_image_relative(texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, player_copy.camera.clone(), rotation, WHITE);
     }
 
 
 
     // draw player and aim laser
-    let mut range = character_properties[&player_copy.character].primary_range;
+    let mut range = character_properties[&player_copy.character].primary_range * player_copy.camera.zoom;
     if player_copy.character == Character::Temerity {
-      if player_copy.stacks == 0 {
-        range = character_properties[&Character::Temerity].primary_range
-      }
+      //if player_copy.stacks == 0 {
+      //  range = character_properties[&Character::Temerity].primary_range * player_copy.camera.zoom
+      //}
       if player_copy.stacks == 1 {
-        range = character_properties[&Character::Temerity].primary_range_2
+        range = character_properties[&Character::Temerity].primary_range_2 * player_copy.camera.zoom
       }
       if player_copy.stacks == 2 {
-        range = character_properties[&Character::Temerity].primary_range_3
+        range = character_properties[&Character::Temerity].primary_range_3 * player_copy.camera.zoom
       }
     }
     if player_copy.character == Character::Koldo {
       if player_copy.passive_elapsed > character_properties[&Character::Koldo].passive_cooldown
       || player_copy.stacks > 0 {
-        range = character_properties[&Character::Koldo].primary_range_2;
+        range = character_properties[&Character::Koldo].primary_range_2 * player_copy.camera.zoom;
       }
     }
-    let relative_position_x = 50.0 * (16.0/9.0) + player_copy.position.x - player_copy.camera.position.x; //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-    let relative_position_y = 50.0              + player_copy.position.y - player_copy.camera.position.y; //+ (vh * 100.0) / 2.0;
+    let relative_position_x = 50.0 * (16.0/9.0) + (player_copy.position.x - player_copy.camera.position.x) * player_copy.camera.zoom;
+    let relative_position_y = 50.0              + (player_copy.position.y - player_copy.camera.position.y) * player_copy.camera.zoom;
     // test
     //let relative_position_x = main_camera.position.x;
     //let relative_position_y = main_camera.position.y;
@@ -437,7 +454,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
       if range_limited > range {
         range_limited = range;
       }
-      let low_limit = 10.0;
+      let low_limit = 10.0 * player_copy.camera.zoom;
       if range_limited < low_limit {
         range_limited = low_limit;
       }
@@ -458,7 +475,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
         0.4 * vh, Color { r: 1.0, g: 0.2, b: 0.0, a: 1.0 }
       );
       if player_copy.character == Character::Hernani {
-        let range: f32 = character_properties[&Character::Hernani].secondary_range;
+        let range: f32 = character_properties[&Character::Hernani].secondary_range * player_copy.camera.zoom;
         let aim_dir = aim_direction.normalize();
         // perpendicular direction 1
         let aim_dir_alpha = Vector2 {x:   aim_dir.y, y: - aim_dir.x};
@@ -482,15 +499,15 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     let trail_y_offset: f32 = 4.5;
     for player in other_players_copy.clone() {
       if player.character == Character::Cynewynn && !player.is_dead {
-        graphics::draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.0, 1.0);
-        graphics::draw_lines(player.previous_positions.clone(), player_copy.camera.position, vh, player.team, trail_y_offset-0.3, 0.5);
-        graphics::draw_lines(player.previous_positions,         player_copy.camera.position, vh, player.team, trail_y_offset-0.6, 0.25);
+        graphics::draw_lines(player.previous_positions.clone(), player_copy.camera.clone(), vh, player.team, trail_y_offset-0.0, 1.0);
+        graphics::draw_lines(player.previous_positions.clone(), player_copy.camera.clone(), vh, player.team, trail_y_offset-0.3, 0.5);
+        graphics::draw_lines(player.previous_positions,         player_copy.camera.clone(), vh, player.team, trail_y_offset-0.6, 0.25);
       }
     }
     if player_copy.character == Character::Cynewynn && !player_copy.is_dead {
-      graphics::draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.0, 0.6);
-      graphics::draw_lines(player_copy.previous_positions.clone(), player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.3, 0.4);
-      graphics::draw_lines(player_copy.previous_positions.clone(),         player_copy.camera.position, vh, player_copy.team, trail_y_offset-0.6, 0.2);
+      graphics::draw_lines(player_copy.previous_positions.clone(), player_copy.camera.clone(), vh, player_copy.team, trail_y_offset-0.0, 0.6);
+      graphics::draw_lines(player_copy.previous_positions.clone(), player_copy.camera.clone(), vh, player_copy.team, trail_y_offset-0.3, 0.4);
+      graphics::draw_lines(player_copy.previous_positions.clone(), player_copy.camera.clone(), vh, player_copy.team, trail_y_offset-0.6, 0.2);
     }
 
     // Draw raphaelle's tethering.
@@ -507,7 +524,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
               true => GREEN,
               false => ORANGE,
             };
-            graphics::draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, player_copy.camera.position, vh);
+            graphics::draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, player_copy.camera.clone(), vh);
           }
         }
       }
@@ -516,11 +533,11 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     // MARK: UI
     // temporary ofc
     if !player_copy.is_dead {
-      player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player_copy.character].clone(), settings.clone());
+      player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.clone(), &health_bar_font, character_properties[&player_copy.character].clone(), settings.clone());
     }
     for player in other_players_copy.clone() {
       if !player.is_dead {
-        player.draw(&player_textures[&player.character], vh, player_copy.camera.position, &health_bar_font, character_properties[&player.character].clone(), settings.clone());
+        player.draw(&player_textures[&player.character], vh, player_copy.camera.clone(), &health_bar_font, character_properties[&player.character].clone(), settings.clone());
       }
     }
     if player_copy.is_dead {
@@ -552,11 +569,11 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 
     // let timer_width: f32 = 5.0;
     draw_rectangle((50.0-20.0)*vw, 0.0, 40.0 * vw, 10.0*vh, Color { r: 1.0, g: 1.0, b: 1.0, a: 0.5 });
-    graphics::draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLACK);
-    graphics::draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
-    graphics::draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, BLUE);
-    graphics::draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
-    graphics::draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Vector2 { x: 0.0, y: 50.0 }, RED);
+    graphics::draw_text_relative(format!("Time: {}", gamemode_info_main.time.to_string().as_str()).as_str(), -7.0, 6.0, &health_bar_font, 4, vh, Camera {position: Vector2 { x: 0.0, y: 50.0 }, zoom: 1.0}, BLACK);
+    graphics::draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_blue.to_string().as_str()).as_str(), 10.0, 4.0, &health_bar_font, 4, vh, Camera {position: Vector2 { x: 0.0, y: 50.0 }, zoom: 1.0}, BLUE);
+    graphics::draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_blue.to_string().as_str()).as_str(), 10.0, 8.0, &health_bar_font, 4, vh, Camera {position: Vector2 { x: 0.0, y: 50.0 }, zoom: 1.0}, BLUE);
+    graphics::draw_text_relative(format!("Remaining: {}", gamemode_info_main.alive_red.to_string().as_str()).as_str(), -33.0, 4.0, &health_bar_font, 4, vh, Camera {position: Vector2 { x: 0.0, y: 50.0 }, zoom: 1.0}, RED);
+    graphics::draw_text_relative(format!("Rounds won: {}", gamemode_info_main.rounds_won_red.to_string().as_str()).as_str(), -33.0, 8.0, &health_bar_font, 4, vh, Camera {position: Vector2 { x: 0.0, y: 50.0 }, zoom: 1.0}, RED);
     // let bar_offsets = 5.0;
     // draw_line_relative(bar_offsets+10.0, 100.0 -bar_offsets, bar_offsets + (player_copy.health-50) as f32 , 100.0 - bar_offsets, 3.0, GREEN, Vector2 { x: 100.0, y: 50.0 }, vh);
     drop(gamemode_info_main);
@@ -892,7 +909,6 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
         // MARK: Sound
         let events = recieved_server_info.events;
         for event in events {
-          println!("{:?}", event);
           match event {
             GameEvent::AttackHit(object_type, owner, victim) => {
               // if the bullet is ours
@@ -950,7 +966,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
               }
             }
             GameEvent::WallHit(_object_type, _owner) => {
-
+              
             }
           }
         }

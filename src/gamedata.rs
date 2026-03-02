@@ -17,10 +17,11 @@ use std::time::Instant;
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct Camera {
   pub position: Vector2,
+  pub zoom: f32,
 }
 impl Camera {
   pub fn new() -> Camera {
-    return Camera { position: Vector2::new() };
+    return Camera { position: Vector2::new(), zoom: 1.0 };
   }
 }
 // MARK: Client
@@ -118,7 +119,7 @@ impl ClientPlayer {
       passive_elapsed: 0.0,
     }
   }
-  pub fn draw(&self, texture: &Texture2D, vh: f32, camera_position: Vector2, font: &Font, character: CharacterProperties, settings: Settings) {
+  pub fn draw(&self, texture: &Texture2D, vh: f32, camera: Camera, font: &Font, character: CharacterProperties, settings: Settings) {
     // TODO: animations
     let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
@@ -127,10 +128,10 @@ impl ClientPlayer {
       Team::Blue => Color { r: 0.3, g: 0.5, b: 0.7, a: bg_opacity },
       Team::Red => Color { r: 0.7, g: 0.5, b: 0.3, a: bg_opacity },
     };
-    draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera_position, vh);
+    draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera.clone(), vh);
 
     let size: f32 = 10.0;
-    draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera_position, Vector2::new(), WHITE);
+    draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera.clone(), Vector2::new(), WHITE);
     let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
     let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };
     let dash_bar_offset: Vector2 = Vector2 { x: -5.0, y: -15.0 };
@@ -143,7 +144,7 @@ impl ClientPlayer {
       self.position.y + dash_bar_offset.y,
       1.5,
       BLUE,
-      camera_position, vh);
+      camera.clone(), vh);
     draw_line_relative(
       self.position.x + secondary_bar_offset.x,
       self.position.y + secondary_bar_offset.y,
@@ -151,7 +152,7 @@ impl ClientPlayer {
       self.position.y + secondary_bar_offset.y,
       1.5,
       ORANGE,
-      camera_position, vh);
+      camera.clone(), vh);
     // let health_counter_offset: Vector2 = Vector2 { x: -3.9, y: -10.0 };
     // let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
     // let mut font = load_ttf_font_from_bytes(include_bytes!("./../assets/fonts/Action_Man.ttf")).expect("Could not load font.");
@@ -164,14 +165,14 @@ impl ClientPlayer {
       self.position.y + health_bar_offset.y,
       1.5,
       GREEN,
-      camera_position, vh);
+      camera.clone(), vh);
     let health_counter_offset: Vector2 = Vector2 { x: -11.5, y: -10.6 };
     let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
     let font_size: u16 = 4;
-    draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, font_size, vh, camera_position, GREEN);
+    draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, font_size, vh, camera.clone(), GREEN);
     let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
     let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
-    draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera_position, ORANGE);
+    draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera.clone(), ORANGE);
     
     let displayed_name =
       if settings.display_char_name_instead {
@@ -182,11 +183,11 @@ impl ClientPlayer {
       };
 
     let username_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
-    draw_text_relative(&displayed_name, self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera_position, Color { r: color.r, g: color.g, b: color.b, a: 1.0 });
+    draw_text_relative(&displayed_name, self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera.clone(), Color { r: color.r, g: color.g, b: color.b, a: 1.0 });
     let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -21.0 };
     for buff in self.buffs.clone() {
       if !vec![BuffType::Impulse].contains(&buff.buff_type) {
-        draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera_position, SKYBLUE);
+        draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera.clone(), SKYBLUE);
       }
       buff_offset.y -= 3.0;
     }

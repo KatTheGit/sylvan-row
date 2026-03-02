@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 use std::collections::HashMap;
-use crate::gamedata::*;
+use crate::gamedata::{Camera, *};
 use strum::IntoEnumIterator;
 use crate::maths::*;
 
@@ -93,41 +93,41 @@ pub fn draw_image(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, 
 }
 /// same as draw_image but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.
-pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, center_position: Vector2, rotation: Vector2, color: Color) -> () {
+pub fn draw_image_relative(texture: &Texture2D, x: f32, y: f32, w: f32, h: f32, vh: f32, camera: Camera, rotation: Vector2, color: Color) -> () {
 
   // draw relative to position and centered.
-  let relative_position_x = x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-  let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
+  let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
+  let relative_position_y = (y - camera.position.y) * camera.zoom + (50.0);
 
-  draw_image(texture, relative_position_x, relative_position_y, w, h, vh, rotation, color);
+  draw_image(texture, relative_position_x, relative_position_y, w * camera.zoom, h * camera.zoom, vh, rotation, color);
 }
 
-pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Color, center_position: Vector2, vh:f32) -> () {
-  let relative_position_x1 = x1 - center_position.x + (50.0 * (16.0/9.0));
-  let relative_position_y1 = y1 - center_position.y + 50.0;
-  let relative_position_x2 = x2 - center_position.x + (50.0 * (16.0/9.0));
-  let relative_position_y2 = y2 - center_position.y + 50.0;
-  draw_line(relative_position_x1 * vh, relative_position_y1 * vh, relative_position_x2 * vh, relative_position_y2 * vh, thickness * vh, color);
+pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Color, camera: Camera, vh:f32) -> () {
+  let relative_position_x1 = (x1 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
+  let relative_position_y1 = (y1 - camera.position.y) * camera.zoom + 50.0;
+  let relative_position_x2 = (x2 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
+  let relative_position_y2 = (y2 - camera.position.y) * camera.zoom + 50.0;
+  draw_line(relative_position_x1 * vh, relative_position_y1 * vh, relative_position_x2 * vh, relative_position_y2 * vh, thickness * vh * camera.zoom, color);
 }
-pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Color, center_position: Vector2, vh:f32) -> () {
-  let relative_position_x1 = x1 - center_position.x + (50.0 * (16.0/9.0));
-  let relative_position_y1 = y1 - center_position.y + 50.0;
-  macroquad::prelude::draw_rectangle(relative_position_x1*vh, relative_position_y1*vh, w*vh, h*vh, color);
+pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Color, camera: Camera, vh:f32) -> () {
+  let relative_position_x1 = (x1 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
+  let relative_position_y1 = (y1 - camera.position.y) * camera.zoom + 50.0;
+  macroquad::prelude::draw_rectangle(relative_position_x1*vh, relative_position_y1*vh, w*vh*camera.zoom, h*vh*camera.zoom, color);
 }
 pub fn draw_rectangle(position: Vector2, size: Vector2, color: Color) {
   macroquad::prelude::draw_rectangle(position.x, position.y, size.x, size.y, color);
 }
 
-pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16, vh: f32, center_position: Vector2, color: Color) -> () {
-  let relative_position_x = x - center_position.x + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-  let relative_position_y = y - center_position.y + 50.0; //+ (vh * 100.0) / 2.0;
-  draw_text_ex(text, relative_position_x * vh, relative_position_y * vh, TextParams { font: Some(font), font_size: (font_size as f32 * vh) as u16, font_scale: 1.0, font_scale_aspect: 1.0, rotation: 0.0, color });
+pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Font, font_size: u16, vh: f32, camera: Camera, color: Color) -> () {
+  let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
+  let relative_position_y = (y - camera.position.y) * camera.zoom + 50.0; //+ (vh * 100.0) / 2.0;
+  draw_text_ex(text, relative_position_x * vh, relative_position_y * vh, TextParams { font: Some(font), font_size: (font_size as f32 * vh * camera.zoom) as u16, font_scale: 1.0, font_scale_aspect: 1.0, rotation: 0.0, color });
 }
 
-pub fn draw_lines(positions: Vec<Vector2>, camera: Vector2, vh: f32, team: Team, y_offset: f32, alpha: f32) -> () {
+pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, team: Team, y_offset: f32, alpha: f32) -> () {
   if positions.len() < 2 { return; }
   for position_index in 0..positions.len()-1 {
-    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: alpha }, Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: alpha }}, camera, vh);
+    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Color { r: 0.2, g: 1.0-(position_index as f32 / positions.len() as f32), b: 0.8, a: alpha }, Team::Red => Color { r: 0.8, g: 0.7-0.3*(position_index as f32 / positions.len() as f32), b: 0.2, a: alpha }}, camera.clone(), vh);
   }
   // let texture = Texture2D::from_file_with_format(include_bytes!("../../assets/gameobjects/tq-flashback.png"), None  );
   // draw_image_relative(&texture, positions[0].x - TILE_SIZE/2.0, positions[0].y - (TILE_SIZE*1.5)/2.0, TILE_SIZE, TILE_SIZE * 1.5, vh, camera);
