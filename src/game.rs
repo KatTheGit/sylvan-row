@@ -3,7 +3,6 @@
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
 use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBackend};
 use crate::{audio, const_params::*, database::{self, FriendShipStatus}, gamedata::{Camera, *}, graphics, maths::*, mothership_common::*, network, ui::{self, Settings}};
-use miniquad::window::set_window_size;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
 use gilrs::*;
@@ -19,7 +18,7 @@ fn rmb_index() -> usize {
   return 2;
 }
 #[cfg(target_os = "linux")]
-fn rmb_index() -> usize {
+pub fn rmb_index() -> usize {
   return 3;
 }
 #[cfg(target_os = "windows")]
@@ -27,7 +26,7 @@ fn rmb_index() -> usize {
   return 2;
 }
 
-pub async fn game(server_ip: String, character: Character, client_port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, mut settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128, settings_tabs: &mut ui::Tabs) {
+pub async fn game(server_ip: String, character: Character, client_port: u16, server_port: u16, cipher_key: Vec<u8>, username: String, settings: &mut Settings, server_interaction: &mut MainServerInteraction, main_nonce: &mut u32, mut main_last_nonce: &mut u32, fullscreen: &mut bool, game_id: u128, settings_tabs: &mut ui::Tabs) {
   //set_mouse_cursor(miniquad::CursorIcon::Crosshair);
   // hashmap (dictionary) that holds the texture for each game object.
   // later (when doing animations) find way to do this with rust_embed
@@ -38,6 +37,10 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
   let mut packet_queue: Vec<ClientToServerPacket> = Vec::new();
 
   let mut chat_timer: Instant = Instant::now();
+  let local_settings = settings.clone();
+  let local_settings = Arc::new(Mutex::new(local_settings));
+  let main_settings = Arc::clone(&local_settings);
+  let input_settings = Arc::clone(&local_settings);
 
   let gamemode_info: GameModeInfo = GameModeInfo::new();
   let gamemode_info: Arc<Mutex<GameModeInfo>> = Arc::new(Mutex::new(gamemode_info));
@@ -98,7 +101,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
   let input_halt_listener= Arc::clone(&input_halt);
   let cipher_key_copy = cipher_key.clone();
   std::thread::spawn(move || {
-    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, client_port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key_copy, input_halt_listener, server_ip, input_thread_sound_queue);
+    input_listener_network_sender(input_thread_player, input_thread_game_objects, input_thread_sender_fps, input_thread_killall, input_thread_keyboard_mode, client_port, network_listener_other_players, gamemode_info_listener, server_port, cipher_key_copy, input_halt_listener, server_ip, input_thread_sound_queue, input_settings);
   });
 
   let character_properties: HashMap<Character, CharacterProperties> = load_characters();
@@ -132,17 +135,27 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
   let mut sfx_self_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
   let mut sfx_other_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
   let mut music_track = audio_manager.add_sub_track(TrackBuilder::default()).expect("oops");
-  let sfx_self_volume = settings.master_volume * settings.sfx_self_volume / 100.0;
-  let sfx_other_volume = settings.master_volume * settings.sfx_other_volume / 100.0;
-  let music_volume = settings.master_volume * settings.music_volume / 100.0;
-  audio::set_volume(sfx_self_volume, &mut sfx_self_track);
-  audio::set_volume(sfx_other_volume, &mut sfx_other_track);
-  audio::set_volume(music_volume, &mut music_track);
+  {
+    let settings = main_settings.lock().unwrap();
+    let sfx_self_volume = settings.master_volume * settings.sfx_self_volume / 100.0;
+    let sfx_other_volume = settings.master_volume * settings.sfx_other_volume / 100.0;
+    let music_volume = settings.master_volume * settings.music_volume / 100.0;
+    audio::set_volume(sfx_self_volume, &mut sfx_self_track);
+    audio::set_volume(sfx_other_volume, &mut sfx_other_track);
+    audio::set_volume(music_volume, &mut music_track);
+  }
+  // general purpose timer used by the menu.
+  let mut menu_timer = Instant::now();
 
   // Main thread
   loop {
 
     let delta_time: f32 = 1.0 / get_fps() as f32;
+
+    let new_settings = main_settings.lock().unwrap();
+    let settings_copy = new_settings.clone();
+    *settings = settings_copy.clone();
+    drop(new_settings);
 
     // SUPER MEGA TEMPORARY
     let device_state: DeviceState = DeviceState::new();
@@ -279,7 +292,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     // Do camera logic
     //camera_offset = Vector2::difference( player_copy.camera.position, player_copy.position);
     if !player_copy.is_dead {
-      match settings.camera_smoothing {
+      match settings_copy.camera_smoothing {
         true => {
           // if delta_time is too long, the camera behaves very weirdly, so let's arficially assume
           // framerate never goes below 20fps.
@@ -528,14 +541,15 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
       }
     }
 
+
     // MARK: UI
     // temporary ofc
     if !player_copy.is_dead {
-      player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.clone(), &health_bar_font, character_properties[&player_copy.character].clone(), settings.clone());
+      player_copy.draw(&player_textures[&player_copy.character], vh, player_copy.camera.clone(), &health_bar_font, character_properties[&player_copy.character].clone(), settings_copy.clone());
     }
     for player in other_players_copy.clone() {
       if !player.is_dead {
-        player.draw(&player_textures[&player.character], vh, player_copy.camera.clone(), &health_bar_font, character_properties[&player.character].clone(), settings.clone());
+        player.draw(&player_textures[&player.character], vh, player_copy.camera.clone(), &health_bar_font, character_properties[&player.character].clone(), settings_copy.clone());
       }
     }
     if player_copy.is_dead {
@@ -612,11 +626,11 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
       match player.team {
         Team::Blue => {
           blue_team_players += 1;
-          ui::draw_player_info(blue_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * blue_team_players as f32 }), 10.0, player, &health_bar_font, vh, settings.clone());
+          ui::draw_player_info(blue_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * blue_team_players as f32 }), 10.0, player, &health_bar_font, vh, settings_copy.clone());
         },
         Team::Red => {
           red_team_players += 1;
-          ui::draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh, settings.clone());
+          ui::draw_player_info(red_team_box.rel_pos(Vector2 { x: 0.0, y: 10.0 * red_team_players as f32 }), 10.0, player, &health_bar_font, vh, settings_copy.clone());
         }
       }
     }
@@ -636,9 +650,11 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 
     // Draw pause menu
     if menu_paused {
-      let mut kill_all_threads = kill_all_threads.lock().unwrap();
-      (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, settings_tabs, (&mut sfx_self_track, &mut sfx_other_track, &mut music_track));
-      drop(kill_all_threads);
+      {
+        let mut kill_all_threads = kill_all_threads.lock().unwrap();
+        let mut settings = main_settings.lock().unwrap();
+        (menu_paused, *kill_all_threads) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, settings_tabs, (&mut sfx_self_track, &mut sfx_other_track, &mut music_track), &mut menu_timer);
+      }
       // Draw fps, etc
       if timer_for_text_update.elapsed().as_secs_f32() > 0.5 {
         timer_for_text_update = Instant::now();
@@ -752,7 +768,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 /// The goal is to have a non-fps limited way of giving the server as precise
 /// as possible player info, recieveing inputs independently of potentially
 /// slow monitors.
-fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, client_port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>, input_halt: Arc<Mutex<bool>>, server_ip: String, sound_queue: Arc<Mutex<Vec<(&[u8], AudioTrack, f32)>>>) -> () {
+fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects: Arc<Mutex<Vec<GameObject>>>, sender_fps: Arc<Mutex<f32>>, kill: Arc<Mutex<bool>>, global_keyboard_mode: Arc<Mutex<bool>>, client_port: u16, other_players: Arc<Mutex<Vec<ClientPlayer>>>, gamemode_info: Arc<Mutex<GameModeInfo>>, server_port: u16, cipher_key: Vec<u8>, input_halt: Arc<Mutex<bool>>, server_ip: String, sound_queue: Arc<Mutex<Vec<(&[u8], AudioTrack, f32)>>>, settings: Arc<Mutex<Settings>>) -> () {
 
   let server_ip: Vec<&str> = server_ip.split(":").collect();
   let server_ip: String = format!("{}:{}", server_ip[0], server_port);
@@ -794,14 +810,17 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
   // Ignore mouse pos in controller mode for example.
   let mut keyboard_mode: bool = true;
 
-  let mut toggle_time: Instant = Instant::now();
-
   let interpolate = true;
 
   let mut nonce: u32 = 1;
   let mut last_nonce: u32 = 0;
 
   loop {
+
+    let settings = settings.lock().unwrap();
+    let settings_copy = settings.clone();
+    drop(settings);
+    let settings = settings_copy;
 
     let delta_time = frame_counter.elapsed().as_secs_f32();
     frame_counter = Instant::now();
@@ -1021,6 +1040,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       }
     }
 
+    // MARK: Input
 
     // update active gamepad info
     while let Some(Event { id, event: _, time: _ }) = gilrs.next_event() {
@@ -1137,33 +1157,39 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
       movement_vector = Vector2::new();
       keyboard_mode = true; // since we used the keyboard
     }
+
+    // key binds
     for key in keys {
-      match key {
-        Keycode::W => movement_vector.y += -1.0,
-        Keycode::A => movement_vector.x += -1.0,
-        Keycode::S => movement_vector.y +=  1.0,
-        Keycode::D => movement_vector.x +=  1.0,
-        Keycode::Space => dashing = true,
-        Keycode::F10 => {
-          // Dirty solution but works.
-          if toggle_time.elapsed().as_secs_f32() > 0.05 {
-            set_window_size(800, 450);
-          }
-          toggle_time = Instant::now();
-        },
-        _ => {}
+      let key = key as u16;
+      // move
+      if key == settings.keybinds.walk_up.0    || key == settings.keybinds.walk_up.1    { movement_vector.y += -1.0 }
+      if key == settings.keybinds.walk_down.0  || key == settings.keybinds.walk_down.1  { movement_vector.y +=  1.0 }
+      if key == settings.keybinds.walk_left.0  || key == settings.keybinds.walk_left.1  { movement_vector.x += -1.0 }
+      if key == settings.keybinds.walk_right.0 || key == settings.keybinds.walk_right.1 { movement_vector.x +=  1.0 }
+      // primary
+      if key == settings.keybinds.primary.0    || key == settings.keybinds.primary.1    { shooting_primary = true; keyboard_mode = true }
+      // secondary
+      if key == settings.keybinds.secondary.0  || key == settings.keybinds.secondary.1  { shooting_secondary = true; keyboard_mode = true }
+      // dash
+      if key == settings.keybinds.dash.0       || key == settings.keybinds.dash.1       { dashing = true; keyboard_mode = true }
+    }
+
+    // mouse button binds
+    for (button, button_pressed) in mouse.iter().enumerate().clone() {
+      if *button_pressed {
+        let button = button as u8;
+        // move
+        if button == settings.keybinds.walk_up.2    || button == settings.keybinds.walk_up.3    { movement_vector.y += -1.0 }
+        if button == settings.keybinds.walk_down.2  || button == settings.keybinds.walk_down.3  { movement_vector.y +=  1.0 }
+        if button == settings.keybinds.walk_left.2  || button == settings.keybinds.walk_left.3  { movement_vector.x += -1.0 }
+        if button == settings.keybinds.walk_right.2 || button == settings.keybinds.walk_right.3 { movement_vector.x +=  1.0 }
+        // primary
+        if button == settings.keybinds.primary.2    || button == settings.keybinds.primary.3    { shooting_primary = true; keyboard_mode = true }
+        // secondary
+        if button == settings.keybinds.secondary.2  || button == settings.keybinds.secondary.3  { shooting_secondary = true; keyboard_mode = true }
+        // dash
+        if button == settings.keybinds.dash.2       || button == settings.keybinds.dash.3       { dashing = true; keyboard_mode = true }
       }
-    }
-    //  LMB
-    if mouse[1] == true {
-      shooting_primary = true;
-      keyboard_mode = true;
-    }
-    //  RMB
-    // 3 anywhere, 2 on macos
-    if mouse[rmb_index()] == true {
-      shooting_secondary = true;
-      keyboard_mode = true;
     }
   
 

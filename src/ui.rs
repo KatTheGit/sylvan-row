@@ -3,12 +3,16 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
+use std::time::Duration;
 use std::time::Instant;
 use std::fs::File;
+use device_query::DeviceQuery;
+use device_query::DeviceState;
 use kira::track::TrackHandle;
 use macroquad::prelude::*;
 use crate::audio;
 use crate::database::FriendShipStatus;
+use crate::game::rmb_index;
 use crate::gamedata::*;
 use crate::graphics;
 use crate::graphics::draw_rectangle;
@@ -51,7 +55,7 @@ impl Button {
       if mouse.x > position.x && mouse.x < (position.x + size.x) {
         if mouse.y > position.y && mouse.y < (position.y + size.y) {
           graphics::draw_rectangle(position, size,GRAY);
-          draw_text(text, position.x + 10.0, position.y + size.y * 0.65, font_size , BLACK);
+          draw_text(text, position.x + 1.0*vh + 10.0, position.y + size.y * 0.65, font_size , BLACK);
         }
       }
     }
@@ -143,7 +147,7 @@ impl Tabs {
         if mouse.x > position.x && mouse.x < (position.x + size.x) {
           if mouse.y > position.y && mouse.y < (position.y + size.y)   {
             graphics::draw_rectangle(position, size,GRAY);
-            draw_text(text, position.x + 10.0, position.y + size.y * 0.65, font_size , BLACK);
+            draw_text(text, position.x +  1.0 *vh + 10.0, position.y + size.y * 0.65, font_size , BLACK);
             if is_mouse_button_down(MouseButton::Left) {
               return true;
             }
@@ -338,7 +342,7 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
 /// - sfx self
 /// - sfx other
 /// - music
-pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool, settings_tabs: &mut Tabs, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle)) -> (bool, bool) {
+pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool, settings_tabs: &mut Tabs, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle), general_timer: &mut Instant) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * vh;
@@ -364,6 +368,7 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
     settings_button.draw(vh, true);
     if settings_button.was_released() {
       *settings_open = true;
+      *general_timer = Instant::now();
     }
 
     // Quit button
@@ -417,9 +422,40 @@ pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open:
         audio::set_volume(music_volume, &mut tracks.2);
       }
     }
-    // Other
+    // Controls
     if settings_tabs.selected_tab() == 3 {
-
+      let mut was_edited = false;
+      let base_y: f32 = 25.0 * vh;
+      let size = 5.0 * vh;
+      was_edited |= keybind_edit_buttons("Walk UP",    &mut settings.keybinds.walk_up,    Vector2 { x: 10.0 * vw, y: base_y + size * 0.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2);
+      was_edited |= keybind_edit_buttons("Walk DOWN",  &mut settings.keybinds.walk_down,  Vector2 { x: 10.0 * vw, y: base_y + size * 1.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2);
+      was_edited |= keybind_edit_buttons("Walk LEFT",  &mut settings.keybinds.walk_left,  Vector2 { x: 10.0 * vw, y: base_y + size * 2.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2);
+      was_edited |= keybind_edit_buttons("Walk RIGHT", &mut settings.keybinds.walk_right, Vector2 { x: 10.0 * vw, y: base_y + size * 3.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2);
+      was_edited |= keybind_edit_buttons("Primary",    &mut settings.keybinds.primary,    Vector2 { x: 10.0 * vw, y: base_y + size * 4.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2);
+      was_edited |= keybind_edit_buttons("Secondary",  &mut settings.keybinds.secondary,  Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2);
+      was_edited |= keybind_edit_buttons("Dash",       &mut settings.keybinds.dash,       Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2);
+      was_edited |= keybind_edit_buttons("Fullscreen", &mut settings.keybinds.fullscreen, Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, vh, false);
+      was_edited |= keybind_edit_buttons("Open Chat",  &mut settings.keybinds.open_chat,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, vh, false);
+      
+      if was_edited {
+        *general_timer = Instant::now();
+      }
+      settings_modified |= was_edited;
+    }
+    // Other
+    if settings_tabs.selected_tab() == 4 {
+      let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 30.0*vh }, Vector2 { x: 20.0*vw, y: 8.0*vh }, "Reset settings", 5.0*vh);
+      reset_button.draw(vh, true);
+      if reset_button.was_released() {
+        *settings = Settings::new();
+        settings_modified = true;
+      }
+      let mut reset_keybinds_button = Button::new(Vector2 { x: 40.0*vw, y: 40.0*vh }, Vector2 { x: 20.0*vw, y: 8.0*vh }, "Reset keybinds", 5.0*vh);
+      reset_keybinds_button.draw(vh, true);
+      if reset_keybinds_button.was_released() {
+        settings.keybinds = KeybindSettings::new();
+        settings_modified = true;
+      }
     }
 
     // if the settings were modified, save them.
@@ -477,6 +513,7 @@ pub struct Settings {
   pub music_volume: f32,
   pub sfx_self_volume: f32,
   pub sfx_other_volume: f32,
+  pub keybinds: KeybindSettings,
 }
 impl Settings {
   pub fn new() -> Settings{
@@ -490,6 +527,7 @@ impl Settings {
       music_volume: 100.0,
       sfx_self_volume: 100.0,
       sfx_other_volume: 50.0,
+      keybinds: KeybindSettings::new(),
     }
   }
   pub fn load() -> Settings {
@@ -544,6 +582,276 @@ impl Settings {
       }
       Err(_) => { }
     }
+  }
+}
+/// Holds keybinds for actions with the below tuple:
+/// 
+/// primary keybind, secondary keybind, mouse keybind, mouse keybind.
+/// 
+/// (keycode as u16, keycode as u16, mouse button index as u8, mouse button index as u8)
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct KeybindSettings {
+  pub walk_up:    (u16, u16, u8, u8),
+  pub walk_down:  (u16, u16, u8, u8),
+  pub walk_left:  (u16, u16, u8, u8),
+  pub walk_right: (u16, u16, u8, u8),
+  pub primary:    (u16, u16, u8, u8),
+  pub secondary:  (u16, u16, u8, u8),
+  pub dash:       (u16, u16, u8, u8),
+  pub open_chat:  (u16, u16, u8, u8),
+  pub fullscreen: (u16, u16, u8, u8),
+}
+impl KeybindSettings {
+  pub fn new() -> KeybindSettings {
+    return KeybindSettings {
+      walk_up:    (device_query::Keycode::W as u16, u16::MAX, 255, 255),
+      walk_down:  (device_query::Keycode::S as u16, u16::MAX, 255, 255),
+      walk_left:  (device_query::Keycode::A as u16, u16::MAX, 255, 255),
+      walk_right: (device_query::Keycode::D as u16, u16::MAX, 255, 255),
+      primary:    (u16::MAX, u16::MAX, 1, 255),
+      secondary:  (u16::MAX, u16::MAX, rmb_index() as u8, 255),
+      dash:       (device_query::Keycode::Space as u16, u16::MAX, 255, 255),
+      open_chat:  (device_query::Keycode::Enter as u16, u16::MAX, 255, 255),
+      fullscreen: (device_query::Keycode::F11 as u16, u16::MAX, 255, 255),
+    }
+  }
+}
+pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8), position: Vector2, size: f32, vh: f32, clickable: bool) -> bool {
+  let mut font_size = size * 0.8;
+  draw_text(keybind_name, position.x, position.y + size * 0.65, font_size, BLACK);
+  for i in 0..2 {
+
+    let keycode_name;
+    if i == 0 {
+      if keybind.0 == u16::MAX {
+        if keybind.2 == 255 {
+          keycode_name = "None".to_string();
+        } else {
+          if keybind.2 == u8::MAX-1 {
+            keycode_name = "... (DEL to remove)".to_string();
+            font_size = size * 0.7;
+          } else {
+            keycode_name = format!("MB{}", keybind.2);
+          }
+        }
+      } else {
+        if keybind.0 == u16::MAX-1 {
+          keycode_name = "... (DEL to remove)".to_string();
+          font_size = size * 0.7;
+        } else {
+          keycode_name = name_from_keycode_u16(keybind.0);
+        }
+      }
+    } else {
+      if keybind.1 == u16::MAX {
+        if keybind.3 == 255 {
+          keycode_name = "None".to_string();
+        } else {
+          if keybind.3 == u8::MAX-1 {
+            keycode_name = "... (DEL to remove)".to_string();
+            font_size = size * 0.7;
+          } else {
+            keycode_name = format!("MB{}", keybind.3);
+          }
+        }
+      } else {
+        if keybind.1 == u16::MAX-1 {
+          keycode_name = "... (DEL to remove)".to_string();
+          font_size = size * 0.7;
+        } else {
+          keycode_name = name_from_keycode_u16(keybind.1);
+        }
+      }
+    }
+      
+    // set listening
+    let x_size = 7.0*size;
+    let x_offset = if i == 0 {50.0*vh} else {50.0*vh + x_size};
+    let mut button = Button::new(position + Vector2 {x: x_offset, y: 0.0}, Vector2 { x: x_size, y: size }, &keycode_name, font_size);
+    button.draw(vh, clickable);
+    if button.was_released() {
+      if i == 0 {
+        keybind.0 = u16::MAX-1;
+        keybind.2 = u8::MAX -1;
+      }
+      else {
+        keybind.1 = u16::MAX-1;
+        keybind.3 = u8::MAX -1;
+      }
+    }
+
+    // listening
+    if i == 0 {
+      if keybind.0 == u16::MAX-1 || keybind.2 == u8::MAX-1 {
+        let device_state: DeviceState = DeviceState::new();
+        let keys: Vec<device_query::Keycode> = device_state.get_keys();
+        let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
+        if !keys.is_empty() {
+          if keys[0] == device_query::Keycode::Delete {
+            keybind.0 = u16::MAX;
+            keybind.2 = u8::MAX;
+            return true;
+          }
+          keybind.0 = keys[0] as u16;
+          keybind.2 = u8::MAX;
+          return true;
+        }
+        else {
+          for (i, button) in mouse.iter().enumerate() {
+            if *button {
+              keybind.2 = i as u8;
+              keybind.0 = u16::MAX;
+              return true;
+            }
+          }
+        }
+      }
+    }
+    else {
+      if keybind.1 == u16::MAX-1 || keybind.3 == u8::MAX-1 {
+        let device_state: DeviceState = DeviceState::new();
+        let keys: Vec<device_query::Keycode> = device_state.get_keys();
+        let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
+        if !keys.is_empty() {
+          if keys[0] == device_query::Keycode::Delete {
+            keybind.1 = u16::MAX;
+            keybind.3 = u8::MAX;
+            return true;
+          }
+          keybind.1 = keys[0] as u16;
+          keybind.3 = u8::MAX;
+          return true;
+        }
+        else {
+          for (i, button) in mouse.iter().enumerate() {
+            if *button {
+              keybind.3 = i as u8;
+              keybind.1 = u16::MAX;
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+  }
+
+  return false;
+}
+pub fn name_from_keycode_u16(keycode: u16) -> String {
+  return match keycode {
+    0 => "Key0".to_string(),
+    1 => "Key1".to_string(),
+    2 => "Key2".to_string(),
+    3 => "Key3".to_string(),
+    4 => "Key4".to_string(),
+    5 => "Key5".to_string(),
+    6 => "Key6".to_string(),
+    7 => "Key7".to_string(),
+    8 => "Key8".to_string(),
+    9 => "Key9".to_string(),
+    10 => "A".to_string(),
+    11 => "B".to_string(),
+    12 => "C".to_string(),
+    13 => "D".to_string(),
+    14 => "E".to_string(),
+    15 => "F".to_string(),
+    16 => "G".to_string(),
+    17 => "H".to_string(),
+    18 => "I".to_string(),
+    19 => "J".to_string(),
+    20 => "K".to_string(),
+    21 => "L".to_string(),
+    22 => "M".to_string(),
+    23 => "N".to_string(),
+    24 => "O".to_string(),
+    25 => "P".to_string(),
+    26 => "Q".to_string(),
+    27 => "R".to_string(),
+    28 => "S".to_string(),
+    29 => "T".to_string(),
+    30 => "U".to_string(),
+    31 => "V".to_string(),
+    32 => "W".to_string(),
+    33 => "X".to_string(),
+    34 => "Y".to_string(),
+    35 => "Z".to_string(),
+    36 => "F1".to_string(),
+    37 => "F2".to_string(),
+    38 => "F3".to_string(),
+    39 => "F4".to_string(),
+    40 => "F5".to_string(),
+    41 => "F6".to_string(),
+    42 => "F7".to_string(),
+    43 => "F8".to_string(),
+    44 => "F9".to_string(),
+    45 => "F10".to_string(),
+    46 => "F11".to_string(),
+    47 => "F12".to_string(),
+    48 => "F13".to_string(),
+    49 => "F14".to_string(),
+    50 => "F15".to_string(),
+    51 => "F16".to_string(),
+    52 => "F17".to_string(),
+    53 => "F18".to_string(),
+    54 => "F19".to_string(),
+    55 => "F20".to_string(),
+    56 => "Escape".to_string(),
+    57 => "Space".to_string(),
+    58 => "LControl".to_string(),
+    59 => "RControl".to_string(),
+    60 => "LShift".to_string(),
+    61 => "RShift".to_string(),
+    62 => "LAlt".to_string(),
+    63 => "RAlt".to_string(),
+    64 => "Command".to_string(),
+    65 => "LOption".to_string(),
+    66 => "ROption".to_string(),
+    67 => "LMeta".to_string(),
+    68 => "RMeta".to_string(),
+    69 => "Enter".to_string(),
+    70 => "Up".to_string(),
+    71 => "Down".to_string(),
+    72 => "Left".to_string(),
+    73 => "Right".to_string(),
+    74 => "Backspace".to_string(),
+    75 => "CapsLock".to_string(),
+    76 => "Tab".to_string(),
+    77 => "Home".to_string(),
+    78 => "End".to_string(),
+    79 => "PageUp".to_string(),
+    80 => "PageDown".to_string(),
+    81 => "Insert".to_string(),
+    82 => "Delete".to_string(),
+    83 => "Numpad0".to_string(),
+    84 => "Numpad1".to_string(),
+    85 => "Numpad2".to_string(),
+    86 => "Numpad3".to_string(),
+    87 => "Numpad4".to_string(),
+    88 => "Numpad5".to_string(),
+    89 => "Numpad6".to_string(),
+    90 => "Numpad7".to_string(),
+    91 => "Numpad8".to_string(),
+    92 => "Numpad9".to_string(),
+    93 => "NumpadSubtract".to_string(),
+    94 => "NumpadAdd".to_string(),
+    95 => "NumpadDivide".to_string(),
+    96 => "NumpadMultiply".to_string(),
+    97 => "NumpadEquals".to_string(),
+    98 => "NumpadEnter".to_string(),
+    99 => "NumpadDecimal".to_string(),
+    100 => "Grave".to_string(),
+    101 => "Minus".to_string(),
+    102 => "Equal".to_string(),
+    103 => "LeftBracket".to_string(),
+    104 => "RightBracket".to_string(),
+    105 => "BackSlash".to_string(),
+    106 => "Semicolon".to_string(),
+    107 => "Apostrophe".to_string(),
+    108 => "Comma".to_string(),
+    109 => "Dot".to_string(),
+    110 => "Slash".to_string(),
+    _ => "???".to_string(),
   }
 }
 

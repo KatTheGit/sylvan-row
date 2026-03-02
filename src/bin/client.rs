@@ -7,7 +7,7 @@ use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBacke
 use sylvan_row::{game, audio, const_params::*, database::{self, get_friend_request_type, FriendShipStatus}, filter::{self, valid_password, valid_username}, gamedata::*, gameserver::game_server, graphics::{self, draw_image}, maths::*, mothership_common::*, network, ui::{self, load_password, save_password, Notification, Settings}};
 use miniquad::{conf::Icon, window::set_mouse_cursor};
 use device_query::{DeviceQuery, DeviceState, Keycode};
-use macroquad::prelude::*;
+use macroquad::{miniquad::window::get_window_position, prelude::*};
 use ring::hkdf;
 use ::rand::rngs::OsRng;
 use opaque_ke::{
@@ -124,7 +124,7 @@ async fn main() {
   let mut main_tabs = ui::Tabs::new(vec!["Play".to_string(), "Heroes".to_string(), "Tutorial".to_string(), "Stats".to_string(), "Friends".to_string()], 5.0*vh);
   let mut login_tabs = ui::Tabs::new(vec!["Login".to_string(), "Register".to_string()], 5.0*vh);
   let mut heroes_tabs = ui::Tabs::new(characters.iter().map(|x| x.name()).collect(), 5.0*vh);
-  let mut settings_tabs = ui::Tabs::new(vec!["Gameplay".to_string(), "Video".to_string(), "Audio".to_string(), "Controls".to_string()], 5.0*vh);
+  let mut settings_tabs = ui::Tabs::new(vec!["Gameplay".to_string(), "Video".to_string(), "Audio".to_string(), "Controls".to_string(), "Other".to_string()], 5.0*vh);
 
   // for anything shared between game and main menu.
   let mut server_interaction = MainServerInteraction {
@@ -151,6 +151,9 @@ async fn main() {
   audio::set_volume(sfx_self_volume, &mut sfx_self_track);
   audio::set_volume(sfx_other_volume, &mut sfx_other_track);
   audio::set_volume(music_volume, &mut music_track);
+
+  let mut menu_timer = Instant::now();
+
   
   loop {
     main_tabs.update_size(Vector2 { x: 5.0 * vw, y: 5.0 * vh}, Vector2 { x: 90.0*vw, y: 6.0*vh }, 5.0*vh);
@@ -158,6 +161,7 @@ async fn main() {
     heroes_tabs.update_size(Vector2 { x: 5.0 * vw, y: 75.0 * vh}, Vector2 { x: 90.0*vw, y: 15.0*vh }, 5.0*vh);
     let mouse_pos = Vector2 { x: mouse_position().0, y: mouse_position().1 };
 
+    
     if get_keys_pressed().contains(&KeyCode::F11) {
       fullscreen = !fullscreen;
       set_fullscreen(fullscreen);
@@ -1069,7 +1073,7 @@ async fn main() {
     drop(keys);
     let mut quit: bool = false;
     if menu_paused {
-      (menu_paused, quit) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, &mut settings_tabs, (&mut sfx_self_track, &mut sfx_other_track, &mut music_track));
+      (menu_paused, quit) = ui::draw_pause_menu(vh, vw, &mut settings, &mut settings_open_flag, &mut settings_tabs, (&mut sfx_self_track, &mut sfx_other_track, &mut music_track), &mut menu_timer);
     }
     if quit {
       exit(0);
