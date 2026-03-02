@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, sync::{Arc, Mutex, MutexGuard}, time::{Duration, Instant, SystemTime}};
 use kira::{track::TrackBuilder, AudioManager, AudioManagerSettings, DefaultBackend};
-use crate::{audio, const_params::*, database::{self, FriendShipStatus}, gamedata::{Camera, *}, graphics::{self, draw_rectangle_relative}, maths::*, mothership_common::*, network, ui::{self, Settings}};
+use crate::{audio, const_params::*, database::{self, FriendShipStatus}, gamedata::{Camera, *}, graphics, maths::*, mothership_common::*, network, ui::{self, Settings}};
 use miniquad::window::set_window_size;
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use macroquad::{prelude::*, rand::rand};
@@ -446,11 +446,9 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     }
     let relative_position_x = 50.0 * (16.0/9.0) + (player_copy.position.x - player_copy.camera.position.x) * player_copy.camera.zoom;
     let relative_position_y = 50.0              + (player_copy.position.y - player_copy.camera.position.y) * player_copy.camera.zoom;
-    // test
-    //let relative_position_x = main_camera.position.x;
-    //let relative_position_y = main_camera.position.y;
+
     if !player_copy.is_dead {
-      let mut range_limited: f32 = Vector2::distance(player_copy.position, Vector2::from(mouse_position.clone()));
+      let mut range_limited: f32 = Vector2::distance(player_copy.position, Vector2::from(mouse_position.clone())) * player_copy.camera.zoom;
       if range_limited > range {
         range_limited = range;
       }
@@ -966,7 +964,7 @@ fn input_listener_network_sender(player: Arc<Mutex<ClientPlayer>>, game_objects:
               }
             }
             GameEvent::WallHit(_object_type, _owner) => {
-              
+
             }
           }
         }
