@@ -43,112 +43,27 @@ The GDD is in `assets/README.md`.
 
 This is just for me.
 
-## Main
-
+- [ ] Bevy swap
+  - [ ] Clean up input handling too
 - [ ] Characters
-  - [x] Rework Hernani secondary
-  - [ ] Josey aim lazer shows ricochet
-- [ ] Innovate gamemode
-- [x] Rough menu
-  - [x] Pause menu, always accessible
-    - [x] Settings screen
-      - [ ] Text input field
-      - [ ] Input bar
-      - [x] Checkbox
-      - [ ] Drop-down menu
-      - [ ] Keybind input field
-  - [x] Home menu
-    - [x] Tabs
-      - [x] Play
-      - [x] Heroes
-      - [x] Tutorial
-- [ ] Matchmaking server
-  - [ ] **Part 1** (for open beta)
-    - [x] Easier and more reliable netcode
-      - [x] TCP
-      - [ ] UDP
-    - [ ] Player data
-      - [x] Username
-      - [x] Password hash
-      - [x] Friends
-      - [x] Blocked players
-        - [ ] Interface
-      - [x] Stats
-        - [x] Win count
-      - [ ] Ban status
-    - [x] Auth
-      - [x] Create account
-        - [x] PAKE register
-          - [x] Filters
-            - [x] Basic filter
-            - [ ] Profanity filter
-          - [x] Check if already in use
-        - [x] Username & password storage
-      - [x] Log in
-      - [x] Encryption
-        - [x] Game server
-        - [x] Matchmaking server
-    - [x] Chat
-      - [x] Channels
-      - [x] Friends (PM)
-        - [ ] ISSUE: Selected friend is a numerical index, which can change the selected friend on refresh.
-    - [x] Game request
-      - [x] Lobby (request with friend)
-        - [x] Serverside (untested)
-      - [x] Character
-    - [x] Matchmaking
-      - [x] Start game server
-      - [x] Match ends and gives info to server
-        - [ ] Info given to clients
-    - [x] "Fleet" managment
-      - [x] Single-machine 
-      - [x] Error handling
-        - [ ] Apologise to user
-    - [x] Logs
-      - [ ] Chat logs (for moderation)
-      - [x] Server crash logs
-  - [x] UI
-    - [x] Text input fields
-  - [ ] Ranked system
-    - [ ] Ranked queue
-    - [ ] Ranked points storage
-    - [ ] Ranked points assignment at win/loss
-    - [ ] Rank update display at end of game
-    - [ ] Ranked Leaderboard
-  - [x] Maintain ability to read primary server socket during game
-    - [x] In-game chat
-    - [x] Game update (game won/lost)
-  - [x] Offline mode
-  - [x] Practice mode
-    - [ ] Client complies to match assignments even if in practice range.
-  - [ ] Server survival
-    - [ ] Throttling
-    - [ ] Invalid account deletion
-    - [ ] Database Efficiency
-      - [ ] Table instead of serialized struct
-    - [ ] No direct indexing[69], no ".expect()"
-      - [ ] Reboot on failure
-  - [ ] **Part 2** (for release)
-    - [ ] Steam integration
-      - [ ] Accounts
-      - [ ] In-game purchases
-        - [ ] Inform game request
-      - [ ] Display name & change display name
-- [ ] Remove all .unwrap() and .expect(), at least serverside
-- [x] Interpolation
-  - [x] Self-interpolation on dashes
-  - [x] Player interpolation for other players
-  - [ ] Make it optional
-- [ ] Anticheat
-  - [ ] Packet averaging
-  - [ ] Hide certain information from client
-- [ ] Publish game
-  - [ ] Steam
-  - [ ] Marketing
-  - [ ] Server hosting
-    - AWS sucks
-- [ ] Android port
-  - [ ] Android-specific controls (devicequery doesnt work)
+  - [ ] Sága
+  - [ ] The assassin
+- [ ] Ranked system
+- [ ] Server stuff
+  - [ ] chat filter
+  - [ ] throttling, etc...
+- [ ] Better anticheat
+- [ ] Art
+  - [ ] Animation system & animations
+  - [ ] Maps with https://www.mapeditor.org/
+  - [ ] Menu
+  - [ ] Better sfx & vfx
+- [ ] Android port, thanks to bevy
+
+## Irrelevant for game, jut dev QOL
+
+- [ ] Cleaner code
+- [ ] Own parser for character properties that allows comments
 
 ### Bugs
 
