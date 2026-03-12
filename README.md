@@ -60,10 +60,14 @@ This is just for me.
   - [ ] Better sfx & vfx
 - [ ] Android port, thanks to bevy
 
-## Irrelevant for game, jut dev QOL
+- [ ] Bugs
+  - [ ] Raphaelle movspeed bonus too high
+  - [ ] show "slow" instead of "- speed"
+  - [ ] ability tooltips have confusing ability naming. integrate with keybinds.
 
-- [ ] Cleaner code
-- [ ] Own parser for character properties that allows comments
+- [ ] Dev QOL
+  - [ ] Cleaner code
+  - [ ] Own parser for character properties that allows comments
 
 ### Bugs
 

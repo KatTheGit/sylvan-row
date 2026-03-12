@@ -1,11 +1,11 @@
 // MARK: Vectors
 // utility
-use macroquad::math::Vec2;
 use std::time::SystemTime;
 use crate::const_params::*;
 use crate::gamedata::*;
 use std::sync::MutexGuard;
 use std::collections::HashMap;
+use bevy::prelude::*;
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct Vector2 {

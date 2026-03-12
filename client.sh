@@ -1,1 +1,1 @@
-cargo run --bin client --release ## Game lags when not in release mode
+cargo run --bin sylvan_row --release

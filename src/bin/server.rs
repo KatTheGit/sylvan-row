@@ -49,7 +49,7 @@ async fn main() {
     }
   }));
 
-  let listener = TcpListener::bind(format!("{}:{}", "0.0.0.0", SERVER_PORT)).await.unwrap();
+  let listener = TcpListener::bind(format!("{}:{}", "127.0.0.1", SERVER_PORT)).await.unwrap();
 
   let players: Vec<PlayerInfo> = Vec::new();
   // Arc allows for shared access, and Mutex makes it mutually exclusive.
@@ -101,9 +101,12 @@ async fn main() {
         tokio::select! {
           // wait until we recieve packet, and write it to buffer.
           socket_read = socket.read(&mut buffer) => {
+            println!("packet recieved.");
             //std::thread::sleep(std::time::Duration::from_secs_f32(0.5));
             let len: usize = match socket_read {
               Ok(0) => {
+                println!("disconnect.");
+
                 // disconnect
                 // remove player from players.
                 if logged_in {
@@ -164,6 +167,7 @@ async fn main() {
                 match packet.information {                    
                   // MARK: Registration
                   ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
+                    println!("user wants to register");
                     username = recieved_username.clone();
                     let valid = filter::valid_username(username.clone());
                     if !valid {
