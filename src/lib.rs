@@ -32,8 +32,9 @@ use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::Mous
 use bevy_immediate::*;
 use bevy_graphics::*;
 use maths::*;
-use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
+use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
+use ring::hkdf;
 use crate::{bevy_graphics::Button, const_params::DefaultCipherSuite, filter::{valid_password, valid_username}, mothership_common::{ClientToServer, ClientToServerPacket, RefusalReason, ServerToClient, ServerToClientPacket}};
 
 
@@ -69,6 +70,7 @@ struct GameData {
   pub server_stream: Option<TcpStream>,
   pub notifications: Vec<Notification>,
   pub opake_data: OpakeData,
+  pub cipher_key: Vec<u8>,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -98,8 +100,10 @@ impl Default for GameData {
       notifications: Vec::new(),
       opake_data: OpakeData { 
         timeout: Instant::now(),
-        client_registration_start_result: None
-      }
+        client_registration_start_result: None,
+        client_login_start_result: None,
+      },
+      cipher_key: Vec::new(),
     }
   }
 }
@@ -107,6 +111,7 @@ impl Default for GameData {
 struct OpakeData {
   pub timeout: Instant,
   pub client_registration_start_result: Option<ClientRegistrationStartResult<DefaultCipherSuite>>,
+  pub client_login_start_result: Option<ClientLoginStartResult<DefaultCipherSuite>>,
 }
 
 fn main_thread(
@@ -143,6 +148,27 @@ fn main_thread(
     let font: Handle<Font> = asset_server.load("fonts/Roboto-Black.ttf");
 
     match data.current_menu {
+      // MARK: Main
+      MenuScreen::Main(mode) => {
+        if mode != 2 {
+          // menu
+        }
+        if mode == 1 || mode == 2 {
+          // game
+        }
+        // draw chat
+        
+
+        // talk to main server
+
+        // settings screen
+
+        // input
+        if is_window_focused(&win) {
+
+        }
+      }
+
       MenuScreen::Login(login_step) => {
         // draw login screen
 
@@ -236,13 +262,167 @@ fn main_thread(
             }
           }
           // MARK: login
+          // OPAKE login step 1.
           1 => {
-
+            let client_login_start_result: ClientLoginStartResult<DefaultCipherSuite> = ClientLogin::<DefaultCipherSuite>::start(&mut rng, password.as_bytes()).expect("Oops");
+            let message = client_login_start_result.message.clone();
+            let message = ClientToServerPacket {
+              information: ClientToServer::LoginRequestStep1(username.clone(), message)
+            };
+            data.opake_data.client_login_start_result = Some(client_login_start_result);
+            if let Some(ref mut server_stream) = data.server_stream {
+              match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
+                Ok(_) => {
+                  data.current_menu = MenuScreen::Login(2);
+                }
+                Err(err) => {
+                  //registration failed.
+                  data.current_menu = MenuScreen::Login(0);
+                  data.notifications.push(
+                    Notification::new(&format!("Connection failed. Reason: {:?}", err), 2.0)
+                  )
+                }
+              }
+            }
           }
+          // OPAKE login step 2.
           2 => {
 
-          }
+            // recieve packet
+            let mut buffer: [u8; 2048] = [0; 2048];
+            let mut len = 0;
+            if let Some(ref mut server_stream) = data.server_stream {
 
+              len = match server_stream.read(&mut buffer) {
+                Ok(0) => {
+                  // server disconnects us.
+                  data.server_stream = None;
+                  data.notifications.push(
+                    Notification::new("Server has disconnected.", 2.0)
+                  );
+                  data.current_menu = MenuScreen::Login(0);
+                  return;
+                }
+                Ok(n) => {n}
+                Err(err) => {
+                  match err.kind() {
+                    // no message this time, try again.
+                    ErrorKind::WouldBlock => {
+                      println!("wouldblock");
+                      // waited too long, timeout.
+                      if data.opake_data.timeout.elapsed().as_secs_f32() > 3.0 {
+                        data.notifications.push(Notification::new("Timed out", 1.0));
+                        data.current_menu = MenuScreen::Login(0);
+                        return;
+                      }
+                      // try again.
+                      return;
+                    }
+                    // other errors
+                    _ => {
+                      data.notifications.push(
+                        Notification::new(&format!("Unkown error during login. Reason: {:?}", err), 2.0)
+                      );
+                      data.current_menu = MenuScreen::Login(0);
+                      return;
+                    }
+                  }
+                }
+              };
+            }
+            if len > 2048 {
+              data.notifications.push(
+                Notification::new("Buffer overflow.", 2.0)
+              );
+              data.current_menu = MenuScreen::Login(0);
+              return;
+            }
+            let packets = network::tcp_decode::<ServerToClientPacket>(buffer[..len].to_vec());
+            let packets = match packets {
+              Ok(packets) => packets,
+              Err(_err) => {
+                data.current_menu = MenuScreen::Login(0);
+                return;
+              }
+            };
+            for packet in packets {
+              match packet.information {
+                
+                // login finish (step 3)
+                ServerToClient::LoginResponse1(server_response) => {
+                  // placeholder.
+                  let mut message: ClientToServerPacket = ClientToServerPacket { information: ClientToServer::LobbyLeave };
+                  if let Some(ref client_login_start_result) = data.opake_data.client_login_start_result {
+                    let client_login_finish_result = match client_login_start_result.clone().state.finish(
+                      &mut rng,
+                      password.as_bytes(),
+                      server_response,
+                      ClientLoginFinishParameters::default(),
+                    ) {
+                      Ok(result) => {result},
+                      Err(_err) => {
+                        data.notifications.push(
+                          Notification::new("Wrong password", 2.0)
+                        );
+                        data.username_input.selected = false;
+                        data.password_input.selected = true;
+                        data.current_menu = MenuScreen::Login(0);
+                        return;
+                      }
+                    };
+                    let session_key = client_login_finish_result.session_key;
+                    
+                    // Shrink PAKE key
+                    // put this in a function later
+                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+                    let prk = salt.extract(&session_key);
+                    let okm = prk.expand(&[], hkdf::HKDF_SHA256).unwrap();
+                    let mut key_bytes = [0u8; 32];
+                    okm.fill(&mut key_bytes).unwrap();
+                    let key = Vec::from(&key_bytes);
+                    data.cipher_key = key;
+                    let credential_finalization = client_login_finish_result.message;
+                    message = ClientToServerPacket {
+                      information: ClientToServer::LoginRequestStep2(credential_finalization)
+                    };
+                  }
+                  
+                  if let Some(ref mut server_stream) = data.server_stream {
+
+                    match server_stream.write_all(&network::tcp_encode(&message).expect("oops")) {
+                      Ok(_) => {}
+                      Err(_) => {
+                        data.current_menu = MenuScreen::Login(0);
+                        return;
+                      }
+                    }
+                  }
+                  // login successful, go to main screen.
+                  data.current_menu = MenuScreen::Main(0);
+                  return;
+                }
+
+                // error
+                ServerToClient::InteractionRefused(reason) => {
+                  data.notifications.push(
+                    Notification { start_time: Instant::now(), text: match reason {
+                      RefusalReason::InternalError => String::from("Internal Server Error"),
+                      RefusalReason::InvalidUsername => String::from("Invalid Username"),
+                      RefusalReason::UsernameTaken => String::from("Username Taken"),
+                      RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
+                      _ => String::from("Unexpected Error"),
+                    }, duration: 1.5 }
+                  );
+                  data.username_input.selected = true;
+                  data.password_input.selected = false;
+                  data.current_menu = MenuScreen::Login(0);
+                  return;
+                }
+                // any other packet
+                _ => {}
+              }
+            }
+          }
 
           // MARK: register
           // OPAKE register step 1.
@@ -271,7 +451,7 @@ fn main_thread(
               }
             //}
           }
-          // OPAKE register step 3 (step 2 client POV, step 3 overall.)
+          // OPAKE register step 3 (step 2 client POV, step 3 overall). 
           4 => {
             println!("1");
             let mut len: usize = 0;
@@ -395,26 +575,6 @@ fn main_thread(
             }
           }
           _ => {panic!();}
-        }
-      }
-      // MARK: Main
-      MenuScreen::Main(mode) => {
-        if mode != 2 {
-          // menu
-        }
-        if mode == 1 || mode == 2 {
-          // game
-        }
-        // draw chat
-        
-
-        // talk to main server
-
-        // settings screen
-
-        // input
-        if is_window_focused(&win) {
-
         }
       }
     }
