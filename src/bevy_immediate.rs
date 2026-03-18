@@ -184,6 +184,7 @@ pub fn draw_text(
   text: &str,
   position: Vector2,
   size: Vector2,
+  color: Srgba,
   font_size: f32,
   z: i8,
   window: &Window,
@@ -206,7 +207,8 @@ pub fn draw_text(
         .with_font_smoothing(FontSmoothing::None),
       TextLayout::new(Justify::Left, LineBreak::WordBoundary),
       TextBounds::from(size.as_vec2()),
-      Transform::from_translation(Vec3::Z),
+      Transform::from_translation(Vec3{x: 0.0, y: 0.0, z: z as f32}),
+      TextColor(Color::Srgba(color)),
     )],
   ));
 }
@@ -274,7 +276,7 @@ pub struct Texture {
 }
 impl Texture {
   /// Returns the width (x) divided by the height(y) of the image.
-  fn aspect_ratio(&self) -> f32 {
+  pub fn aspect_ratio(&self) -> f32 {
     return self.size.x / self.size.y;
   }
 }

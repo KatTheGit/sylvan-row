@@ -315,17 +315,17 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                       }
                       player.stacks = 0;
                     }
-                    Character::Elizabeth => {
+                    Character::Fedya => {
                       // Change the type of all her current static projectiles to the type
                       // that follows her.
                       for index in 0..game_objects.len() {
-                        if game_objects[index].object_type == GameObjectType::ElizabethProjectileGround
+                        if game_objects[index].object_type == GameObjectType::FedyaProjectileGround
                         && game_objects[index].get_bullet_data().owner_username == player.username {
                           game_objects[index].to_be_deleted = true;
                           let object_clone = game_objects[index].clone();
                           game_objects.push(
                             GameObject {
-                              object_type: GameObjectType::ElizabethProjectileGroundRecalled,
+                              object_type: GameObjectType::FedyaProjectileGroundRecalled,
                               position: object_clone.position,
                               to_be_deleted: false,
                               id: game_object_id_counter.increment(),
@@ -989,12 +989,12 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           }
         }
       }
-      // Delete extra Elizabeth ground daggers
-      if players[p_index].character == Character::Elizabeth {
+      // Delete extra Fedya ground daggers
+      if players[p_index].character == Character::Fedya {
 
         let mut objects_to_consider: Vec<usize> = Vec::new();
         for o_index in 0..game_objects.len() {
-          if game_objects[o_index].object_type == GameObjectType::ElizabethProjectileGround {
+          if game_objects[o_index].object_type == GameObjectType::FedyaProjectileGround {
             if game_objects[o_index].get_bullet_data().owner_username == players[p_index].username {
               objects_to_consider.push(o_index);
             }
@@ -1133,9 +1133,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             add_event_all(GameEvent::AttackFired(GameObjectType::CynewynnSword, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
-          Character::Elizabeth => {
+          Character::Fedya => {
             game_objects.push(GameObject {
-              object_type: GameObjectType::ElizabethProjectileRicochet,
+              object_type: GameObjectType::FedyaProjectileRicochet,
               position: players[p_index].position,
               to_be_deleted: false,
               id: game_object_id_counter.increment(),
@@ -1150,7 +1150,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 }
               )
             });
-            add_event_all(GameEvent::AttackFired(GameObjectType::ElizabethProjectileRicochet, players[p_index].username.clone()), &mut players);
+            add_event_all(GameEvent::AttackFired(GameObjectType::FedyaProjectileRicochet, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
           Character::Wiro => {
@@ -1382,13 +1382,13 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             }
           },
 
-          Character::Elizabeth => {
+          Character::Fedya => {
             // Spawn a prakata billar bug.
             // (but for copyright reasons it only looks like one and isn't one!!!!!!)
 
             // beforehand we need to check if there's already one in the game, and delete it.
             for o_index in 0..game_objects.len() {
-              if game_objects[o_index].object_type == GameObjectType::ElizabethTurret
+              if game_objects[o_index].object_type == GameObjectType::FedyaTurret
               && game_objects[o_index].get_bullet_data().owner_username == players[p_index].username {
                 game_objects[o_index].to_be_deleted = true;
               }
@@ -1397,7 +1397,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
 
             // spawn the new one
             game_objects.push(GameObject {
-              object_type: GameObjectType::ElizabethTurret,
+              object_type: GameObjectType::FedyaTurret,
               position: players[p_index].position,
               to_be_deleted: false,
               id: game_object_id_counter.increment(),
@@ -1697,13 +1697,13 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
         GameObjectType::CynewynnSword => {
           (players, *game_objects, _) = apply_simple_bullet_logic(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true);
         }
-        // ELIZABETH primary
-        GameObjectType::ElizabethProjectileRicochet => {
+        // Fedya primary
+        GameObjectType::FedyaProjectileRicochet => {
           (players, *game_objects, _) = apply_simple_bullet_logic_extra(players, characters.clone(), game_objects.clone(), o_index, true_delta_time, true, 
             255, 255, true, f32::INFINITY, f32::INFINITY);
         }
-        // ELIZABETH primary but recalled
-        GameObjectType::ElizabethProjectileGroundRecalled => {
+        // Fedya primary but recalled
+        GameObjectType::FedyaProjectileGroundRecalled => {
           // needs to move towards owner
           let owner_username = game_objects[o_index].get_bullet_data().owner_username.clone();
           let owner_index = index_by_username(&owner_username, players.clone());
@@ -1763,16 +1763,16 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             }
           }
         }
-        // ELIZABETH'S TURRET
-        GameObjectType::ElizabethTurret => {
+        // Fedya'S TURRET
+        GameObjectType::FedyaTurret => {
           // PROJECTILES
           // shoot projectiles. use secondary_cast_time as cooldown counter.
           let owner = index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone());
           let owner_team = players[owner].team;
           let object_pos = game_objects[o_index].position;
-          let range = characters[&Character::Elizabeth].secondary_range;
-          let cooldown = characters[&Character::Elizabeth].primary_cooldown_2;
-          let speed = characters[&Character::Elizabeth].primary_shot_speed_2;
+          let range = characters[&Character::Fedya].secondary_range;
+          let cooldown = characters[&Character::Fedya].primary_cooldown_2;
+          let speed = characters[&Character::Fedya].primary_shot_speed_2;
 
           for player in players.clone() {
             if player.team != owner_team
@@ -1780,7 +1780,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
               if players[owner].secondary_cast_time.elapsed().as_secs_f32() > cooldown {
                 // shoot
                 game_objects.push(GameObject {
-                  object_type: GameObjectType::ElizabethTurretProjectile,
+                  object_type: GameObjectType::FedyaTurretProjectile,
                   position: object_pos,
                   to_be_deleted: false,
                   id: game_object_id_counter.increment(),
@@ -1803,7 +1803,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           }
           // MOVEMENT
           // flip
-          let speed = characters[&Character::Elizabeth].primary_range_3;
+          let speed = characters[&Character::Fedya].primary_range_3;
 
           // check for collisions with walls
           let pos = game_objects[o_index].position;
@@ -1847,10 +1847,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           game_objects[o_index].position.y += game_objects[o_index].get_bullet_data().direction.y * speed * true_delta_time as f32;
 
         }
-        // ELIZABETH TURRET PROJECTILE
-        GameObjectType::ElizabethTurretProjectile => {
-          let damage = characters[&Character::Elizabeth].secondary_damage;
-          let speed = characters[&Character::Elizabeth].primary_shot_speed_2;
+        // Fedya TURRET PROJECTILE
+        GameObjectType::FedyaTurretProjectile => {
+          let damage = characters[&Character::Fedya].secondary_damage;
+          let speed = characters[&Character::Fedya].primary_shot_speed_2;
           (players, *game_objects, _) = apply_simple_bullet_logic_extra(
             players, characters.clone(), game_objects.clone(), o_index, true_delta_time, false,
             damage, 255, false, speed, f32::INFINITY);
@@ -1863,9 +1863,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             GameObjectType::RaphaelleBullet,                  // raph
             GameObjectType::RaphaelleBulletEmpowered,
             GameObjectType::CynewynnSword,                    // cyne
-            GameObjectType::ElizabethProjectileRicochet,      // elizabeth
-            GameObjectType::ElizabethProjectileGroundRecalled,
-            GameObjectType::ElizabethTurretProjectile,
+            GameObjectType::FedyaProjectileRicochet,      // Fedya
+            GameObjectType::FedyaProjectileGroundRecalled,
+            GameObjectType::FedyaTurretProjectile,
             GameObjectType::WiroGunShot,                      // wiro
           ];
           for victim_object_index in 0..game_objects.len() {
@@ -1889,12 +1889,12 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                   let damage = (damage_multiplier * match game_objects[victim_object_index].object_type {
                     GameObjectType::HernaniBullet
                     | GameObjectType::CynewynnSword
-                    | GameObjectType::ElizabethProjectileRicochet
+                    | GameObjectType::FedyaProjectileRicochet
                     | GameObjectType::RaphaelleBullet           => { characters[&obj2_owner_character].primary_damage }
-                    GameObjectType::ElizabethProjectileGroundRecalled
+                    GameObjectType::FedyaProjectileGroundRecalled
                     | GameObjectType::WiroGunShot
                     | GameObjectType::RaphaelleBulletEmpowered  => { characters[&obj2_owner_character].primary_damage_2 }
-                    GameObjectType::ElizabethTurretProjectile => { characters[&obj2_owner_character].secondary_damage }
+                    GameObjectType::FedyaTurretProjectile => { characters[&obj2_owner_character].secondary_damage }
                     _ => {panic!("{:?}", game_objects[victim_object_index].object_type)}
                   } as f32) as u8;
                   if players[obj1_owner_index].secondary_charge > damage{
@@ -2051,12 +2051,12 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
       if game_object.to_be_deleted == true {
         // EXTRA LOGIC
         match game_object.object_type.clone() {
-          // Elizabeth's projectile needs to fall down on deletion,
+          // Fedya's projectile needs to fall down on deletion,
           // if it hit somebody,
-          GameObjectType::ElizabethProjectileRicochet => {
+          GameObjectType::FedyaProjectileRicochet => {
             cleansed_game_objects.push(
               GameObject {
-                object_type: GameObjectType::ElizabethProjectileGround,
+                object_type: GameObjectType::FedyaProjectileGround,
                 position: game_object.position,
                 to_be_deleted: false,
                 id: game_object_id_counter.increment(),

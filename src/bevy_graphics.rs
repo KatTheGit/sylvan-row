@@ -5,7 +5,7 @@ use std::time::Instant;
 use crate::database::FriendShipStatus;
 use crate::gamedata::Camera;
 use crate::mothership_common::{ChatMessageType, ClientToServerPacket, ClientToServer};
-use crate::{audio, gamedata::*};
+use crate::{audio, gamedata::*, GameData};
 use crate::maths::Vector2;
 use crate::bevy_immediate::*;
 use bevy::color::palettes::css::*;
@@ -43,13 +43,13 @@ impl Button {
     let font_size = self.font_size;
     draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
     let inner_shrink: f32 = 1.0 * vh;
-    draw_rect(Color::Srgba(BLUE), position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-    draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, font_size, z, window, commands);
+    draw_rect(Color::Srgba(SKY_BLUE), position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z+1, window, commands);
+    draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, window, commands);
     let mouse: Vector2 = get_mouse_pos(&window);
     if self.clickable {
       if mouse.x > position.x && mouse.x < (position.x + size.x) {
         if mouse.y > position.y && mouse.y < (position.y + size.y) {
-          draw_rect(Color::Srgba(GRAY), position, size, z, window, commands);
+          draw_rect(Color::Srgba(GRAY), position, size, z+2, window, commands);
           //draw_text(&font, text, Vector2 { x: position.x + 1.0*vh + 10.0, y: position.y + size.y * 0.65 }, size, font_size, z, window, commands);
         }
       }
@@ -134,7 +134,7 @@ impl Tabs {
       draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
       let inner_shrink: f32 = 1.0 * vh;
       draw_rect(Color::Srgba(SKY_BLUE), position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-      draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, font_size, z, window, commands);
+      draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, window, commands);
       if selected {
         draw_rect(Color::Srgba(GRAY), position, size, z+1, window, commands);
       }
@@ -144,7 +144,7 @@ impl Tabs {
           if mouse.y > position.y && mouse.y < (position.y + size.y)   {
             draw_rect(Color::Srgba(GRAY), position, size, z+2, window, commands);
             //draw_text(&font, text, Vector2 {x: position.x + 1.0 *vh + 10.0, y: position.y}, size, font_size, z+2, window, commands);
-            if get_mouse_pressed(mouse_buttons).contains(&MouseButton::Left) {
+            if get_mouse_released(mouse_buttons).contains(&MouseButton::Left) {
               return true;
             }
           }
@@ -205,7 +205,7 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
   draw_rect(Color::Srgba(BLUE), position, Vector2 { x: size, y: size }, z, window, commands);
   let inner_shrink: f32 = 0.2 * vh;
   draw_rect(Color::Srgba(BLUE), position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2 { x: size, y: size }- Vector2 { x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-  draw_text(&font, text, Vector2 {x: position.x + size + 1.0 *vh, y: position.y}, Vector2 { x: size + 100.0*vh, y: size }, font_size , z, window, commands);
+  draw_text(&font, text, Vector2 {x: position.x + size + 1.0 *vh, y: position.y}, Vector2 { x: size + 300.0*vh, y: size }, BLACK, font_size , z, window, commands);
 
   
   if *selected {
@@ -235,7 +235,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
 
   let slider_width = 2.0 * vh;
   let slider_x_pos = position.x + (size.x - slider_width) * ((*value-value_min) / (value_max - value_min));
-  draw_rect(Color::Srgba(SKY_BLUE), Vector2 { x: slider_x_pos, y: position.y }, Vector2 { x: slider_width, y: size.y }, z, window, commands);
+  draw_rect(Color::Srgba(BLUE), Vector2 { x: slider_x_pos, y: position.y }, Vector2 { x: slider_width, y: size.y }, z+2, window, commands);
   let mut formatted_value: String = format!("{:.2}", value);
   if *value >= 1.0 {
     formatted_value = format!("{:.1}", value);
@@ -243,7 +243,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
   if *value >= 10.0 {
     formatted_value = format!("{:.0}", value);
   }
-  draw_text(&font, format!("{}: {}", text, formatted_value).as_str(), Vector2 { x: position.x + 2.0*vh, y: position.y + size.y * 0.65 }, size, font_size, z, window, commands);
+  draw_text(&font, format!("{}: {}", text, formatted_value).as_str(), Vector2 { x: position.x + 2.0*vh, y: position.y}, size, BLACK, font_size, z+1, window, commands);
   let mouse: Vector2 = get_mouse_pos(window);
   let margin = size.x * 0.1;
   if mouse.x > (position.x - margin) && mouse.x < (position.x + size.x + margin) {
@@ -297,13 +297,13 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
   );
   draw_rect(Color::Srgba(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0) * vh, y:(position.y + squish_offset/2.0) * vh}, Vector2{x: (size.x - squish_offset) * vh, y: ((size.y - squish_offset) * (1.0 - progress)) * vh}, z, window, commands);
   let text = match ability_index {
-    1 => " LMB ",
-    2 => " RMB ",
-    3 => "Space",
-    4 => "",
+    0 => "PASSIVE",
+    1 => "PRIMARY",
+    2 => "SECONDARY",
+    3 => "DASH",
     _ => "Unkown",
   };
-  draw_text(&font, text, Vector2 { x: (position.x + size.y * 0.125) * vh, y: (position.y + size.y * 1.3) * vh}, size, size.x * 0.3 * vh, z, window, commands);
+  draw_text(&font, text, Vector2 { x: (position.x), y: (position.y + size.y * 1.05)}, size, BLACK, size.x * 0.25, z, window, commands);
   let ability = match ability_index {
     1 => character_descriptions[&character].primary.clone(),
     2 => character_descriptions[&character].secondary.clone(),
@@ -312,7 +312,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     _ => character_descriptions[&character].passive.clone(),
   };
   let text = ability.to_text();
-  tooltip(position * vh, size * vh, &text, vh, vw, font, get_mouse_pos(window), z, window, commands);
+  tooltip(position, size, &text, Vector2 { x: 55.0 * vh, y: 25.0 * vh }, vh, vw, font, get_mouse_pos(window), z+10, window, commands);
 }
 
 pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Handle<Font>, vh: f32, settings: Settings, z: i8, window: &Window, commands: &mut Commands) -> () {
@@ -328,7 +328,7 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
       player.username.clone()
     };
   
-  draw_text(&font, &displayed_name, Vector2 { x: position.x * vh, y: position.y * vh }, Vector2 { x: 100.0*vh, y: 100.0*vh }, size * 0.5 * vh, z, window, commands);
+  draw_text(&font, &displayed_name, Vector2 { x: position.x * vh, y: position.y * vh }, Vector2 { x: 100.0*vh, y: 100.0*vh }, BLACK, size * 0.5 * vh, z, window, commands);
   draw_rect(Color::Srgba(Srgba {red: 0.0, green: 0.0, blue: 0.0, alpha: 0.5}), Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2 {x: (size * (100.0 as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
   draw_rect(Color::Srgba(Srgba {red: 0.0, green: 1.0, blue: 0.1, alpha: 1.0}), Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2{x: ( size * (player.health as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
 }
@@ -345,129 +345,129 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
 /// - sfx self
 /// - sfx other
 /// - music
-pub fn draw_pause_menu(vh: f32, vw: f32, settings: &mut Settings, settings_open: &mut bool, settings_tabs: &mut Tabs/*, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle)*/, general_timer: &mut Instant, z: i8, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, keys: Res<ButtonInput<KeyCode>>) -> (bool, bool) {
+pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle)*/, z: i8, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, keys: Res<ButtonInput<KeyCode>>) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
-  let button_y_separation: f32 = 15.0 * vh;
-  let button_y_offset: f32 = 25.0 * vh;
-  let button_font_size = 5.0 * vh;
+  let button_y_separation: f32 = 15.0 * uiscale;
+  let button_y_offset: f32 = 25.0 * uiscale;
+  let button_font_size = 5.0 * uiscale;
 
-  let button_size: Vector2 = Vector2 { x: 25.0 * vh, y: 9.0 * vh };
+  let button_size: Vector2 = Vector2 { x: 25.0 * uiscale, y: 9.0 * uiscale };
   // semi-transparent background
   draw_rect(Color::Srgba(Srgba { red: 1.0, green: 1.0, blue: 1.0, alpha: 0.9 }), Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, z, window, commands);
-  if !*settings_open {
+  if !data.settings_open {
     // buttons
     let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
     let mut resume_button = Button::new(resume_button_position, button_size, "Resume", button_font_size);
-    resume_button.draw(vh, true, z, font, window, commands);
+    resume_button.draw(uiscale, true, z, font, window, commands);
     if resume_button.is_down(window, mouse_buttons) {
       menu_paused = false;
-      *settings_open = false;
+      data.settings_open = false;
     }
     
     
     let settings_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation };
     let mut settings_button = Button::new(settings_button_position, button_size, "Options", button_font_size);
-    settings_button.draw(vh, true, z, font, window, commands);
+    settings_button.draw(uiscale, true, z, font, window, commands);
     if settings_button.was_released(window, mouse_buttons) {
-      *settings_open = true;
-      *general_timer = Instant::now();
+      data.settings_open = true;
+      data.settings_timer = Instant::now();
     }
 
     // Quit button
     let quit_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation * 2.0 };
     let mut quit_button = Button::new(quit_button_position, button_size, "Quit", button_font_size);
-    quit_button.draw(vh, true, z, font, window, commands);
-    if quit_button.is_down(window, mouse_buttons) {
+    quit_button.draw(uiscale, true, z, font, window, commands);
+    if quit_button.was_released(window, mouse_buttons) {
       wants_to_quit = true;
       menu_paused = false;
-      *settings_open = false;
+      data.settings_open = false;
     }
 
   }
-  if *settings_open {
-    settings_tabs.update_size(Vector2 { x: 10.0*vw, y: 15.0*vh }, Vector2 { x: 80.0*vw, y: 6.0*vh }, 6.0*vh);
-    settings_tabs.draw_and_process(vh, true, z, font, window, commands, mouse_buttons);
-    let mut back_button = Button::new(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 3.0*vh }, Vector2 { x: 25.0 * vh, y: 9.0 * vh }, "Back", button_font_size);
-    back_button.draw(vh, true, z, font, window, commands);
-    if back_button.is_down(window, mouse_buttons) {
-      *settings_open = false;
+  if data.settings_open {
+    data.settings_tabs.update_size(Vector2 { x: 10.0*vw, y: 15.0*uiscale }, Vector2 { x: 80.0*vw, y: 6.0*uiscale }, 5.0*uiscale);
+    data.settings_tabs.draw_and_process(uiscale, true, z, font, window, commands, mouse_buttons);
+    let mut back_button = Button::new(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 3.0*uiscale }, Vector2 { x: 25.0 * uiscale, y: 9.0 * uiscale }, "Back", button_font_size);
+    back_button.draw(uiscale, true, z, font, window, commands);
+    if back_button.was_released(window, mouse_buttons) {
+      data.settings_open = false;
     }
 
     let mut settings_modified: bool = false;
 
     // Gameplay
-    if settings_tabs.selected_tab() == 0 {
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: vh * 25.0 }, 4.0 * vh, "Camera smoothing", 5.0*vh, vh, &mut settings.camera_smoothing, z, font, window, commands, mouse_buttons);
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: vh * 30.0 }, 4.0 * vh, "Display character names instead of usernames", 5.0*vh, vh, &mut settings.display_char_name_instead, z, font, window, commands, mouse_buttons);
+    if data.settings_tabs.selected_tab() == 0 {
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Camera smoothing", 4.0*uiscale, uiscale, &mut data.settings.camera_smoothing, z, font, window, commands, mouse_buttons);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Display character names instead of usernames", 4.0*uiscale, uiscale, &mut data.settings.display_char_name_instead, z, font, window, commands, mouse_buttons);
     }
     // Video
-    if settings_tabs.selected_tab() == 1 {
-      let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: vh * 25.0 }, 4.0 * vh, "Fullscreen", 5.0*vh, vh, &mut settings.fullscreen, z, font, window, commands, mouse_buttons);
+    if data.settings_tabs.selected_tab() == 1 {
+      let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Fullscreen", 4.0*uiscale, uiscale, &mut data.settings.fullscreen, z, font, window, commands, mouse_buttons);
       if fullscreen_changed {
-        set_fullscreen(settings.fullscreen, window);
+        set_fullscreen(data.settings.fullscreen, window);
       }
       settings_modified |= fullscreen_changed;
     }
     // Audio
-    if settings_tabs.selected_tab() == 2 {
-      settings_modified |= slider(Vector2 { x: vw * 25.0, y: vh * 25.0 }, Vector2 { x: 45.0*vw, y: 7.0*vh }, "Volume", 5.0*vh, vh, &mut settings.master_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
-      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 33.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "Music", 5.0*vh, vh, &mut settings.music_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
-      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "SFX (You)", 5.0*vh, vh, &mut settings.sfx_self_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
-      settings_modified |= slider(Vector2 { x: vw * 30.0, y: vh * 49.0 }, Vector2 { x: 40.0*vw, y: 7.0*vh }, "SFX (Others)", 5.0*vh, vh, &mut settings.sfx_other_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
+    if data.settings_tabs.selected_tab() == 2 {
+      settings_modified |= slider(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, Vector2 { x: 45.0*vw, y: 7.0*uiscale }, "Volume", 5.0*uiscale, uiscale, &mut data.settings.master_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 33.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "Music", 5.0*uiscale, uiscale, &mut data.settings.music_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (You)", 5.0*uiscale, uiscale, &mut data.settings.sfx_self_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 49.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (Others)", 5.0*uiscale, uiscale, &mut data.settings.sfx_other_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
       if settings_modified {
         // update volumes.
-        let sfx_self_volume = settings.master_volume * settings.sfx_self_volume / 100.0;
-        let sfx_other_volume = settings.master_volume * settings.sfx_other_volume / 100.0;
-        let music_volume = settings.master_volume * settings.music_volume / 100.0;
+        let sfx_self_volume = data.settings.master_volume * data.settings.sfx_self_volume / 100.0;
+        let sfx_other_volume = data.settings.master_volume * data.settings.sfx_other_volume / 100.0;
+        let music_volume = data.settings.master_volume * data.settings.music_volume / 100.0;
         //audio::set_volume(sfx_self_volume, &mut tracks.0);
         //audio::set_volume(sfx_other_volume, &mut tracks.1);
         //audio::set_volume(music_volume, &mut tracks.2);
       }
     }
     // Controls
-    if settings_tabs.selected_tab() == 3 {
+    if data.settings_tabs.selected_tab() == 3 {
       let mut was_edited = false;
       #[cfg(not(target_os="android"))]
       {
-        let base_y: f32 = 25.0 * vh;
-        let size = 5.0 * vh;
-        was_edited |= keybind_edit_buttons("Walk UP",    &mut settings.keybinds.walk_up,    Vector2 { x: 10.0 * vw, y: base_y + size * 0.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Walk DOWN",  &mut settings.keybinds.walk_down,  Vector2 { x: 10.0 * vw, y: base_y + size * 1.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Walk LEFT",  &mut settings.keybinds.walk_left,  Vector2 { x: 10.0 * vw, y: base_y + size * 2.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Walk RIGHT", &mut settings.keybinds.walk_right, Vector2 { x: 10.0 * vw, y: base_y + size * 3.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Primary",    &mut settings.keybinds.primary,    Vector2 { x: 10.0 * vw, y: base_y + size * 4.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Secondary",  &mut settings.keybinds.secondary,  Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Dash",       &mut settings.keybinds.dash,       Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Fullscreen", &mut settings.keybinds.fullscreen, Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Open Chat",  &mut settings.keybinds.open_chat,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Cycle Friends (Chat)",  &mut settings.keybinds.cycle_friends,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, vh, general_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        let base_y: f32 = 25.0 * uiscale;
+        let size = 5.0 * uiscale;
+        was_edited |= keybind_edit_buttons("Walk UP",    &mut data.settings.keybinds.walk_up,    Vector2 { x: 10.0 * vw, y: base_y + size * 0.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Walk DOWN",  &mut data.settings.keybinds.walk_down,  Vector2 { x: 10.0 * vw, y: base_y + size * 1.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Walk LEFT",  &mut data.settings.keybinds.walk_left,  Vector2 { x: 10.0 * vw, y: base_y + size * 2.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Walk RIGHT", &mut data.settings.keybinds.walk_right, Vector2 { x: 10.0 * vw, y: base_y + size * 3.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Primary",    &mut data.settings.keybinds.primary,    Vector2 { x: 10.0 * vw, y: base_y + size * 4.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Secondary",  &mut data.settings.keybinds.secondary,  Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Dash",       &mut data.settings.keybinds.dash,       Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Fullscreen", &mut data.settings.keybinds.fullscreen, Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Open Chat",  &mut data.settings.keybinds.open_chat,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Cycle Friends (Chat)",  &mut data.settings.keybinds.cycle_friends,  Vector2 { x: 10.0 * vw, y: base_y + size * 9.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
       }
       
       if was_edited {
-        *general_timer = Instant::now();
+        data.settings_timer = Instant::now();
       }
       settings_modified |= was_edited;
     }
     // Other
-    if settings_tabs.selected_tab() == 4 {
-      let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 30.0*vh }, Vector2 { x: 20.0*vw, y: 8.0*vh }, "Reset settings", 5.0*vh);
-      reset_button.draw(vh, true, z, font, window, commands);
+    if data.settings_tabs.selected_tab() == 4 {
+      let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 30.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset settings", 4.0*uiscale);
+      reset_button.draw(uiscale, true, z, font, window, commands);
       if reset_button.was_released(window, mouse_buttons) {
-        *settings = Settings::new();
+        data.settings = Settings::new();
         settings_modified = true;
       }
-      let mut reset_keybinds_button = Button::new(Vector2 { x: 40.0*vw, y: 40.0*vh }, Vector2 { x: 20.0*vw, y: 8.0*vh }, "Reset keybinds", 5.0*vh);
-      reset_keybinds_button.draw(vh, true, z, font, window, commands);
+      let mut reset_keybinds_button = Button::new(Vector2 { x: 40.0*vw, y: 40.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset keybinds", 4.0*uiscale);
+      reset_keybinds_button.draw(uiscale, true, z, font, window, commands);
       if reset_keybinds_button.was_released(window, mouse_buttons) {
-        settings.keybinds = KeybindSettings::new();
+        data.settings.keybinds = KeybindSettings::new();
         settings_modified = true;
       }
     }
 
     // if the settings were modified, save them.
     if settings_modified {
-      settings.save();
+      data.settings.save();
     }
   }
 
@@ -499,7 +499,7 @@ impl Notification {
     let inner_shrink: f32 = 1.0 * vh;
     draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
     draw_rect(Color::Srgba(SKY_BLUE), position + Vector2 {x: inner_shrink, y: inner_shrink}, size - Vector2 {x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-    draw_text(&font, self.text.as_str(), Vector2 {x: position.x + 2.0 * vh, y: position.y}, size, font_size, z, window, commands);
+    draw_text(&font, self.text.as_str(), Vector2 {x: position.x + 2.0 * vh, y: position.y}, size, BLACK, font_size, z, window, commands);
   }
   pub fn new(text: &str, duration: f32) -> Notification {
     return Notification { start_time: Instant::now(), text: String::from(text), duration }
@@ -647,7 +647,7 @@ impl KeybindSettings {
 #[cfg(not(target_os="android"))]
 pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8), position: Vector2, size: f32, vh: f32, clickable: bool, font: &Handle<Font>, z: i8, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
   let mut font_size = size * 0.8;
-  draw_text(&font, keybind_name, Vector2 { x: position.x, y: position.y + size * 0.65 }, Vector2 { x: size*10.0, y: size }, font_size, z, window, commands);
+  draw_text(&font, keybind_name, Vector2 { x: position.x, y: position.y}, Vector2 { x: size*10.0, y: size }, BLACK, font_size, z, window, commands);
   for i in 0..2 {
 
     let keycode_name;
@@ -1035,7 +1035,7 @@ pub fn chatbox(
       ChatMessageType::Team => SKY_BLUE,
       ChatMessageType::All => ORANGE,
     };
-    draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), position, size, 3.0 * vh, z, window, commands);
+    draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), position, size, BLACK, 3.0 * vh, z, window, commands);
     // draw input textbox
     chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, vh, font, z, commands, window, mouse_buttons, key_inputs.clone(), key_events);
     
@@ -1114,7 +1114,7 @@ pub fn chatbox(
         };
         let current_y_size = (formatted_messages[m_index].0.len() / 14) as f32;
         y_offset += current_y_size;
-        draw_text(&font, &formatted_messages[m_index].0, Vector2 { x: position.x, y: pos_y }, Vector2 { x: size.x, y: current_y_size }, 3.0 * vh, z, window, commands);
+        draw_text(&font, &formatted_messages[m_index].0, Vector2 { x: position.x, y: pos_y }, Vector2 { x: size.x, y: current_y_size }, BLACK, 3.0 * vh, z, window, commands);
       }
     }
     let mouse_wheel = get_mouse_wheel(mouse_wheel);
@@ -1189,37 +1189,35 @@ impl TextInput {
     while text_to_draw.len() > 10 {
       text_to_draw.remove(0);
     }
-    draw_text(&font, &text_to_draw, Vector2 {x: position.x + margin, y: position.y}, size, font_size, z, window, commands);
+    draw_text(&font, &text_to_draw, Vector2 {x: position.x + margin, y: position.y}, size, BLACK, font_size, z, window, commands);
   }
 }
 
 // MARK: Tooltip
 /// When the mouse hovers over the given rectangle with `position`
 /// and `size`, it will display the given text.
-pub fn tooltip(position: Vector2, size: Vector2, text: &str, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: i8, window: &Window, commands: &mut Commands) {
-  let font_size = 4.0 * vh;
+pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vector2, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: i8, window: &Window, commands: &mut Commands) {
+  let font_size = 3.5 * vh;
   if mouse_pos.x < position.x + size.x
   && mouse_pos.x > position.x
   && mouse_pos.y < position.y + size.y
   && mouse_pos.y > position.y {
     //let lines: Vec<&str> = text.split("\n").collect();
     let y_offset = 4.0 * vh;
-    let y_size = (text.len() / 14) as f32 * 3.0 * vh + 2.0 * vh; //y_offset * (lines.len() as f32) + 2.0 * vh;
-    let x_size = 10.0*vh;
 
     let visibility_x_offset: f32 = if mouse_pos.x > 60.0 * vw {
-      - x_size - 10.0
+      - tooltip_size.x - 10.0
     } else {
       10.0
     };
     let visibility_y_offset: f32 = if mouse_pos.y > 60.0 * vh {
-      - y_size - 10.0
+      - tooltip_size.y - 10.0
     } else {
       10.0
     };
-    draw_rect(Color::Srgba(BLUE), mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: x_size + 1.0*vh, y: y_size + 1.0*vh }, z, window, commands);
-    draw_rect(Color::Srgba(SKY_BLUE), mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: x_size,          y: y_size          }, z, window, commands);
-    draw_text(&font, text, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: x_size, y: y_size }, font_size, z, window, commands);
+    draw_rect(Color::Srgba(BLUE), mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*vh, y: tooltip_size.y + 1.0*vh }, z, window, commands);
+    draw_rect(Color::Srgba(SKY_BLUE), mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
+    draw_text(&font, text, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset + 1.0 * vh, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*vh, y: 0.0}, BLACK, font_size, z+1, window, commands);
   }
 }
 
@@ -1293,7 +1291,7 @@ pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, c
 pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Handle<Font>, font_size: f32, vh: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
   let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
   let relative_position_y = (y - camera.position.y) * camera.zoom + 50.0; //+ (vh * 100.0) / 2.0;
-  draw_text(&font, text, Vector2 { x: relative_position_x * vh, y: relative_position_y * vh }, Vector2 { x: 100.0 * vh, y: 100.0*vh }, font_size * vh * camera.zoom, z, window, commands);
+  draw_text(&font, text, Vector2 { x: relative_position_x * vh, y: relative_position_y * vh }, Vector2 { x: 100.0 * vh, y: 100.0*vh }, BLACK, font_size * vh * camera.zoom, z, window, commands);
 }
 pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, team: Team, y_offset: f32, alpha: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   if positions.len() < 2 { return; }

@@ -25,7 +25,7 @@ This document specifies guidelines to aid with the development of this game from
     - [4.2.3. Leo's idea (not implemented)](#423-leos-idea-not-implemented)
   - [4.3. Ranged/Control](#43-rangedcontrol)
     - [4.3.1. Hernani](#431-hernani)
-    - [4.3.2. Josey](#432-josey)
+    - [4.3.2. Fedya](#432-fedya)
     - [4.3.3 Koldo](#433-koldo)
 - [5. Gameplay](#5-gameplay)
   - [5.1. Gamemode](#51-gamemode)
@@ -281,7 +281,7 @@ Intended playstyle:
 - Easy to play, tutorial character.
 - Stand back and fire from a distance, while keeping people away with walls and making sure to manage your long cooldown dash adequately.
 
-### 4.3.2. Josey
+### 4.3.2. Fedya
 
 - **Primary** - Cunning Knives
   - Throw a mid-range knife tha can ricochet off walls once.
@@ -383,9 +383,9 @@ Raphaelle is an Archangel and a combat medic, but over her many battles had come
 
 Wiro was very misunderstood as a child and his encounter with Archangel Raphaelle helped him discover his true self, and since then the two have been inseparable. Wiro's newfound confidence allowed him to dedicate himself to caring for others and protecting them as a Guardian Angel, but his obsession concerns Raphaelle; She's the only one who knows the real Wiro, and she knows he's not taking care of himself.
 
-Hernani is a bandit and an anarchist, convinced of being shunned by society. He is a very troubled person, at conflict with himself much more than he is with anybody else. His paranoia led him to a very cautious fighting style, which he has nevertheless mastered, making him a feared musketeer. His musket appears to have been made by Josey.
+Hernani is a bandit and an anarchist, convinced of being shunned by society. He is a very troubled person, at conflict with himself much more than he is with anybody else. His paranoia led him to a very cautious fighting style, which he has nevertheless mastered, making him a feared musketeer. His musket appears to have been made by Fedya.
 
-Josey was born with the power to partially intuit coincidence, and manipulate it into deterministic outcomes. In his early years he used this power to make a living through his holistic assasination agency, whose main selling point was the lack of evidence left behind by his "coincidental" methods. As the world changed around him, he took the opportunity to stop his evil trade and become an engineer instead. His intuition made of him a great mechanic, and if he ever had to fight, he'd do it semi-reluctantly, relying on his contraptions to do his bidding. Him and Hernani are rivals, and constantly try to assassinate eachother, but there's something about the way they do it...
+Fedya was born with the power to partially intuit coincidence, and manipulate it into deterministic outcomes. In his early years he used this power to make a living through his holistic assasination agency, whose main selling point was the lack of evidence left behind by his "coincidental" methods. As the world changed around him, he took the opportunity to stop his evil trade and become an engineer instead. His intuition made of him a great mechanic, and if he ever had to fight, he'd do it semi-reluctantly, relying on his contraptions to do his bidding. Him and Hernani are rivals, and constantly try to assassinate eachother, but there's something about the way they do it...
 
 Temerity used to be part of the City's police force, but after the changes brought by Cynewynn's reign she was fired due to her methods being too "old school". In fairness, her habit of solving every issue with rocket launchers and her proficiency at crashing police-issued jets was already somewhat frowned upon even in the "old days". However she still performs her duties as a law enforcement officer by stealing equipment from the headquarters and enforcing whatever the current legal code may be, despite the entire task force dedicated to her.
 
