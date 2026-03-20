@@ -31,11 +31,12 @@ use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, U
 use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, window::WindowResolution};
 use bevy_immediate::*;
 use bevy_graphics::*;
+use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit, Nonce};
 use maths::*;
-use opaque_ke::{ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
+use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
 use ring::hkdf;
-use crate::{bevy_graphics::Button, const_params::DefaultCipherSuite, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
+use crate::{bevy_graphics::Button, const_params::{DefaultCipherSuite, PACKET_INTERVAL}, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
 
 
 #[bevy_main]
@@ -95,10 +96,19 @@ pub struct GameData {
   pub queued: bool,
   pub checkbox_1v1: bool,
   pub checkbox_2v2: bool,
+
   pub game_server_port: u16,
   pub game_id: u128,
   pub game_socket: Option<UdpSocket>,
-  pub character_properties: HashMap<Character, CharacterProperties>
+  pub character_properties: HashMap<Character, CharacterProperties>,
+  pub packet_timer: Instant,
+  pub position:           Vector2,
+  /// Raw movement vector
+  pub movement:           Vector2,
+  pub aim_direction:      Vector2,
+  pub shooting_primary:   bool,
+  pub shooting_secondary: bool,
+  pub dashing:         bool,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -162,6 +172,13 @@ impl Default for GameData {
       game_id: 0,
       game_socket: None,
       character_properties: load_characters(),
+      packet_timer: Instant::now(),
+      movement: Vector2::new(),
+      position: Vector2::new(),
+      aim_direction: Vector2::new(),
+      shooting_primary: false,
+      shooting_secondary: false,
+      dashing: false,
     }
   }
 }
@@ -336,9 +353,115 @@ fn main_thread(
         }
         // MARK: Game
         if mode == 1 || mode == 2 {
+          println!("game");
           
+
+
+
+          // MARK: | game graphics
+
+
+
+          
+
+          // MARK: | game input
+
+
+
+
+          // MARK: | game net
+          let mut buffer: [u8; 2048] = [0; 2048];
+          let mut len = 0;
+          if let Some(ref mut game_socket) = data.game_socket {
+            match game_socket.recv_from(&mut buffer) {
+              Ok((length, _addr)) => {
+                len = length;
+              }
+              Err(err) => {
+                //if err.kind() == std::io::ErrorKind::WouldBlock {
+                //                    
+                //}
+                println!("{:?}", err);
+              }
+            }
+          }
+          if len > 0 {
+
+            let recv_data = &buffer[..len];
+
+            // get nonce
+            let recv_nonce = &buffer[..4];
+            let recv_nonce = match bincode::deserialize::<u32>(&recv_nonce){
+              Ok(nonce) => nonce,
+              Err(_) => {
+                return;
+              }
+            };
+            if recv_nonce <= data.last_nonce {
+              return;
+            }
+            let mut nonce_bytes = [0u8; 12];
+            nonce_bytes[8..].copy_from_slice(&recv_nonce.to_be_bytes());
+            let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+            
+            let key = data.cipher_key.clone();
+            let key = GenericArray::from_slice(&key.as_slice());
+            let cipher = ChaCha20Poly1305::new(key);
+            
+            let deciphered = match cipher.decrypt(&formatted_nonce, recv_data[4..].as_ref()) {
+              Ok(decrypted) => {
+                decrypted
+              },
+              Err(_err) => {
+                return; // this is an erroneous packet, ignore it.
+              },
+            };
+            data.last_nonce = recv_nonce;
+            let recieved_server_info = match bincode::deserialize::<ServerPacket>(&deciphered) {
+              Ok(packet) => packet,
+              Err(_err) => {
+                return; // ignore invalid packet
+              }
+            };
+
+            println!("{:?}", recieved_server_info);
+
+            // send out a udp packet
+            if data.packet_timer.elapsed().as_secs_f32() > PACKET_INTERVAL {
+              data.packet_timer = Instant::now();
+
+              let client_packet = ClientPacket {
+                position: todo!(),
+                movement: todo!(),
+                aim_direction: todo!(),
+                shooting_primary: todo!(),
+                shooting_secondary: todo!(),
+                packet_interval: todo!(),
+                dashing: todo!(),
+                timestamp: todo!(),
+              };
+
+              // send data to server
+              let serialized_packet: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
+              let mut nonce_bytes = [0u8; 12];
+              nonce_bytes[8..].copy_from_slice(&data.nonce.to_be_bytes());
+              
+              let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+              let cipher_key = data.cipher_key.clone();
+              let key = GenericArray::from_slice(&cipher_key);
+              let cipher = ChaCha20Poly1305::new(&key);
+              let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
+              
+              let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&data.nonce).expect("oops");
+              let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
+              if let Some(ref mut game_socket) = data.game_socket {
+                game_socket.send_to(&serialized, server_ip.clone()).expect("oops");
+              }
+              data.nonce += 1;
+            }
+          }
         }
-        // draw chat
+        // MARK: draw chat
         
 
         // talk to main server
@@ -385,6 +508,7 @@ fn main_thread(
         for packet in packets {
           
           match packet.information {
+            // MARK: | Match assign
             ServerToClient::MatchAssignment(info) => {
               data.game_server_port = info.port;
               data.game_id = info.game_id;
@@ -399,6 +523,7 @@ fn main_thread(
               let udp_socket = UdpSocket::bind(ip);
               match udp_socket {
                 Ok(socket) => {
+                  socket.set_nonblocking(true).expect("oops");
                   data.game_socket = Some(socket);
                   // set game screen.
                   data.current_menu = MenuScreen::Main(2);
