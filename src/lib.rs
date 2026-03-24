@@ -26,9 +26,11 @@ pub mod audio;
 pub mod bevy_immediate;
 /// Higher level wrapper for any graphics.
 pub mod bevy_graphics;
+/// Audio wrapper for bevy.
+pub mod bevy_audio;
 
-use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::Instant};
-use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, window::WindowResolution};
+use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime}};
+use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, tasks::futures_lite::io::Sink, window::WindowResolution, winit::{UpdateMode, WinitSettings}};
 use bevy_immediate::*;
 use bevy_graphics::*;
 use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit, Nonce};
@@ -36,7 +38,7 @@ use maths::*;
 use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
 use ring::hkdf;
-use crate::{bevy_graphics::Button, const_params::{DefaultCipherSuite, PACKET_INTERVAL}, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
+use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
 
 
 #[bevy_main]
@@ -50,8 +52,10 @@ pub fn main() {
         primary_window: Some(Window {
           title: "Sylvan Row".into(),
           name: Some("sylvan.row".into()),
-          resolution: WindowResolution::new(720, 480),
-          present_mode: bevy::window::PresentMode::AutoNoVsync, // vsync fucking sucks
+          //resolution: WindowResolution::new(720, 480),
+          //#[cfg(target_os="android")]
+          mode: bevy::window::WindowMode::BorderlessFullscreen(MonitorSelection::Primary),
+          present_mode: bevy::window::PresentMode::Immediate, // vsync fucking sucks
           ..default()
         }),
         ..default()
@@ -100,7 +104,9 @@ pub struct GameData {
   pub game_server_port: u16,
   pub game_id: u128,
   pub game_socket: Option<UdpSocket>,
+  pub game_last_nonce: u32,
   pub character_properties: HashMap<Character, CharacterProperties>,
+  pub character_animations: HashMap<Character, Vec<AnimationState>>,
   pub packet_timer: Instant,
   pub position:           Vector2,
   /// Raw movement vector
@@ -108,7 +114,13 @@ pub struct GameData {
   pub aim_direction:      Vector2,
   pub shooting_primary:   bool,
   pub shooting_secondary: bool,
-  pub dashing:         bool,
+  pub dashing:            bool,
+  pub player:             ClientPlayer,
+  pub players:            Vec<ClientPlayer>,
+  pub game_objects:       Vec<GameObject>,
+  pub gamemode_info:      GameModeInfo,
+  pub game_object_textures: HashMap<GameObjectType, Handle<Image>>,
+  pub background_tiles: Vec<BackGroundTile>,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -171,7 +183,9 @@ impl Default for GameData {
       game_server_port: 0,
       game_id: 0,
       game_socket: None,
+      game_last_nonce: 0,
       character_properties: load_characters(),
+      character_animations: HashMap::new(),
       packet_timer: Instant::now(),
       movement: Vector2::new(),
       position: Vector2::new(),
@@ -179,6 +193,12 @@ impl Default for GameData {
       shooting_primary: false,
       shooting_secondary: false,
       dashing: false,
+      player: ClientPlayer::new(),
+      players: Vec::new(),
+      game_objects: Vec::new(),
+      gamemode_info: GameModeInfo::new(),
+      game_object_textures: HashMap::new(),
+      background_tiles: Vec::new(),
     }
   }
 }
@@ -202,9 +222,13 @@ fn main_thread(
     let mut win = window.single_mut().expect("oops");
     let vw = win.width() / 100.0;
     let vh = win.height() / 100.0;
+
+    let delta_time = time.delta().as_secs_f32();
     
     if data.startup {
       data.startup = false;
+      data.game_object_textures = load_game_object_textures(asset_server.clone());
+      data.character_animations = load_character_animations(asset_server.clone());
       set_fullscreen(data.settings.fullscreen, &mut win);
     }
 
@@ -353,24 +377,378 @@ fn main_thread(
         }
         // MARK: Game
         if mode == 1 || mode == 2 {
-          println!("game");
           
 
 
 
           // MARK: | game graphics
 
+          for background_tile in data.background_tiles.clone() {
+            let texture = Texture {
+              image: data.game_object_textures[&background_tile.object_type].clone(),
+              size: Vec2 {x: 200.0, y: 200.0}
+            };
+            let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
+            draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 0, &win, &mut com);
+          }
 
+          // adjust certain positions.
+          // adjust the location of Wiro's shield.
+          for game_object_index in 0..data.game_objects.len() {
+            if data.game_objects[game_object_index].object_type == GameObjectType::WiroShield {
+              // if it's ours...
+              if data.game_objects[game_object_index].get_bullet_data().owner_username == username {
+                let position: Vector2 = Vector2 {
+                  x: data.player.position.x + data.player.aim_direction.normalize().x * TILE_SIZE,
+                  y: data.player.position.y + data.player.aim_direction.normalize().y * TILE_SIZE,
+                };
 
+                data.game_objects[game_object_index].position = position;
+                let mut shield_data = data.game_objects[game_object_index].get_bullet_data();
+                shield_data.direction = data.player.aim_direction.normalize();
+                data.game_objects[game_object_index].extra_data = ObjectData::BulletData(shield_data);
+              }
+            }
+          }
           
+          // draw all gameobjects
+          //data.game_objects = sort_by_depth(data.game_objects);
+          for game_object in data.game_objects.clone() {
+            let texture = data.game_object_textures[&game_object.object_type].clone();
+            let size = match game_object.object_type {
+              GameObjectType::Wall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+              GameObjectType::UnbreakableWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+              GameObjectType::HernaniWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+              GameObjectType::HernaniBullet => Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
+              GameObjectType::RaphaelleBullet => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+              GameObjectType::RaphaelleBulletEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+              GameObjectType::RaphaelleAura => Vector2 {x: data.character_properties[&Character::Raphaelle].secondary_range*2.0, y: data.character_properties[&Character::Raphaelle].secondary_range*2.0,},
+              GameObjectType::WiroShield => Vector2 { x: TILE_SIZE*0.5, y: data.character_properties[&Character::Wiro].secondary_range },
+              GameObjectType::TemerityRocketSecondary => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+              GameObjectType::CenterOrb => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+              GameObjectType::CynewynnSword => Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
+              GameObjectType::KoldoCannonBall => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+              GameObjectType::KoldoCannonBallEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+              GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+              _ => Vector2 {x: 1.0 * TILE_SIZE, y: 1.0* TILE_SIZE},
+            };
+            let shadow_offset: f32 = 5.0;
+
+            // Draw shadows on certain objects
+            let shaded_objects = vec![GameObjectType::RaphaelleBullet,
+                                                          GameObjectType::RaphaelleBulletEmpowered,
+                                                          GameObjectType::HernaniBullet,
+                                                          GameObjectType::CynewynnSword,
+                                                          GameObjectType::CenterOrb,
+                                                          GameObjectType::FedyaProjectileRicochet,
+                                                          ];
+            let rotation: Vector2 = match game_object.get_bullet_data_safe() {
+              Ok(data) => {
+                data.direction
+              }
+              Err(()) => {
+                Vector2::new()
+              }
+            };
+            //if shaded_objects.contains(&game_object.object_type) {
+            //  draw_image_relative(
+            //    texture,
+            //    game_object.position.x - size.x/2.0,
+            //    game_object.position.y - size.y/2.0 + shadow_offset,
+            //    size.x,
+            //    size.y,
+            //    vh, data.player.camera.clone(),
+            //    rotation,
+            //    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 }
+            //  );
+            //}
+            let texture = &Texture {
+              image: texture,
+              size: Vec2 { x: 400.0, y: 400.0 }
+            };
+            draw_image_relative(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 5, &win, &mut com);
+          }
+
+
+          let mut mouse_position = Vector2::new();
+
+          mouse_position.x =(((get_mouse_pos(&win).x / vw * 100.0) * 100.0 * (16.0/9.0)) - 50.0 * (16.0 / 9.0)) / data.player.camera.zoom + data.player.camera.position.x; 
+          mouse_position.y =(((get_mouse_pos(&win).y / vh * 100.0) * 100.0             ) - 50.0               ) / data.player.camera.zoom + data.player.camera.position.y;
+
+          let mut aim_direction: Vector2 = mouse_position.clone() - data.player.position;
+
+
+          // draw player and aim laser
+          let mut range = data.character_properties[&data.player.character].primary_range * data.player.camera.zoom;
+          if data.player.character == Character::Temerity {
+            if data.player.stacks == 1 {
+              range = data.character_properties[&Character::Temerity].primary_range_2 * data.player.camera.zoom
+            }
+            if data.player.stacks == 2 {
+              range = data.character_properties[&Character::Temerity].primary_range_3 * data.player.camera.zoom
+            }
+          }
+          if data.player.character == Character::Koldo {
+            if data.player.passive_elapsed > data.character_properties[&Character::Koldo].passive_cooldown
+            || data.player.stacks > 0 {
+              range = data.character_properties[&Character::Koldo].primary_range_2 * data.player.camera.zoom;
+            }
+          }
+          let relative_position_x = 50.0 * (16.0/9.0) + (data.player.position.x - data.player.camera.position.x) * data.player.camera.zoom;
+          let relative_position_y = 50.0              + (data.player.position.y - data.player.camera.position.y) * data.player.camera.zoom;
+
+          if !data.player.is_dead {
+            let mut range_limited: f32 = Vector2::distance(data.player.position, mouse_position.clone()) * data.player.camera.zoom;
+            if range_limited > range {
+              range_limited = range;
+            }
+            let low_limit = 10.0 * data.player.camera.zoom;
+            if range_limited < low_limit {
+              range_limited = low_limit;
+            }
+            // full line
+            draw_line(
+              Vector2{ x: (aim_direction.normalize().x * low_limit * vh) + relative_position_x * vh,
+              y: (aim_direction.normalize().y * low_limit * vh) + relative_position_y * vh},
+              Vector2 {x: (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
+              y: (aim_direction.normalize().y * range * vh) + (relative_position_y * vh)},
+              0.6 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 0.2 }, 10, &win, &mut com
+            );
+            // shorter, matte line
+            draw_line(
+              Vector2{ x: (aim_direction.normalize().x * low_limit * vh) + relative_position_x * vh,
+              y: (aim_direction.normalize().y * low_limit * vh) + relative_position_y * vh},
+              Vector2{ x: (aim_direction.normalize().x * range_limited * vh) + (relative_position_x * vh),
+              y: (aim_direction.normalize().y * range_limited * vh) + (relative_position_y * vh)},
+              0.4 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
+            );
+            if data.player.character == Character::Hernani {
+              let range: f32 = data.character_properties[&Character::Hernani].secondary_range * data.player.camera.zoom;
+              let aim_dir = aim_direction.normalize();
+              // perpendicular direction 1
+              let aim_dir_alpha = Vector2 {x:   aim_dir.y, y: - aim_dir.x};
+              // perpendicular direction 2
+              let aim_dir_gamma = Vector2 {x: - aim_dir.y, y:   aim_dir.x};
+
+              let width = 2.0;
+              draw_line(
+              Vector2{ x: (aim_dir.x * range + aim_dir_alpha.x * width) * vh + relative_position_x * vh,
+              y: (aim_dir.y * range + aim_dir_alpha.y * width) * vh + relative_position_y * vh},
+              Vector2{ x: (aim_dir.x * range + aim_dir_gamma.x * width) * vh + relative_position_x * vh,
+              y: (aim_dir.y * range + aim_dir_gamma.y * width) * vh + relative_position_y * vh},
+              0.4 * vh, Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
+              );
+            }
+          }
+
+          // MARK: | | Draw Players
+
+          //if !data.player.is_dead {
+          //  data.player.draw(&player_textures[&data.player.character], vh, data.player.camera.clone(), &health_bar_font, character_properties[&data.player.character].clone(), settings_copy.clone());
+          //}
+          //for player in other_players_copy.clone() {
+          //  if !player.is_dead {
+          //    player.draw(&player_textures[&player.character], vh, data.player.camera.clone(), &health_bar_font, character_properties[&player.character].clone(), settings_copy.clone());
+          //  }
+          //}
+
+          // draw players and optionally their trails
+          let trail_y_offset: f32 = 4.5;
+          for player in data.players.clone() {
+            if player.character == Character::Cynewynn && !player.is_dead {
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, player.team, trail_y_offset-0.0, 1.0, 10, &win, &mut com);
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, player.team, trail_y_offset-0.3, 0.5, 10, &win, &mut com);
+              draw_lines(player.previous_positions,         data.player.camera.clone(), vh, player.team, trail_y_offset-0.6, 0.25, 10, &win, &mut com);
+            }
+          }
+          if data.player.character == Character::Cynewynn && !data.player.is_dead {
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, data.player.team, trail_y_offset-0.0, 0.6, 10, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, data.player.team, trail_y_offset-0.3, 0.4, 10, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, data.player.team, trail_y_offset-0.6, 0.2, 10, &win, &mut com);
+          }
+
+          // Draw raphaelle's tethering.
+          let mut all_players_copy: Vec<ClientPlayer> = data.players.clone();
+          all_players_copy.push(data.player.clone());
+          for player in all_players_copy.clone() {
+            if player.character == Character::Raphaelle {
+              for player_2 in all_players_copy.clone() {
+                if Vector2::distance(player.position, player_2.position) < data.character_properties[&Character::Raphaelle].primary_range
+                && player.team == player_2.team
+                && (player.is_dead & player_2.is_dead) == false {
+                  // if on same team, green. If on enemy team, orange.
+                  let color = match player.team == data.player.team {
+                    true => GREEN,
+                    false => ORANGE,
+                  };
+                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, 10, &win, &mut com);
+                }
+              }
+            }
+          }
+
+
+
+          if !data.player.is_dead {
+            match data.settings.camera_smoothing {
+              true => {
+                // if delta_time is too long, the camera behaves very weirdly, so let's arficially assume
+                // framerate never goes below 20fps.
+                let safe_delta_time = f32::min(delta_time, 1.0/20.0);
+                let camera_distance: Vector2 = Vector2::difference(data.player.camera.position, data.player.position);
+                let camera_distance_mag = camera_distance.magnitude();
+                let camera_smoothing: f32 = 1.5; // higher = less smoothing
+                let safe_quadratic = f32::min(camera_distance_mag*camera_smoothing*10.0, (camera_distance_mag).powf(2.0)*camera_smoothing*5.0);
+                let camera_movement_speed = safe_quadratic;
+
+                data.player.camera.position += camera_distance.normalize() * safe_delta_time * camera_movement_speed;
+              }
+              false => {
+                data.player.camera.position = data.player.position;
+              }
+            }
+          }
 
           // MARK: | game input
+          let mut position = data.player.position;
+          let mut movement = Vector2::new();
+          //let mut aim_direction = Vector2::new();
+          let mut shooting_primary = false;
+          let mut shooting_secondary = false;
+          let mut dashing = false;
 
+          if is_window_focused(&win) {
 
+            #[cfg(not(target_os="android"))]
+            {
+              use device_query::{DeviceQuery, DeviceState, Keycode};
 
+              let device_state: DeviceState = DeviceState::new();
+              let keys: Vec<Keycode> = device_state.get_keys();
+              let mouse: Vec<MouseButton> = get_mouse_down(&m);
+              if !keys.is_empty() {
+                movement = Vector2::new();
+                //keyboard_mode = true; // since we used the keyboard
+              }
+              
+              // key binds
+              for key in keys {
+                let key = key as u16;
+                // move
+                if key == data.settings.keybinds.walk_up.0    || key == data.settings.keybinds.walk_up.1    { movement.y += -1.0 }
+                if key == data.settings.keybinds.walk_down.0  || key == data.settings.keybinds.walk_down.1  { movement.y +=  1.0 }
+                if key == data.settings.keybinds.walk_left.0  || key == data.settings.keybinds.walk_left.1  { movement.x += -1.0 }
+                if key == data.settings.keybinds.walk_right.0 || key == data.settings.keybinds.walk_right.1 { movement.x +=  1.0 }
+                // primary
+                if key == data.settings.keybinds.primary.0    || key == data.settings.keybinds.primary.1    { shooting_primary = true; /*keyboard_mode = true*/ }
+                // secondary
+                if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { shooting_secondary = true; /*keyboard_mode = true*/ }
+                // dash
+                if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { dashing = true; /*keyboard_mode = true*/ }
+              }
+              
+              // mouse button binds
+              for button in mouse {
+                let button = mb_to_num(button);
+                // move
+                if button == data.settings.keybinds.walk_up.2    || button == data.settings.keybinds.walk_up.3    { movement.y += -1.0 }
+                if button == data.settings.keybinds.walk_down.2  || button == data.settings.keybinds.walk_down.3  { movement.y +=  1.0 }
+                if button == data.settings.keybinds.walk_left.2  || button == data.settings.keybinds.walk_left.3  { movement.x += -1.0 }
+                if button == data.settings.keybinds.walk_right.2 || button == data.settings.keybinds.walk_right.3 { movement.x +=  1.0 }
+                // primary
+                if button == data.settings.keybinds.primary.2    || button == data.settings.keybinds.primary.3    { shooting_primary = true; /*keyboard_mode = true*/ }
+                // secondary
+                if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { shooting_secondary = true; /*keyboard_mode = true*/ }
+                // dash
+                if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { dashing = true; /*keyboard_mode = true*/ }
+              }
+            }
+          }
+
+          if movement.magnitude() > 1.0 {
+            // println!("normalizing");
+            movement = movement.normalize();
+          }
+
+          let mut movement_raw: Vector2 = movement;
+
+          // the server tells us if we're dashing or not
+          if data.player.is_dashing {
+            // do the interpolate
+            let distance = data.player.interpol_next - data.player.interpol_prev;
+            let speed: Vector2;
+            if distance.magnitude() == 0.0 {
+              // this is only true on the first "frame".
+              // this measure helps reduce the percieved lag from the character standing still
+              // before it obtains its second interpolation position.
+              speed = data.player.movement_direction * (data.character_properties[&data.player.character].dash_speed / 2.0) * delta_time;
+            } else {
+              // this runs the rest of the time
+              let period = PACKET_INTERVAL;
+              speed = distance / period;
+            }
+            data.player.position += speed * delta_time;
+          }
+          else {
+            if dashing && !data.player.is_dashing && !data.player.is_dead && movement_raw.magnitude() != 0.0 {
+              if data.player.time_since_last_dash > data.character_properties[&data.player.character].dash_cooldown {
+                match data.player.character {
+                  Character::Temerity => {
+                  }
+                  _ => {
+                    data.player.is_dashing = true;
+                  }
+                }
+              }
+            }
+          
+            if data.player.is_dashing {
+              (data.player.position, data.player.dashed_distance, data.player.is_dashing) = dashing_logic(
+                data.player.is_dashing,
+                data.player.dashed_distance,
+                movement_raw,
+                delta_time as f64,
+                data.character_properties[&data.player.character].dash_speed,
+                data.character_properties[&data.player.character].dash_distance,
+                data.game_objects.clone(),
+                data.player.position,
+              );
+            }
+          }
+
+          // Apply standard movement (non-dashing)
+          if !data.player.is_dashing {
+            let mut extra_speed: f32 = 0.0;
+            for buff in data.player.buffs.clone() {
+              if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
+                extra_speed += buff.value * TILE_SIZE;
+              }
+              if buff.buff_type == BuffType::Impulse {
+                // yeet
+                let direction = buff.direction.normalize();
+                // time left serves as impulse decay
+                let time_left = buff.duration;
+                let strength = buff.value;
+                movement += direction * f32::powi(time_left, 1) * strength;
+              }
+            }
+  
+            let movement_speed: f32 = data.character_properties[&data.player.character].speed;
+
+            movement.x *= (movement_speed + extra_speed) * delta_time;
+            movement.y *= (movement_speed + extra_speed) * delta_time;
+            if data.player.is_dead == false {  
+              (movement_raw, movement) = object_aware_movement(data.player.position, movement_raw, movement, data.game_objects.clone());
+              data.player.position.x += movement.x;
+              data.player.position.y += movement.y;
+            } if data.player.is_dead {
+              data.player.camera.position.x += movement.x;
+              data.player.camera.position.y += movement.y;
+            }
+          }
 
           // MARK: | game net
-          let mut buffer: [u8; 2048] = [0; 2048];
+          let mut buffer: [u8; 16384] = [0; 16384];
           let mut len = 0;
           if let Some(ref mut game_socket) = data.game_socket {
             match game_socket.recv_from(&mut buffer) {
@@ -378,10 +756,10 @@ fn main_thread(
                 len = length;
               }
               Err(err) => {
-                //if err.kind() == std::io::ErrorKind::WouldBlock {
-                //                    
-                //}
-                println!("{:?}", err);
+                if err.kind() == std::io::ErrorKind::WouldBlock {
+                  
+                } else {
+                }
               }
             }
           }
@@ -397,7 +775,7 @@ fn main_thread(
                 return;
               }
             };
-            if recv_nonce <= data.last_nonce {
+            if recv_nonce <= data.game_last_nonce {
               return;
             }
             let mut nonce_bytes = [0u8; 12];
@@ -416,49 +794,221 @@ fn main_thread(
                 return; // this is an erroneous packet, ignore it.
               },
             };
-            data.last_nonce = recv_nonce;
+            data.game_last_nonce = recv_nonce;
             let recieved_server_info = match bincode::deserialize::<ServerPacket>(&deciphered) {
               Ok(packet) => packet,
               Err(_err) => {
                 return; // ignore invalid packet
               }
             };
+            //println!("server info: {:?}", recieved_server_info);
+            
+            // update data.
+            data.player.is_dashing = recieved_server_info.player_packet_is_sent_to.is_dashing;
+            
+            // if server requests a position override:
+            if recieved_server_info.player_packet_is_sent_to.override_position {
+              // If we're dashing, update interpolation info.
+              if data.player.is_dashing {
+                // But if we're dashing (interpolating is set to true), then prepare to smoothly translate to that position.
+                data.player.interpol_next = recieved_server_info.player_packet_is_sent_to.position_override;
+                data.player.interpol_prev = data.player.position; // current position
+              }
+              // but under standard behaviour just update position.
+              else {
+                data.player.position = recieved_server_info.player_packet_is_sent_to.position_override;
+              }
+            }
+            let ping = match recieved_server_info.timestamp.elapsed() {
+              Ok(val) => val.as_millis(),
+              Err(_) => 0,
+            };
 
-            println!("{:?}", recieved_server_info);
+            // update the rest of the data.
+            data.player.ping = ping as u16;
+            data.player.health = recieved_server_info.player_packet_is_sent_to.health;
+            data.player.secondary_charge = recieved_server_info.player_packet_is_sent_to.secondary_charge;
+            data.player.character = recieved_server_info.player_packet_is_sent_to.character;
+            data.player.is_dead = recieved_server_info.player_packet_is_sent_to.is_dead;
+            data.player.buffs = recieved_server_info.player_packet_is_sent_to.buffs;
+            data.player.previous_positions = recieved_server_info.player_packet_is_sent_to.previous_positions;
+            data.player.team = recieved_server_info.player_packet_is_sent_to.team;
+            data.player.last_shot_time = recieved_server_info.player_packet_is_sent_to.time_since_last_primary;
+            data.player.time_since_last_dash = recieved_server_info.player_packet_is_sent_to.time_since_last_dash;
+            data.player.last_secondary_time = recieved_server_info.player_packet_is_sent_to.time_since_last_secondary;
+            data.player.stacks = recieved_server_info.player_packet_is_sent_to.stacks;
+            data.player.passive_elapsed = recieved_server_info.player_packet_is_sent_to.passive_elapsed;
+            
+            data.game_objects = recieved_server_info.game_objects;
+            data.gamemode_info = recieved_server_info.gamemode_info;
 
-            // send out a udp packet
-            if data.packet_timer.elapsed().as_secs_f32() > PACKET_INTERVAL {
-              data.packet_timer = Instant::now();
+            // UPDATE OTHER PLAYERS
+            let mut recieved_players: Vec<ClientPlayer> = Vec::new();
+            for player in recieved_server_info.players {
+              recieved_players.push(ClientPlayer::from_otherplayer(player));
+            }
+            // if a player left the game, recieved players has one less players, and other_players needs to
+            // be adjusted since we index over other_players.
+            data.players.retain(|element| {
+              for player in recieved_players.clone() {
+                if player.username == element.username {
+                  return true;
+                }
+              }
+              return false;
+            });
 
-              let client_packet = ClientPacket {
-                position: todo!(),
-                movement: todo!(),
-                aim_direction: todo!(),
-                shooting_primary: todo!(),
-                shooting_secondary: todo!(),
-                packet_interval: todo!(),
-                dashing: todo!(),
-                timestamp: todo!(),
+            // if a new player joins, skip this part, update directly.
+            if data.players.len() == recieved_players.len() {
+              for player_index in 0..recieved_players.len() {
+                // new position
+                recieved_players[player_index].interpol_prev = data.players[player_index].interpol_next;
+                recieved_players[player_index].interpol_next = recieved_players[player_index].position;
+                recieved_players[player_index].position = data.players[player_index].position;
+
+                recieved_players[player_index].used_primary = data.players[player_index].used_primary;
+                recieved_players[player_index].used_secondary = data.players[player_index].used_secondary;
+                recieved_players[player_index].used_dash = data.players[player_index].used_dash;
+                // previous position
+                // if not moving, force a position
+                //recieved_players[player_index].position = Vector2 { x: 0.0, y: 0.0 }; //other_players[player_index].position;
+                //recieved_players[player_index].interpol_prev = other_players[player_index].position;
+              }
+            }
+            data.players = recieved_players;
+
+            // MARK: | | Sound
+            let mut sound_queue: Vec<(&str, AudioTrack, f32)> = Vec::new();
+            let events = recieved_server_info.events;
+            for event in events {
+              println!("{:?}", event);
+              match event {
+                GameEvent::AttackHit(object_type, owner, victim) => {
+                  // if the bullet is ours
+                  if owner == data.player.username {
+                    let sound: &str = match object_type {
+                      GameObjectType::HernaniBullet =>                    "audio/sword-hit.mp3",
+                      GameObjectType::CynewynnSword =>                    "audio/sword-hit.mp3",
+                      GameObjectType::FedyaProjectileRicochet =>          "audio/sword-hit.mp3",
+                      GameObjectType::FedyaTurretProjectile =>            "audio/sword-hit.mp3",
+                      GameObjectType::RaphaelleBullet =>                  "audio/sword-hit.mp3",
+                      GameObjectType::RaphaelleBulletEmpowered =>         "audio/sword-hit.mp3",
+                      GameObjectType::TemerityRocket =>                   "audio/explosion.mp3",
+                      GameObjectType::TemerityRocketSecondary =>          "audio/sword-hit.mp3",
+                      GameObjectType::WiroGunShot =>                      "audio/sword-hit.mp3",
+                      GameObjectType::KoldoCannonBall =>                  "audio/sword-hit.mp3",
+                      GameObjectType::KoldoCannonBallEmpowered =>         "audio/sword-hit.mp3",
+                      GameObjectType::KoldoCannonBallEmpoweredUltimate => "audio/sword-hit.mp3",
+                      _ => continue
+                    };
+                    sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
+                  }
+                  // if it hit us
+                  if victim == data.player.username {
+
+                  }
+                }
+                GameEvent::AttackFired(object_type, owner) => {
+                  let sound: &str = match object_type {
+                    GameObjectType::HernaniBullet =>                    "audio/gunshot.mp3",
+                    GameObjectType::CynewynnSword =>                    "audio/whoosh.ogg",
+                    GameObjectType::FedyaProjectileRicochet =>          "audio/whoosh.mp3",
+                    GameObjectType::FedyaTurretProjectile =>            "audio/whoosh.mp3",
+                    GameObjectType::RaphaelleBullet =>                  "audio/whoosh.mp3",
+                    GameObjectType::RaphaelleBulletEmpowered =>         "audio/whoosh.mp3",
+                    GameObjectType::WiroGunShot =>                      "audio/whoosh.mp3",
+                    GameObjectType::TemerityRocket =>                   "audio/rpgshot.mp3",
+                    GameObjectType::TemerityRocketSecondary =>          "audio/rpgshot.mp3",
+                    GameObjectType::KoldoCannonBall =>                  "audio/rpgshot.mp3",
+                    GameObjectType::KoldoCannonBallEmpowered =>         "audio/rpgshot.mp3",
+                    GameObjectType::KoldoCannonBallEmpoweredUltimate => "audio/rpgshot.mp3",
+                    _ => {
+                      continue;
+                    }
+                  };
+                  if owner == data.username {
+                    sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
+                    println!("adding to sound queue");
+                  }
+                  else {
+                    for other_player in data.players.clone() {
+                      if other_player.username == owner {
+                        let distance = (data.player.position - other_player.position).magnitude();
+                        sound_queue.push((sound, AudioTrack::SoundEffectOther, distance));
+                      }
+                    }
+                  }
+                }
+                GameEvent::WallHit(_object_type, _owner) => {
+
+                }
+              }
+            }
+
+            // play all sounds
+            for (sound_path, track, distance) in sound_queue {
+              // calculate volume from settings as a value from 0.0 to 1.0
+              let sfx_self_vol = (data.settings.sfx_self_volume * data.settings.master_volume) / (100.0 * 100.0);
+              let sfx_other_vol = (data.settings.sfx_other_volume * data.settings.master_volume) / (100.0 * 100.0);
+              let music_vol = (data.settings.music_volume * data.settings.master_volume) / (100.0 * 100.0);
+
+              let raw_volume = match track {
+                AudioTrack::Music => music_vol,
+                AudioTrack::SoundEffectOther => sfx_other_vol,
+                AudioTrack::SoundEffectSelf => sfx_self_vol,
               };
 
-              // send data to server
-              let serialized_packet: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
-              let mut nonce_bytes = [0u8; 12];
-              nonce_bytes[8..].copy_from_slice(&data.nonce.to_be_bytes());
-              
-              let formatted_nonce = Nonce::from_slice(&nonce_bytes);
-              let cipher_key = data.cipher_key.clone();
-              let key = GenericArray::from_slice(&cipher_key);
-              let cipher = ChaCha20Poly1305::new(&key);
-              let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
-              
-              let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&data.nonce).expect("oops");
-              let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
-              if let Some(ref mut game_socket) = data.game_socket {
-                game_socket.send_to(&serialized, server_ip.clone()).expect("oops");
-              }
-              data.nonce += 1;
+              // substract decibels based on distance.
+              //https://www.desmos.com/calculator/ar7w5afy1s
+              // the range (in tiles) at which we hear the full sound
+              let full_sound_cutoff = 5.0;
+              // decibels the sound falls off per tile.
+              let sound_faloff_amplitude = 1.0;
+              let distance_volume = if distance/TILE_SIZE < full_sound_cutoff {
+                0.0
+              } else {
+                - sound_faloff_amplitude *(distance/TILE_SIZE) + full_sound_cutoff * sound_faloff_amplitude
+              };
+              let volume = distance_volume / raw_volume;
+              println!("{:?}", volume);
+              bevy_audio::play_sound(sound_path.to_string(), &mut com, asset_server.clone(), volume);
+
             }
+          }
+          // send our packet, at a lower frequency.
+          if data.packet_timer.elapsed().as_secs_f32() > PACKET_INTERVAL {
+            data.packet_timer = Instant::now();
+
+            let client_packet = ClientPacket {
+              position,
+              movement,
+              aim_direction,
+              shooting_primary,
+              shooting_secondary,
+              dashing,
+              packet_interval: PACKET_INTERVAL,
+              timestamp: SystemTime::now(),
+            };
+
+            // send data to server
+            let serialized_packet: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
+            let mut nonce_bytes = [0u8; 12];
+            nonce_bytes[8..].copy_from_slice(&data.nonce.to_be_bytes());
+            
+            let formatted_nonce = Nonce::from_slice(&nonce_bytes);
+            let cipher_key = data.cipher_key.clone();
+            let key = GenericArray::from_slice(&cipher_key);
+            let cipher = ChaCha20Poly1305::new(&key);
+            let ciphered = cipher.encrypt(&formatted_nonce, serialized_packet.as_ref()).expect("shit");
+            
+            let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&data.nonce).expect("oops");
+            let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
+            let game_server_ip = server_ip.split(":").collect::<Vec<&str>>()[0];
+            let game_server_ip = format!("{}:{}", game_server_ip, data.game_server_port);
+            if let Some(ref mut game_socket) = data.game_socket {
+              game_socket.send_to(&serialized, game_server_ip).expect("oops");
+            }
+            data.nonce += 1;
           }
         }
         // MARK: draw chat
@@ -466,14 +1016,12 @@ fn main_thread(
 
         // talk to main server
         // MARK: Server Comm
-        println!("hi4");
 
         let mut buffer: [u8; 2048] = [0; 2048];
         let mut len = 0;
         if let Some(ref mut server_stream) = data.server_stream {
           match server_stream.read(&mut buffer) {
             Ok(0) => {
-              println!("hi5");
               data.notifications.push(
                 Notification::new("Server has disconnected.", 2.0)
               );
@@ -481,7 +1029,6 @@ fn main_thread(
               return;
             }
             Ok(length) => {
-              println!("hi6");
               len = length;
             }
             Err(err) => {
@@ -494,25 +1041,27 @@ fn main_thread(
             }
           }
         }
-        println!("hi3");
 
         let packets = network::tcp_decode_decrypt::<ServerToClientPacket>(buffer[..len].to_vec(), data.cipher_key.clone(), &mut data.last_nonce);
         let packets = match packets {
           Ok(packets) => packets,
           Err(_) => {
+            println!("error decrypting");
             return;
           }
         };
-        println!("hi2");
 
         for packet in packets {
-          
           match packet.information {
             // MARK: | Match assign
             ServerToClient::MatchAssignment(info) => {
+              // a match assignment should override whatever we're doing.
+              println!("Match assignment: {:?}", info);
               data.game_server_port = info.port;
               data.game_id = info.game_id;
               data.queued = false;
+              data.game_last_nonce = 0;
+              data.background_tiles = load_background_tiles(32, 24);
               //let full_ip = get_ip();
               //let ip = full_ip.split(":").collect::<Vec<&str>>()[0];
               //let game_server_ip = format!("{}:{}", ip, info.port);
@@ -527,7 +1076,6 @@ fn main_thread(
                   data.game_socket = Some(socket);
                   // set game screen.
                   data.current_menu = MenuScreen::Main(2);
-                  println!("hi");
                 }
                 Err(err) => {
                   data.current_menu = MenuScreen::Main(0);
@@ -611,10 +1159,8 @@ fn main_thread(
             _ => {}
           }
         }
-        println!("hi1");
 
         let packet_queue = data.packet_queue.clone();
-        println!("q: {:?}", packet_queue);
         let cipher_key = data.cipher_key.clone();
         let mut nonce = data.nonce.clone();
         if let Some(ref mut server_stream) = data.server_stream {
@@ -811,7 +1357,6 @@ fn main_thread(
                   match err.kind() {
                     // no message this time, try again.
                     ErrorKind::WouldBlock => {
-                      println!("wouldblock");
                       // waited too long, timeout.
                       if data.opake_data.timeout.elapsed().as_secs_f32() > 3.0 {
                         data.notifications.push(Notification::new("Timed out", 1.0));
@@ -833,7 +1378,6 @@ fn main_thread(
                 }
               };
             }
-            println!("hi");
             if len > 2048 {
               data.notifications.push(
                 Notification::new("Buffer overflow.", 2.0)
@@ -1105,6 +1649,7 @@ fn sprite_clearer(mut commands: Commands, query: Query<Entity, With<DeleteAfterF
     commands.entity(entity).despawn();
   }
 }
+
 // MARK: Setup
 fn setup(mut commands: Commands) {
   commands.init_resource::<GameData>();
@@ -1140,3 +1685,55 @@ pub const CHARACTER_LIST: [Character; 7]  = [
   Character::Temerity,
   Character::Wiro,
 ];
+
+#[derive(Clone, Debug, Copy)]
+pub enum AudioTrack {
+  Music,
+  SoundEffectSelf,
+  SoundEffectOther,
+}
+
+
+#[derive(Debug, Clone)]
+struct BackGroundTile {
+  position: Vector2,
+  object_type: GameObjectType,
+}
+
+fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile> {
+  let mut tiles: Vec<BackGroundTile> = Vec::new();
+  let bright_tiles = vec![GameObjectType::Grass1Bright,
+                                               GameObjectType::Grass2Bright,
+                                               GameObjectType::Grass3Bright,
+                                               GameObjectType::Grass4Bright,
+                                               GameObjectType::Grass5Bright,
+                                               GameObjectType::Grass6Bright,
+                                               GameObjectType::Grass7Bright, ];
+  let dark_tiles = vec![GameObjectType::Grass1,
+                                               GameObjectType::Grass2,
+                                               GameObjectType::Grass3,
+                                               GameObjectType::Grass4,
+                                               GameObjectType::Grass5,
+                                               GameObjectType::Grass6,
+                                               GameObjectType::Grass7, ];
+  let extra_offset_x: u16 = 9;
+  let extra_offset_y: u16 = 5;
+  for x in 0..map_size_x + (extra_offset_x*2) {
+    for y in 0..map_size_y + (extra_offset_y*2) {
+      let random_num_raw = crappy_random();
+      let mut random_num_f = (random_num_raw as f64) / u32::MAX as f64;
+      random_num_f *= 6.0;
+      let random_num = random_num_f.round() as usize;
+      let pos_x: i16 = x.try_into().unwrap();
+      let pos_x: f32 = (pos_x - extra_offset_x as i16) as f32 * TILE_SIZE;
+      let pos_y: i16 = y.try_into().unwrap();
+      let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 * TILE_SIZE + TILE_SIZE*0.5;
+      if (x + y) % 2 == 1 {
+        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num].clone() });
+      } else {
+        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: dark_tiles[random_num].clone() });
+      }
+    }
+  }
+  return tiles;
+}

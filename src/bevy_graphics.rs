@@ -209,8 +209,8 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
 
   
   if *selected {
-    draw_line(Vector2 {x: position.x, y: position.y + size/2.0}, Vector2{x: position.x + size/2.0, y: position.y + size}, 0.5*vh, Color::Srgba(WHITE), z, window, commands);
-    draw_line(Vector2 {x: position.x + size/2.0, y: position.y + size}, Vector2{x: position.x + size, y: position.y}, 0.5*vh, Color::Srgba(WHITE), z, window, commands);
+    draw_line(Vector2 {x: position.x, y: position.y + size/2.0}, Vector2{x: position.x + size/2.0, y: position.y + size}, 0.5*vh, WHITE, z, window, commands);
+    draw_line(Vector2 {x: position.x + size/2.0, y: position.y + size}, Vector2{x: position.x + size, y: position.y}, 0.5*vh, WHITE, z, window, commands);
   }
   let mouse: Vector2 = get_mouse_pos(window);
   if mouse.x > position.x && mouse.x < (position.x + size) {
@@ -738,7 +738,7 @@ pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8)
       if keybind.1 == u16::MAX-1 || keybind.3 == u8::MAX-1 {
         let device_state: DeviceState = DeviceState::new();
         let keys: Vec<device_query::Keycode> = device_state.get_keys();
-        let mouse: Vec<bool> = device_state.get_mouse().button_pressed;
+        let mouse = get_mouse_pressed(&mouse_buttons);
         if !keys.is_empty() {
           if keys[0] == device_query::Keycode::Delete {
             keybind.1 = u16::MAX;
@@ -750,12 +750,10 @@ pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8)
           return true;
         }
         else {
-          for (i, button) in mouse.iter().enumerate() {
-            if *button {
-              keybind.3 = i as u8;
-              keybind.1 = u16::MAX;
-              return true;
-            }
+          for button in mouse {
+            keybind.3 = mb_to_num(button);
+            keybind.1 = u16::MAX;
+            return true;
           }
         }
       }
@@ -881,7 +879,7 @@ pub fn name_from_keycode_u16(keycode: u16) -> String {
     _ => "???".to_string(),
   }
 }
-fn mb_to_num(mouse_button: MouseButton) -> u8 {
+pub fn mb_to_num(mouse_button: MouseButton) -> u8 {
   match mouse_button {
     MouseButton::Left => {0}
     MouseButton::Right => {1}
@@ -1281,7 +1279,7 @@ pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, co
   let relative_position_y1 = (y1 - camera.position.y) * camera.zoom + 50.0;
   let relative_position_x2 = (x2 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
   let relative_position_y2 = (y2 - camera.position.y) * camera.zoom + 50.0;
-  draw_line(Vector2 { x: relative_position_x1 * vh, y: relative_position_y1 * vh }, Vector2 { x: relative_position_x2 * vh, y: relative_position_y2 * vh }, thickness, Color::Srgba(color), z, window, commands);
+  draw_line(Vector2 { x: relative_position_x1 * vh, y: relative_position_y1 * vh }, Vector2 { x: relative_position_x2 * vh, y: relative_position_y2 * vh }, thickness, color, z, window, commands);
 }
 pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, camera: Camera, vh:f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   let relative_position_x1 = (x1 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
@@ -1298,4 +1296,148 @@ pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, team: Team, 
   for position_index in 0..positions.len()-1 {
     draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Srgba { red: 0.2, green: 1.0-(position_index as f32 / positions.len() as f32), blue: 0.8, alpha: alpha }, Team::Red => Srgba { red: 0.8, green: 0.7-0.3*(position_index as f32 / positions.len() as f32), blue: 0.2, alpha: alpha }}, camera.clone(), vh, z, window, commands);
   }
+}
+
+
+//#[macro_export]
+//macro_rules! load {
+//  ($file:expr $(,)?) => {
+//    Texture2D::from_file_with_format(include_bytes!(concat!("../assets/", $file)), None)
+//  };
+//}
+pub fn load_game_object_textures(asset_server: AssetServer) -> HashMap<GameObjectType, Handle<Image>>  {
+  let game_object_tetures: HashMap<GameObjectType, Handle<Image>> = HashMap::from([
+    (GameObjectType::Wall                             , asset_server.load("gameobjects/wall.png")),
+    (GameObjectType::HernaniWall                      , asset_server.load("characters/hernani/textures/wall.png")),
+    (GameObjectType::RaphaelleAura                    , asset_server.load("characters/raphaelle/textures/secondary.png")),
+    (GameObjectType::UnbreakableWall                  , asset_server.load("gameobjects/unbreakable_wall.png")),
+    (GameObjectType::HernaniBullet                    , asset_server.load("characters/hernani/textures/bullet.png")),
+    (GameObjectType::RaphaelleBullet                  , asset_server.load("characters/raphaelle/textures/bullet.png")),
+    (GameObjectType::RaphaelleBulletEmpowered         , asset_server.load("characters/raphaelle/textures/bullet-empowered.png")),
+    (GameObjectType::CynewynnSword                    , asset_server.load("characters/cynewynn/textures/bullet.png")),
+    (GameObjectType::HernaniLandmine                  , asset_server.load("characters/hernani/textures/trap.png")),
+    (GameObjectType::FedyaProjectileRicochet      , asset_server.load("characters/hernani/textures/bullet.png")),
+    (GameObjectType::FedyaProjectileGround        , asset_server.load("characters/hernani/textures/trap.png")),
+    (GameObjectType::FedyaProjectileGroundRecalled, asset_server.load("characters/hernani/textures/trap.png")),
+    (GameObjectType::FedyaTurret                  , asset_server.load("ui/temp_ability_1.png")),
+    (GameObjectType::FedyaTurretProjectile        , asset_server.load("characters/hernani/textures/bullet.png")),
+    (GameObjectType::Grass1                           , asset_server.load("gameobjects/grass-1.png")),
+    (GameObjectType::Grass2                           , asset_server.load("gameobjects/grass-2.png")),
+    (GameObjectType::Grass3                           , asset_server.load("gameobjects/grass-3.png")),
+    (GameObjectType::Grass4                           , asset_server.load("gameobjects/grass-4.png")),
+    (GameObjectType::Grass5                           , asset_server.load("gameobjects/grass-5.png")),
+    (GameObjectType::Grass6                           , asset_server.load("gameobjects/grass-6.png")),
+    (GameObjectType::Grass7                           , asset_server.load("gameobjects/grass-7.png")),
+    (GameObjectType::Grass1Bright                     , asset_server.load("gameobjects/grass-1-b.png")),
+    (GameObjectType::Grass2Bright                     , asset_server.load("gameobjects/grass-2-b.png")),
+    (GameObjectType::Grass3Bright                     , asset_server.load("gameobjects/grass-3-b.png")),
+    (GameObjectType::Grass4Bright                     , asset_server.load("gameobjects/grass-4-b.png")),
+    (GameObjectType::Grass5Bright                     , asset_server.load("gameobjects/grass-5-b.png")),
+    (GameObjectType::Grass6Bright                     , asset_server.load("gameobjects/grass-6-b.png")),
+    (GameObjectType::Grass7Bright                     , asset_server.load("gameobjects/grass-7-b.png")),
+    (GameObjectType::Water1                           , asset_server.load("gameobjects/water-edge.png")),
+    (GameObjectType::Water2                           , asset_server.load("gameobjects/water-full.png")),
+    (GameObjectType::CenterOrb                        , asset_server.load("gameobjects/orb.png")),
+    (GameObjectType::CenterOrbSpawnPoint              , asset_server.load("empty.png")),
+    (GameObjectType::WiroShield                       , asset_server.load("ui/temp_ability_1.png")),
+    (GameObjectType::WiroGunShot                      , asset_server.load("ui/temp_ability_1.png")),
+    (GameObjectType::WiroDashProjectile               , asset_server.load("empty.png")),
+    (GameObjectType::TemerityRocket                   , asset_server.load("ui/temp_ability_1.png")),
+    (GameObjectType::TemerityRocketSecondary          , asset_server.load("ui/temp_ability_1.png")),
+    (GameObjectType::KoldoCannonBall                  , asset_server.load("characters/raphaelle/textures/bullet.png")),
+    (GameObjectType::KoldoCannonBallEmpowered         , asset_server.load("characters/raphaelle/textures/bullet-empowered.png")),
+    (GameObjectType::KoldoCannonBallEmpoweredUltimate , asset_server.load("characters/raphaelle/textures/bullet-empowered.png")),
+  ]);
+  return game_object_tetures;
+}
+pub fn load_character_textures(asset_server: AssetServer) -> HashMap<Character, Handle<Image>> {
+  let player_textures = HashMap::from([
+    (Character::Cynewynn,  asset_server.load("characters/cynewynn/textures/main.png")),
+    (Character::Raphaelle, asset_server.load("characters/raphaelle/textures/main.png")),
+    (Character::Hernani,   asset_server.load("characters/hernani/textures/main.png")),
+    (Character::Fedya,     asset_server.load("characters/dummy/textures/template1.png")),
+    (Character::Wiro,      asset_server.load("characters/dummy/textures/template2.png")),
+    (Character::Dummy,     asset_server.load("characters/dummy/textures/template.png")),
+    (Character::Temerity,  asset_server.load("characters/dummy/textures/template3.png")),
+    (Character::Koldo,     asset_server.load("characters/koldo/textures/template4.png")),
+  ]);
+  return player_textures;
+}
+
+/// Describes an animation, its current state and how it behaves.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AnimationState {
+  pub frames: Vec<Handle<Image>>,
+  pub frame_rate: f32,
+  /// Animation start instant
+  pub timer: Instant,
+  /// Animation priority - comparison to know whether can be overwritten before its end.
+  /// - 0: idle
+  /// - 1: walk
+  /// - 2: fire
+  pub animation_prio: u8,
+}
+impl AnimationState {
+  /// gets the current frame of the animation.
+  pub fn current_frame(&self) -> Handle<Image> {
+    let elapsed = self.timer.elapsed().as_secs_f32();
+    let mut current_frame = (elapsed * self.frame_rate) as usize;
+    let max_len = self.frames.len()-1;
+    if current_frame > max_len {
+      current_frame = max_len;
+    }
+    return self.frames[current_frame].clone();
+  }
+  pub fn new(frames: Vec<Handle<Image>>, frame_rate: f32, priority_level: u8) -> AnimationState {
+    return AnimationState {
+      frames: frames,
+      frame_rate: frame_rate,
+      timer: Instant::now(),
+      animation_prio: priority_level,
+    }
+  }
+}
+pub fn load_character_animations(asset_server: AssetServer) -> HashMap<Character, Vec<AnimationState>> {
+  return HashMap::from([
+    (Character::Cynewynn, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/cynewynn/textures/main.png")
+      ], 1.0, 0)
+    ]),
+    (Character::Raphaelle, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/raphaelle/textures/main.png")
+      ], 1.0, 0)
+    ]),
+    (Character::Hernani, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/hernani/textures/main.png")
+      ], 1.0, 0)
+    ]),
+    (Character::Fedya, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/dummy/textures/template1.png")
+      ], 1.0, 0)
+    ]),
+    (Character::Wiro, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/dummy/textures/template2.png")
+      ], 1.0, 0)
+    ]),
+    (Character::Dummy, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/dummy/textures/template.png")
+      ], 1.0, 0)
+    ]),
+    (Character::Temerity, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/dummy/textures/template3.png")
+      ], 1.0, 0)
+    ]),
+    (Character::Koldo, vec![
+      AnimationState::new(vec![
+        asset_server.load("characters/koldo/textures/template4.png")
+      ], 1.0, 0)
+    ]),
+  ]);
 }

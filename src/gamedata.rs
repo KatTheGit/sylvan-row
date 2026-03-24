@@ -68,6 +68,7 @@ pub struct ClientPlayer {
   pub interpol_prev: Vector2,
   pub interpol_next: Vector2,
   pub passive_elapsed: f32,
+  pub current_animation: AnimationState,
 }
 /// Information sent by server to client about other players.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
@@ -121,6 +122,7 @@ impl ClientPlayer {
       used_secondary: false,
       used_dash: false,
       passive_elapsed: 0.0,
+      current_animation: AnimationState::new(vec![], 0.0, 0),
     }
   }
   pub fn draw(&self, texture: &Texture, vh: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
@@ -227,6 +229,7 @@ impl ClientPlayer {
       used_primary: true,
       used_secondary: true,
       passive_elapsed: 0.0,
+      current_animation: AnimationState::new(vec![], 0.0, 0),
     };
   }
 }

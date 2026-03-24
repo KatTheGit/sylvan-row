@@ -216,7 +216,7 @@ pub fn draw_line(
   start: Vector2,
   end: Vector2,
   thickness: f32,
-  color: Color,
+  color: Srgba,
   z: i8,
   window: &Window,
   commands: &mut Commands,
@@ -229,7 +229,7 @@ pub fn draw_line(
   commands.spawn((
     DeleteAfterFrame {},
     Sprite {
-      color,
+      color: Color::Srgba(color),
       ..Default::default()
     },
     Transform {
