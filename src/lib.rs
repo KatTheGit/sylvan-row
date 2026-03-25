@@ -470,13 +470,20 @@ fn main_thread(
           }
 
 
-          let mut mouse_position = Vector2::new();
+          let mut mouse_position = get_mouse_pos(&win);
 
-          mouse_position.x =(((get_mouse_pos(&win).x / vw * 100.0) * 100.0 * (16.0/9.0)) - 50.0 * (16.0 / 9.0)) / data.player.camera.zoom + data.player.camera.position.x; 
-          mouse_position.y =(((get_mouse_pos(&win).y / vh * 100.0) * 100.0             ) - 50.0               ) / data.player.camera.zoom + data.player.camera.position.y;
 
-          let mut aim_direction: Vector2 = mouse_position.clone() - data.player.position;
 
+
+          //mouse_position.x =(((get_mouse_pos(&win).x / vw /* 100.0*/) /* 100.0 * (16.0/9.0)*/) /*- 50.0 * (16.0 / 9.0)*/) / data.player.camera.zoom + data.player.camera.position.x; 
+          //mouse_position.y =(((get_mouse_pos(&win).y / vh /* 100.0*/) /* 100.0             */) /*- 50.0               */) / data.player.camera.zoom + data.player.camera.position.y;
+
+          // screen-space to world space conversion
+          let mouse_world_position = mouse_pos / data.player.camera.zoom + data.player.camera.position - Vector2 {x: 50.0 * (16.0/9.0), y: 50.0};
+
+          let mouse_world_position = data.player.camera.position + (mouse_pos - Vector2 {x:50.0 * (16.0/9.0) * vh, y: 50.0*vh})/vh;
+          let aim_direction: Vector2 = mouse_world_position - data.player.position;
+          
 
           // draw player and aim laser
           let mut range = data.character_properties[&data.player.character].primary_range * data.player.camera.zoom;
@@ -887,18 +894,18 @@ fn main_thread(
                   // if the bullet is ours
                   if owner == data.player.username {
                     let sound: &str = match object_type {
-                      GameObjectType::HernaniBullet =>                    "audio/sword-hit.mp3",
-                      GameObjectType::CynewynnSword =>                    "audio/sword-hit.mp3",
-                      GameObjectType::FedyaProjectileRicochet =>          "audio/sword-hit.mp3",
-                      GameObjectType::FedyaTurretProjectile =>            "audio/sword-hit.mp3",
-                      GameObjectType::RaphaelleBullet =>                  "audio/sword-hit.mp3",
-                      GameObjectType::RaphaelleBulletEmpowered =>         "audio/sword-hit.mp3",
-                      GameObjectType::TemerityRocket =>                   "audio/explosion.mp3",
-                      GameObjectType::TemerityRocketSecondary =>          "audio/sword-hit.mp3",
-                      GameObjectType::WiroGunShot =>                      "audio/sword-hit.mp3",
-                      GameObjectType::KoldoCannonBall =>                  "audio/sword-hit.mp3",
-                      GameObjectType::KoldoCannonBallEmpowered =>         "audio/sword-hit.mp3",
-                      GameObjectType::KoldoCannonBallEmpoweredUltimate => "audio/sword-hit.mp3",
+                      GameObjectType::HernaniBullet =>                    "audio/sword-hit.ogg",
+                      GameObjectType::CynewynnSword =>                    "audio/sword-hit.ogg",
+                      GameObjectType::FedyaProjectileRicochet =>          "audio/sword-hit.ogg",
+                      GameObjectType::FedyaTurretProjectile =>            "audio/sword-hit.ogg",
+                      GameObjectType::RaphaelleBullet =>                  "audio/sword-hit.ogg",
+                      GameObjectType::RaphaelleBulletEmpowered =>         "audio/sword-hit.ogg",
+                      GameObjectType::TemerityRocket =>                   "audio/explosion.ogg",
+                      GameObjectType::TemerityRocketSecondary =>          "audio/sword-hit.ogg",
+                      GameObjectType::WiroGunShot =>                      "audio/sword-hit.ogg",
+                      GameObjectType::KoldoCannonBall =>                  "audio/sword-hit.ogg",
+                      GameObjectType::KoldoCannonBallEmpowered =>         "audio/sword-hit.ogg",
+                      GameObjectType::KoldoCannonBallEmpoweredUltimate => "audio/sword-hit.ogg",
                       _ => continue
                     };
                     sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
@@ -910,18 +917,18 @@ fn main_thread(
                 }
                 GameEvent::AttackFired(object_type, owner) => {
                   let sound: &str = match object_type {
-                    GameObjectType::HernaniBullet =>                    "audio/gunshot.mp3",
+                    GameObjectType::HernaniBullet =>                    "audio/gunshot.ogg",
                     GameObjectType::CynewynnSword =>                    "audio/whoosh.ogg",
-                    GameObjectType::FedyaProjectileRicochet =>          "audio/whoosh.mp3",
-                    GameObjectType::FedyaTurretProjectile =>            "audio/whoosh.mp3",
-                    GameObjectType::RaphaelleBullet =>                  "audio/whoosh.mp3",
-                    GameObjectType::RaphaelleBulletEmpowered =>         "audio/whoosh.mp3",
-                    GameObjectType::WiroGunShot =>                      "audio/whoosh.mp3",
-                    GameObjectType::TemerityRocket =>                   "audio/rpgshot.mp3",
-                    GameObjectType::TemerityRocketSecondary =>          "audio/rpgshot.mp3",
-                    GameObjectType::KoldoCannonBall =>                  "audio/rpgshot.mp3",
-                    GameObjectType::KoldoCannonBallEmpowered =>         "audio/rpgshot.mp3",
-                    GameObjectType::KoldoCannonBallEmpoweredUltimate => "audio/rpgshot.mp3",
+                    GameObjectType::FedyaProjectileRicochet =>          "audio/whoosh.ogg",
+                    GameObjectType::FedyaTurretProjectile =>            "audio/whoosh.ogg",
+                    GameObjectType::RaphaelleBullet =>                  "audio/whoosh.ogg",
+                    GameObjectType::RaphaelleBulletEmpowered =>         "audio/whoosh.ogg",
+                    GameObjectType::WiroGunShot =>                      "audio/whoosh.ogg",
+                    GameObjectType::TemerityRocket =>                   "audio/rpgshot.ogg",
+                    GameObjectType::TemerityRocketSecondary =>          "audio/rpgshot.ogg",
+                    GameObjectType::KoldoCannonBall =>                  "audio/rpgshot.ogg",
+                    GameObjectType::KoldoCannonBallEmpowered =>         "audio/rpgshot.ogg",
+                    GameObjectType::KoldoCannonBallEmpoweredUltimate => "audio/rpgshot.ogg",
                     _ => {
                       continue;
                     }

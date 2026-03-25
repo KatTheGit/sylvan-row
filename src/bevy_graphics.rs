@@ -1269,10 +1269,9 @@ pub fn load_password(username: &str) -> String {
 pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
 
   // draw relative to position and centered.
-  let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
-  let relative_position_y = (y - camera.position.y) * camera.zoom + (50.0);
+  let relative_position = (Vector2 {x: x, y: y} - camera.position) *camera.zoom + Vector2 {x: 50.0 * (16.0/9.0), y: 50.0};
 
-  draw_sprite(texture, Vector2 { x: relative_position_x * vh, y: relative_position_y * vh }, Vector2 { x: w * camera.zoom * vh, y: h * camera.zoom * vh }, z, window, commands);
+  draw_sprite(texture, relative_position * vh, Vector2 { x: w * camera.zoom * vh, y: h * camera.zoom * vh }, z, window, commands);
 }
 pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   let relative_position_x1 = (x1 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
