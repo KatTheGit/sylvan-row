@@ -1,10 +1,4 @@
-//use kira::*;
-//use kira::sound::static_sound::StaticSoundData;
-use std::io::Cursor;
-
 use bevy::{audio::Volume, prelude::*};
-
-use crate::const_params::TILE_SIZE;
 
 pub fn play_sound(sound: String, commands: &mut Commands, asset_server: AssetServer, volume: f32) {
   // doesn't delete itself btw the way
@@ -15,7 +9,7 @@ pub fn play_sound(sound: String, commands: &mut Commands, asset_server: AssetSer
       ),
       PlaybackSettings {
         mode: bevy::audio::PlaybackMode::Despawn,
-        volume: Volume::Decibels(volume),
+        volume: Volume::Linear(volume),
         ..Default::default()
       },
     )

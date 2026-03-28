@@ -8,8 +8,6 @@ use core::f32;
 use std::collections::HashMap;
 use std::sync::MutexGuard;
 use std::vec;
-use strum_macros::EnumIter;
-use strum::IntoEnumIterator;
 use crate::bevy_immediate::*;
 use crate::const_params::*;
 use crate::maths::*;
@@ -122,10 +120,10 @@ impl ClientPlayer {
       used_secondary: false,
       used_dash: false,
       passive_elapsed: 0.0,
-      current_animation: AnimationState::new(vec![], 0.0, 0),
+      current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     }
   }
-  pub fn draw(&self, texture: &Texture, vh: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
+  pub fn draw(&self, vh: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
     // TODO: animations
     let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
@@ -137,7 +135,10 @@ impl ClientPlayer {
     draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera.clone(), vh, z, window, commands);
 
     let size: f32 = 10.0;
-    draw_image_relative(texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera.clone(), z, window, commands);
+    let texture = self.current_animation.current_frame();
+    if let Ok(texture) = texture {
+      draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera.clone(), z, window, commands);
+    }
     let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
     let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };
     let dash_bar_offset: Vector2 = Vector2 { x: -5.0, y: -15.0 };
@@ -229,7 +230,7 @@ impl ClientPlayer {
       used_primary: true,
       used_secondary: true,
       passive_elapsed: 0.0,
-      current_animation: AnimationState::new(vec![], 0.0, 0),
+      current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     };
   }
 }
@@ -486,7 +487,7 @@ impl GameModeInfo {
 }
 
 // MARK: Characters
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Character {
   /// Used for testing.
   Cynewynn,
@@ -567,21 +568,16 @@ pub struct CharacterProperties {
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
-  let mut characters: HashMap<Character, CharacterProperties> = HashMap::new();
-  for character in Character::iter() {
-    let character_properties: CharacterProperties = match character {
-      Character::Dummy      => CharacterProperties::from_pkl(include_str!("../assets/characters/dummy/properties.pkl")),
-      Character::Hernani => CharacterProperties::from_pkl(include_str!("../assets/characters/hernani/properties.pkl")),
-      Character::Raphaelle => CharacterProperties::from_pkl(include_str!("../assets/characters/raphaelle/properties.pkl")),
-      Character::Cynewynn =>  CharacterProperties::from_pkl(include_str!("../assets/characters/cynewynn/properties.pkl")),
-      Character::Fedya =>  CharacterProperties::from_pkl(include_str!("../assets/characters/fedya/properties.pkl")),
-      Character::Wiro =>  CharacterProperties::from_pkl(include_str!("../assets/characters/wiro/properties.pkl")),
-      Character::Koldo =>  CharacterProperties::from_pkl(include_str!("../assets/characters/koldo/properties.pkl")),
-      Character::Temerity =>  CharacterProperties::from_pkl(include_str!("../assets/characters/temerity/properties.pkl")),
-    };
-
-    characters.insert(character, character_properties);
-  }
+  let mut characters: HashMap<Character, CharacterProperties> = HashMap::from([
+    (Character::Dummy, CharacterProperties::from_pkl(include_str!("../assets/characters/dummy/properties.pkl"))),
+    (Character::Hernani, CharacterProperties::from_pkl(include_str!("../assets/characters/hernani/properties.pkl"))),
+    (Character::Raphaelle, CharacterProperties::from_pkl(include_str!("../assets/characters/raphaelle/properties.pkl"))),
+    (Character::Cynewynn, CharacterProperties::from_pkl(include_str!("../assets/characters/cynewynn/properties.pkl"))),
+    (Character::Fedya, CharacterProperties::from_pkl(include_str!("../assets/characters/fedya/properties.pkl"))),
+    (Character::Wiro, CharacterProperties::from_pkl(include_str!("../assets/characters/wiro/properties.pkl"))),
+    (Character::Koldo, CharacterProperties::from_pkl(include_str!("../assets/characters/koldo/properties.pkl"))),
+    (Character::Temerity, CharacterProperties::from_pkl(include_str!("../assets/characters/temerity/properties.pkl"))),
+  ]);
   return characters;
 }
 impl CharacterProperties {
@@ -866,75 +862,72 @@ pub struct AbilityDescription {
 }
 impl CharacterDescription {
   pub fn create_all_descriptions(character_properties: HashMap<Character, CharacterProperties>) -> HashMap<Character, CharacterDescription> {
-    let mut character_descriptions: HashMap<Character, CharacterDescription> = HashMap::new();
-    for character in Character::iter() {
-      character_descriptions.insert( character, match character {
-        Character::Cynewynn => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("Swings her sword, dealing {0} damage."), values: vec![character_properties[&character].primary_damage as f32] },
-            secondary: AbilityDescription { description: String::from("Teleports {0} seconds in the past, and gains {1} health."), values: vec![character_properties[&character].secondary_cooldown, character_properties[&character].secondary_heal as f32] },
-            dash:      AbilityDescription { description: String::from("Dashes, taking {0}% less damage."), values: vec![(1.0 - character_properties[&character].dash_damage_multiplier) * 100.0] },
-            passive:   AbilityDescription { description: String::from("Primary cooldown is lower the higher her secondary charge,reduced by up to {0}s."), values: vec![character_properties[&character].primary_cooldown_2] },
-          }
+    let mut character_descriptions: HashMap<Character, CharacterDescription> = HashMap::from([
+      (Character::Cynewynn, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("Swings her sword, dealing {0} damage."), values: vec![character_properties[&Character::Cynewynn].primary_damage as f32] },
+          secondary: AbilityDescription { description: String::from("Teleports {0} seconds in the past, and gains {1} health."), values: vec![character_properties[&Character::Cynewynn].secondary_cooldown, character_properties[&Character::Cynewynn].secondary_heal as f32] },
+          dash:      AbilityDescription { description: String::from("Dashes, taking {0}% less damage."), values: vec![(1.0 - character_properties[&Character::Cynewynn].dash_damage_multiplier) * 100.0] },
+          passive:   AbilityDescription { description: String::from("Primary cooldown is lower the higher her secondary charge,reduced by up to {0}s."), values: vec![character_properties[&Character::Cynewynn].primary_cooldown_2] },
         }
-        Character::Hernani => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("Fires a musket, dealing {0} damage."), values: vec![character_properties[&character].primary_damage as f32] },
-            secondary: AbilityDescription { description: String::from("Places a wall in front of himself."), values: vec![] },
-            dash:      AbilityDescription { description: String::from("Dashes, placing a bear trap that deals {0} damage when triggered."), values: vec![character_properties[&character].primary_damage_2 as f32] },
-            passive:   AbilityDescription { description: String::from("Deals {0}% damage to walls."), values: vec![character_properties[&character].wall_damage_multiplier * 100.0] },
-          }
+      }),
+      (Character::Hernani, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("Fires a musket, dealing {0} damage."), values: vec![character_properties[&Character::Hernani].primary_damage as f32] },
+          secondary: AbilityDescription { description: String::from("Places a wall in front of himself."), values: vec![] },
+          dash:      AbilityDescription { description: String::from("Dashes, placing a bear trap that deals {0} damage when triggered."), values: vec![character_properties[&Character::Hernani].primary_damage_2 as f32] },
+          passive:   AbilityDescription { description: String::from("Deals {0}% damage to walls."), values: vec![character_properties[&Character::Hernani].wall_damage_multiplier * 100.0] },
         }
-        Character::Raphaelle => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("Casts a {0} damage piercing shot. Landing it heals nearby allies by {1}, and herself by {2}. If empowered, deals {3} damage and doesn't heal."), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_heal_2 as f32, character_properties[&character].primary_lifesteal as f32, character_properties[&character].primary_damage_2 as f32] },
-            secondary: AbilityDescription { description: String::from("Places down a healpool that lasts {0}s, healing allies by {1} every second, and providing a fire rate buff."), values: vec![character_properties[&character].secondary_cooldown as f32, character_properties[&character].secondary_heal as f32] },
-            dash:      AbilityDescription { description: String::from("Dashes, empowering her PRIMARY. If she lands an empowered PRIMARY, reduces this cooldown by {0}s."), values: vec![character_properties[&character].primary_cooldown_2] },
-            passive:   AbilityDescription { description: String::from("Gains a small speed buff upon taking damage."), values: vec![character_properties[&character].primary_damage as f32] },
-          }
+      }),
+      (Character::Raphaelle, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("Casts a {0} damage piercing shot. Landing it heals nearby allies by {1}, and herself by {2}. If empowered, deals {3} damage and doesn't heal."), values: vec![character_properties[&Character::Raphaelle].primary_damage as f32, character_properties[&Character::Raphaelle].primary_heal_2 as f32, character_properties[&Character::Raphaelle].primary_lifesteal as f32, character_properties[&Character::Raphaelle].primary_damage_2 as f32] },
+          secondary: AbilityDescription { description: String::from("Places down a healpool that lasts {0}s, healing allies by {1} every second, and providing a fire rate buff."), values: vec![character_properties[&Character::Raphaelle].secondary_cooldown as f32, character_properties[&Character::Raphaelle].secondary_heal as f32] },
+          dash:      AbilityDescription { description: String::from("Dashes, empowering her PRIMARY. If she lands an empowered PRIMARY, reduces this cooldown by {0}s."), values: vec![character_properties[&Character::Raphaelle].primary_cooldown_2] },
+          passive:   AbilityDescription { description: String::from("Gains a small speed buff upon taking damage."), values: vec![character_properties[&Character::Raphaelle].primary_damage as f32] },
         }
-        Character::Temerity => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("A three-hit combo dealing {0} damage, with each attack gaining in range ( {1}m | {2}m | {3}m )."), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_range / TILE_SIZE, character_properties[&character].primary_range_2 / TILE_SIZE, character_properties[&character].primary_range_3 / TILE_SIZE] },
-            secondary: AbilityDescription { description: String::from("Launches a rocket under herself, dealing {0} damage and boosting herself backwads."), values: vec![character_properties[&character].secondary_damage as f32] },
-            dash:      AbilityDescription { description: String::from("Can hold DASH near walls to initiate a wallride."), values: vec![] },
-            passive:   AbilityDescription { description: String::from("Heals nearby walls by {0} every second."), values: vec![character_properties[&character].passive_value as f32] },
-          }
+      }),
+      (Character::Temerity, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("A three-hit combo dealing {0} damage, with each attack gaining in range ( {1}m | {2}m | {3}m )."), values: vec![character_properties[&Character::Temerity].primary_damage as f32, character_properties[&Character::Temerity].primary_range / TILE_SIZE, character_properties[&Character::Temerity].primary_range_2 / TILE_SIZE, character_properties[&Character::Temerity].primary_range_3 / TILE_SIZE] },
+          secondary: AbilityDescription { description: String::from("Launches a rocket under herself, dealing {0} damage and boosting herself backwads."), values: vec![character_properties[&Character::Temerity].secondary_damage as f32] },
+          dash:      AbilityDescription { description: String::from("Can hold DASH near walls to initiate a wallride."), values: vec![] },
+          passive:   AbilityDescription { description: String::from("Heals nearby walls by {0} every second."), values: vec![character_properties[&Character::Temerity].passive_value as f32] },
         }
-        Character::Fedya => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("Throws a knife which can bounce off walls, that deals {0} damage and stays on the ground."), values: vec![character_properties[&character].primary_damage as f32] },
-            secondary: AbilityDescription { description: String::from("Creates a turret that pinballs around, shooting nearby opponents every {0}s, dealing {1} damage."), values: vec![character_properties[&character].primary_cooldown_2, character_properties[&character].secondary_damage as f32] },
-            dash:      AbilityDescription { description: String::from("Dashes and recalls all grounded knives, which slow opponents caught in their path and deal {0} damage."), values: vec![character_properties[&character].primary_damage_2 as f32] },
-            passive:   AbilityDescription { description: String::from("No passive ability."), values: vec![] },
-          }
+      }),
+      (Character::Fedya, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("Throws a knife which can bounce off walls, that deals {0} damage and stays on the ground."), values: vec![character_properties[&Character::Fedya].primary_damage as f32] },
+          secondary: AbilityDescription { description: String::from("Creates a turret that pinballs around, shooting nearby opponents every {0}s, dealing {1} damage."), values: vec![character_properties[&Character::Fedya].primary_cooldown_2, character_properties[&Character::Fedya].secondary_damage as f32] },
+          dash:      AbilityDescription { description: String::from("Dashes and recalls all grounded knives, which slow opponents caught in their path and deal {0} damage."), values: vec![character_properties[&Character::Fedya].primary_damage_2 as f32] },
+          passive:   AbilityDescription { description: String::from("No passive ability."), values: vec![] },
         }
-        Character::Wiro => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("An attack dealing {0} damage up-close and {1} damage at range. Landing this ability empowers DASH"), values: vec![character_properties[&character].primary_damage as f32, character_properties[&character].primary_damage_2 as f32] },
-            secondary: AbilityDescription { description: String::from("Holds up a shield, damage taken with it costs secondary charge. If active, PASSIVE's speed no longer applies."), values: vec![] },
-            dash:      AbilityDescription { description: String::from("A long dash. If empowered, heals allies in his path by {0} and damages opponents by {1}"), values: vec![character_properties[&character].secondary_heal as f32, character_properties[&character].secondary_damage as f32] },
-            passive:   AbilityDescription { description: String::from("Nearby allies gain a small speed buff if SECONDARY is inactive. SECONDARY can only charge passively {0} seconds after use."), values: vec![character_properties[&character].passive_cooldown] },
-          }
+      }),
+      (Character::Wiro, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("An attack dealing {0} damage up-close and {1} damage at range. Landing this ability empowers DASH"), values: vec![character_properties[&Character::Wiro].primary_damage as f32, character_properties[&Character::Wiro].primary_damage_2 as f32] },
+          secondary: AbilityDescription { description: String::from("Holds up a shield, damage taken with it costs secondary charge. If active, PASSIVE's speed no longer applies."), values: vec![] },
+          dash:      AbilityDescription { description: String::from("A long dash. If empowered, heals allies in his path by {0} and damages opponents by {1}"), values: vec![character_properties[&Character::Wiro].secondary_heal as f32, character_properties[&Character::Wiro].secondary_damage as f32] },
+          passive:   AbilityDescription { description: String::from("Nearby allies gain a small speed buff if SECONDARY is inactive. SECONDARY can only charge passively {0} seconds after use."), values: vec![character_properties[&Character::Wiro].passive_cooldown] },
         }
-        Character::Koldo => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m) to a wall boosts you backwards."), values: vec![character_properties[&character].primary_damage as f32,character_properties[&character].primary_range_3/TILE_SIZE ] },
-            secondary: AbilityDescription { description: String::from("Reset PRIMARY's cooldown and empower the next two PRIMARIES with PASSIVE's effects, with the first one additionally slowing enemies and piercing."), values: vec![] },
-            dash:      AbilityDescription { description: String::from("A short dash that resets the cooldown of PRIMARY."), values: vec![] },
-            passive:   AbilityDescription { description: String::from("Standing still for {0}s gives your PRIMARY recoil, increased range ({1}m) and increased damage ({2})."), values: vec![character_properties[&character].passive_cooldown as f32, character_properties[&character].primary_range_2/TILE_SIZE, character_properties[&character].primary_damage_2 as f32] },
-          }
+      }),
+      (Character::Koldo, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m) to a wall boosts you backwards."), values: vec![character_properties[&Character::Koldo].primary_damage as f32,character_properties[&Character::Koldo].primary_range_3/TILE_SIZE ] },
+          secondary: AbilityDescription { description: String::from("Reset PRIMARY's cooldown and empower the next two PRIMARIES with PASSIVE's effects, with the first one additionally slowing enemies and piercing."), values: vec![] },
+          dash:      AbilityDescription { description: String::from("A short dash that resets the cooldown of PRIMARY."), values: vec![] },
+          passive:   AbilityDescription { description: String::from("Standing still for {0}s gives your PRIMARY recoil, increased range ({1}m) and increased damage ({2})."), values: vec![character_properties[&Character::Koldo].passive_cooldown as f32, character_properties[&Character::Koldo].primary_range_2/TILE_SIZE, character_properties[&Character::Koldo].primary_damage_2 as f32] },
         }
-        Character::Dummy => {
-          CharacterDescription {
-            primary:   AbilityDescription { description: String::from("dummy."), values: vec![] },
-            secondary: AbilityDescription { description: String::from("dummy."), values: vec![] },
-            dash:      AbilityDescription { description: String::from("dummy."), values: vec![] },
-            passive:   AbilityDescription { description: String::from("dummy."), values: vec![] },
-          }
+      }),
+      (Character::Dummy, {
+        CharacterDescription {
+          primary:   AbilityDescription { description: String::from("dummy."), values: vec![] },
+          secondary: AbilityDescription { description: String::from("dummy."), values: vec![] },
+          dash:      AbilityDescription { description: String::from("dummy."), values: vec![] },
+          passive:   AbilityDescription { description: String::from("dummy."), values: vec![] },
         }
-      });
-    }
+      }),
+    ]);
     return character_descriptions;
   }
 }

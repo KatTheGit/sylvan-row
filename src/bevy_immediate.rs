@@ -269,7 +269,7 @@ pub fn clear_background(
 pub struct DeleteAfterFrame {}
 
 // MARK: Texture
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Texture {
   pub image: Handle<Image>,
   pub size: Vec2,

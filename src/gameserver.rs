@@ -588,7 +588,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&nonce).expect("oops");
             let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
             nonce += 1;
-            println!("Packet sent back");
             socket.send_to(&serialized, player_ip).expect("Failed to send packet to client.");
           }
 

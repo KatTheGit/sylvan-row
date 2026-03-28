@@ -1269,8 +1269,9 @@ pub fn load_password(username: &str) -> String {
 pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
 
   // draw relative to position and centered.
-  let relative_position = (Vector2 {x: x, y: y} - camera.position) *camera.zoom + Vector2 {x: 50.0 * (16.0/9.0), y: 50.0};
-
+  let relative_position = (Vector2 {x: x, y: y} - camera.position) * camera.zoom + Vector2 {x: 50.0 * (16.0/9.0), y: 50.0};
+  //let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
+  //let relative_position_y = (y - camera.position.y) * camera.zoom + (50.0);
   draw_sprite(texture, relative_position * vh, Vector2 { x: w * camera.zoom * vh, y: h * camera.zoom * vh }, z, window, commands);
 }
 pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, z: i8, window: &Window, commands: &mut Commands) -> () {
@@ -1366,7 +1367,7 @@ pub fn load_character_textures(asset_server: AssetServer) -> HashMap<Character, 
 /// Describes an animation, its current state and how it behaves.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnimationState {
-  pub frames: Vec<Handle<Image>>,
+  pub frames: Vec<Texture>,
   pub frame_rate: f32,
   /// Animation start instant
   pub timer: Instant,
@@ -1378,18 +1379,47 @@ pub struct AnimationState {
 }
 impl AnimationState {
   /// gets the current frame of the animation.
-  pub fn current_frame(&self) -> Handle<Image> {
+  pub fn current_frame(&self) -> Result<Texture, ()> {
+    if self.frames.len() == 0 {
+      return Err(());
+    }
     let elapsed = self.timer.elapsed().as_secs_f32();
     let mut current_frame = (elapsed * self.frame_rate) as usize;
     let max_len = self.frames.len()-1;
     if current_frame > max_len {
       current_frame = max_len;
     }
-    return self.frames[current_frame].clone();
+    return Ok(self.frames[current_frame].clone());
   }
-  pub fn new(frames: Vec<Handle<Image>>, frame_rate: f32, priority_level: u8) -> AnimationState {
+  pub fn is_finished(&self) -> bool {
+    let elapsed = self.timer.elapsed().as_secs_f32();
+
+    let current_frame = (elapsed * self.frame_rate) as usize;
+    if self.frames.len() <= current_frame {
+      return true
+    }
+    else {
+      return false
+    }
+  }
+  pub fn from_start(&self) -> AnimationState {
+
     return AnimationState {
-      frames: frames,
+      frames: self.frames.clone(),
+      frame_rate: self.frame_rate,
+      timer: Instant::now(),
+      animation_prio: self.animation_prio,
+    };
+  }
+  pub fn new(frames: Vec<Handle<Image>>, size: Vec2, frame_rate: f32, priority_level: u8) -> AnimationState {
+    let mut texture_frames = Vec::new();
+    for frame in frames {
+      texture_frames.push(
+        Texture { image: frame, size: size }
+      )
+    };
+    return AnimationState {
+      frames: texture_frames,
       frame_rate: frame_rate,
       timer: Instant::now(),
       animation_prio: priority_level,
@@ -1400,43 +1430,43 @@ pub fn load_character_animations(asset_server: AssetServer) -> HashMap<Character
   return HashMap::from([
     (Character::Cynewynn, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/cynewynn/textures/main.png")
-      ], 1.0, 0)
+        asset_server.load("characters/cynewynn/textures/main.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Raphaelle, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/raphaelle/textures/main.png")
-      ], 1.0, 0)
+        asset_server.load("characters/raphaelle/textures/main.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Hernani, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/hernani/textures/main.png")
-      ], 1.0, 0)
+        asset_server.load("characters/hernani/textures/main.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Fedya, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/dummy/textures/template1.png")
-      ], 1.0, 0)
+        asset_server.load("characters/dummy/textures/template1.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Wiro, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/dummy/textures/template2.png")
-      ], 1.0, 0)
+        asset_server.load("characters/dummy/textures/template2.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Dummy, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/dummy/textures/template.png")
-      ], 1.0, 0)
+        asset_server.load("characters/dummy/textures/template.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Temerity, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/dummy/textures/template3.png")
-      ], 1.0, 0)
+        asset_server.load("characters/dummy/textures/template3.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Koldo, vec![
       AnimationState::new(vec![
-        asset_server.load("characters/koldo/textures/template4.png")
-      ], 1.0, 0)
+        asset_server.load("characters/koldo/textures/template4.png"),
+      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
   ]);
 }

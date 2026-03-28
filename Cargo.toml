@@ -21,13 +21,11 @@ ring = "0.17.14"
 rusty-pkl = "0.1.2"
 serde = { version = "1.0.204", features = ["derive"] }
 sha2 = "0.10.9"
-strum = "0.26.3"
 strum_macros = "0.26.4"
 tokio = {version = "1.48.0", features = ["full"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 gilrs = "0.10.7"
-kira = "0.11.0"
 device_query = "2.1.0"
 
 [build-dependencies]

@@ -379,9 +379,40 @@ fn main_thread(
         if mode == 1 || mode == 2 {
           
 
-
+          // MARK: | Interpolation
+          // for now this is just simple linear interpolation, no shenanigans yet.
+          for player in data.players.iter_mut() {
+            let distance = player.interpol_next - player.position;
+            let cutoff = 7.0 * TILE_SIZE * delta_time;
+            if distance.magnitude() > cutoff {
+              let period = PACKET_INTERVAL;
+              let speed = distance / period;
+              //let speed = player.movement_direction * character_properties[&player.character].speed;
+              player.position += distance.normalize() * (70.0 * speed.magnitude().powf(1.0/15.0) + 3.0 * speed.magnitude()) * delta_time * 0.1;
+            }
+            //player.position += distance * PACKET_INTERVAL * get_frame_time() * 2.0;
+            //player.position += distance * get_frame_time();
+            //draw_line(player.position.x, player.position.y, player.interpol_next.x, player.interpol_next.y, 1.0*vh, PURPLE);
+            // I can't get the interpolation to work, so temporarily I'll swap it with this very simple
+            // extrapolation method.
+            //player.position += player.movement_direction * character_properties[&player.character].speed * get_frame_time();
+          }
 
           // MARK: | game graphics
+
+          // MARK: | | Animation handl.
+
+          // set idle animations
+          for player_index in 0..data.players.len() {
+            if data.players[player_index].current_animation.is_finished() {
+              let character = data.players[player_index].character;
+              data.players[player_index].current_animation = data.character_animations[&character][0].from_start();
+            }
+          }
+          if data.player.current_animation.is_finished() {
+            let character = data.player.character;
+            data.player.current_animation = data.character_animations[&character][0].from_start();
+          }
 
           for background_tile in data.background_tiles.clone() {
             let texture = Texture {
@@ -548,16 +579,16 @@ fn main_thread(
             }
           }
 
+          
           // MARK: | | Draw Players
-
-          //if !data.player.is_dead {
-          //  data.player.draw(&player_textures[&data.player.character], vh, data.player.camera.clone(), &health_bar_font, character_properties[&data.player.character].clone(), settings_copy.clone());
-          //}
-          //for player in other_players_copy.clone() {
-          //  if !player.is_dead {
-          //    player.draw(&player_textures[&player.character], vh, data.player.camera.clone(), &health_bar_font, character_properties[&player.character].clone(), settings_copy.clone());
-          //  }
-          //}
+          if !data.player.is_dead {
+            data.player.draw(vh, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+          }
+          for player in data.players.clone() {
+            if !player.is_dead {
+              player.draw(vh, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+            }
+          }
 
           // draw players and optionally their trails
           let trail_y_offset: f32 = 4.5;
@@ -594,8 +625,7 @@ fn main_thread(
             }
           }
 
-
-
+          // CAMERA MOVEMENT
           if !data.player.is_dead {
             match data.settings.camera_smoothing {
               true => {
@@ -966,20 +996,20 @@ fn main_thread(
               };
 
               // substract decibels based on distance.
-              //https://www.desmos.com/calculator/ar7w5afy1s
+              // https://www.desmos.com/calculator/ar7w5afy1s
               // the range (in tiles) at which we hear the full sound
-              let full_sound_cutoff = 5.0;
-              // decibels the sound falls off per tile.
-              let sound_faloff_amplitude = 1.0;
-              let distance_volume = if distance/TILE_SIZE < full_sound_cutoff {
-                0.0
-              } else {
-                - sound_faloff_amplitude *(distance/TILE_SIZE) + full_sound_cutoff * sound_faloff_amplitude
-              };
-              let volume = distance_volume / raw_volume;
+              //let full_sound_cutoff = 5.0;
+              //// decibels the sound falls off per tile.
+              //let sound_faloff_amplitude = 0.07;
+              //let distance_volume = if distance/TILE_SIZE < full_sound_cutoff {
+              //  0.0
+              //} else {
+              //  - sound_faloff_amplitude *(distance/TILE_SIZE) + full_sound_cutoff * sound_faloff_amplitude
+              //};
+              let volume = raw_volume;
+              println!("{:?}", volume);
               println!("{:?}", volume);
               bevy_audio::play_sound(sound_path.to_string(), &mut com, asset_server.clone(), volume);
-
             }
           }
           // send our packet, at a lower frequency.
@@ -1064,6 +1094,8 @@ fn main_thread(
             ServerToClient::MatchAssignment(info) => {
               // a match assignment should override whatever we're doing.
               println!("Match assignment: {:?}", info);
+              let selected_char = data.heroes_tabs.selected_tab();
+              data.player.character = CHARACTER_LIST[selected_char];
               data.game_server_port = info.port;
               data.game_id = info.game_id;
               data.queued = false;
