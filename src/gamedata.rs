@@ -23,7 +23,7 @@ pub struct Camera {
 }
 impl Camera {
   pub fn new() -> Camera {
-    return Camera { position: Vector2::new(), zoom: 1.0 };
+    return Camera { position: Vector2::new(), zoom: 8.0 };
   }
 }
 // MARK: Client
@@ -125,79 +125,80 @@ impl ClientPlayer {
   }
   pub fn draw(&self, vh: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
     // TODO: animations
-    let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
-    let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
-    let bg_opacity: f32 = 0.4;
-    let color = match self.team {
-      Team::Blue => Srgba { red: 0.3, green: 0.5, blue: 0.7, alpha: bg_opacity },
-      Team::Red => Srgba { red: 0.7, green: 0.5, blue: 0.3, alpha: bg_opacity },
-    };
-    draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera.clone(), vh, z, window, commands);
-
-    let size: f32 = 10.0;
+    
+    let size: f32 = 1.2;
     let texture = self.current_animation.current_frame();
     if let Ok(texture) = texture {
       draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera.clone(), z, window, commands);
     }
-    let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
-    let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };
-    let dash_bar_offset: Vector2 = Vector2 { x: -5.0, y: -15.0 };
-    let mut dash_ratio = self.time_since_last_dash / character.dash_cooldown;
-    if dash_ratio > 1.0 {dash_ratio = 1.0};
-    draw_line_relative(
-      self.position.x + dash_bar_offset.x,
-      self.position.y + dash_bar_offset.y,
-      dash_ratio * 10.0 + self.position.x + dash_bar_offset.x,
-      self.position.y + dash_bar_offset.y,
-      1.5,
-      BLUE,
-      camera.clone(), vh, z, window, commands);
-    draw_line_relative(
-      self.position.x + secondary_bar_offset.x,
-      self.position.y + secondary_bar_offset.y,
-      self.secondary_charge as f32 / 10.0 + self.position.x + secondary_bar_offset.x,
-      self.position.y + secondary_bar_offset.y,
-      1.5,
-      ORANGE,
-      camera.clone(), vh, z, window, commands);
-    // let health_counter_offset: Vector2 = Vector2 { x: -3.9, y: -10.0 };
-    // let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
-    // let mut font = load_ttf_font_from_bytes(include_bytes!("./../assets/fonts/Action_Man.ttf")).expect("Could not load font.");
-    // font.set_filter(FilterMode::Nearest);
-    // draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, 16, vh, camera_position, GREEN);
-    draw_line_relative(
-      self.position.x + health_bar_offset.x,
-      self.position.y + health_bar_offset.y,
-      self.health as f32 / 10.0 + self.position.x + health_bar_offset.x,
-      self.position.y + health_bar_offset.y,
-      1.5,
-      GREEN,
-      camera.clone(), vh, z, window, commands);
-    let health_counter_offset: Vector2 = Vector2 { x: -11.5, y: -10.6 };
-    let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
-    let font_size: f32 = 4.0;
-    draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, font_size, vh, camera.clone(), z, window, commands);
-    let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
-    let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
-    draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera.clone(), z, window, commands);
-    
-    let displayed_name =
-      if settings.display_char_name_instead {
-        self.character.name()
-      }
-      else {
-        self.username.clone()
-      };
 
-    let username_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
-    draw_text_relative(&displayed_name, self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera.clone(), z, window, commands);
-    let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -21.0 };
-    for buff in self.buffs.clone() {
-      if !vec![BuffType::Impulse].contains(&buff.buff_type) {
-        draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera.clone(), z, window, commands);
-      }
-      buff_offset.y -= 3.0;
-    }
+    //let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
+    //let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
+    //let bg_opacity: f32 = 0.4;
+    //let color = match self.team {
+    //  Team::Blue => Srgba { red: 0.3, green: 0.5, blue: 0.7, alpha: bg_opacity },
+    //  Team::Red => Srgba { red: 0.7, green: 0.5, blue: 0.3, alpha: bg_opacity },
+    //};
+    //draw_rectangle_relative(bg_offset.x + self.position.x, bg_offset.y + self.position.y, bg_size.x, bg_size.y, color, camera.clone(), vh, z, window, commands);
+    //let health_bar_offset: Vector2 = Vector2 { x: -5.0, y: -11.0 };
+    //let secondary_bar_offset: Vector2 = Vector2 { x: -5.0, y: -13.0 };
+    //let dash_bar_offset: Vector2 = Vector2 { x: -5.0, y: -15.0 };
+    //let mut dash_ratio = self.time_since_last_dash / character.dash_cooldown;
+    //if dash_ratio > 1.0 {dash_ratio = 1.0};
+    //draw_line_relative(
+    //  self.position.x + dash_bar_offset.x,
+    //  self.position.y + dash_bar_offset.y,
+    //  dash_ratio * 10.0 + self.position.x + dash_bar_offset.x,
+    //  self.position.y + dash_bar_offset.y,
+    //  1.5,
+    //  BLUE,
+    //  camera.clone(), vh, z, window, commands);
+    //draw_line_relative(
+    //  self.position.x + secondary_bar_offset.x,
+    //  self.position.y + secondary_bar_offset.y,
+    //  self.secondary_charge as f32 / 10.0 + self.position.x + secondary_bar_offset.x,
+    //  self.position.y + secondary_bar_offset.y,
+    //  1.5,
+    //  ORANGE,
+    //  camera.clone(), vh, z, window, commands);
+    //// let health_counter_offset: Vector2 = Vector2 { x: -3.9, y: -10.0 };
+    //// let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
+    //// let mut font = load_ttf_font_from_bytes(include_bytes!("./../assets/fonts/Action_Man.ttf")).expect("Could not load font.");
+    //// font.set_filter(FilterMode::Nearest);
+    //// draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, 16, vh, camera_position, GREEN);
+    //draw_line_relative(
+    //  self.position.x + health_bar_offset.x,
+    //  self.position.y + health_bar_offset.y,
+    //  self.health as f32 / 10.0 + self.position.x + health_bar_offset.x,
+    //  self.position.y + health_bar_offset.y,
+    //  1.5,
+    //  GREEN,
+    //  camera.clone(), vh, z, window, commands);
+    //let health_counter_offset: Vector2 = Vector2 { x: -11.5, y: -10.6 };
+    //let health_counter_with_leading_zeros = format!("{:0>3}", self.health.to_string());
+    //let font_size: f32 = 4.0;
+    //draw_text_relative(health_counter_with_leading_zeros.as_str(), self.position.x + health_counter_offset.x, self.position.y + health_counter_offset.y, &font, font_size, vh, camera.clone(), z, window, commands);
+    //let secondary_counter_offset: Vector2 = Vector2 { x: 5.9, y: -10.6 };
+    //let secondary_counter_with_leading_zeros = format!("{:0>3}", self.secondary_charge.to_string());
+    //draw_text_relative(secondary_counter_with_leading_zeros.as_str(), self.position.x + secondary_counter_offset.x, self.position.y + secondary_counter_offset.y, &font, font_size, vh, camera.clone(), z, window, commands);
+    //
+    //let displayed_name =
+    //  if settings.display_char_name_instead {
+    //    self.character.name()
+    //  }
+    //  else {
+    //    self.username.clone()
+    //  };
+    //
+    //let username_offset: Vector2 = Vector2 { x: -11.5, y: -17.0 };
+    //draw_text_relative(&displayed_name, self.position.x + username_offset.x, self.position.y + username_offset.y, font, font_size, vh, camera.clone(), z, window, commands);
+    //let mut buff_offset: Vector2 = Vector2 { x: -11.5, y: -21.0 };
+    //for buff in self.buffs.clone() {
+    //  if !vec![BuffType::Impulse].contains(&buff.buff_type) {
+    //    draw_text_relative(match buff.buff_type { BuffType::FireRate => "+ fire rate", BuffType::RaphaelleFireRate => "+ fire rate", BuffType::Speed => if buff.value > 0.0 { "+ speed"} else {"- speed"}, BuffType::WiroSpeed => "+ speed", BuffType::Impulse => "+ impulse"}, self.position.x + buff_offset.x, self.position.y + buff_offset.y, &font, font_size, vh, camera.clone(), z, window, commands);
+    //  }
+    //  buff_offset.y -= 3.0;
+    //}
   }
   pub fn new() -> ClientPlayer {
     return ClientPlayer {

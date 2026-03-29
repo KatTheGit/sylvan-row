@@ -119,7 +119,7 @@ pub struct GameData {
   pub players:            Vec<ClientPlayer>,
   pub game_objects:       Vec<GameObject>,
   pub gamemode_info:      GameModeInfo,
-  pub game_object_textures: HashMap<GameObjectType, Handle<Image>>,
+  pub game_object_animations: HashMap<GameObjectType, AnimationState>,
   pub background_tiles: Vec<BackGroundTile>,
 }
 impl Default for GameData {
@@ -197,7 +197,7 @@ impl Default for GameData {
       players: Vec::new(),
       game_objects: Vec::new(),
       gamemode_info: GameModeInfo::new(),
-      game_object_textures: HashMap::new(),
+      game_object_animations: HashMap::new(),
       background_tiles: Vec::new(),
     }
   }
@@ -213,7 +213,7 @@ fn main_thread(
   k: Res<ButtonInput<KeyCode>>,
   m: Res<ButtonInput<MouseButton>>,
   mut ki: MessageReader<KeyboardInput>,
-  mw: MessageReader<MouseWheel>,
+  mut mw: MessageReader<MouseWheel>,
   t: Res<Touches>,
   mut exit: MessageWriter<AppExit>,
 ) {
@@ -227,7 +227,7 @@ fn main_thread(
     
     if data.startup {
       data.startup = false;
-      data.game_object_textures = load_game_object_textures(asset_server.clone());
+      data.game_object_animations = load_game_object_animations(asset_server.clone());
       data.character_animations = load_character_animations(asset_server.clone());
       set_fullscreen(data.settings.fullscreen, &mut win);
     }
@@ -377,7 +377,6 @@ fn main_thread(
         }
         // MARK: Game
         if mode == 1 || mode == 2 {
-          
 
           // MARK: | Interpolation
           // for now this is just simple linear interpolation, no shenanigans yet.
@@ -415,12 +414,10 @@ fn main_thread(
           }
 
           for background_tile in data.background_tiles.clone() {
-            let texture = Texture {
-              image: data.game_object_textures[&background_tile.object_type].clone(),
-              size: Vec2 {x: 200.0, y: 200.0}
-            };
-            let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
-            draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 0, &win, &mut com);
+            if let Ok(texture) = data.game_object_animations[&background_tile.object_type].current_frame() {
+              let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
+              draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 0, &win, &mut com);
+            }
           }
 
           // adjust certain positions.
@@ -445,59 +442,57 @@ fn main_thread(
           // draw all gameobjects
           //data.game_objects = sort_by_depth(data.game_objects);
           for game_object in data.game_objects.clone() {
-            let texture = data.game_object_textures[&game_object.object_type].clone();
-            let size = match game_object.object_type {
-              GameObjectType::Wall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
-              GameObjectType::UnbreakableWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
-              GameObjectType::HernaniWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
-              GameObjectType::HernaniBullet => Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
-              GameObjectType::RaphaelleBullet => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              GameObjectType::RaphaelleBulletEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              GameObjectType::RaphaelleAura => Vector2 {x: data.character_properties[&Character::Raphaelle].secondary_range*2.0, y: data.character_properties[&Character::Raphaelle].secondary_range*2.0,},
-              GameObjectType::WiroShield => Vector2 { x: TILE_SIZE*0.5, y: data.character_properties[&Character::Wiro].secondary_range },
-              GameObjectType::TemerityRocketSecondary => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              GameObjectType::CenterOrb => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              GameObjectType::CynewynnSword => Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
-              GameObjectType::KoldoCannonBall => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              GameObjectType::KoldoCannonBallEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-              _ => Vector2 {x: 1.0 * TILE_SIZE, y: 1.0* TILE_SIZE},
-            };
-            let shadow_offset: f32 = 5.0;
+            if let Ok(texture) = data.game_object_animations[&game_object.object_type].current_frame() {
 
-            // Draw shadows on certain objects
-            let shaded_objects = vec![GameObjectType::RaphaelleBullet,
-                                                          GameObjectType::RaphaelleBulletEmpowered,
-                                                          GameObjectType::HernaniBullet,
-                                                          GameObjectType::CynewynnSword,
-                                                          GameObjectType::CenterOrb,
-                                                          GameObjectType::FedyaProjectileRicochet,
-                                                          ];
-            let rotation: Vector2 = match game_object.get_bullet_data_safe() {
-              Ok(data) => {
-                data.direction
-              }
-              Err(()) => {
-                Vector2::new()
-              }
-            };
-            //if shaded_objects.contains(&game_object.object_type) {
-            //  draw_image_relative(
-            //    texture,
-            //    game_object.position.x - size.x/2.0,
-            //    game_object.position.y - size.y/2.0 + shadow_offset,
-            //    size.x,
-            //    size.y,
-            //    vh, data.player.camera.clone(),
-            //    rotation,
-            //    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 }
-            //  );
-            //}
-            let texture = &Texture {
-              image: texture,
-              size: Vec2 { x: 400.0, y: 400.0 }
-            };
-            draw_image_relative(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 5, &win, &mut com);
+              let size = match game_object.object_type {
+                GameObjectType::Wall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+                GameObjectType::UnbreakableWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+                GameObjectType::HernaniWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
+                GameObjectType::HernaniBullet => Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
+                GameObjectType::RaphaelleBullet => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                GameObjectType::RaphaelleBulletEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                GameObjectType::RaphaelleAura => Vector2 {x: data.character_properties[&Character::Raphaelle].secondary_range*2.0, y: data.character_properties[&Character::Raphaelle].secondary_range*2.0,},
+                GameObjectType::WiroShield => Vector2 { x: TILE_SIZE*0.5, y: data.character_properties[&Character::Wiro].secondary_range },
+                GameObjectType::TemerityRocketSecondary => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                GameObjectType::CenterOrb => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                GameObjectType::CynewynnSword => Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
+                GameObjectType::KoldoCannonBall => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                GameObjectType::KoldoCannonBallEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                _ => Vector2 {x: 1.0 * TILE_SIZE, y: 1.0* TILE_SIZE},
+              };
+              let shadow_offset: f32 = 5.0;
+              
+              // Draw shadows on certain objects
+              let shaded_objects = vec![GameObjectType::RaphaelleBullet,
+                GameObjectType::RaphaelleBulletEmpowered,
+                GameObjectType::HernaniBullet,
+                GameObjectType::CynewynnSword,
+                GameObjectType::CenterOrb,
+                GameObjectType::FedyaProjectileRicochet,
+              ];
+              let rotation: Vector2 = match game_object.get_bullet_data_safe() {
+                Ok(data) => {
+                  data.direction
+                }
+                Err(()) => {
+                  Vector2::new()
+                }
+              };
+              //if shaded_objects.contains(&game_object.object_type) {
+              //  draw_image_relative(
+              //    texture,
+              //    game_object.position.x - size.x/2.0,
+              //    game_object.position.y - size.y/2.0 + shadow_offset,
+              //    size.x,
+              //    size.y,
+              //    vh, data.player.camera.clone(),
+              //    rotation,
+              //    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 }
+              //  );
+              //}
+              draw_image_relative(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 5, &win, &mut com);
+            }
           }
 
 
@@ -510,9 +505,13 @@ fn main_thread(
           //mouse_position.y =(((get_mouse_pos(&win).y / vh /* 100.0*/) /* 100.0             */) /*- 50.0               */) / data.player.camera.zoom + data.player.camera.position.y;
 
           // screen-space to world space conversion
-          let mouse_world_position = mouse_pos / data.player.camera.zoom + data.player.camera.position - Vector2 {x: 50.0 * (16.0/9.0), y: 50.0};
-
           let mouse_world_position = data.player.camera.position + (mouse_pos - Vector2 {x:50.0 * (16.0/9.0) * vh, y: 50.0*vh})/vh;
+          
+          //println!("{:?}", data.player.camera.position);
+          //println!("{:?}", data.player.position);
+
+          draw_rectangle_relative(mouse_world_position.x, mouse_world_position.y, 10.0, 10.0, BLACK, data.player.camera.clone(), vh, 127, &win, &mut com);
+          
           let aim_direction: Vector2 = mouse_world_position - data.player.position;
           
 
@@ -591,7 +590,7 @@ fn main_thread(
           }
 
           // draw players and optionally their trails
-          let trail_y_offset: f32 = 4.5;
+          let trail_y_offset: f32 = 0.6;
           for player in data.players.clone() {
             if player.character == Character::Cynewynn && !player.is_dead {
               draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, player.team, trail_y_offset-0.0, 1.0, 10, &win, &mut com);
@@ -654,7 +653,8 @@ fn main_thread(
           let mut shooting_secondary = false;
           let mut dashing = false;
 
-          if is_window_focused(&win) {
+          // only register input if the window is active and the pause menu isn't open
+          if is_window_focused(&win) && !data.paused {
 
             #[cfg(not(target_os="android"))]
             {
@@ -783,6 +783,11 @@ fn main_thread(
               data.player.camera.position.y += movement.y;
             }
           }
+
+          // CAMERA ZOOM
+          let scrollwheel = get_mouse_wheel(&mut mw);
+          data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 2.0 * delta_time).clamp(4.0, 16.0);
+
 
           // MARK: | game net
           let mut buffer: [u8; 16384] = [0; 16384];
@@ -995,19 +1000,23 @@ fn main_thread(
                 AudioTrack::SoundEffectSelf => sfx_self_vol,
               };
 
-              // substract decibels based on distance.
-              // https://www.desmos.com/calculator/ar7w5afy1s
-              // the range (in tiles) at which we hear the full sound
-              //let full_sound_cutoff = 5.0;
-              //// decibels the sound falls off per tile.
-              //let sound_faloff_amplitude = 0.07;
-              //let distance_volume = if distance/TILE_SIZE < full_sound_cutoff {
-              //  0.0
-              //} else {
-              //  - sound_faloff_amplitude *(distance/TILE_SIZE) + full_sound_cutoff * sound_faloff_amplitude
-              //};
-              let volume = raw_volume;
-              println!("{:?}", volume);
+              // reduce volume based on distance
+
+              let cutoff = 7.0;
+              let faloff = 0.05;
+
+              println!("dist: {:?}", distance);
+              println!("cut: {:?}", cutoff);
+
+              let distance_volume_modifier = if distance < cutoff {
+                1.0
+              } else {
+                println!("{:?}", distance);
+                1.0 / (faloff * (distance - cutoff) + 1.0)
+              };
+              println!("{:?}", distance_volume_modifier);
+
+              let volume = raw_volume * distance_volume_modifier;
               println!("{:?}", volume);
               bevy_audio::play_sound(sound_path.to_string(), &mut com, asset_server.clone(), volume);
             }
