@@ -98,12 +98,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
       // recieve packet
       let (amt, src) = socket.recv_from(&mut buffer).expect(":(");
       let data = &buffer[..amt];
-      
-      // clean all recieved NaNs and infinites so the server doesnt explode
-      //recieved_player_info.aim_direction.clean();
-      //recieved_player_info.movement.clean();
-      //recieved_player_info.position.clean();
-      //recieved_player_info.packet_interval.clean();
 
       // claim all the mutexes
       let mut players = listener_players.lock().unwrap();
@@ -149,12 +143,18 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
               continue; // this is an erroneous packet, ignore it.
             },
           };
-          let recieved_player_info = match bincode::deserialize::<ClientPacket>(&deciphered) {
+          let mut recieved_player_info = match bincode::deserialize::<ClientPacket>(&deciphered) {
             Ok(packet) => packet,
             Err(_err) => {
               continue; // ignore invalid packet
             }
           };
+
+          // clean all recieved NaNs and infinites so the server doesnt explode
+          recieved_player_info.aim_direction.clean();
+          recieved_player_info.movement.clean();
+          recieved_player_info.position.clean();
+          recieved_player_info.packet_interval.clean();
 
           // If this check passes, we're now running logic for the player that sent the packet.
           // This block of code handles recieving data, and then sends out a return packet.
@@ -172,7 +172,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           
           let mut new_position: Vector2;
           let recieved_position = recieved_player_info.position;
-          let movement_error_margin = 3.0;
+          let movement_error_margin = 0.3;
           let mut movement_legal = true;
           let previous_position = player.position.clone();
 
@@ -262,7 +262,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                   // set dashing to true
                   player.is_dashing = true;
                   // set the dashing direction
-                  player.dash_direction = recieved_player_info.movement;
+                  player.dash_direction = recieved_player_info.movement.normalize();
 
                   // (vscode) MARK: Special dashes
                   match player.character {

@@ -861,6 +861,7 @@ fn main_thread(
             
             // if server requests a position override:
             if recieved_server_info.player_packet_is_sent_to.override_position {
+              println!("position override");
               // If we're dashing, update interpolation info.
               if data.player.is_dashing {
                 // But if we're dashing (interpolating is set to true), then prepare to smoothly translate to that position.
@@ -934,7 +935,7 @@ fn main_thread(
             let mut sound_queue: Vec<(&str, AudioTrack, f32)> = Vec::new();
             let events = recieved_server_info.events;
             for event in events {
-              println!("{:?}", event);
+              //println!("{:?}", event);
               match event {
                 GameEvent::AttackHit(object_type, owner, victim) => {
                   // if the bullet is ours
@@ -981,7 +982,7 @@ fn main_thread(
                   };
                   if owner == data.username {
                     sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
-                    println!("adding to sound queue");
+                    //println!("adding to sound queue");
                   }
                   else {
                     for other_player in data.players.clone() {
@@ -1016,19 +1017,19 @@ fn main_thread(
               let cutoff = 7.0;
               let faloff = 0.05;
 
-              println!("dist: {:?}", distance);
-              println!("cut: {:?}", cutoff);
+              //println!("dist: {:?}", distance);
+              //println!("cut: {:?}", cutoff);
 
               let distance_volume_modifier = if distance < cutoff {
                 1.0
               } else {
-                println!("{:?}", distance);
+                //println!("{:?}", distance);
                 1.0 / (faloff * (distance - cutoff) + 1.0)
               };
-              println!("{:?}", distance_volume_modifier);
+              //println!("{:?}", distance_volume_modifier);
 
               let volume = raw_volume * distance_volume_modifier;
-              println!("{:?}", volume);
+              //println!("{:?}", volume);
               bevy_audio::play_sound(sound_path.to_string(), &mut com, asset_server.clone(), volume);
             }
           }
@@ -1038,7 +1039,7 @@ fn main_thread(
 
             let client_packet = ClientPacket {
               position,
-              movement,
+              movement: movement_raw,
               aim_direction,
               shooting_primary,
               shooting_secondary,
