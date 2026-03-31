@@ -416,7 +416,7 @@ fn main_thread(
           for background_tile in data.background_tiles.clone() {
             if let Ok(texture) = data.game_object_animations[&background_tile.object_type].current_frame() {
               let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
-              draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 0, &win, &mut com);
+              draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, vw, data.player.camera.clone(), 0, &win, &mut com);
             }
           }
 
@@ -491,13 +491,9 @@ fn main_thread(
               //    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 }
               //  );
               //}
-              draw_image_relative(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, data.player.camera.clone(), 5, &win, &mut com);
+              draw_image_relative(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, vw, data.player.camera.clone(), 5, &win, &mut com);
             }
           }
-
-
-          let mut mouse_position = get_mouse_pos(&win);
-
 
 
 
@@ -505,12 +501,13 @@ fn main_thread(
           //mouse_position.y =(((get_mouse_pos(&win).y / vh /* 100.0*/) /* 100.0             */) /*- 50.0               */) / data.player.camera.zoom + data.player.camera.position.y;
 
           // screen-space to world space conversion
-          let mouse_world_position = data.player.camera.position + (mouse_pos - Vector2 {x:50.0 * (16.0/9.0) * vh, y: 50.0*vh})/vh;
+          //                                          no idea what's up with "/vh" but it gotta be there
+          let mouse_world_position = screen_to_world(mouse_pos/vh, data.player.camera.clone(), vh, vw);
           
           //println!("{:?}", data.player.camera.position);
           //println!("{:?}", data.player.position);
 
-          draw_rectangle_relative(mouse_world_position.x, mouse_world_position.y, 10.0, 10.0, BLACK, data.player.camera.clone(), vh, 127, &win, &mut com);
+          //draw_rectangle_relative(mouse_world_position.x, mouse_world_position.y, 10.0, 10.0, BLACK, data.player.camera.clone(), vh, vw, 127, &win, &mut com);
           
           let aim_direction: Vector2 = mouse_world_position - data.player.position;
           
@@ -531,32 +528,40 @@ fn main_thread(
               range = data.character_properties[&Character::Koldo].primary_range_2 * data.player.camera.zoom;
             }
           }
-          let relative_position_x = 50.0 * (16.0/9.0) + (data.player.position.x - data.player.camera.position.x) * data.player.camera.zoom;
-          let relative_position_y = 50.0              + (data.player.position.y - data.player.camera.position.y) * data.player.camera.zoom;
+
+          let relative_position = world_to_screen(data.player.position, data.player.camera.clone(), vh, vw);
 
           if !data.player.is_dead {
-            let mut range_limited: f32 = Vector2::distance(data.player.position, mouse_position.clone()) * data.player.camera.zoom;
+            let mut range_limited: f32 = Vector2::distance(data.player.position, mouse_world_position.clone()) * data.player.camera.zoom;
             if range_limited > range {
               range_limited = range;
             }
-            let low_limit = 10.0 * data.player.camera.zoom;
+            let low_limit = 1.2 * data.player.camera.zoom;
             if range_limited < low_limit {
               range_limited = low_limit;
             }
             // full line
             draw_line(
-              Vector2{ x: (aim_direction.normalize().x * low_limit * vh) + relative_position_x * vh,
-              y: (aim_direction.normalize().y * low_limit * vh) + relative_position_y * vh},
-              Vector2 {x: (aim_direction.normalize().x * range * vh) + (relative_position_x * vh),
-              y: (aim_direction.normalize().y * range * vh) + (relative_position_y * vh)},
+              Vector2{
+                x: (aim_direction.normalize().x * low_limit * vh) + relative_position.x * vh,
+                y: (aim_direction.normalize().y * low_limit * vh) + relative_position.y * vh
+              },
+              Vector2 {
+                x: (aim_direction.normalize().x * range * vh) + (relative_position.x * vh),
+                y: (aim_direction.normalize().y * range * vh) + (relative_position.y * vh)
+              },
               0.6 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 0.2 }, 10, &win, &mut com
             );
             // shorter, matte line
             draw_line(
-              Vector2{ x: (aim_direction.normalize().x * low_limit * vh) + relative_position_x * vh,
-              y: (aim_direction.normalize().y * low_limit * vh) + relative_position_y * vh},
-              Vector2{ x: (aim_direction.normalize().x * range_limited * vh) + (relative_position_x * vh),
-              y: (aim_direction.normalize().y * range_limited * vh) + (relative_position_y * vh)},
+              Vector2{
+                x: (aim_direction.normalize().x * low_limit * vh) + relative_position.x * vh,
+                y: (aim_direction.normalize().y * low_limit * vh) + relative_position.y * vh
+              },
+              Vector2{
+                x: (aim_direction.normalize().x * range_limited * vh) + (relative_position.x * vh),
+                y: (aim_direction.normalize().y * range_limited * vh) + (relative_position.y * vh)
+              },
               0.4 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
             );
             if data.player.character == Character::Hernani {
@@ -569,11 +574,15 @@ fn main_thread(
 
               let width = 2.0;
               draw_line(
-              Vector2{ x: (aim_dir.x * range + aim_dir_alpha.x * width) * vh + relative_position_x * vh,
-              y: (aim_dir.y * range + aim_dir_alpha.y * width) * vh + relative_position_y * vh},
-              Vector2{ x: (aim_dir.x * range + aim_dir_gamma.x * width) * vh + relative_position_x * vh,
-              y: (aim_dir.y * range + aim_dir_gamma.y * width) * vh + relative_position_y * vh},
-              0.4 * vh, Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
+                Vector2{
+                  x: (aim_dir.x * range + aim_dir_alpha.x * width) * vh + relative_position.x * vh,
+                  y: (aim_dir.y * range + aim_dir_alpha.y * width) * vh + relative_position.y * vh
+                },
+                Vector2{
+                  x: (aim_dir.x * range + aim_dir_gamma.x * width) * vh + relative_position.x * vh,
+                  y: (aim_dir.y * range + aim_dir_gamma.y * width) * vh + relative_position.y * vh
+                },
+                0.4 * vh, Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
               );
             }
           }
@@ -581,11 +590,11 @@ fn main_thread(
           
           // MARK: | | Draw Players
           if !data.player.is_dead {
-            data.player.draw(vh, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+            data.player.draw(vh, vw, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), 15, &mut com, &win);
           }
           for player in data.players.clone() {
             if !player.is_dead {
-              player.draw(vh, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+              player.draw(vh, vw, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), 15, &mut com, &win);
             }
           }
 
@@ -593,15 +602,15 @@ fn main_thread(
           let trail_y_offset: f32 = 0.6;
           for player in data.players.clone() {
             if player.character == Character::Cynewynn && !player.is_dead {
-              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, player.team, trail_y_offset-0.0, 1.0, 10, &win, &mut com);
-              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, player.team, trail_y_offset-0.3, 0.5, 10, &win, &mut com);
-              draw_lines(player.previous_positions,         data.player.camera.clone(), vh, player.team, trail_y_offset-0.6, 0.25, 10, &win, &mut com);
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.0, 1.0, 10, &win, &mut com);
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.3, 0.5, 10, &win, &mut com);
+              draw_lines(player.previous_positions,         data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.6, 0.25, 10, &win, &mut com);
             }
           }
           if data.player.character == Character::Cynewynn && !data.player.is_dead {
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, data.player.team, trail_y_offset-0.0, 0.6, 10, &win, &mut com);
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, data.player.team, trail_y_offset-0.3, 0.4, 10, &win, &mut com);
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, data.player.team, trail_y_offset-0.6, 0.2, 10, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.0, 0.6, 10, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.3, 0.4, 10, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.6, 0.2, 10, &win, &mut com);
           }
 
           // Draw raphaelle's tethering.
@@ -618,7 +627,7 @@ fn main_thread(
                     true => GREEN,
                     false => ORANGE,
                   };
-                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, 10, &win, &mut com);
+                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, vw, 10, &win, &mut com);
                 }
               }
             }
@@ -786,7 +795,7 @@ fn main_thread(
 
           // CAMERA ZOOM
           let scrollwheel = get_mouse_wheel(&mut mw);
-          data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 2.0 * delta_time).clamp(4.0, 16.0);
+          data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 4.0 * delta_time).clamp(4.0, 16.0);
 
 
           // MARK: | game net

@@ -123,13 +123,13 @@ impl ClientPlayer {
       current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     }
   }
-  pub fn draw(&self, vh: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
+  pub fn draw(&self, vh: f32, vw: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
     // TODO: animations
     
     let size: f32 = 1.2;
     let texture = self.current_animation.current_frame();
     if let Ok(texture) = texture {
-      draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, camera.clone(), z, window, commands);
+      draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, vw, camera.clone(), z, window, commands);
     }
 
     //let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };

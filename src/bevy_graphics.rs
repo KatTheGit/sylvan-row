@@ -1264,37 +1264,47 @@ pub fn load_password(username: &str) -> String {
   }
 }
 
+pub fn world_to_screen(world_position: Vector2, camera: Camera, vh: f32, vw: f32) -> Vector2 {
+  let screen_position = (world_position - camera.position) * camera.zoom + Vector2 {x: 50.0 * (vw/vh), y: 50.0};
+  return screen_position;
+}
+pub fn screen_to_world(screen_position: Vector2, camera: Camera, vh: f32, vw: f32) -> Vector2 {
+  // screen_position = (world_position - camera.position) * camera.zoom - Vector2 {x: 50.0 * vw, y: 50.0 * vh};
+  // (screen_position + Vector2 {x: 50.0 * vw, y: 50.0 * vh})/camera.zoom + camera.position = world_position
+  let world_position = (screen_position - Vector2 {x: 50.0 * (vw/vh), y: 50.0})/camera.zoom + camera.position;
+  return world_position;
+}
+
+
 /// same as draw_image but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.
-pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh: f32, vw: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
 
   // draw relative to position and centered.
-  let relative_position = (Vector2 {x: x, y: y} - camera.position) * camera.zoom + Vector2 {x: 50.0 * (16.0/9.0), y: 50.0};
+  let relative_position = world_to_screen(Vector2 { x: x, y: y }, camera.clone(), vh, vw);
   //let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
   //let relative_position_y = (y - camera.position.y) * camera.zoom + (50.0);
   draw_sprite(texture, relative_position * vh, Vector2 { x: w * camera.zoom * vh, y: h * camera.zoom * vh }, z, window, commands);
 }
-pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, z: i8, window: &Window, commands: &mut Commands) -> () {
-  let relative_position_x1 = (x1 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
-  let relative_position_y1 = (y1 - camera.position.y) * camera.zoom + 50.0;
-  let relative_position_x2 = (x2 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
-  let relative_position_y2 = (y2 - camera.position.y) * camera.zoom + 50.0;
-  draw_line(Vector2 { x: relative_position_x1 * vh, y: relative_position_y1 * vh }, Vector2 { x: relative_position_x2 * vh, y: relative_position_y2 * vh }, thickness, color, z, window, commands);
+pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
+  let relative_position_1 = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
+  let relative_position_2 = world_to_screen(Vector2 { x: x2, y: y2 }, camera.clone(), vh, vw);
+  draw_line(relative_position_1 * vh, relative_position_2 * vh, thickness, color, z, window, commands);
 }
-pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, camera: Camera, vh:f32, z: i8, window: &Window, commands: &mut Commands) -> () {
-  let relative_position_x1 = (x1 - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
-  let relative_position_y1 = (y1 - camera.position.y) * camera.zoom + 50.0;
-  draw_rect(Color::Srgba(color), Vector2 { x: relative_position_x1*vh, y: relative_position_y1*vh }, Vector2 { x: w*vh*camera.zoom, y: h*vh*camera.zoom }, z, window, commands);
+pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
+  let relative_position = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
+
+  draw_rect(Color::Srgba(color), relative_position * vh, Vector2 { x: w*vh*camera.zoom, y: h*vh*camera.zoom }, z, window, commands);
 }
-pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Handle<Font>, font_size: f32, vh: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
-  let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0)); //+ ((vh * (16.0/9.0)) * 100.0 )/ 2.0;
-  let relative_position_y = (y - camera.position.y) * camera.zoom + 50.0; //+ (vh * 100.0) / 2.0;
-  draw_text(&font, text, Vector2 { x: relative_position_x * vh, y: relative_position_y * vh }, Vector2 { x: 100.0 * vh, y: 100.0*vh }, BLACK, font_size * vh * camera.zoom, z, window, commands);
+pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Handle<Font>, font_size: f32, vh: f32, vw: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
+  let relative_position = world_to_screen(Vector2 { x: x, y: y }, camera.clone(), vh, vw);
+
+  draw_text(&font, text, relative_position * vh, Vector2 { x: 100.0 * vh, y: 100.0*vh }, BLACK, font_size * vh * camera.zoom, z, window, commands);
 }
-pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, team: Team, y_offset: f32, alpha: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, vw: f32, team: Team, y_offset: f32, alpha: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   if positions.len() < 2 { return; }
   for position_index in 0..positions.len()-1 {
-    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Srgba { red: 0.2, green: 1.0-(position_index as f32 / positions.len() as f32), blue: 0.8, alpha: alpha }, Team::Red => Srgba { red: 0.8, green: 0.7-0.3*(position_index as f32 / positions.len() as f32), blue: 0.2, alpha: alpha }}, camera.clone(), vh, z, window, commands);
+    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Srgba { red: 0.2, green: 1.0-(position_index as f32 / positions.len() as f32), blue: 0.8, alpha: alpha }, Team::Red => Srgba { red: 0.8, green: 0.7-0.3*(position_index as f32 / positions.len() as f32), blue: 0.2, alpha: alpha }}, camera.clone(), vh, vw, z, window, commands);
   }
 }
 
