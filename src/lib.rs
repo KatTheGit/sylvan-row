@@ -1,7 +1,7 @@
 /// Functions and structs related to any form of maths
 /// or logic, like `Vector2` or movement logic functions.
 pub mod maths;
-/// Constant parameters, like TILE_SIZE, DEFAULT_IP_ADDRESS, etc...
+/// Constant parameters, like , DEFAULT_IP_ADDRESS, etc...
 pub mod const_params;
 /// Gameobjects, Character Properties, any data that expresses anything regarding
 /// the game, used by both client and server.
@@ -18,8 +18,6 @@ pub mod database;
 pub mod filter;
 /// Netcode
 pub mod network;
-/// Abstraction for playing sounds & stuff.
-pub mod audio;
 ///// The actual game, once it's connected to the server.
 //pub mod game;
 /// Immediate mode rendering wrapper for Bevy.
@@ -229,6 +227,10 @@ fn main_thread(
       data.startup = false;
       data.game_object_animations = load_game_object_animations(asset_server.clone());
       data.character_animations = load_character_animations(asset_server.clone());
+      if data.settings.store_credentials {
+        data.username_input.buffer = data.settings.saved_username.clone();
+        data.password_input.buffer = load_password(&data.settings.saved_username);
+      }
       set_fullscreen(data.settings.fullscreen, &mut win);
     }
 
@@ -382,7 +384,7 @@ fn main_thread(
           // for now this is just simple linear interpolation, no shenanigans yet.
           for player in data.players.iter_mut() {
             let distance = player.interpol_next - player.position;
-            let cutoff = 7.0 * TILE_SIZE * delta_time;
+            let cutoff = 7.0 * delta_time;
             if distance.magnitude() > cutoff {
               let period = PACKET_INTERVAL;
               let speed = distance / period;
@@ -415,7 +417,7 @@ fn main_thread(
 
           for background_tile in data.background_tiles.clone() {
             if let Ok(texture) = data.game_object_animations[&background_tile.object_type].current_frame() {
-              let size: Vector2 = Vector2 { x: TILE_SIZE, y: TILE_SIZE };
+              let size: Vector2 = Vector2 { x: 1.0, y: 1.0 };
               draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, vw, data.player.camera.clone(), 0, &win, &mut com);
             }
           }
@@ -427,8 +429,8 @@ fn main_thread(
               // if it's ours...
               if data.game_objects[game_object_index].get_bullet_data().owner_username == username {
                 let position: Vector2 = Vector2 {
-                  x: data.player.position.x + data.player.aim_direction.normalize().x * TILE_SIZE,
-                  y: data.player.position.y + data.player.aim_direction.normalize().y * TILE_SIZE,
+                  x: data.player.position.x + data.player.aim_direction.normalize().x,
+                  y: data.player.position.y + data.player.aim_direction.normalize().y,
                 };
 
                 data.game_objects[game_object_index].position = position;
@@ -445,21 +447,21 @@ fn main_thread(
             if let Ok(texture) = data.game_object_animations[&game_object.object_type].current_frame() {
 
               let size = match game_object.object_type {
-                GameObjectType::Wall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
-                GameObjectType::UnbreakableWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
-                GameObjectType::HernaniWall => Vector2 {x: 1.0 * TILE_SIZE, y: 2.0* TILE_SIZE},
-                GameObjectType::HernaniBullet => Vector2 { x: TILE_SIZE * 1.0 * (10.0/4.0), y: TILE_SIZE * 1.0 },
-                GameObjectType::RaphaelleBullet => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-                GameObjectType::RaphaelleBulletEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
+                GameObjectType::Wall => Vector2 {x: 1.0, y: 2.0 },
+                GameObjectType::UnbreakableWall => Vector2 {x: 1.0, y: 2.0},
+                GameObjectType::HernaniWall => Vector2 {x: 1.0, y: 2.0},
+                GameObjectType::HernaniBullet => Vector2 { x: 1.0 * (10.0/4.0), y: 1.0 },
+                GameObjectType::RaphaelleBullet => Vector2 { x: 2.0, y: 2.0 },
+                GameObjectType::RaphaelleBulletEmpowered => Vector2 { x: 2.0, y: 2.0 },
                 GameObjectType::RaphaelleAura => Vector2 {x: data.character_properties[&Character::Raphaelle].secondary_range*2.0, y: data.character_properties[&Character::Raphaelle].secondary_range*2.0,},
-                GameObjectType::WiroShield => Vector2 { x: TILE_SIZE*0.5, y: data.character_properties[&Character::Wiro].secondary_range },
-                GameObjectType::TemerityRocketSecondary => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-                GameObjectType::CenterOrb => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-                GameObjectType::CynewynnSword => Vector2 { x: TILE_SIZE*3.0, y: TILE_SIZE*3.0 },
-                GameObjectType::KoldoCannonBall => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-                GameObjectType::KoldoCannonBallEmpowered => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-                GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: TILE_SIZE*2.0, y: TILE_SIZE*2.0 },
-                _ => Vector2 {x: 1.0 * TILE_SIZE, y: 1.0* TILE_SIZE},
+                GameObjectType::WiroShield => Vector2 { x: 0.5, y: data.character_properties[&Character::Wiro].secondary_range },
+                GameObjectType::TemerityRocketSecondary => Vector2 { x: 2.0, y: 2.0 },
+                GameObjectType::CenterOrb => Vector2 { x: 2.0, y: 2.0 },
+                GameObjectType::CynewynnSword => Vector2 { x: 3.0, y: 3.0 },
+                GameObjectType::KoldoCannonBall => Vector2 { x: 2.0, y: 2.0 },
+                GameObjectType::KoldoCannonBallEmpowered => Vector2 { x: 2.0, y: 2.0 },
+                GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: 2.0, y: 2.0 },
+                _ => Vector2 {x: 1.0, y: 1.0},
               };
               let shadow_offset: f32 = 5.0;
               
@@ -767,7 +769,7 @@ fn main_thread(
             let mut extra_speed: f32 = 0.0;
             for buff in data.player.buffs.clone() {
               if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
-                extra_speed += buff.value * TILE_SIZE;
+                extra_speed += buff.value;
               }
               if buff.buff_type == BuffType::Impulse {
                 // yeet
@@ -1251,11 +1253,6 @@ fn main_thread(
               data.current_menu = MenuScreen::Main(0);
             }
           }
-        }
-
-        // input
-        if is_window_focused(&win) {
-
         }
       }
 
@@ -1782,9 +1779,9 @@ fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile
       random_num_f *= 6.0;
       let random_num = random_num_f.round() as usize;
       let pos_x: i16 = x.try_into().unwrap();
-      let pos_x: f32 = (pos_x - extra_offset_x as i16) as f32 * TILE_SIZE;
+      let pos_x: f32 = (pos_x - extra_offset_x as i16) as f32;
       let pos_y: i16 = y.try_into().unwrap();
-      let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 * TILE_SIZE + TILE_SIZE*0.5;
+      let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 + 0.5;
       if (x + y) % 2 == 1 {
         tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num].clone() });
       } else {

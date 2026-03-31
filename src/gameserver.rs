@@ -17,8 +17,8 @@ use opaque_ke::generic_array::GenericArray;
 
 
 // these should probably be read by the map file
-static SPAWN_RED: Vector2 = Vector2 {x: 31.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
-static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0 * TILE_SIZE, y: 14.0 * TILE_SIZE};
+static SPAWN_RED: Vector2 = Vector2 {x: 31.0, y: 14.0};
+static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0, y: 14.0};
 
 /// Gameplay server. Returns a winning team.
 pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, is_practice: bool) -> MatchEndResult {
@@ -242,7 +242,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 // apply an impulse
                 player.buffs.push(
                   Buff {
-                    value: 0.1 * TILE_SIZE,
+                    value: 0.1,
                     duration: 1.0,
                     buff_type: BuffType::Impulse,
                     direction: player.move_direction,
@@ -444,7 +444,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             let mut extra_speed: f32 = 0.0;
             for b_index in 0..player.buffs.len() {
               if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&player.buffs[b_index].buff_type) {
-                extra_speed += player.buffs[b_index].value * TILE_SIZE;
+                extra_speed += player.buffs[b_index].value;
               }
               if player.buffs[b_index].buff_type == BuffType::Impulse {
                 // yeet
@@ -973,8 +973,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
       }
 
       // Get stuck player out of walls
-      let player_size = TILE_SIZE/4.0;
-      let tile_size: f32 = TILE_SIZE/2.0;
+      let player_size = 1.0/4.0;
+      let tile_size: f32 = 1.0/2.0;
       let collision_size = tile_size + player_size;
       for o_index in 0..game_objects.len() {
         
@@ -982,8 +982,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           let difference: Vector2 = Vector2::difference(game_objects[o_index].position, players[p_index].position);
           if f32::abs(difference.x) < collision_size && f32::abs(difference.y) < collision_size {
             // push out the necessary amount
-            players[p_index].position.x += (TILE_SIZE + 0.1 )* difference.normalize().x;
-            players[p_index].position.y += (TILE_SIZE + 0.1 )* difference.normalize().y;
+            players[p_index].position.x += (1.0 + 0.1 )* difference.normalize().x;
+            players[p_index].position.y += (1.0 + 0.1 )* difference.normalize().y;
             players[p_index].had_illegal_position = true;
             break;
           }
@@ -1113,10 +1113,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           Character::Cynewynn => {
             game_objects.push(GameObject {
               object_type: GameObjectType::CynewynnSword,
-              position: Vector2 {
-                x: players[p_index].position.x + players[p_index].aim_direction.x * 5.0,
-                y: players[p_index].position.y + players[p_index].aim_direction.y * 5.0
-              },
+              position: players[p_index].position + players[p_index].aim_direction * characters[&Character::Cynewynn].primary_range_2,
               to_be_deleted: false,
               id: game_object_id_counter.increment(),
               extra_data: ObjectData::BulletData(
@@ -1317,18 +1314,18 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           Character::Hernani => {
             // Place down a wall at a position rounded to TILE_SIZE, unless a wall is alredy there.
             let wall_place_distance = character.secondary_range;
-            let mut desired_placement_position_center: Vector2 = player_info.position + player_info.aim_direction * wall_place_distance + Vector2{x: TILE_SIZE/2.0, y:TILE_SIZE/2.0};
+            let mut desired_placement_position_center: Vector2 = player_info.position + player_info.aim_direction * wall_place_distance + Vector2{x: 1.0/2.0, y:1.0/2.0};
             // round to closest 10
             let direction_perpendicular = Vector2 {x: player_info.aim_direction.y, y: -player_info.aim_direction.x};
             let side_offset = 1.0;
-            let mut desired_placement_position_perpendicular_1 = desired_placement_position_center + direction_perpendicular *  side_offset * TILE_SIZE;
-            let mut desired_placement_position_perpendicular_2 = desired_placement_position_center + direction_perpendicular * -side_offset * TILE_SIZE;
-            desired_placement_position_perpendicular_1.x = (((desired_placement_position_perpendicular_1.x / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position_perpendicular_1.y = (((desired_placement_position_perpendicular_1.y / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position_perpendicular_2.x = (((desired_placement_position_perpendicular_2.x / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position_perpendicular_2.y = (((desired_placement_position_perpendicular_2.y / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position_center.x = ((((desired_placement_position_center.x) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
-            desired_placement_position_center.y = ((((desired_placement_position_center.y) / TILE_SIZE) as i32) * TILE_SIZE as i32) as f32;
+            let mut desired_placement_position_perpendicular_1 = desired_placement_position_center + direction_perpendicular *  side_offset;
+            let mut desired_placement_position_perpendicular_2 = desired_placement_position_center + direction_perpendicular * -side_offset;
+            desired_placement_position_perpendicular_1.x = (((desired_placement_position_perpendicular_1.x) as i32) as i32) as f32;
+            desired_placement_position_perpendicular_1.y = (((desired_placement_position_perpendicular_1.y) as i32) as i32) as f32;
+            desired_placement_position_perpendicular_2.x = (((desired_placement_position_perpendicular_2.x) as i32) as i32) as f32;
+            desired_placement_position_perpendicular_2.y = (((desired_placement_position_perpendicular_2.y) as i32) as i32) as f32;
+            desired_placement_position_center.x = ((((desired_placement_position_center.x)) as i32) as i32) as f32;
+            desired_placement_position_center.y = ((((desired_placement_position_center.y)) as i32) as i32) as f32;
 
             let mut desired_placement_positions: Vec<Vector2> = Vec::new();
             desired_placement_positions.push(desired_placement_position_center);
@@ -1425,8 +1422,8 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
               
               // look for a shield
               let position: Vector2 = Vector2 {
-                x: players[p_index].position.x + players[p_index].aim_direction.x * TILE_SIZE,
-                y: players[p_index].position.y + players[p_index].aim_direction.y * TILE_SIZE,
+                x: players[p_index].position.x + players[p_index].aim_direction.x,
+                y: players[p_index].position.y + players[p_index].aim_direction.y,
               };
               let mut shield_found = false;
               for o_index in 0..game_objects.len() {
@@ -1481,7 +1478,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             if players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
               // apply an impulse
               let direction = players[p_index].aim_direction;
-              let yeet = 0.2 * TILE_SIZE;
+              let yeet = 0.2;
               let lifetime = 0.2;
               players[p_index].buffs.push(
                 Buff { value: yeet, duration: 1.0, buff_type: BuffType::Impulse, direction: direction * -1.0 }
@@ -1715,7 +1712,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           game_objects[o_index].position.x += direction.normalize().x * speed * true_delta_time as f32;
           game_objects[o_index].position.y += direction.normalize().y * speed * true_delta_time as f32;
           // If the projectiles are close enough to us, delete them, since their trip is over.
-          if direction.magnitude() < TILE_SIZE /* arbitrary value */ {
+          if direction.magnitude() < 1.0 /* arbitrary value */ {
             game_objects[o_index].to_be_deleted = true;
           }
           let hit_radius = characters[&players[owner_index].character].primary_hit_radius;
@@ -1809,7 +1806,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           let pos = game_objects[o_index].position;
           let direction = game_objects[o_index].get_bullet_data().direction;
 
-          let check_distance = TILE_SIZE * 0.1;
+          let check_distance = 0.1;
           let buffer = 0.5 * 2.0;
           let check_position: Vector2 = Vector2 {
             x: pos.x + direction.x * check_distance ,
@@ -1817,7 +1814,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           };
           for game_object in game_objects.clone() {
             if WALL_TYPES_ALL.contains(&game_object.object_type)
-            && Vector2::distance(game_object.position, check_position) < TILE_SIZE * buffer {
+            && Vector2::distance(game_object.position, check_position) < buffer {
               // we have a collision. flip our direction.
               let distance: Vector2 = Vector2::difference(game_object.position, check_position);
               let obj_distance = Vector2::difference(game_object.position, pos);

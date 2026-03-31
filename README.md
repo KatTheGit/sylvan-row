@@ -54,7 +54,8 @@ This is just for me.
   - [ ] throttling, etc...
 - [ ] Better anticheat
 - [ ] Art
-  - [ ] Animation system & animations
+  - [x] Animation system
+    - [ ] animations
   - [ ] Maps with https://www.mapeditor.org/
   - [ ] Menu
   - [ ] Better sfx & vfx

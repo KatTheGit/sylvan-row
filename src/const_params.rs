@@ -1,8 +1,6 @@
 use crate::gamedata::GameObjectType;
 use opaque_ke::CipherSuite;
 
-
-pub const TILE_SIZE: f32 = 1.0;
 pub const ORB_HEALING: u8 = 20;
 
 pub const WALL_HP: u8 = 30;

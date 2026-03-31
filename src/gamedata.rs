@@ -587,7 +587,7 @@ impl CharacterProperties {
     let pkl: PklValue = parse_pkl_string(pkl_data).expect("could not parse pkl");
     return CharacterProperties {
       health:                   pkl_u8( find_parameter(&pkl, "health"                   ).unwrap()),
-      speed:                    pkl_f32(find_parameter(&pkl, "speed"                    ).unwrap())*TILE_SIZE,
+      speed:                    pkl_f32(find_parameter(&pkl, "speed"                    ).unwrap()),
       primary_damage:           pkl_u8( find_parameter(&pkl, "primary_damage"           ).unwrap()),
       primary_damage_2:         pkl_u8( find_parameter(&pkl, "primary_damage_2"         ).unwrap()),
       primary_heal:             pkl_u8( find_parameter(&pkl, "primary_heal"             ).unwrap()),
@@ -595,13 +595,13 @@ impl CharacterProperties {
       primary_lifesteal:        pkl_u8( find_parameter(&pkl, "primary_lifesteal"        ).unwrap()),
       primary_cooldown:         pkl_f32(find_parameter(&pkl, "primary_cooldown"         ).unwrap()),
       primary_cooldown_2:       pkl_f32(find_parameter(&pkl, "primary_cooldown_2"       ).unwrap()),
-      primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap())*TILE_SIZE,
-      primary_range_2:          pkl_f32(find_parameter(&pkl, "primary_range_2"          ).unwrap())*TILE_SIZE,
-      primary_range_3:          pkl_f32(find_parameter(&pkl, "primary_range_3"          ).unwrap())*TILE_SIZE,
-      primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap())*TILE_SIZE,
-      primary_shot_speed_2:     pkl_f32(find_parameter(&pkl, "primary_shot_speed_2"       ).unwrap())*TILE_SIZE,
-      primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap())*TILE_SIZE,
-      primary_wall_hit_radius:  pkl_f32(find_parameter(&pkl, "primary_wall_hit_radius"  ).unwrap())*TILE_SIZE,
+      primary_range:            pkl_f32(find_parameter(&pkl, "primary_range"            ).unwrap()),
+      primary_range_2:          pkl_f32(find_parameter(&pkl, "primary_range_2"          ).unwrap()),
+      primary_range_3:          pkl_f32(find_parameter(&pkl, "primary_range_3"          ).unwrap()),
+      primary_shot_speed:       pkl_f32(find_parameter(&pkl, "primary_shot_speed"       ).unwrap()),
+      primary_shot_speed_2:     pkl_f32(find_parameter(&pkl, "primary_shot_speed_2"     ).unwrap()),
+      primary_hit_radius:       pkl_f32(find_parameter(&pkl, "primary_hit_radius"       ).unwrap()),
+      primary_wall_hit_radius:  pkl_f32(find_parameter(&pkl, "primary_wall_hit_radius"  ).unwrap()),
       wall_damage_multiplier:   pkl_f32(find_parameter(&pkl, "wall_damage_multiplier"   ).unwrap()),
       secondary_damage:         pkl_u8( find_parameter(&pkl, "secondary_damage"         ).unwrap()),
       secondary_heal:           pkl_u8( find_parameter(&pkl, "secondary_heal"           ).unwrap()),
@@ -609,13 +609,13 @@ impl CharacterProperties {
       secondary_heal_charge:    pkl_u8( find_parameter(&pkl, "secondary_heal_charge"    ).unwrap()),
       secondary_passive_charge: pkl_u8( find_parameter(&pkl, "secondary_passive_charge" ).unwrap()),
       secondary_cooldown:       pkl_f32(find_parameter(&pkl, "secondary_cooldown"       ).unwrap()),
-      secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range"          ).unwrap())*TILE_SIZE,
+      secondary_range:          pkl_f32(find_parameter(&pkl, "secondary_range"          ).unwrap()),
       secondary_charge_use:     pkl_u8( find_parameter(&pkl, "secondary_charge_use"     ).unwrap()),
-      dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance"            ).unwrap())*TILE_SIZE,
+      dash_distance:            pkl_f32(find_parameter(&pkl, "dash_distance"            ).unwrap()),
       dash_cooldown:            pkl_f32(find_parameter(&pkl, "dash_cooldown"            ).unwrap()),
       dash_damage_multiplier:   pkl_f32(find_parameter(&pkl, "dash_damage_multiplier"   ).unwrap()),
-      dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed"               ).unwrap())*TILE_SIZE,
-      passive_range:            pkl_f32(find_parameter(&pkl, "passive_range"            ).unwrap())*TILE_SIZE,
+      dash_speed:               pkl_f32(find_parameter(&pkl, "dash_speed"               ).unwrap()),
+      passive_range:            pkl_f32(find_parameter(&pkl, "passive_range"            ).unwrap()),
       passive_value:            pkl_u8( find_parameter(&pkl, "passive_value"            ).unwrap()),
       passive_cooldown:         pkl_f32(find_parameter(&pkl, "passive_cooldown"         ).unwrap()),
     }
@@ -798,8 +798,8 @@ pub fn load_map_from_file(map: &str, id: &mut u16) -> Vec<GameObject> {
     let gameobject_type = gameobject_type.as_str();
     let pos_x: f32 = opcodes[1].parse().unwrap();
     let pos_y: f32 = opcodes[2].parse().unwrap();
-    let pos_x = pos_x * TILE_SIZE;
-    let pos_y = pos_y * TILE_SIZE;
+    let pos_x = pos_x;
+    let pos_y = pos_y;
 
     map_to_return.push(GameObject {
       id: id.clone(),
@@ -890,7 +890,7 @@ impl CharacterDescription {
       }),
       (Character::Temerity, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("A three-hit combo dealing {0} damage, with each attack gaining in range ( {1}m | {2}m | {3}m )."), values: vec![character_properties[&Character::Temerity].primary_damage as f32, character_properties[&Character::Temerity].primary_range / TILE_SIZE, character_properties[&Character::Temerity].primary_range_2 / TILE_SIZE, character_properties[&Character::Temerity].primary_range_3 / TILE_SIZE] },
+          primary:   AbilityDescription { description: String::from("A three-hit combo dealing {0} damage, with each attack gaining in range ( {1}m | {2}m | {3}m )."), values: vec![character_properties[&Character::Temerity].primary_damage as f32, character_properties[&Character::Temerity].primary_range, character_properties[&Character::Temerity].primary_range_2, character_properties[&Character::Temerity].primary_range_3] },
           secondary: AbilityDescription { description: String::from("Launches a rocket under herself, dealing {0} damage and boosting herself backwads."), values: vec![character_properties[&Character::Temerity].secondary_damage as f32] },
           dash:      AbilityDescription { description: String::from("Can hold DASH near walls to initiate a wallride."), values: vec![] },
           passive:   AbilityDescription { description: String::from("Heals nearby walls by {0} every second."), values: vec![character_properties[&Character::Temerity].passive_value as f32] },
@@ -914,10 +914,10 @@ impl CharacterDescription {
       }),
       (Character::Koldo, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m) to a wall boosts you backwards."), values: vec![character_properties[&Character::Koldo].primary_damage as f32,character_properties[&Character::Koldo].primary_range_3/TILE_SIZE ] },
+          primary:   AbilityDescription { description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m) to a wall boosts you backwards."), values: vec![character_properties[&Character::Koldo].primary_damage as f32,character_properties[&Character::Koldo].primary_range_3 ] },
           secondary: AbilityDescription { description: String::from("Reset PRIMARY's cooldown and empower the next two PRIMARIES with PASSIVE's effects, with the first one additionally slowing enemies and piercing."), values: vec![] },
           dash:      AbilityDescription { description: String::from("A short dash that resets the cooldown of PRIMARY."), values: vec![] },
-          passive:   AbilityDescription { description: String::from("Standing still for {0}s gives your PRIMARY recoil, increased range ({1}m) and increased damage ({2})."), values: vec![character_properties[&Character::Koldo].passive_cooldown as f32, character_properties[&Character::Koldo].primary_range_2/TILE_SIZE, character_properties[&Character::Koldo].primary_damage_2 as f32] },
+          passive:   AbilityDescription { description: String::from("Standing still for {0}s gives your PRIMARY recoil, increased range ({1}m) and increased damage ({2})."), values: vec![character_properties[&Character::Koldo].passive_cooldown as f32, character_properties[&Character::Koldo].primary_range_2, character_properties[&Character::Koldo].primary_damage_2 as f32] },
         }
       }),
       (Character::Dummy, {
