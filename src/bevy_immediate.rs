@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::{input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, text::{FontSmoothing, LineBreak, TextBounds}};
 use crate::maths::Vector2;
 
@@ -153,6 +155,41 @@ pub fn draw_sprite(
           y: size.y / texture.size.y,
           z: 1.0
         },
+        ..Default::default()
+      }
+    )
+  );
+}
+/// Draw a sprite but with extra settings like rotation.
+pub fn draw_sprite_ex(
+  texture: &Texture,
+  position: Vector2,
+  rotation: Vector2,
+  size: Vector2,
+  z: i8,
+  window: &Window,
+  commands: &mut Commands
+) {
+  commands.spawn(
+    (
+      DeleteAfterFrame {},
+      Sprite {
+        image: texture.image.clone(),
+        ..Default::default()
+      },
+      Transform {
+        translation: Vec3 {
+          x: position.x - window.width() / 2.0 + size.x / 2.0,
+          y: window.height() / 2.0 - position.y - size.y / 2.0,
+          z: z as f32
+        },
+        scale: Vec3 {
+          x: size.x / texture.size.x,
+          y: size.y / texture.size.y,
+          z: 1.0
+        },
+        rotation: Quat::from_axis_angle(Vec3::Z, f32::atan2(-rotation.y, rotation.x)),
+        //rotation: Quat::from_rotation_arc_2d(Vec2::ZERO, rotation.as_vec2()),
         ..Default::default()
       }
     )

@@ -37,6 +37,7 @@ use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParam
 use rand::rngs::OsRng;
 use ring::hkdf;
 use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
+use device_query::{DeviceQuery, DeviceState, Keycode};
 
 
 #[bevy_main]
@@ -44,6 +45,7 @@ pub fn main() {
   App::new()
     .add_systems(Startup, setup)
     .add_systems(PreUpdate, sprite_clearer)
+    .add_systems(PostUpdate, exit_catcher)
     .add_systems(Update, main_thread)
     .add_plugins(
       DefaultPlugins.set(WindowPlugin {
@@ -98,6 +100,7 @@ pub struct GameData {
   pub queued: bool,
   pub checkbox_1v1: bool,
   pub checkbox_2v2: bool,
+  pub fullscreen_pressed: bool,
 
   pub game_server_port: u16,
   pub game_id: u128,
@@ -178,6 +181,8 @@ impl Default for GameData {
       queued: false,
       checkbox_1v1: true,
       checkbox_2v2: true,
+      fullscreen_pressed: false,
+
       game_server_port: 0,
       game_id: 0,
       game_socket: None,
@@ -214,6 +219,7 @@ fn main_thread(
   mut mw: MessageReader<MouseWheel>,
   t: Res<Touches>,
   mut exit: MessageWriter<AppExit>,
+  mut settings_sync: ResMut<Settings>,
 ) {
   if let Some(mut data) = data {
     // MAIN LOOP
@@ -234,6 +240,9 @@ fn main_thread(
       set_fullscreen(data.settings.fullscreen, &mut win);
     }
 
+    // synchronise settings with the exit thread
+    *settings_sync = data.settings.clone();
+
 
     let server_ip = "127.0.0.1:25569";
 
@@ -252,6 +261,8 @@ fn main_thread(
     match data.current_menu {
       // MARK: Main
       MenuScreen::Main(mode) => {
+        let character_descriptions = CharacterDescription::create_all_descriptions(data.character_properties.clone());
+
         // menu
         if mode != 2 {
           clear_background(WHITE, &win, &mut com);
@@ -348,7 +359,6 @@ fn main_thread(
 
             let selected = data.heroes_tabs.selected_tab();
             let selected_character = CHARACTER_LIST[selected];
-            let character_descriptions = CharacterDescription::create_all_descriptions(data.character_properties.clone());
             for i in 0..4 {
               let texture = asset_server.load(format!("ui/temp_ability_{}.png", i+1));
               let size = Vector2 { x: 10.0*uiscale, y: 10.0*uiscale };
@@ -401,6 +411,10 @@ fn main_thread(
 
           // MARK: | game graphics
 
+
+
+
+
           // MARK: | | Animation handl.
 
           // set idle animations
@@ -441,7 +455,7 @@ fn main_thread(
             }
           }
           
-          // draw all gameobjects
+          // MARK: | | gameobjects
           //data.game_objects = sort_by_depth(data.game_objects);
           for game_object in data.game_objects.clone() {
             if let Ok(texture) = data.game_object_animations[&game_object.object_type].current_frame() {
@@ -493,27 +507,38 @@ fn main_thread(
               //    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 }
               //  );
               //}
-              draw_image_relative(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, vh, vw, data.player.camera.clone(), 5, &win, &mut com);
+              draw_image_relative_ex(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, rotation, vh, vw, data.player.camera.clone(), 5, &win, &mut com);
+            }
+          }
+          // MARK: | | UI
+          let primary_cooldown: f32 = if data.player.last_shot_time < data.character_properties[&data.player.character].primary_cooldown {
+            data.player.last_shot_time / data.character_properties[&data.player.character].primary_cooldown
+          } else {
+            1.0
+          };
+          let mut secondary_cooldown: f32 = data.player.secondary_charge as f32 / 100.0;
+          if data.player.character == Character::Wiro {
+            if data.player.last_secondary_time < data.character_properties[&Character::Wiro].secondary_cooldown {
+              secondary_cooldown = data.player.last_secondary_time / data.character_properties[&Character::Wiro].secondary_cooldown;
             }
           }
 
-
-
-          //mouse_position.x =(((get_mouse_pos(&win).x / vw /* 100.0*/) /* 100.0 * (16.0/9.0)*/) /*- 50.0 * (16.0 / 9.0)*/) / data.player.camera.zoom + data.player.camera.position.x; 
-          //mouse_position.y =(((get_mouse_pos(&win).y / vh /* 100.0*/) /* 100.0             */) /*- 50.0               */) / data.player.camera.zoom + data.player.camera.position.y;
+          let dash_cooldown: f32 = if data.player.time_since_last_dash < data.character_properties[&data.player.character].dash_cooldown {
+            data.player.time_since_last_dash / data.character_properties[&data.player.character].dash_cooldown
+          } else {
+            1.0
+          };
+          draw_ability_icon(bl_anchor + Vector2 { x: 0.0 * uiscale, y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, secondary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com);
+          draw_ability_icon(bl_anchor + Vector2 { x: 12.5 * uiscale, y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, dash_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com);
+          draw_ability_icon(bl_anchor + Vector2 { x: 25.0 * uiscale, y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, 1.0 , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com);
+          draw_ability_icon(bl_anchor + Vector2 { x: 37.5 * uiscale,  y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, primary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com);
 
           // screen-space to world space conversion
           //                                          no idea what's up with "/vh" but it gotta be there
           let mouse_world_position = screen_to_world(mouse_pos/vh, data.player.camera.clone(), vh, vw);
-          
-          //println!("{:?}", data.player.camera.position);
-          //println!("{:?}", data.player.position);
-
-          //draw_rectangle_relative(mouse_world_position.x, mouse_world_position.y, 10.0, 10.0, BLACK, data.player.camera.clone(), vh, vw, 127, &win, &mut com);
-          
+      
           let aim_direction: Vector2 = mouse_world_position - data.player.position;
           
-
           // draw player and aim laser
           let mut range = data.character_properties[&data.player.character].primary_range * data.player.camera.zoom;
           if data.player.character == Character::Temerity {
@@ -660,17 +685,15 @@ fn main_thread(
           let mut position = data.player.position;
           let mut movement = Vector2::new();
           //let mut aim_direction = Vector2::new();
-          let mut shooting_primary = false;
-          let mut shooting_secondary = false;
-          let mut dashing = false;
+          data.player.dashing = false;
+          data.player.shooting_primary = false;
+          data.player.shooting_secondary = false;
 
           // only register input if the window is active and the pause menu isn't open
           if is_window_focused(&win) && !data.paused {
 
             #[cfg(not(target_os="android"))]
             {
-              use device_query::{DeviceQuery, DeviceState, Keycode};
-
               let device_state: DeviceState = DeviceState::new();
               let keys: Vec<Keycode> = device_state.get_keys();
               let mouse: Vec<MouseButton> = get_mouse_down(&m);
@@ -688,11 +711,11 @@ fn main_thread(
                 if key == data.settings.keybinds.walk_left.0  || key == data.settings.keybinds.walk_left.1  { movement.x += -1.0 }
                 if key == data.settings.keybinds.walk_right.0 || key == data.settings.keybinds.walk_right.1 { movement.x +=  1.0 }
                 // primary
-                if key == data.settings.keybinds.primary.0    || key == data.settings.keybinds.primary.1    { shooting_primary = true; /*keyboard_mode = true*/ }
+                if key == data.settings.keybinds.primary.0    || key == data.settings.keybinds.primary.1    { data.player.shooting_primary = true; /*keyboard_mode = true*/ }
                 // secondary
-                if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { shooting_secondary = true; /*keyboard_mode = true*/ }
+                if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { data.player.shooting_secondary = true; /*keyboard_mode = true*/ }
                 // dash
-                if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { dashing = true; /*keyboard_mode = true*/ }
+                if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { data.player.dashing = true; /*keyboard_mode = true*/ }
               }
               
               // mouse button binds
@@ -704,11 +727,11 @@ fn main_thread(
                 if button == data.settings.keybinds.walk_left.2  || button == data.settings.keybinds.walk_left.3  { movement.x += -1.0 }
                 if button == data.settings.keybinds.walk_right.2 || button == data.settings.keybinds.walk_right.3 { movement.x +=  1.0 }
                 // primary
-                if button == data.settings.keybinds.primary.2    || button == data.settings.keybinds.primary.3    { shooting_primary = true; /*keyboard_mode = true*/ }
+                if button == data.settings.keybinds.primary.2    || button == data.settings.keybinds.primary.3    { data.player.shooting_primary = true; /*keyboard_mode = true*/ }
                 // secondary
-                if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { shooting_secondary = true; /*keyboard_mode = true*/ }
+                if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { data.player.shooting_secondary = true; /*keyboard_mode = true*/ }
                 // dash
-                if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { dashing = true; /*keyboard_mode = true*/ }
+                if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { data.player.dashing = true; /*keyboard_mode = true*/ }
               }
             }
           }
@@ -738,7 +761,7 @@ fn main_thread(
             data.player.position += speed * delta_time;
           }
           else {
-            if dashing && !data.player.is_dashing && !data.player.is_dead && movement_raw.magnitude() != 0.0 {
+            if data.player.dashing && !data.player.is_dashing && !data.player.is_dead && movement_raw.magnitude() != 0.0 {
               if data.player.time_since_last_dash > data.character_properties[&data.player.character].dash_cooldown {
                 match data.player.character {
                   Character::Temerity => {
@@ -1041,9 +1064,9 @@ fn main_thread(
               position,
               movement: movement_raw,
               aim_direction,
-              shooting_primary,
-              shooting_secondary,
-              dashing,
+              shooting_primary: data.player.shooting_primary,
+              shooting_secondary: data.player.shooting_secondary,
+              dashing: data.player.dashing,
               packet_interval: PACKET_INTERVAL,
               timestamp: SystemTime::now(),
             };
@@ -1693,6 +1716,30 @@ fn main_thread(
         break;
       }
     }
+    // extra input keys
+    if is_window_focused(&win) {
+      let device_state: DeviceState = DeviceState::new();
+      let keys: Vec<Keycode> = device_state.get_keys();
+      
+      // key binds
+      if keys.is_empty() {
+        data.fullscreen_pressed = false;
+      }
+      for key in keys {
+        let key = key as u16;
+        // move
+        if (key == data.settings.keybinds.fullscreen.0 || key == data.settings.keybinds.fullscreen.1) {
+          if !data.fullscreen_pressed {
+            data.settings.fullscreen = !data.settings.fullscreen;
+            println!("fullscreening");
+            data.fullscreen_pressed = true;
+            set_fullscreen(data.settings.fullscreen, &mut win);
+          }
+        } else {
+          data.fullscreen_pressed = false;
+        }
+      }
+    }
     // debug
     draw_text(&font, &format!("fps: {:?}", (1.0 / time.delta().as_secs_f32()) as u16), Vector2 { x: 0.0, y: 0.0 }, Vector2 { x: 100.0, y: 100.0 }, BLACK, 10.0, 127, &win, &mut com);
   }
@@ -1708,6 +1755,7 @@ fn sprite_clearer(mut commands: Commands, query: Query<Entity, With<DeleteAfterF
 // MARK: Setup
 fn setup(mut commands: Commands) {
   commands.init_resource::<GameData>();
+  commands.init_resource::<Settings>();
   commands.spawn(Camera2d);
 }
 
@@ -1791,4 +1839,19 @@ fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile
     }
   }
   return tiles;
+}
+
+fn exit_catcher(mut exit_events: MessageReader<AppExit>, settings: Res<Settings>) {
+  for exit_event in exit_events.read() {
+    match exit_event {
+      AppExit::Success => {
+        println!("App exited successfully.");
+        // save settings
+        settings.save();
+      }
+      AppExit::Error(err) => {
+        println!("App exited with an error.");
+      }
+    }
+  }
 }

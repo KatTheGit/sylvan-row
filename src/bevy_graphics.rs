@@ -295,7 +295,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     },
     z, window, commands
   );
-  draw_rect(Color::Srgba(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0) * vh, y:(position.y + squish_offset/2.0) * vh}, Vector2{x: (size.x - squish_offset) * vh, y: ((size.y - squish_offset) * (1.0 - progress)) * vh}, z, window, commands);
+  draw_rect(Color::Srgba(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0) * vh, y:(position.y + squish_offset/2.0) * vh}, Vector2{x: (size.x - squish_offset) * vh, y: ((size.y - squish_offset) * (1.0 - progress)) * vh}, z+10, window, commands);
   let text = match ability_index {
     0 => "PASSIVE",
     1 => "PRIMARY",
@@ -508,7 +508,7 @@ impl Notification {
 
 // MARK: Settings
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Resource)]
 pub struct Settings {
   pub camera_smoothing: bool,
   /// If false, usernames are displayed.
@@ -590,6 +590,11 @@ impl Settings {
       }
       Err(_) => { }
     }
+  }
+}
+impl Default for Settings {
+  fn default() -> Settings {
+    return Settings::new();
   }
 }
 /// Holds keybinds for actions with the below tuple:
@@ -1285,6 +1290,15 @@ pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh
   //let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
   //let relative_position_y = (y - camera.position.y) * camera.zoom + (50.0);
   draw_sprite(texture, relative_position * vh, Vector2 { x: w * camera.zoom * vh, y: h * camera.zoom * vh }, z, window, commands);
+}
+/// same as draw_image_ex but draws relative to a ceratain position and centers it.
+/// The x and y parameters are still world coordinates.
+pub fn draw_image_relative_ex(texture: &Texture, x: f32, y: f32, w: f32, h: f32, rotation: Vector2, vh: f32, vw: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
+  // draw relative to position and centered.
+  let relative_position = world_to_screen(Vector2 { x: x, y: y }, camera.clone(), vh, vw);
+  //let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
+  //let relative_position_y = (y - camera.position.y) * camera.zoom + (50.0);
+  draw_sprite_ex(texture, relative_position * vh, rotation, Vector2 { x: w * camera.zoom * vh, y: h * camera.zoom * vh }, z, window, commands);
 }
 pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   let relative_position_1 = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
