@@ -45,6 +45,8 @@ This is just for me.
 
 - [ ] Bevy swap
   - [ ] Clean up input handling too
+  - [ ] Android port, thanks to bevy
+    - [ ] Fix performance issue
 - [ ] Characters
   - [ ] Sága
   - [ ] The assassin
@@ -59,10 +61,9 @@ This is just for me.
   - [ ] Maps with https://www.mapeditor.org/
   - [ ] Menu
   - [ ] Better sfx & vfx
-- [ ] Android port, thanks to bevy
 
 - [ ] Bugs
-  - [ ] Raphaelle movspeed bonus too high
+  - [x] Raphaelle movspeed bonus too high
   - [ ] show "slow" instead of "- speed"
   - [ ] ability tooltips have confusing ability naming. integrate with keybinds.
 

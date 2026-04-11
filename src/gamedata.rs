@@ -131,7 +131,9 @@ impl ClientPlayer {
     if let Ok(texture) = texture {
       draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, vw, camera.clone(), z, window, commands);
     }
-
+    
+    
+    
     //let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     //let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
     //let bg_opacity: f32 = 0.4;
@@ -366,7 +368,7 @@ impl ServerPlayer {
     match self.character {
       Character::Raphaelle => {
         self.buffs.push(
-          Buff { value: 6.0, duration: 0.5, buff_type: BuffType::Speed, direction: Vector2::new() }
+          Buff { value: characters[&Character::Raphaelle].passive_range, duration: 0.5, buff_type: BuffType::Speed, direction: Vector2::new() }
         );
       }
       _ => {}
@@ -885,7 +887,7 @@ impl CharacterDescription {
           primary:   AbilityDescription { description: String::from("Casts a {0} damage piercing shot. Landing it heals nearby allies by {1}, and herself by {2}. If empowered, deals {3} damage and doesn't heal."), values: vec![character_properties[&Character::Raphaelle].primary_damage as f32, character_properties[&Character::Raphaelle].primary_heal_2 as f32, character_properties[&Character::Raphaelle].primary_lifesteal as f32, character_properties[&Character::Raphaelle].primary_damage_2 as f32] },
           secondary: AbilityDescription { description: String::from("Places down a healpool that lasts {0}s, healing allies by {1} every second, and providing a fire rate buff."), values: vec![character_properties[&Character::Raphaelle].secondary_cooldown as f32, character_properties[&Character::Raphaelle].secondary_heal as f32] },
           dash:      AbilityDescription { description: String::from("Dashes, empowering her PRIMARY. If she lands an empowered PRIMARY, reduces this cooldown by {0}s."), values: vec![character_properties[&Character::Raphaelle].primary_cooldown_2] },
-          passive:   AbilityDescription { description: String::from("Gains a small speed buff upon taking damage."), values: vec![character_properties[&Character::Raphaelle].primary_damage as f32] },
+          passive:   AbilityDescription { description: String::from("Gains {0} movement speed upon taking damage."), values: vec![character_properties[&Character::Raphaelle].passive_range as f32] },
         }
       }),
       (Character::Temerity, {

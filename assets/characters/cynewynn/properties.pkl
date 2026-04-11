@@ -29,7 +29,7 @@ secondary_charge_use = 100
 secondary_cooldown = 1.8
 
 dash_distance = 5.5
-dash_cooldown = 3.0
+dash_cooldown = 3.5
 dash_damage_multiplier = 0.5
 dash_speed = 25.0
 

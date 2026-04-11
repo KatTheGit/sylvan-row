@@ -2087,7 +2087,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 players[owner_index].buffs.push(
                   Buff {
                     value: characters[&Character::Koldo].passive_range,
-                    duration: 0.5,
+                    duration: characters[&Character::Koldo].primary_cooldown/2.0,
                     buff_type: BuffType::Impulse,
                     direction: distance.normalize(),
                   }

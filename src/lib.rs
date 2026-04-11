@@ -515,6 +515,29 @@ fn main_thread(
           }
           
           // MARK: | | gameobjects
+
+          // Extrapolation
+          for game_object_index in 0..data.game_objects.len() {
+            if let Ok(bullet_data) = data.game_objects[game_object_index].get_bullet_data_safe() {
+
+              let speed: f32 = match data.game_objects[game_object_index].object_type {
+                GameObjectType::RaphaelleBullet                   => data.character_properties[&Character::Raphaelle].primary_shot_speed,
+                GameObjectType::RaphaelleBulletEmpowered          => data.character_properties[&Character::Raphaelle].primary_shot_speed,
+                GameObjectType::HernaniBullet                     => data.character_properties[&Character::Hernani].primary_shot_speed,
+                GameObjectType::CynewynnSword                     => data.character_properties[&Character::Cynewynn].primary_shot_speed,
+                GameObjectType::FedyaProjectileRicochet           => data.character_properties[&Character::Fedya].primary_shot_speed,
+                GameObjectType::FedyaProjectileGroundRecalled     => data.character_properties[&Character::Fedya].primary_shot_speed,
+                GameObjectType::WiroGunShot                       => data.character_properties[&Character::Wiro].primary_shot_speed,
+                GameObjectType::TemerityRocket                    => data.character_properties[&Character::Temerity].primary_shot_speed,
+                GameObjectType::KoldoCannonBall                   => data.character_properties[&Character::Koldo].primary_shot_speed,
+                GameObjectType::KoldoCannonBallEmpowered          => data.character_properties[&Character::Koldo].primary_shot_speed,
+                GameObjectType::KoldoCannonBallEmpoweredUltimate  => data.character_properties[&Character::Koldo].primary_shot_speed,
+                _ => 0.0
+              };
+              data.game_objects[game_object_index].position += bullet_data.direction * speed * delta_time;
+            }
+          }
+
           //data.game_objects = sort_by_depth(data.game_objects);
           for game_object in data.game_objects.clone() {
             if let Ok(texture) = data.game_object_animations[&game_object.object_type].current_frame() {

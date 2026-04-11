@@ -1361,7 +1361,7 @@ pub fn load_game_object_animations(asset_server: AssetServer) -> HashMap<GameObj
     (GameObjectType::Grass7Bright,                     AnimationState::new(vec![asset_server.load("gameobjects/grass-7-b.png")],Vec2 {x: 200.0, y: 200.0},1.0, 0)),
     (GameObjectType::Water1,                           AnimationState::new(vec![asset_server.load("gameobjects/water-edge.png")],Vec2 {x: 200.0, y: 400.0},1.0, 0)),
     (GameObjectType::Water2,                           AnimationState::new(vec![asset_server.load("gameobjects/water-full.png")],Vec2 {x: 200.0, y: 400.0},1.0, 0)),
-    (GameObjectType::CenterOrb,                        AnimationState::new(vec![asset_server.load("gameobjects/orb.png")],Vec2 {x: 200.0, y: 400.0},1.0, 0)),
+    (GameObjectType::CenterOrb,                        AnimationState::new(vec![asset_server.load("gameobjects/orb.png")],Vec2 {x: 800.0, y: 800.0},1.0, 0)),
     (GameObjectType::CenterOrbSpawnPoint,              AnimationState::new(vec![asset_server.load("empty.png")],Vec2 {x: 1.0, y: 1.0},1.0, 0)),
     (GameObjectType::WiroShield,                       AnimationState::new(vec![asset_server.load("ui/temp_ability_1.png")],Vec2 {x: 400.0, y: 400.0},1.0, 0)),
     (GameObjectType::WiroGunShot,                      AnimationState::new(vec![asset_server.load("ui/temp_ability_1.png")],Vec2 {x: 400.0, y: 400.0},1.0, 0)),
