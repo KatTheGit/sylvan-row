@@ -36,7 +36,7 @@ use maths::*;
 use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
 use ring::hkdf;
-use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
+use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
 
@@ -370,6 +370,65 @@ fn main_thread(
               size: Vec2 { x: 900.0, y: 1000.0 }
             };
             draw_sprite(&profile_texture, tl_anchor + Vector2 {x: 10.0*uiscale, y: 15.0*uiscale}, Vector2 { x: 55.0*uiscale, y: 55.0*uiscale*profile_texture.aspect_ratio() }, 0, &win, &mut com);
+
+            // practice range
+            let mut button = Button::new(tr_anchor + Vector2 { x: -30.0*uiscale, y: 50.0*uiscale }, Vector2 { x: 20.0*uiscale, y: 10.0*uiscale }, "Practice", 4.0*uiscale);
+            button.draw(uiscale, !data.paused, 10, &font, &win, &mut com);
+            if button.was_released(&win, &m) {
+              data.cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+              let game_port = get_random_port();
+              let practice_game_port = game_port.clone();
+              let practice_username = username.clone();
+              let session_key = data.cipher_key.clone();
+              let practice_character = selected_character.clone();
+              let (tx, mut _rx): (tokio::sync::mpsc::Sender<PlayerMessage>, tokio::sync::mpsc::Receiver<PlayerMessage>)
+                = tokio::sync::mpsc::channel(32);
+              let _game_server = std::thread::spawn(move || {
+                game_server(1, practice_game_port, vec![
+                  PlayerInfo {
+                    // a lot of dummy data.
+                    username: practice_username,
+                    session_key: session_key,
+                    channel: tx,
+                    queued: true,
+                    is_party_leader: true,
+                    queued_with: Vec::new(),
+                    invited_by: Vec::new(),
+                    queued_gamemodes: Vec::new(),
+                    selected_character: practice_character,
+                    assigned_team: Team::Blue,
+                    in_game_with: Vec::new(),
+                  }
+                ],
+                true)
+              });
+              data.player.character = practice_character;
+              data.game_server_port = practice_game_port;
+              data.game_id = 0;
+              data.queued = false;
+              data.game_last_nonce = 0;
+              data.background_tiles = load_background_tiles(32, 24);
+
+              // bind to udp socket for gameserver.
+              let port = get_random_port();
+              let ip = format!("0.0.0.0:{}", port);
+              let udp_socket = UdpSocket::bind(ip);
+              match udp_socket {
+                Ok(socket) => {
+                  socket.set_nonblocking(true).expect("oops");
+                  data.game_socket = Some(socket);
+                  // set game screen.
+                  data.current_menu = MenuScreen::Main(2);
+                }
+                Err(err) => {
+                  data.current_menu = MenuScreen::Main(0);
+                  data.notifications.push(
+                    Notification::new(&format!("Connection error: {:?}", err), 5.0),
+                  );
+                  return
+                }
+              }
+            }
           }
           
           // tutorial
@@ -1238,6 +1297,9 @@ fn main_thread(
               // if we're in this list, delete us
               let username = data.username.clone();
               data.lobby.retain(|element| element.username != username);
+            }
+            ServerToClient::MatchEnded(result) => {
+              println!("Match ended! {:?}", result);
             }
             _ => {}
           }
