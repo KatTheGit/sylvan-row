@@ -44,7 +44,7 @@ impl Button {
     draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
     let inner_shrink: f32 = 1.0 * vh;
     draw_rect(Color::Srgba(SKY_BLUE), position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z+1, window, commands);
-    draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, window, commands);
+    draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
     let mouse: Vector2 = get_mouse_pos(&window);
     if self.clickable {
       if mouse.x > position.x && mouse.x < (position.x + size.x) {
@@ -134,7 +134,7 @@ impl Tabs {
       draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
       let inner_shrink: f32 = 1.0 * vh;
       draw_rect(Color::Srgba(SKY_BLUE), position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-      draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, window, commands);
+      draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
       if selected {
         draw_rect(Color::Srgba(GRAY), position, size, z+1, window, commands);
       }
@@ -205,7 +205,7 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
   draw_rect(Color::Srgba(BLUE), position, Vector2 { x: size, y: size }, z, window, commands);
   let inner_shrink: f32 = 0.2 * vh;
   draw_rect(Color::Srgba(BLUE), position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2 { x: size, y: size }- Vector2 { x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-  draw_text(&font, text, Vector2 {x: position.x + size + 1.0 *vh, y: position.y}, Vector2 { x: size + 300.0*vh, y: size }, BLACK, font_size , z, window, commands);
+  draw_text(&font, text, Vector2 {x: position.x + size + 1.0 *vh, y: position.y}, Vector2 { x: size + 300.0*vh, y: size }, BLACK, font_size , z, Justify::Left, window, commands);
 
   
   if *selected {
@@ -243,7 +243,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
   if *value >= 10.0 {
     formatted_value = format!("{:.0}", value);
   }
-  draw_text(&font, format!("{}: {}", text, formatted_value).as_str(), Vector2 { x: position.x + 2.0*vh, y: position.y}, size, BLACK, font_size, z+1, window, commands);
+  draw_text(&font, format!("{}: {}", text, formatted_value).as_str(), Vector2 { x: position.x + 2.0*vh, y: position.y}, size, BLACK, font_size, z+1, Justify::Left, window, commands);
   let mouse: Vector2 = get_mouse_pos(window);
   let margin = size.x * 0.1;
   if mouse.x > (position.x - margin) && mouse.x < (position.x + size.x + margin) {
@@ -272,7 +272,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
 ///   - 4: passive
 /// - squished: whether to slightly shrink the icon to show the ability was used
 /// - progress: cooldown / charge, 0.0-1.0
-pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: i8, texture: &Handle<Image>, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: i8, texture: &Handle<Image>, window: &Window, commands: &mut Commands, settings: Settings) -> () {
   let squish_offset = match squished {
     true => 1.0,
     false => 0.0
@@ -295,15 +295,33 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     },
     z, window, commands
   );
-  draw_rect(Color::Srgba(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0) * vh, y:(position.y + squish_offset/2.0) * vh}, Vector2{x: (size.x - squish_offset) * vh, y: ((size.y - squish_offset) * (1.0 - progress)) * vh}, z+10, window, commands);
+  draw_rect(Color::Srgba(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0), y:(position.y + squish_offset/2.0)}, Vector2{x: (size.x - squish_offset), y: ((size.y - squish_offset) * (1.0 - progress))}, z+10, window, commands);
   let text = match ability_index {
     0 => "PASSIVE",
-    1 => "PRIMARY",
-    2 => "SECONDARY",
-    3 => "DASH",
+    1 => &format!("PRIMARY\n({})",
+      if settings.keybinds.primary.2 != 255 {
+        format!("MB{}", settings.keybinds.primary.2)
+      } else {
+        name_from_keycode_u16(settings.keybinds.primary.0)
+      }
+    ),
+    2 => &format!("SECONDARY\n({})",
+      if settings.keybinds.secondary.2 != 255 {
+        format!("MB{}", settings.keybinds.secondary.2)
+      } else {
+        name_from_keycode_u16(settings.keybinds.secondary.0)
+      }
+    ),
+    3 => &format!("DASH\n({})",
+      if settings.keybinds.dash.2 != 255 {
+        format!("MB{}", settings.keybinds.dash.2)
+      } else {
+        name_from_keycode_u16(settings.keybinds.dash.0)
+      }
+    ),
     _ => "Unkown",
   };
-  draw_text(&font, text, Vector2 { x: (position.x), y: (position.y + size.y * 1.05)}, size, BLACK, size.x * 0.25, z, window, commands);
+  draw_text(&font, text, Vector2 { x: (position.x), y: (position.y + size.y * 1.05)}, size, BLACK, size.x * 0.25, z, Justify::Left, window, commands);
   let ability = match ability_index {
     1 => character_descriptions[&character].primary.clone(),
     2 => character_descriptions[&character].secondary.clone(),
@@ -328,7 +346,7 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
       player.username.clone()
     };
   
-  draw_text(&font, &displayed_name, Vector2 { x: position.x * vh, y: position.y * vh }, Vector2 { x: 100.0*vh, y: 100.0*vh }, BLACK, size * 0.5 * vh, z, window, commands);
+  draw_text(&font, &displayed_name, Vector2 { x: position.x * vh, y: position.y * vh }, Vector2 { x: 100.0*vh, y: 100.0*vh }, BLACK, size * 0.5 * vh, z, Justify::Left, window, commands);
   draw_rect(Color::Srgba(Srgba {red: 0.0, green: 0.0, blue: 0.0, alpha: 0.5}), Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2 {x: (size * (100.0 as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
   draw_rect(Color::Srgba(Srgba {red: 0.0, green: 1.0, blue: 0.1, alpha: 1.0}), Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2{x: ( size * (player.health as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
 }
@@ -499,7 +517,7 @@ impl Notification {
     let inner_shrink: f32 = 1.0 * vh;
     draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
     draw_rect(Color::Srgba(SKY_BLUE), position + Vector2 {x: inner_shrink, y: inner_shrink}, size - Vector2 {x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-    draw_text(&font, self.text.as_str(), Vector2 {x: position.x + 2.0 * vh, y: position.y}, size, BLACK, font_size, z, window, commands);
+    draw_text(&font, self.text.as_str(), Vector2 {x: position.x + 2.0 * vh, y: position.y}, size, BLACK, font_size, z, Justify::Left, window, commands);
   }
   pub fn new(text: &str, duration: f32) -> Notification {
     return Notification { start_time: Instant::now(), text: String::from(text), duration }
@@ -652,7 +670,7 @@ impl KeybindSettings {
 #[cfg(not(target_os="android"))]
 pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8), position: Vector2, size: f32, vh: f32, clickable: bool, font: &Handle<Font>, z: i8, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
   let mut font_size = size * 0.8;
-  draw_text(&font, keybind_name, Vector2 { x: position.x, y: position.y}, Vector2 { x: size*10.0, y: size }, BLACK, font_size, z, window, commands);
+  draw_text(&font, keybind_name, Vector2 { x: position.x, y: position.y}, Vector2 { x: size*10.0, y: size }, BLACK, font_size, z, Justify::Left, window, commands);
   for i in 0..2 {
 
     let keycode_name;
@@ -1038,7 +1056,7 @@ pub fn chatbox(
       ChatMessageType::Team => SKY_BLUE,
       ChatMessageType::All => ORANGE,
     };
-    draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), position, size, BLACK, 3.0 * vh, z, window, commands);
+    draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), position, size, BLACK, 3.0 * vh, z, Justify::Left, window, commands);
     // draw input textbox
     chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, vh, font, z, commands, window, mouse_buttons, key_inputs.clone(), key_events);
     
@@ -1117,7 +1135,7 @@ pub fn chatbox(
         };
         let current_y_size = (formatted_messages[m_index].0.len() / 14) as f32;
         y_offset += current_y_size;
-        draw_text(&font, &formatted_messages[m_index].0, Vector2 { x: position.x, y: pos_y }, Vector2 { x: size.x, y: current_y_size }, BLACK, 3.0 * vh, z, window, commands);
+        draw_text(&font, &formatted_messages[m_index].0, Vector2 { x: position.x, y: pos_y }, Vector2 { x: size.x, y: current_y_size }, BLACK, 3.0 * vh, z, Justify::Left, window, commands);
       }
     }
     let mouse_wheel = get_mouse_wheel(mouse_wheel);
@@ -1192,7 +1210,7 @@ impl TextInput {
     while text_to_draw.len() > 10 {
       text_to_draw.remove(0);
     }
-    draw_text(&font, &text_to_draw, Vector2 {x: position.x + margin, y: position.y}, size, BLACK, font_size, z, window, commands);
+    draw_text(&font, &text_to_draw, Vector2 {x: position.x + margin, y: position.y}, size, BLACK, font_size, z, Justify::Left, window, commands);
   }
 }
 
@@ -1220,7 +1238,7 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vecto
     };
     draw_rect(Color::Srgba(BLUE), mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*vh, y: tooltip_size.y + 1.0*vh }, z, window, commands);
     draw_rect(Color::Srgba(SKY_BLUE), mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
-    draw_text(&font, text, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset + 1.0 * vh, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*vh, y: 0.0}, BLACK, font_size, z+1, window, commands);
+    draw_text(&font, text, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset + 1.0 * vh, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*vh, y: 0.0}, BLACK, font_size, z+1, Justify::Left, window, commands);
   }
 }
 
@@ -1303,22 +1321,23 @@ pub fn draw_image_relative_ex(texture: &Texture, x: f32, y: f32, w: f32, h: f32,
 pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   let relative_position_1 = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
   let relative_position_2 = world_to_screen(Vector2 { x: x2, y: y2 }, camera.clone(), vh, vw);
-  draw_line(relative_position_1 * vh, relative_position_2 * vh, thickness, color, z, window, commands);
+  let relative_thickness = thickness * camera.zoom * vh;
+  draw_line(relative_position_1 * vh, relative_position_2 * vh, relative_thickness, color, z, window, commands);
 }
 pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   let relative_position = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
 
   draw_rect(Color::Srgba(color), relative_position * vh, Vector2 { x: w*vh*camera.zoom, y: h*vh*camera.zoom }, z, window, commands);
 }
-pub fn draw_text_relative(text: &str, x: f32, y:f32, font: &Handle<Font>, font_size: f32, vh: f32, vw: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
-  let relative_position = world_to_screen(Vector2 { x: x, y: y }, camera.clone(), vh, vw);
-
-  draw_text(&font, text, relative_position * vh, Vector2 { x: 100.0 * vh, y: 100.0*vh }, BLACK, font_size * vh * camera.zoom, z, window, commands);
+pub fn draw_text_relative(text: &str, position: Vector2, size: Vector2, font: &Handle<Font>, color: Srgba, font_size: f32, vh: f32, vw: f32, camera: Camera, z: i8, alignment: Justify, window: &Window, commands: &mut Commands) -> () {
+  let relative_position = world_to_screen(position, camera.clone(), vh, vw);
+  let relative_size = size * camera.zoom * vh;
+  draw_text(&font, text, relative_position * vh, relative_size, color, font_size * vh * camera.zoom, z, alignment, window, commands);
 }
 pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, vw: f32, team: Team, y_offset: f32, alpha: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   if positions.len() < 2 { return; }
   for position_index in 0..positions.len()-1 {
-    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.4, match team {Team::Blue => Srgba { red: 0.2, green: 1.0-(position_index as f32 / positions.len() as f32), blue: 0.8, alpha: alpha }, Team::Red => Srgba { red: 0.8, green: 0.7-0.3*(position_index as f32 / positions.len() as f32), blue: 0.2, alpha: alpha }}, camera.clone(), vh, vw, z, window, commands);
+    draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.1, match team {Team::Blue => Srgba { red: 0.2, green: 1.0-(position_index as f32 / positions.len() as f32), blue: 0.8, alpha: alpha }, Team::Red => Srgba { red: 0.8, green: 0.7-0.3*(position_index as f32 / positions.len() as f32), blue: 0.2, alpha: alpha }}, camera.clone(), vh, vw, z, window, commands);
   }
 }
 

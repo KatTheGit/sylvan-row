@@ -285,7 +285,7 @@ fn main_thread(
             let mut play_button = Button::new(br_anchor - Vector2 { x: 30.0*uiscale, y: 15.0*uiscale }, Vector2 { x: 25.0*uiscale, y: 13.0*uiscale }, "Play", 8.0*uiscale);
             play_button.draw(uiscale, !paused, 0, &font, &win, &mut com);
             if data.queued {
-              draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, 0, &win, &mut com);
+              draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, 0, Justify::Left, &win, &mut com);
             }
             if play_button.was_pressed(&win, &m) {
               data.queued = !data.queued;
@@ -327,14 +327,14 @@ fn main_thread(
             let lobby_size: Vector2 = Vector2 { x: 30.0*uiscale, y: 7.0*uiscale };
             let y_offset = lobby_size.y;
             let inner_shrink: f32 = 1.0 * uiscale;
-            draw_text(&font, "Lobby", Vector2 {x: lobby_position.x, y: lobby_position.y-3.0*uiscale}, Vector2 {x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, 0, &win, &mut com);
+            draw_text(&font, "Lobby", Vector2 {x: lobby_position.x, y: lobby_position.y-3.0*uiscale}, Vector2 {x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, 0, Justify::Left, &win, &mut com);
             for (i, player) in lobby.iter().enumerate() {
               draw_rect(Color::Srgba(BLUE), lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, 0, &win, &mut com );
               draw_rect(Color::Srgba(SKY_BLUE), lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, 0, &win, &mut com);
               let is_ready_color = if player.is_ready {LIME} else {RED};
               let is_ready_text = if player.is_ready {"Ready"} else {"Not Ready"};
-              draw_text(&font, &format!("{}", player.username), Vector2 {x: lobby_position.x + 2.0*vh, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, 0, &win, &mut com);
-              draw_text(&font, &format!("{}", is_ready_text), Vector2 {x: lobby_position.x + lobby_size.x * 0.67, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, is_ready_color, 3.0*uiscale, 0, &win, &mut com);
+              draw_text(&font, &format!("{}", player.username), Vector2 {x: lobby_position.x + 2.0*vh, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, 0, Justify::Left, &win, &mut com);
+              draw_text(&font, &format!("{}", is_ready_text), Vector2 {x: lobby_position.x + lobby_size.x * 0.67, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, is_ready_color, 3.0*uiscale, 0, Justify::Left, &win, &mut com);
             }
             // lobby leave button
             if lobby.len() > 1 {
@@ -362,7 +362,7 @@ fn main_thread(
             for i in 0..4 {
               let texture = asset_server.load(format!("ui/temp_ability_{}.png", i+1));
               let size = Vector2 { x: 10.0*uiscale, y: 10.0*uiscale };
-              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, uiscale, vw, &font, character_descriptions.clone(), selected_character, 5, &texture, &win, &mut com);
+              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, uiscale, vw, &font, character_descriptions.clone(), selected_character, 5, &texture, &win, &mut com, data.settings.clone());
             }
             let profile_texture = asset_server.load(format!("characters/{}/textures/mini-profile.png", selected_character.name().to_lowercase() ));
             let profile_texture = Texture {
@@ -433,12 +433,24 @@ fn main_thread(
           
           // tutorial
           if data.main_tabs.selected_tab() == 2 {
-            
+            draw_text(&font, "Use WASD to move.\nLMB: Primary fire\nSPACE: Dash (cooldown ability)\nRMB: Secondary/Ultimate (charge it up by dealing damage)", tl_anchor + Vector2 {x: 10.0 * uiscale, y: 30.0 * uiscale}, Vector2 { x: 80.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, 10, Justify::Left, &win, &mut com);
           }
           
           // stats
           if data.main_tabs.selected_tab() == 3 {
+            // refresh button
+            let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
+            refresh_button.draw(uiscale, !data.paused, 10, &font, &win, &mut com);
+            if refresh_button.was_released(&win, &m) {
+              data.packet_queue.push(
+                ClientToServer::PlayerDataRequest
+              )
+            }
+            // draw the stats
+            draw_text(&font, format!("{}'s stats", data.username).as_str(), tl_anchor + Vector2 {x: 10.0 * uiscale, y: 30.0 * uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, 10, Justify::Left, &win, &mut com);
             
+            let wins = data.player_stats.wins;
+            draw_text(&font, format!("wins: {}", wins).as_str(), tl_anchor + Vector2 {x: 10.0 * uiscale, y: 35.0 * uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 4.0*uiscale, 10, Justify::Left, &win, &mut com);
           }
           
           // friends
@@ -502,13 +514,13 @@ fn main_thread(
               // if it's ours...
               if data.game_objects[game_object_index].get_bullet_data().owner_username == username {
                 let position: Vector2 = Vector2 {
-                  x: data.player.position.x + data.player.aim_direction.normalize().x,
-                  y: data.player.position.y + data.player.aim_direction.normalize().y,
+                  x: data.player.position.x + data.aim_direction.normalize().x * 1.0,
+                  y: data.player.position.y + data.aim_direction.normalize().y * 1.0,
                 };
 
                 data.game_objects[game_object_index].position = position;
                 let mut shield_data = data.game_objects[game_object_index].get_bullet_data();
-                shield_data.direction = data.player.aim_direction.normalize();
+                shield_data.direction = data.aim_direction.normalize();
                 data.game_objects[game_object_index].extra_data = ObjectData::BulletData(shield_data);
               }
             }
@@ -592,7 +604,7 @@ fn main_thread(
               draw_image_relative_ex(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, rotation, vh, vw, data.player.camera.clone(), 5, &win, &mut com);
             }
           }
-          // MARK: | | UI
+          // MARK: | |  Game UI
           let primary_cooldown: f32 = if data.player.last_shot_time < data.character_properties[&data.player.character].primary_cooldown {
             data.player.last_shot_time / data.character_properties[&data.player.character].primary_cooldown
           } else {
@@ -610,16 +622,17 @@ fn main_thread(
           } else {
             1.0
           };
-          draw_ability_icon(bl_anchor + Vector2 { x: 0.0 * uiscale, y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, secondary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com);
-          draw_ability_icon(bl_anchor + Vector2 { x: 12.5 * uiscale, y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, dash_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com);
-          draw_ability_icon(bl_anchor + Vector2 { x: 25.0 * uiscale, y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, 1.0 , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com);
-          draw_ability_icon(bl_anchor + Vector2 { x: 37.5 * uiscale,  y: -10.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, primary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com);
+          
+          draw_ability_icon(bl_anchor + Vector2 { x: 2.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, 1.0 , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 14.5 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, primary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 27.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, dash_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 39.5 * uiscale,  y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, secondary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com, data.settings.clone());
 
           // screen-space to world space conversion
           //                                          no idea what's up with "/vh" but it gotta be there
           let mouse_world_position = screen_to_world(mouse_pos/vh, data.player.camera.clone(), vh, vw);
       
-          let aim_direction: Vector2 = mouse_world_position - data.player.position;
+          data.aim_direction = (mouse_world_position - data.player.position).normalize();
           
           // draw player and aim laser
           let mut range = data.character_properties[&data.player.character].primary_range * data.player.camera.zoom;
@@ -652,30 +665,30 @@ fn main_thread(
             // full line
             draw_line(
               Vector2{
-                x: (aim_direction.normalize().x * low_limit * vh) + relative_position.x * vh,
-                y: (aim_direction.normalize().y * low_limit * vh) + relative_position.y * vh
+                x: (data.aim_direction.normalize().x * low_limit * vh) + relative_position.x * vh,
+                y: (data.aim_direction.normalize().y * low_limit * vh) + relative_position.y * vh
               },
               Vector2 {
-                x: (aim_direction.normalize().x * range * vh) + (relative_position.x * vh),
-                y: (aim_direction.normalize().y * range * vh) + (relative_position.y * vh)
+                x: (data.aim_direction.normalize().x * range * vh) + (relative_position.x * vh),
+                y: (data.aim_direction.normalize().y * range * vh) + (relative_position.y * vh)
               },
               0.6 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 0.2 }, 10, &win, &mut com
             );
             // shorter, matte line
             draw_line(
               Vector2{
-                x: (aim_direction.normalize().x * low_limit * vh) + relative_position.x * vh,
-                y: (aim_direction.normalize().y * low_limit * vh) + relative_position.y * vh
+                x: (data.aim_direction.normalize().x * low_limit * vh) + relative_position.x * vh,
+                y: (data.aim_direction.normalize().y * low_limit * vh) + relative_position.y * vh
               },
               Vector2{
-                x: (aim_direction.normalize().x * range_limited * vh) + (relative_position.x * vh),
-                y: (aim_direction.normalize().y * range_limited * vh) + (relative_position.y * vh)
+                x: (data.aim_direction.normalize().x * range_limited * vh) + (relative_position.x * vh),
+                y: (data.aim_direction.normalize().y * range_limited * vh) + (relative_position.y * vh)
               },
               0.4 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
             );
             if data.player.character == Character::Hernani {
               let range: f32 = data.character_properties[&Character::Hernani].secondary_range * data.player.camera.zoom;
-              let aim_dir = aim_direction.normalize();
+              let aim_dir = data.aim_direction.normalize();
               // perpendicular direction 1
               let aim_dir_alpha = Vector2 {x:   aim_dir.y, y: - aim_dir.x};
               // perpendicular direction 2
@@ -1145,7 +1158,7 @@ fn main_thread(
             let client_packet = ClientPacket {
               position,
               movement: movement_raw,
-              aim_direction,
+              aim_direction: data.aim_direction,
               shooting_primary: data.player.shooting_primary,
               shooting_secondary: data.player.shooting_secondary,
               dashing: data.player.dashing,
@@ -1381,11 +1394,11 @@ fn main_thread(
         let input_size = Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale };
         let user_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 35.0 * uiscale};
         let password_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 45.0 * uiscale};
-        draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, 0, &win, &mut com);
+        draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, 0, Justify::Left, &win, &mut com);
         tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, 1, &win, &mut com);
         data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, vh, &font, 0, &mut com, &win, &m, &k, &mut ki);
         tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, 1, &win, &mut com);
-        draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, 0, &win, &mut com);
+        draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, 0, Justify::Left, &win, &mut com);
         data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, vh, &font, 0, &mut com, &win, &m, &k, &mut ki);
 
         // confirm button
@@ -1452,7 +1465,7 @@ fn main_thread(
               data.opake_data.timeout = Instant::now();
               
               // Attempt connection to server.
-              draw_text(&font, "Attempting connection...", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale }, BLACK, 5.0 * uiscale, 0, &win, &mut com);
+              draw_text(&font, "Attempting connection...", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale }, BLACK, 5.0 * uiscale, 0, Justify::Left, &win, &mut com);
               
               if data.server_stream.is_none() {
                 match TcpStream::connect(&server_ip) {
@@ -1826,7 +1839,7 @@ fn main_thread(
       }
     }
     // debug
-    draw_text(&font, &format!("fps: {:?}", (1.0 / time.delta().as_secs_f32()) as u16), Vector2 { x: 0.0, y: 0.0 }, Vector2 { x: 100.0, y: 100.0 }, BLACK, 10.0, 127, &win, &mut com);
+    draw_text(&font, &format!("fps: {:?}", (1.0 / time.delta().as_secs_f32()) as u16), Vector2 { x: 0.0, y: 0.0 }, Vector2 { x: 100.0, y: 100.0 }, BLACK, 10.0, 127, Justify::Left, &win, &mut com);
   }
 }
 

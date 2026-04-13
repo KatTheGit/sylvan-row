@@ -890,7 +890,6 @@ async fn main() {
             information: ClientToServer::PlayerDataRequest,
           }
         );
-      
       }
       let username = username.clone();
       let stats = player_stats.clone();

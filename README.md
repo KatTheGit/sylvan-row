@@ -79,19 +79,6 @@ This is just for me.
 - [x] Gameserver's `owner_port` has to be reworked into `owner_username`.
 - [ ] Weird indexing errors in gameserver.
 
-## Side quests
-
-- [ ] Change game engine
-- [ ] Clean up code
-  - [x] IMPORTANT: Reorganise mutexes to avoid deadlocks
-  - [ ] Health u8 -> f16
-  - [ ] Server vulnerabilities
-  - [ ] Variable names, readability
-  - [ ] Organisation
-    - [ ] structure into proper modules, like networking, maths, players, ui, etc...
-  - [ ] Packet size
-  - [ ] Write own parser
-
 ## Reminders
 - Update Wiro projectile list when new char
 - Update wall list when new wall

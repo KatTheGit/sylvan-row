@@ -242,7 +242,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 // apply an impulse
                 player.buffs.push(
                   Buff {
-                    value: 0.1,
+                    value: 0.5,
                     duration: 1.0,
                     buff_type: BuffType::Impulse,
                     direction: player.move_direction,
@@ -439,6 +439,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           else {
             // (vscode) MARK: Movement Legality
             // Movement legality calculations
+            if recieved_player_info.movement.magnitude() > 1.0 {
+              recieved_player_info.movement.normalize();
+            }
             let mut raw_movement = recieved_player_info.movement;
             let player_movement_speed: f32 = characters[&player.character].speed;
             let mut extra_speed: f32 = 0.0;
@@ -447,6 +450,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
                 extra_speed += player.buffs[b_index].value;
               }
               if player.buffs[b_index].buff_type == BuffType::Impulse {
+                println!("{:?}", player.buffs[b_index]);
                 // yeet
                 let direction = player.buffs[b_index].direction.normalize();
                 // time left serves as impulse decay
@@ -1478,7 +1482,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             if players[p_index].secondary_cast_time.elapsed().as_secs_f32() > character.secondary_cooldown {
               // apply an impulse
               let direction = players[p_index].aim_direction;
-              let yeet = 0.2;
+              let yeet = characters[&Character::Temerity].passive_cooldown; // only free field left :(
               let lifetime = 0.2;
               players[p_index].buffs.push(
                 Buff { value: yeet, duration: 1.0, buff_type: BuffType::Impulse, direction: direction * -1.0 }

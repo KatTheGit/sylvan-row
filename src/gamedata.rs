@@ -14,6 +14,7 @@ use crate::maths::*;
 use std::time::SystemTime;
 use crate::bevy_graphics::*;
 use std::time::Instant;
+
 // MARK: Gamemodes
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
@@ -126,13 +127,54 @@ impl ClientPlayer {
   pub fn draw(&self, vh: f32, vw: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
     // TODO: animations
     
+
     let size: f32 = 1.2;
     let texture = self.current_animation.current_frame();
     if let Ok(texture) = texture {
       draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, vw, camera.clone(), z, window, commands);
     }
     
+
+    // username
+    let nametag_size = Vector2 {x: 2.0, y: 1.0};
+    let nametag_offset = self.position + Vector2 {x: -nametag_size.x/2.0, y: -1.4 };
+
+    let team_color = match self.team {
+      Team::Blue => BLUE,
+      Team::Red => RED,
+    };
+
+    let displayed_name = match settings.display_char_name_instead {
+      true => self.character.name(),
+      false => self.username.clone(),
+    };
+
+    draw_text_relative(
+      &displayed_name,
+      nametag_offset + Vector2 {x: -10.0, y: 0.0},
+      nametag_size + Vector2 {x: 20.0, y: 0.0},
+      font, team_color, 0.25, vh, vw, camera.clone(), z, Justify::Center, window, commands
+    );
+
+    // healthbar
+
+    //outline
+    let health_y_offset = 0.4;
+    draw_line_relative(nametag_offset.x - 0.02, nametag_offset.y + health_y_offset, nametag_offset.x + (1.0) * nametag_size.x + 0.02, nametag_offset.y + health_y_offset, 0.175, BLACK, camera.clone(), vh, vw, z, window, commands);
+    //full line
+    draw_line_relative(nametag_offset.x, nametag_offset.y + health_y_offset, nametag_offset.x + (1.0) * nametag_size.x, nametag_offset.y + health_y_offset, 0.15, GRAY, camera.clone(), vh, vw, z, window, commands);
+    //health line
+    draw_line_relative(nametag_offset.x, nametag_offset.y + health_y_offset, nametag_offset.x + (self.health as f32 / 100.0) * nametag_size.x, nametag_offset.y + health_y_offset, 0.15, LIMEGREEN, camera.clone(), vh, vw, z+1, window, commands);
     
+    // ult bar
+
+    //outline
+    let secondary_y_offset = 0.55;
+    draw_line_relative(nametag_offset.x - 0.02, nametag_offset.y + secondary_y_offset, nametag_offset.x + (1.0) * nametag_size.x + 0.02, nametag_offset.y + secondary_y_offset, 0.065, BLACK, camera.clone(), vh, vw, z, window, commands);
+    //full line
+    draw_line_relative(nametag_offset.x, nametag_offset.y + secondary_y_offset, nametag_offset.x + (1.0) * nametag_size.x, nametag_offset.y + secondary_y_offset, 0.05, GRAY, camera.clone(), vh, vw, z, window, commands);
+    //health line
+    draw_line_relative(nametag_offset.x, nametag_offset.y + secondary_y_offset, nametag_offset.x + (self.secondary_charge as f32 / 100.0) * nametag_size.x, nametag_offset.y + secondary_y_offset, 0.05, ORANGE, camera.clone(), vh, vw, z+1, window, commands);
     
     //let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     //let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
@@ -204,7 +246,7 @@ impl ClientPlayer {
   }
   pub fn new() -> ClientPlayer {
     return ClientPlayer {
-      username: String::from("New User"),
+      username: String::from("Player"),
       health: 100,
       position: Vector2::new(),
       aim_direction: Vector2::new(),
@@ -871,7 +913,7 @@ impl CharacterDescription {
           primary:   AbilityDescription { description: String::from("Swings her sword, dealing {0} damage."), values: vec![character_properties[&Character::Cynewynn].primary_damage as f32] },
           secondary: AbilityDescription { description: String::from("Teleports {0} seconds in the past, and gains {1} health."), values: vec![character_properties[&Character::Cynewynn].secondary_cooldown, character_properties[&Character::Cynewynn].secondary_heal as f32] },
           dash:      AbilityDescription { description: String::from("Dashes, taking {0}% less damage."), values: vec![(1.0 - character_properties[&Character::Cynewynn].dash_damage_multiplier) * 100.0] },
-          passive:   AbilityDescription { description: String::from("Primary cooldown is lower the higher her secondary charge,reduced by up to {0}s."), values: vec![character_properties[&Character::Cynewynn].primary_cooldown_2] },
+          passive:   AbilityDescription { description: String::from("Primary cooldown is lower the higher her secondary charge, reduced by up to {0}s."), values: vec![character_properties[&Character::Cynewynn].primary_cooldown_2] },
         }
       }),
       (Character::Hernani, {

@@ -224,6 +224,7 @@ pub fn draw_text(
   color: Srgba,
   font_size: f32,
   z: i8,
+  alighment: Justify,
   window: &Window,
   commands: &mut Commands,
 ) {
@@ -242,7 +243,7 @@ pub fn draw_text(
       Text2d::new(text),
       slightly_smaller_text_font.clone()
         .with_font_smoothing(FontSmoothing::None),
-      TextLayout::new(Justify::Left, LineBreak::WordBoundary),
+      TextLayout::new(alighment, LineBreak::WordBoundary),
       TextBounds::from(size.as_vec2()),
       Transform::from_translation(Vec3{x: 0.0, y: 0.0, z: z as f32}),
       TextColor(Color::Srgba(color)),
