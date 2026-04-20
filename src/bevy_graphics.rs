@@ -272,7 +272,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
 ///   - 4: passive
 /// - squished: whether to slightly shrink the icon to show the ability was used
 /// - progress: cooldown / charge, 0.0-1.0
-pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: i8, texture: &Handle<Image>, window: &Window, commands: &mut Commands, settings: Settings) -> () {
+pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, uiscale: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: i8, texture: &Handle<Image>, window: &Window, commands: &mut Commands, settings: Settings) -> () {
   let squish_offset = match squished {
     true => 1.0,
     false => 0.0
@@ -300,21 +300,21 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     0 => "PASSIVE",
     1 => &format!("PRIMARY\n({})",
       if settings.keybinds.primary.2 != 255 {
-        format!("MB{}", settings.keybinds.primary.2)
+        format!("MB{}", settings.keybinds.primary.2+1)
       } else {
         name_from_keycode_u16(settings.keybinds.primary.0)
       }
     ),
     2 => &format!("SECONDARY\n({})",
       if settings.keybinds.secondary.2 != 255 {
-        format!("MB{}", settings.keybinds.secondary.2)
+        format!("MB{}", settings.keybinds.secondary.2+1)
       } else {
         name_from_keycode_u16(settings.keybinds.secondary.0)
       }
     ),
     3 => &format!("DASH\n({})",
       if settings.keybinds.dash.2 != 255 {
-        format!("MB{}", settings.keybinds.dash.2)
+        format!("MB{}", settings.keybinds.dash.2+1)
       } else {
         name_from_keycode_u16(settings.keybinds.dash.0)
       }
@@ -330,7 +330,9 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     _ => character_descriptions[&character].passive.clone(),
   };
   let text = ability.to_text();
-  tooltip(position, size, &text, Vector2 { x: 55.0 * vh, y: 25.0 * vh }, vh, vw, font, get_mouse_pos(window), z+10, window, commands);
+  let mouse_pos = get_mouse_pos(window);
+  //tooltip(position, size, &text, Vector2 { x: 55.0 * vh, y: 25.0 * vh }, vh, vw, font, mouse_pos, z+10, window, commands);
+  ability_tooltip(ability_index, character, character_descriptions, position, size, uiscale, vh, vw, font, mouse_pos, z+10, settings, window, commands);
 }
 
 pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Handle<Font>, vh: f32, settings: Settings, z: i8, window: &Window, commands: &mut Commands) -> () {
@@ -683,7 +685,7 @@ pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8)
             keycode_name = "... (DEL to remove)".to_string();
             font_size = size * 0.7;
           } else {
-            keycode_name = format!("MB{}", keybind.2);
+            keycode_name = format!("MB{}", keybind.2+1);
           }
         }
       } else {
@@ -703,7 +705,7 @@ pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8)
             keycode_name = "... (DEL to remove)".to_string();
             font_size = size * 0.7;
           } else {
-            keycode_name = format!("MB{}", keybind.3);
+            keycode_name = format!("MB{}", keybind.3+1);
           }
         }
       } else {
@@ -1242,6 +1244,60 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vecto
   }
 }
 
+/// When the mouse hovers over the given rectangle with `position`
+/// and `size`, it will display the given character ability info.
+pub fn ability_tooltip(ability: usize, character: Character, character_descriptions: HashMap<Character, CharacterDescription>, position: Vector2, size: Vector2, uiscale: f32, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: i8, settings: Settings, window: &Window, commands: &mut Commands) {
+  let font_size = 3.5 * uiscale;
+  if mouse_pos.x < position.x + size.x
+  && mouse_pos.x > position.x
+  && mouse_pos.y < position.y + size.y
+  && mouse_pos.y > position.y {
+    //let lines: Vec<&str> = text.split("\n").collect();
+    let y_offset = 4.0 * uiscale;
+
+    let tooltip_size = Vector2 { x: 65.0 * uiscale, y: 25.0 * uiscale };
+
+    let visibility_x_offset: f32 = if mouse_pos.x > 60.0 * vw {
+      - tooltip_size.x - 10.0
+    } else {
+      10.0
+    };
+    let visibility_y_offset: f32 = if mouse_pos.y > 60.0 * vh {
+      - tooltip_size.y - 10.0
+    } else {
+      10.0
+    };
+    draw_rect(Color::Srgba(BLUE), mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*uiscale, y: tooltip_size.y + 1.0*uiscale }, z, window, commands);
+    draw_rect(Color::Srgba(SKY_BLUE), mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
+    let ability_description = match ability {
+      1 => character_descriptions[&character].primary.clone(),
+      2 => character_descriptions[&character].secondary.clone(),
+      3 => character_descriptions[&character].dash.clone(),
+      _ => character_descriptions[&character].passive.clone(),
+    };
+    let text = ability_description.to_text();
+    draw_text(&font, &text, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1, Justify::Left, window, commands);
+    
+    if ability_description.cooldown > 0.0 {
+      let mut subtext = format!("CD: {}s", ability_description.cooldown);
+      // secondary
+      if ability == 2 {
+        subtext = format!("Cost: {}", ability_description.cooldown);
+      }
+
+      draw_text(&font, &subtext, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale - tooltip_size.y + 4.0*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1, Justify::Left, window, commands);
+      
+      if ability != 0 {
+        
+        let subtext = format!("{}", get_keybind_name(settings, ability));
+        
+        draw_text(&font, &subtext, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale - tooltip_size.y + 4.0*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1, Justify::Right, window, commands);
+      }
+    
+    }
+  }
+}
+
 //MARK:  Credential store
 const SERVICE_NAME: &str = "SYLVAN_ROW";
 /// Tries to store password in keyring.
@@ -1287,6 +1343,7 @@ pub fn load_password(username: &str) -> String {
   }
 }
 
+/// This function does not include the necessary multiplication by VH.
 pub fn world_to_screen(world_position: Vector2, camera: Camera, vh: f32, vw: f32) -> Vector2 {
   let screen_position = (world_position - camera.position) * camera.zoom + Vector2 {x: 50.0 * (vw/vh), y: 50.0};
   return screen_position;
@@ -1512,4 +1569,33 @@ pub fn load_character_animations(asset_server: AssetServer) -> HashMap<Character
       ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
   ]);
+}
+
+fn get_keybind_name(settings: Settings, ability_index: usize) -> String {
+  let text = match ability_index {
+    0 => String::new(),
+    1 => {
+      if settings.keybinds.primary.2 != 255 {
+        format!("MB{}", settings.keybinds.primary.2+1)
+      } else {
+        name_from_keycode_u16(settings.keybinds.primary.0).to_string()
+      }
+    }
+    2 => {
+      if settings.keybinds.secondary.2 != 255 {
+        format!("MB{}", settings.keybinds.secondary.2+1)
+      } else {
+        name_from_keycode_u16(settings.keybinds.secondary.0)
+      }
+    }
+    3 => {
+      if settings.keybinds.dash.2 != 255 {
+        format!("MB{}", settings.keybinds.dash.2+1)
+      } else {
+        name_from_keycode_u16(settings.keybinds.dash.0)
+      }
+    }
+    _ => "Unkown".to_string(),
+  };
+  return text;
 }

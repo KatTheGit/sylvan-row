@@ -362,7 +362,7 @@ fn main_thread(
             for i in 0..4 {
               let texture = asset_server.load(format!("ui/temp_ability_{}.png", i+1));
               let size = Vector2 { x: 10.0*uiscale, y: 10.0*uiscale };
-              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, uiscale, vw, &font, character_descriptions.clone(), selected_character, 5, &texture, &win, &mut com, data.settings.clone());
+              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, vh, vw, uiscale, &font, character_descriptions.clone(), selected_character, 5, &texture, &win, &mut com, data.settings.clone());
             }
             let profile_texture = asset_server.load(format!("characters/{}/textures/mini-profile.png", selected_character.name().to_lowercase() ));
             let profile_texture = Texture {
@@ -623,10 +623,10 @@ fn main_thread(
             1.0
           };
           
-          draw_ability_icon(bl_anchor + Vector2 { x: 2.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, 1.0 , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 14.5 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, primary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 27.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, dash_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 39.5 * uiscale,  y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, secondary_cooldown , vh, vw, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 2.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, 1.0 , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 14.5 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, primary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 27.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, dash_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 39.5 * uiscale,  y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, secondary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com, data.settings.clone());
 
           // screen-space to world space conversion
           //                                          no idea what's up with "/vh" but it gotta be there
@@ -712,11 +712,11 @@ fn main_thread(
           
           // MARK: | | Draw Players
           if !data.player.is_dead {
-            data.player.draw(vh, vw, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), 15, &mut com, &win);
           }
           for player in data.players.clone() {
             if !player.is_dead {
-              player.draw(vh, vw, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), 15, &mut com, &win);
             }
           }
 
@@ -1844,8 +1844,8 @@ fn main_thread(
 }
 
 // MARK: Clearer
-fn sprite_clearer(mut commands: Commands, query: Query<Entity, With<DeleteAfterFrame>>) {  
-  for entity in query {
+fn sprite_clearer(mut commands: Commands, query: Query<Entity, With<DeleteAfterFrame>>) {
+  for entity in query {    
     commands.entity(entity).despawn();
   }
 }

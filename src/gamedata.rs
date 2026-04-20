@@ -124,20 +124,23 @@ impl ClientPlayer {
       current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     }
   }
-  pub fn draw(&self, vh: f32, vw: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
+  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
     // TODO: animations
     
+
+    // PLAYER
 
     let size: f32 = 1.2;
     let texture = self.current_animation.current_frame();
     if let Ok(texture) = texture {
       draw_image_relative(&texture, self.position.x -(size/2.0), self.position.y - ((size/2.0)* (8.0/5.0)), size, size * (8.0/5.0), vh, vw, camera.clone(), z, window, commands);
     }
-    
+
+    // NAMETAG
 
     // username
-    let nametag_size = Vector2 {x: 2.0, y: 1.0};
-    let nametag_offset = self.position + Vector2 {x: -nametag_size.x/2.0, y: -1.4 };
+    //let nametag_size = Vector2 {x: 2.0, y: 1.0};
+    let nametag_pos = self.position + Vector2 {x: 0.0, y: -1.4 };
 
     let team_color = match self.team {
       Team::Blue => BLUE,
@@ -148,33 +151,66 @@ impl ClientPlayer {
       true => self.character.name(),
       false => self.username.clone(),
     };
+    
+    let nametag_pos = nametag_pos + Vector2 {x: 0.0, y: 0.0};
 
-    draw_text_relative(
-      &displayed_name,
-      nametag_offset + Vector2 {x: -10.0, y: 0.0},
-      nametag_size + Vector2 {x: 20.0, y: 0.0},
-      font, team_color, 0.25, vh, vw, camera.clone(), z, Justify::Center, window, commands
-    );
+    let screen_text_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh  + Vector2 {x: 0.0, y: -10.0 * uiscale};
+    let screen_healthbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: -5.0 * uiscale};
+    let screen_secondarybar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 0.0 * uiscale};
+    let screen_x_offset = 100.0 * uiscale; // whatever
+    
+    draw_text(font, &displayed_name, screen_text_pos - Vector2 {x: screen_x_offset, y: 0.0}, Vector2 { x: screen_x_offset*2.0, y: 10.0*uiscale }, team_color, 4.0*uiscale, z, Justify::Center, window, commands);
+    
+    // health & stuff
+    let healthbar_x_size = 10.0 * uiscale;
+
+    let outline_size = 0.5 * uiscale;
+    draw_rect(Color::Srgba(LIMEGREEN), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
+    draw_rect(Color::Srgba(GRAY), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
+    draw_rect(Color::Srgba(BLACK), screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    for x in 1..10 {
+      if x * 10 < self.health {
+        let pos = Vector2 {x: x as f32 * healthbar_x_size * 2.0 / 10.0 + screen_healthbar_pos.x - healthbar_x_size, y: screen_healthbar_pos.y};
+        draw_line(pos, pos + Vector2 {x: 0.0, y: 3.0*uiscale}, 0.5*uiscale, GREEN, z+4, window, commands);
+      }
+    }
+
+    draw_rect(Color::Srgba(ORANGE), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 2.0*uiscale }, z+3, window, commands);
+    draw_rect(Color::Srgba(GRAY), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 2.0*uiscale }, z+2, window, commands);
+    draw_rect(Color::Srgba(BLACK), screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 2.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    for x in 1..10 {
+      if x * 10 < self.secondary_charge {
+        let pos = Vector2 {x: x as f32 * healthbar_x_size * 2.0 / 10.0 + screen_secondarybar_pos.x - healthbar_x_size, y: screen_secondarybar_pos.y};
+        draw_line(pos, pos + Vector2 {x: 0.0, y: 2.0*uiscale}, 0.5*uiscale, BROWN, z+4, window, commands);
+      }
+    }
+
+    //draw_text_relative(
+    //  &displayed_name,
+    //  nametag_pos + Vector2 {x: -10.0, y: 0.0},
+    //  nametag_size + Vector2 {x: 20.0, y: 0.0},
+    //  font, team_color, 0.25, vh, vw, camera.clone(), z, Justify::Center, window, commands
+    //);
 
     // healthbar
 
-    //outline
-    let health_y_offset = 0.4;
-    draw_line_relative(nametag_offset.x - 0.02, nametag_offset.y + health_y_offset, nametag_offset.x + (1.0) * nametag_size.x + 0.02, nametag_offset.y + health_y_offset, 0.175, BLACK, camera.clone(), vh, vw, z, window, commands);
-    //full line
-    draw_line_relative(nametag_offset.x, nametag_offset.y + health_y_offset, nametag_offset.x + (1.0) * nametag_size.x, nametag_offset.y + health_y_offset, 0.15, GRAY, camera.clone(), vh, vw, z, window, commands);
-    //health line
-    draw_line_relative(nametag_offset.x, nametag_offset.y + health_y_offset, nametag_offset.x + (self.health as f32 / 100.0) * nametag_size.x, nametag_offset.y + health_y_offset, 0.15, LIMEGREEN, camera.clone(), vh, vw, z+1, window, commands);
+    ////outline
+    //let health_y_offset = 0.4;
+    //draw_line_relative(nametag_pos.x - 0.02, nametag_pos.y + health_y_offset, nametag_pos.x + (1.0) * nametag_size.x + 0.02, nametag_pos.y + health_y_offset, 0.175, BLACK, camera.clone(), vh, vw, z, window, commands);
+    ////full line
+    //draw_line_relative(nametag_pos.x, nametag_pos.y + health_y_offset, nametag_pos.x + (1.0) * nametag_size.x, nametag_pos.y + health_y_offset, 0.15, GRAY, camera.clone(), vh, vw, z, window, commands);
+    ////health line
+    //draw_line_relative(nametag_pos.x, nametag_pos.y + health_y_offset, nametag_pos.x + (self.health as f32 / 100.0) * nametag_size.x, nametag_pos.y + health_y_offset, 0.15, LIMEGREEN, camera.clone(), vh, vw, z+1, window, commands);
     
     // ult bar
 
-    //outline
-    let secondary_y_offset = 0.55;
-    draw_line_relative(nametag_offset.x - 0.02, nametag_offset.y + secondary_y_offset, nametag_offset.x + (1.0) * nametag_size.x + 0.02, nametag_offset.y + secondary_y_offset, 0.065, BLACK, camera.clone(), vh, vw, z, window, commands);
-    //full line
-    draw_line_relative(nametag_offset.x, nametag_offset.y + secondary_y_offset, nametag_offset.x + (1.0) * nametag_size.x, nametag_offset.y + secondary_y_offset, 0.05, GRAY, camera.clone(), vh, vw, z, window, commands);
-    //health line
-    draw_line_relative(nametag_offset.x, nametag_offset.y + secondary_y_offset, nametag_offset.x + (self.secondary_charge as f32 / 100.0) * nametag_size.x, nametag_offset.y + secondary_y_offset, 0.05, ORANGE, camera.clone(), vh, vw, z+1, window, commands);
+    ////outline
+    //let secondary_y_offset = 0.55;
+    //draw_line_relative(nametag_pos.x - 0.02, nametag_pos.y + secondary_y_offset, nametag_pos.x + (1.0) * nametag_size.x + 0.02, nametag_pos.y + secondary_y_offset, 0.065, BLACK, camera.clone(), vh, vw, z, window, commands);
+    ////full line
+    //draw_line_relative(nametag_pos.x, nametag_pos.y + secondary_y_offset, nametag_pos.x + (1.0) * nametag_size.x, nametag_pos.y + secondary_y_offset, 0.05, GRAY, camera.clone(), vh, vw, z, window, commands);
+    ////health line
+    //draw_line_relative(nametag_pos.x, nametag_pos.y + secondary_y_offset, nametag_pos.x + (self.secondary_charge as f32 / 100.0) * nametag_size.x, nametag_pos.y + secondary_y_offset, 0.05, ORANGE, camera.clone(), vh, vw, z+1, window, commands);
     
     //let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     //let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
@@ -534,7 +570,6 @@ impl GameModeInfo {
 // MARK: Characters
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Character {
-  /// Used for testing.
   Cynewynn,
   Dummy,
   Fedya,
@@ -904,72 +939,182 @@ pub struct CharacterDescription {
 pub struct AbilityDescription {
   pub description: String,
   pub values: Vec<f32>,
+  pub cooldown: f32,
 }
 impl CharacterDescription {
   pub fn create_all_descriptions(character_properties: HashMap<Character, CharacterProperties>) -> HashMap<Character, CharacterDescription> {
     let mut character_descriptions: HashMap<Character, CharacterDescription> = HashMap::from([
       (Character::Cynewynn, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("Swings her sword, dealing {0} damage."), values: vec![character_properties[&Character::Cynewynn].primary_damage as f32] },
-          secondary: AbilityDescription { description: String::from("Teleports {0} seconds in the past, and gains {1} health."), values: vec![character_properties[&Character::Cynewynn].secondary_cooldown, character_properties[&Character::Cynewynn].secondary_heal as f32] },
-          dash:      AbilityDescription { description: String::from("Dashes, taking {0}% less damage."), values: vec![(1.0 - character_properties[&Character::Cynewynn].dash_damage_multiplier) * 100.0] },
-          passive:   AbilityDescription { description: String::from("Primary cooldown is lower the higher her secondary charge, reduced by up to {0}s."), values: vec![character_properties[&Character::Cynewynn].primary_cooldown_2] },
+          primary:   AbilityDescription {
+            description: String::from("Swings her sword, dealing {0} damage."),
+            values: vec![character_properties[&Character::Cynewynn].primary_damage as f32],
+            cooldown: character_properties[&Character::Cynewynn].primary_cooldown
+          },
+          secondary: AbilityDescription {
+            description: String::from("Teleports {0} seconds in the past, and gains {1} health."),
+            values: vec![character_properties[&Character::Cynewynn].secondary_cooldown, character_properties[&Character::Cynewynn].secondary_heal as f32],
+            cooldown: character_properties[&Character::Cynewynn].secondary_charge_use as f32
+          },
+          dash:      AbilityDescription {
+            description: String::from("Dashes, taking {0}% less damage."),
+            values: vec![(1.0 - character_properties[&Character::Cynewynn].dash_damage_multiplier) * 100.0],
+            cooldown: character_properties[&Character::Cynewynn].dash_cooldown,
+          },   
+          passive:   AbilityDescription {
+            description: String::from("Primary cooldown is lower the higher her secondary charge, reduced by up to {0}s."),
+            values: vec![character_properties[&Character::Cynewynn].primary_cooldown_2],
+            cooldown: 0.0,
+          },
         }
       }),
       (Character::Hernani, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("Fires a musket, dealing {0} damage."), values: vec![character_properties[&Character::Hernani].primary_damage as f32] },
-          secondary: AbilityDescription { description: String::from("Places a wall in front of himself."), values: vec![] },
-          dash:      AbilityDescription { description: String::from("Dashes, placing a bear trap that deals {0} damage when triggered."), values: vec![character_properties[&Character::Hernani].primary_damage_2 as f32] },
-          passive:   AbilityDescription { description: String::from("Deals {0}% damage to walls."), values: vec![character_properties[&Character::Hernani].wall_damage_multiplier * 100.0] },
+          primary:   AbilityDescription {
+            description: String::from("Fires a musket, dealing {0} damage."),
+            values: vec![character_properties[&Character::Hernani].primary_damage as f32], cooldown: character_properties[&Character::Hernani].primary_cooldown },
+          secondary: AbilityDescription {
+            description: String::from("Places a wall in front of himself."),
+            values: vec![],
+            cooldown: character_properties[&Character::Hernani].secondary_charge_use as f32
+          },
+          dash:      AbilityDescription {
+            description: String::from("Dashes, placing a bear trap that deals {0} damage when triggered."),
+            values: vec![character_properties[&Character::Hernani].primary_damage_2 as f32],
+            cooldown: character_properties[&Character::Hernani].dash_cooldown,
+          },
+          passive:   AbilityDescription {
+            description: String::from("Deals {0}% damage to walls."),
+            values: vec![character_properties[&Character::Hernani].wall_damage_multiplier * 100.0],
+            cooldown: 0.0,
+          },
         }
       }),
       (Character::Raphaelle, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("Casts a {0} damage piercing shot. Landing it heals nearby allies by {1}, and herself by {2}. If empowered, deals {3} damage and doesn't heal."), values: vec![character_properties[&Character::Raphaelle].primary_damage as f32, character_properties[&Character::Raphaelle].primary_heal_2 as f32, character_properties[&Character::Raphaelle].primary_lifesteal as f32, character_properties[&Character::Raphaelle].primary_damage_2 as f32] },
-          secondary: AbilityDescription { description: String::from("Places down a healpool that lasts {0}s, healing allies by {1} every second, and providing a fire rate buff."), values: vec![character_properties[&Character::Raphaelle].secondary_cooldown as f32, character_properties[&Character::Raphaelle].secondary_heal as f32] },
-          dash:      AbilityDescription { description: String::from("Dashes, empowering her PRIMARY. If she lands an empowered PRIMARY, reduces this cooldown by {0}s."), values: vec![character_properties[&Character::Raphaelle].primary_cooldown_2] },
-          passive:   AbilityDescription { description: String::from("Gains {0} movement speed upon taking damage."), values: vec![character_properties[&Character::Raphaelle].passive_range as f32] },
+          primary:   AbilityDescription {
+            description: String::from("Casts a {0} damage piercing shot. Landing it heals nearby allies by {1}, and herself by {2}. If empowered, deals {3} damage and doesn't heal."),
+            values: vec![character_properties[&Character::Raphaelle].primary_damage as f32, character_properties[&Character::Raphaelle].primary_heal_2 as f32, character_properties[&Character::Raphaelle].primary_lifesteal as f32, character_properties[&Character::Raphaelle].primary_damage_2 as f32],
+            cooldown: character_properties[&Character::Raphaelle].primary_cooldown
+          },
+          secondary: AbilityDescription {
+            description: String::from("Places down a healpool that lasts {0}s, healing allies by {1} every second, and providing a fire rate buff."),
+            values: vec![character_properties[&Character::Raphaelle].secondary_cooldown as f32, character_properties[&Character::Raphaelle].secondary_heal as f32],
+            cooldown: character_properties[&Character::Raphaelle].secondary_charge_use as f32
+          },
+          dash:      AbilityDescription {
+            description: String::from("Dashes, empowering her PRIMARY. If she lands an empowered PRIMARY, reduces this cooldown by {0}s."),
+            values: vec![character_properties[&Character::Raphaelle].primary_cooldown_2],
+            cooldown: character_properties[&Character::Raphaelle].dash_cooldown,
+          },
+          passive:   AbilityDescription {
+            description: String::from("Gains {0} movement speed upon taking damage."),
+            values: vec![character_properties[&Character::Raphaelle].passive_range as f32],
+            cooldown: 0.0
+          },
         }
       }),
       (Character::Temerity, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("A three-hit combo dealing {0} damage, with each attack gaining in range ( {1}m | {2}m | {3}m )."), values: vec![character_properties[&Character::Temerity].primary_damage as f32, character_properties[&Character::Temerity].primary_range, character_properties[&Character::Temerity].primary_range_2, character_properties[&Character::Temerity].primary_range_3] },
-          secondary: AbilityDescription { description: String::from("Launches a rocket under herself, dealing {0} damage and boosting herself backwads."), values: vec![character_properties[&Character::Temerity].secondary_damage as f32] },
-          dash:      AbilityDescription { description: String::from("Can hold DASH near walls to initiate a wallride."), values: vec![] },
-          passive:   AbilityDescription { description: String::from("Heals nearby walls by {0} every second."), values: vec![character_properties[&Character::Temerity].passive_value as f32] },
+          primary:   AbilityDescription {
+            description: String::from("A three-hit combo dealing {0} damage, with each attack gaining in range ( {1}m | {2}m | {3}m )."),
+            values: vec![character_properties[&Character::Temerity].primary_damage as f32, character_properties[&Character::Temerity].primary_range, character_properties[&Character::Temerity].primary_range_2, character_properties[&Character::Temerity].primary_range_3],
+            cooldown: character_properties[&Character::Temerity].primary_cooldown
+          },
+          secondary: AbilityDescription {
+            description: String::from("Launches a rocket under herself, dealing {0} damage and boosting herself backwads."),
+            values: vec![character_properties[&Character::Temerity].secondary_damage as f32],
+            cooldown: character_properties[&Character::Temerity].secondary_charge_use as f32
+          },
+          dash:      AbilityDescription {
+            description: String::from("Can hold DASH near walls to initiate a wallride."),
+            values: vec![],
+            cooldown: character_properties[&Character::Temerity].dash_cooldown,
+          },
+          passive:   AbilityDescription {
+            description: String::from("Heals nearby walls by {0} every second."),
+            values: vec![character_properties[&Character::Temerity].passive_value as f32],
+            cooldown: 0.0,
+          },
         }
       }),
       (Character::Fedya, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("Throws a knife which can bounce off walls, that deals {0} damage and stays on the ground."), values: vec![character_properties[&Character::Fedya].primary_damage as f32] },
-          secondary: AbilityDescription { description: String::from("Creates a turret that pinballs around, shooting nearby opponents every {0}s, dealing {1} damage."), values: vec![character_properties[&Character::Fedya].primary_cooldown_2, character_properties[&Character::Fedya].secondary_damage as f32] },
-          dash:      AbilityDescription { description: String::from("Dashes and recalls all grounded knives, which slow opponents caught in their path and deal {0} damage."), values: vec![character_properties[&Character::Fedya].primary_damage_2 as f32] },
-          passive:   AbilityDescription { description: String::from("No passive ability."), values: vec![] },
+          primary:   AbilityDescription {
+            description: String::from("Throws a knife which can bounce off walls, that deals {0} damage and stays on the ground."),
+            values: vec![character_properties[&Character::Fedya].primary_damage as f32],
+            cooldown: character_properties[&Character::Fedya].primary_cooldown
+          },
+          secondary: AbilityDescription {
+            description: String::from("Creates a turret that pinballs around, shooting nearby opponents every {0}s, dealing {1} damage."),
+            values: vec![character_properties[&Character::Fedya].primary_cooldown_2, character_properties[&Character::Fedya].secondary_damage as f32],
+            cooldown: character_properties[&Character::Fedya].secondary_charge_use as f32
+          },
+          dash:      AbilityDescription {
+            description: String::from("Dashes and recalls all grounded knives, which slow opponents caught in their path and deal {0} damage."),
+            values: vec![character_properties[&Character::Fedya].primary_damage_2 as f32],
+            cooldown: character_properties[&Character::Fedya].dash_cooldown,
+          },
+          passive:   AbilityDescription {
+            description: String::from("No passive ability."),
+            values: vec![],
+            cooldown: 0.0
+          },
         }
       }),
       (Character::Wiro, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("An attack dealing {0} damage up-close and {1} damage at range. Landing this ability empowers DASH"), values: vec![character_properties[&Character::Wiro].primary_damage as f32, character_properties[&Character::Wiro].primary_damage_2 as f32] },
-          secondary: AbilityDescription { description: String::from("Holds up a shield, damage taken with it costs secondary charge. If active, PASSIVE's speed no longer applies."), values: vec![] },
-          dash:      AbilityDescription { description: String::from("A long dash. If empowered, heals allies in his path by {0} and damages opponents by {1}"), values: vec![character_properties[&Character::Wiro].secondary_heal as f32, character_properties[&Character::Wiro].secondary_damage as f32] },
-          passive:   AbilityDescription { description: String::from("Nearby allies gain a small speed buff if SECONDARY is inactive. SECONDARY can only charge passively {0} seconds after use."), values: vec![character_properties[&Character::Wiro].passive_cooldown] },
+          primary:   AbilityDescription {
+            description: String::from("An attack dealing {0} damage up-close and {1} damage at range. Landing this ability empowers DASH"),
+            values: vec![character_properties[&Character::Wiro].primary_damage as f32, character_properties[&Character::Wiro].primary_damage_2 as f32],
+            cooldown: character_properties[&Character::Wiro].primary_cooldown,
+          },
+          secondary: AbilityDescription {
+            description: String::from("Holds up a shield, damage taken with it costs secondary charge. If active, PASSIVE's speed no longer applies."),
+            values: vec![],
+            cooldown: character_properties[&Character::Wiro].secondary_charge_use as f32
+          },
+          dash:      AbilityDescription {
+            description: String::from("A long dash. If empowered, heals allies in his path by {0} and damages opponents by {1}"),
+            values: vec![character_properties[&Character::Wiro].secondary_heal as f32, character_properties[&Character::Wiro].secondary_damage as f32],
+            cooldown: character_properties[&Character::Wiro].dash_cooldown,
+          },
+          passive:   AbilityDescription {
+            description: String::from("Nearby allies gain a small speed buff if SECONDARY is inactive. SECONDARY can only charge passively {0} seconds after use."),
+            values: vec![character_properties[&Character::Wiro].passive_cooldown],
+            cooldown: 0.0,
+          },
         }
       }),
       (Character::Koldo, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m) to a wall boosts you backwards."), values: vec![character_properties[&Character::Koldo].primary_damage as f32,character_properties[&Character::Koldo].primary_range_3 ] },
-          secondary: AbilityDescription { description: String::from("Reset PRIMARY's cooldown and empower the next two PRIMARIES with PASSIVE's effects, with the first one additionally slowing enemies and piercing."), values: vec![] },
-          dash:      AbilityDescription { description: String::from("A short dash that resets the cooldown of PRIMARY."), values: vec![] },
-          passive:   AbilityDescription { description: String::from("Standing still for {0}s gives your PRIMARY recoil, increased range ({1}m) and increased damage ({2})."), values: vec![character_properties[&Character::Koldo].passive_cooldown as f32, character_properties[&Character::Koldo].primary_range_2, character_properties[&Character::Koldo].primary_damage_2 as f32] },
+          primary:   AbilityDescription {
+            description: String::from("Fire a cannonball, dealing {0} damage. Firing close ({1}m) to a wall boosts you backwards."),
+            values: vec![character_properties[&Character::Koldo].primary_damage as f32,character_properties[&Character::Koldo].primary_range_3 ],
+            cooldown: character_properties[&Character::Koldo].primary_cooldown
+          },
+          secondary: AbilityDescription {
+            description: String::from("Reset PRIMARY's cooldown and empower the next two PRIMARIES with PASSIVE's effects, with the first one additionally slowing enemies and piercing."),
+            values: vec![],
+            cooldown: character_properties[&Character::Koldo].secondary_charge_use as f32 },
+          dash:      AbilityDescription {
+            description: String::from("A short dash that resets the cooldown of PRIMARY."),
+            values: vec![],
+            cooldown: character_properties[&Character::Koldo].dash_cooldown,
+          },
+          passive:   AbilityDescription {
+            description: String::from("Standing still for {0}s gives your PRIMARY recoil, increased range ({1}m) and increased damage ({2})."),
+            values: vec![character_properties[&Character::Koldo].passive_cooldown as f32, character_properties[&Character::Koldo].primary_range_2, character_properties[&Character::Koldo].primary_damage_2 as f32],
+            cooldown: 0.0
+          },
         }
       }),
       (Character::Dummy, {
         CharacterDescription {
-          primary:   AbilityDescription { description: String::from("dummy."), values: vec![] },
-          secondary: AbilityDescription { description: String::from("dummy."), values: vec![] },
-          dash:      AbilityDescription { description: String::from("dummy."), values: vec![] },
-          passive:   AbilityDescription { description: String::from("dummy."), values: vec![] },
+          primary:   AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
+          secondary: AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
+          dash:      AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
+          passive:   AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
         }
       }),
     ]);
