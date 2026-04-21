@@ -1082,7 +1082,7 @@ pub fn chatbox(
     };
     draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), position, size, BLACK, 3.0 * vh, z, Justify::Left, window, commands);
     // draw input textbox
-    chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, vh, font, z, commands, window, mouse_buttons, key_inputs.clone(), key_events);
+    chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, 15, vh, font, z, commands, window, mouse_buttons, key_inputs.clone(), key_events);
     
     // Send message if ENTER is pressed and buffer is not empty
     // and a friend can be messaged and input field selected.
@@ -1186,8 +1186,8 @@ pub struct TextInput {
 impl TextInput {
 
   /// A text input field.
-  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, vh: f32, font: &Handle<Font>, z: i8, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, keys: &Res<ButtonInput<KeyCode>>, key_events: &mut MessageReader<KeyboardInput>) {
-    let margin: f32 = 2.0 * vh;
+  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, max_chars: u8, vh: f32, font: &Handle<Font>, z: i8, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, keys: &Res<ButtonInput<KeyCode>>, key_events: &mut MessageReader<KeyboardInput>) {
+    let margin: f32 = 1.0 * vh;
     let mouse = get_mouse_pos(window);
     
     if get_mouse_down(mouse_buttons).contains(&MouseButton::Left) {
@@ -1231,7 +1231,7 @@ impl TextInput {
         text_to_draw.push('*');
       }
     }
-    while text_to_draw.len() > 10 {
+    while text_to_draw.len() > max_chars as usize {
       text_to_draw.remove(0);
     }
     draw_text(&font, &text_to_draw, Vector2 {x: position.x + margin, y: position.y}, size, BLACK, font_size, z, Justify::Left, window, commands);

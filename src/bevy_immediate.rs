@@ -1,5 +1,3 @@
-use std::f32::consts::PI;
-
 use bevy::{input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, text::{FontSmoothing, LineBreak, TextBounds}};
 use crate::maths::Vector2;
 
@@ -217,6 +215,40 @@ pub fn draw_rect(
   ));
 }
 pub fn draw_text(
+  font: &Handle<Font>,
+  text: &str,
+  position: Vector2,
+  size: Vector2,
+  color: Srgba,
+  font_size: f32,
+  z: i8,
+  alighment: Justify,
+  window: &Window,
+  commands: &mut Commands,
+) {
+  let box_position = Vec2::new(position.x - window.width() / 2.0 + size.x / 2.0, -position.y - size.y / 2.0 + window.height() / 2.0);
+  let slightly_smaller_text_font = TextFont {
+    font: font.clone(),
+    font_size: font_size,
+    ..default()
+  };
+
+  commands.spawn((
+    DeleteAfterFrame {},
+    Visibility::Visible,
+    Transform::from_translation(box_position.extend(z as f32)),
+    children![(
+      Text2d::new(text),
+      slightly_smaller_text_font.clone()
+        .with_font_smoothing(FontSmoothing::None),
+      TextLayout::new(alighment, LineBreak::WordBoundary),
+      TextBounds::from(size.as_vec2()),
+      Transform::from_translation(Vec3{x: 0.0, y: 0.0, z: z as f32}),
+      TextColor(Color::Srgba(color)),
+    )],
+  ));
+}
+pub fn draw_text_2(
   font: &Handle<Font>,
   text: &str,
   position: Vector2,

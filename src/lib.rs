@@ -255,6 +255,7 @@ fn main_thread(
     let br_anchor = Vector2 {x: 100.0*vw, y: 100.0*vh};
 
     let font: Handle<Font> = asset_server.load("fonts/Roboto-Black.ttf");
+    let mono_font: Handle<Font> = asset_server.load("fonts/Roboto-Mono.ttf");
     let mouse_pos = get_mouse_pos(&win);
 
     let username = data.username.clone();
@@ -1187,7 +1188,13 @@ fn main_thread(
           }
         }
         // MARK: draw chat
+      
         
+
+
+
+
+
 
         // talk to main server
         // MARK: Server Comm
@@ -1395,10 +1402,10 @@ fn main_thread(
         let password_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 45.0 * uiscale};
         draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
-        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, vh, &font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
+        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
         tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
-        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, vh, &font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
+        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
 
         // confirm button
         let mut confirm_button = Button::new(bl_anchor + Vector2 { x: 35.0*uiscale, y: -20.0*uiscale}, Vector2 { x: 20.0*uiscale, y: 5.0*uiscale }, if logging_in {"Login"} else {"Register"}, 4.0*uiscale);
@@ -1411,7 +1418,7 @@ fn main_thread(
         if credentials_changed {
           data.settings.save();
         }
-        tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores the password in your OS keyring, like most browsers do.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores your password in your OS keyring, like Safari.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
 
         // offline mode
         let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 28.0 * uiscale,y: 7.0 * uiscale }, Vector2 { x: 26.0*uiscale, y: 5.0*uiscale }, "Play offline", 4.0*uiscale);
