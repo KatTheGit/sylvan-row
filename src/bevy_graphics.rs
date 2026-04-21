@@ -17,6 +17,28 @@ use device_query::{DeviceQuery, DeviceState, Keycode};
 use keyring;
 //use kira::track::TrackHandle;
 
+// Standardise Z values
+/// Background tiles. -100 to -51
+pub const GAME_BG_Z: i8 = -100;
+/// Normal objects. -50 to -1
+pub const GAME_OBJ_Z: i8 = -50;
+/// Player. 0-9
+pub const GAME_PLAYER_Z: i8 = 0;
+/// In-game foreground. 10-19
+pub const GAME_FG_Z: i8 = 10;
+
+/// Main menu. 20-29
+pub const MENU_Z: i8 = 20;
+/// Game UI (healthbars, etc). 30-49
+pub const GAME_UI_Z: i8 = 30;
+/// Chat. 50-79
+pub const CHAT_Z: i8 = 50;
+/// Pause menu. 80-99
+pub const ESC_MENU_Z: i8 = 80;
+/// Tooltips. 100-127
+pub const TOOLTIP_Z: i8 = 100;
+
+
 // MARK: Buttons & fluff
 pub struct Button {
   pub position:  Vector2,
@@ -295,7 +317,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     },
     z, window, commands
   );
-  draw_rect(Color::Srgba(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0), y:(position.y + squish_offset/2.0)}, Vector2{x: (size.x - squish_offset), y: ((size.y - squish_offset) * (1.0 - progress))}, z+10, window, commands);
+  draw_rect(Color::Srgba(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0), y:(position.y + squish_offset/2.0)}, Vector2{x: (size.x - squish_offset), y: ((size.y - squish_offset) * (1.0 - progress))}, z+1, window, commands);
   let text = match ability_index {
     0 => "PASSIVE",
     1 => &format!("PRIMARY\n({})",
@@ -332,7 +354,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
   let text = ability.to_text();
   let mouse_pos = get_mouse_pos(window);
   //tooltip(position, size, &text, Vector2 { x: 55.0 * vh, y: 25.0 * vh }, vh, vw, font, mouse_pos, z+10, window, commands);
-  ability_tooltip(ability_index, character, character_descriptions, position, size, uiscale, vh, vw, font, mouse_pos, z+10, settings, window, commands);
+  ability_tooltip(ability_index, character, character_descriptions, position, size, uiscale, vh, vw, font, mouse_pos, TOOLTIP_Z, settings, window, commands);
 }
 
 pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Handle<Font>, vh: f32, settings: Settings, z: i8, window: &Window, commands: &mut Commands) -> () {
@@ -1354,7 +1376,6 @@ pub fn screen_to_world(screen_position: Vector2, camera: Camera, vh: f32, vw: f3
   let world_position = (screen_position - Vector2 {x: 50.0 * (vw/vh), y: 50.0})/camera.zoom + camera.position;
   return world_position;
 }
-
 
 /// same as draw_image but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.

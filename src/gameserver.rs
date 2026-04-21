@@ -772,6 +772,9 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             // reset player positions
             for p_index in 0..players.len() {
               players[p_index].is_dead = false;
+              players[p_index].secondary_charge = 0;
+              players[p_index].stacks = 0;
+              players[p_index].health = 100;
               players[p_index].position = match players[p_index].team {
                 Team::Blue => SPAWN_BLUE,
                 Team::Red => SPAWN_RED,

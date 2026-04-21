@@ -268,24 +268,23 @@ fn main_thread(
           clear_background(WHITE, &win, &mut com);
           let paused = data.paused;
           data.main_tabs.update_size(tl_anchor + Vector2 { x: 5.0 * vw, y: 5.0 * uiscale}, Vector2 { x: 90.0*vw, y: 8.0*uiscale }, 6.0*uiscale);
-          data.main_tabs.draw_and_process(uiscale, !paused, 0, &font, &win, &mut com, &m);
+          data.main_tabs.draw_and_process(uiscale, !paused, MENU_Z, &font, &win, &mut com, &m);
           
           // play
           if data.main_tabs.selected_tab() == 0 {
             let selected_char = data.heroes_tabs.selected_tab();
             if !data.queued {
-              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1, 0, &font, &win, &mut com, &m);
-              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2, 0, &font, &win, &mut com, &m);
+              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1, MENU_Z, &font, &win, &mut com, &m);
+              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2, MENU_Z, &font, &win, &mut com, &m);
             } if data.queued {
-              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1.clone(), 0, &font, &win, &mut com, &m); // clone to disable writes
-              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2.clone(), 0, &font, &win, &mut com, &m);
+              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1.clone(), MENU_Z, &font, &win, &mut com, &m); // clone to disable writes
+              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2.clone(), MENU_Z, &font, &win, &mut com, &m);
             }
 
-
             let mut play_button = Button::new(br_anchor - Vector2 { x: 30.0*uiscale, y: 15.0*uiscale }, Vector2 { x: 25.0*uiscale, y: 13.0*uiscale }, "Play", 8.0*uiscale);
-            play_button.draw(uiscale, !paused, 0, &font, &win, &mut com);
+            play_button.draw(uiscale, !paused, MENU_Z, &font, &win, &mut com);
             if data.queued {
-              draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, 0, Justify::Left, &win, &mut com);
+              draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             }
             if play_button.was_pressed(&win, &m) {
               data.queued = !data.queued;
@@ -327,19 +326,19 @@ fn main_thread(
             let lobby_size: Vector2 = Vector2 { x: 30.0*uiscale, y: 7.0*uiscale };
             let y_offset = lobby_size.y;
             let inner_shrink: f32 = 1.0 * uiscale;
-            draw_text(&font, "Lobby", Vector2 {x: lobby_position.x, y: lobby_position.y-3.0*uiscale}, Vector2 {x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, 0, Justify::Left, &win, &mut com);
+            draw_text(&font, "Lobby", Vector2 {x: lobby_position.x, y: lobby_position.y-3.0*uiscale}, Vector2 {x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             for (i, player) in lobby.iter().enumerate() {
-              draw_rect(Color::Srgba(BLUE), lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, 0, &win, &mut com );
-              draw_rect(Color::Srgba(SKY_BLUE), lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, 0, &win, &mut com);
+              draw_rect(Color::Srgba(BLUE), lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, MENU_Z, &win, &mut com );
+              draw_rect(Color::Srgba(SKY_BLUE), lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, MENU_Z, &win, &mut com);
               let is_ready_color = if player.is_ready {LIME} else {RED};
               let is_ready_text = if player.is_ready {"Ready"} else {"Not Ready"};
-              draw_text(&font, &format!("{}", player.username), Vector2 {x: lobby_position.x + 2.0*vh, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, 0, Justify::Left, &win, &mut com);
-              draw_text(&font, &format!("{}", is_ready_text), Vector2 {x: lobby_position.x + lobby_size.x * 0.67, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, is_ready_color, 3.0*uiscale, 0, Justify::Left, &win, &mut com);
+              draw_text(&font, &format!("{}", player.username), Vector2 {x: lobby_position.x + 2.0*vh, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
+              draw_text(&font, &format!("{}", is_ready_text), Vector2 {x: lobby_position.x + lobby_size.x * 0.67, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, is_ready_color, 3.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             }
             // lobby leave button
             if lobby.len() > 1 {
               let mut leave_button = Button::new(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh);
-              leave_button.draw(vh, !paused, 0, &font, &win, &mut com);
+              leave_button.draw(vh, !paused, MENU_Z, &font, &win, &mut com);
               if leave_button.was_pressed(&win, &m) {
                 data.packet_queue.push(
                   ClientToServer::LobbyLeave,
@@ -355,25 +354,25 @@ fn main_thread(
           // heroes
           if data.main_tabs.selected_tab() == 1 {
             data.heroes_tabs.update_size(bl_anchor + Vector2 { x: 5.0 * vw, y: - 20.0 * uiscale}, Vector2 { x: 90.0*vw, y: 15.0*uiscale }, 5.0*uiscale);
-            data.heroes_tabs.draw_and_process(uiscale, !paused, 0, &font, &win, &mut com, &m);
+            data.heroes_tabs.draw_and_process(uiscale, !paused, MENU_Z, &font, &win, &mut com, &m);
 
             let selected = data.heroes_tabs.selected_tab();
             let selected_character = CHARACTER_LIST[selected];
             for i in 0..4 {
               let texture = asset_server.load(format!("ui/temp_ability_{}.png", i+1));
               let size = Vector2 { x: 10.0*uiscale, y: 10.0*uiscale };
-              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, vh, vw, uiscale, &font, character_descriptions.clone(), selected_character, 5, &texture, &win, &mut com, data.settings.clone());
+              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, vh, vw, uiscale, &font, character_descriptions.clone(), selected_character, MENU_Z+1, &texture, &win, &mut com, data.settings.clone());
             }
             let profile_texture = asset_server.load(format!("characters/{}/textures/mini-profile.png", selected_character.name().to_lowercase() ));
             let profile_texture = Texture {
               image: profile_texture,
               size: Vec2 { x: 900.0, y: 1000.0 }
             };
-            draw_sprite(&profile_texture, tl_anchor + Vector2 {x: 10.0*uiscale, y: 15.0*uiscale}, Vector2 { x: 55.0*uiscale, y: 55.0*uiscale*profile_texture.aspect_ratio() }, 0, &win, &mut com);
+            draw_sprite(&profile_texture, tl_anchor + Vector2 {x: 10.0*uiscale, y: 15.0*uiscale}, Vector2 { x: 55.0*uiscale, y: 55.0*uiscale*profile_texture.aspect_ratio() }, MENU_Z, &win, &mut com);
 
             // practice range
             let mut button = Button::new(tr_anchor + Vector2 { x: -30.0*uiscale, y: 50.0*uiscale }, Vector2 { x: 20.0*uiscale, y: 10.0*uiscale }, "Practice", 4.0*uiscale);
-            button.draw(uiscale, !data.paused, 10, &font, &win, &mut com);
+            button.draw(uiscale, !data.paused, MENU_Z, &font, &win, &mut com);
             if button.was_released(&win, &m) {
               data.cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
               let game_port = get_random_port();
@@ -433,24 +432,24 @@ fn main_thread(
           
           // tutorial
           if data.main_tabs.selected_tab() == 2 {
-            draw_text(&font, "Use WASD to move.\nLMB: Primary fire\nSPACE: Dash (cooldown ability)\nRMB: Secondary/Ultimate (charge it up by dealing damage)", tl_anchor + Vector2 {x: 10.0 * uiscale, y: 30.0 * uiscale}, Vector2 { x: 80.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, 10, Justify::Left, &win, &mut com);
+            draw_text(&font, "Use WASD to move.\nLMB: Primary fire\nSPACE: Dash (cooldown ability)\nRMB: Secondary/Ultimate (charge it up by dealing damage)", tl_anchor + Vector2 {x: 10.0 * uiscale, y: 30.0 * uiscale}, Vector2 { x: 80.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
           }
           
           // stats
           if data.main_tabs.selected_tab() == 3 {
             // refresh button
             let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
-            refresh_button.draw(uiscale, !data.paused, 10, &font, &win, &mut com);
+            refresh_button.draw(uiscale, !data.paused, MENU_Z, &font, &win, &mut com);
             if refresh_button.was_released(&win, &m) {
               data.packet_queue.push(
                 ClientToServer::PlayerDataRequest
               )
             }
             // draw the stats
-            draw_text(&font, format!("{}'s stats", data.username).as_str(), tl_anchor + Vector2 {x: 10.0 * uiscale, y: 30.0 * uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, 10, Justify::Left, &win, &mut com);
+            draw_text(&font, format!("{}'s stats", data.username).as_str(), tl_anchor + Vector2 {x: 10.0 * uiscale, y: 30.0 * uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             
             let wins = data.player_stats.wins;
-            draw_text(&font, format!("wins: {}", wins).as_str(), tl_anchor + Vector2 {x: 10.0 * uiscale, y: 35.0 * uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 4.0*uiscale, 10, Justify::Left, &win, &mut com);
+            draw_text(&font, format!("wins: {}", wins).as_str(), tl_anchor + Vector2 {x: 10.0 * uiscale, y: 35.0 * uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 4.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
           }
           
           // friends
@@ -503,7 +502,7 @@ fn main_thread(
           for background_tile in data.background_tiles.clone() {
             if let Ok(texture) = data.game_object_animations[&background_tile.object_type].current_frame() {
               let size: Vector2 = Vector2 { x: 1.0, y: 1.0 };
-              draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, vw, data.player.camera.clone(), 0, &win, &mut com);
+              draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, vw, data.player.camera.clone(), GAME_BG_Z, &win, &mut com);
             }
           }
 
@@ -601,7 +600,7 @@ fn main_thread(
               //    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 }
               //  );
               //}
-              draw_image_relative_ex(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, rotation, vh, vw, data.player.camera.clone(), 5, &win, &mut com);
+              draw_image_relative_ex(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, rotation, vh, vw, data.player.camera.clone(), GAME_OBJ_Z, &win, &mut com);
             }
           }
           // MARK: | |  Game UI
@@ -623,10 +622,10 @@ fn main_thread(
             1.0
           };
           
-          draw_ability_icon(bl_anchor + Vector2 { x: 2.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, 1.0 , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 14.5 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, primary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 27.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, dash_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 39.5 * uiscale,  y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, secondary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, 50, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 2.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, 1.0 , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 14.5 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, primary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 27.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, dash_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com, data.settings.clone());
+          draw_ability_icon(bl_anchor + Vector2 { x: 39.5 * uiscale,  y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, secondary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com, data.settings.clone());
 
           // screen-space to world space conversion
           //                                          no idea what's up with "/vh" but it gotta be there
@@ -672,7 +671,7 @@ fn main_thread(
                 x: (data.aim_direction.normalize().x * range * vh) + (relative_position.x * vh),
                 y: (data.aim_direction.normalize().y * range * vh) + (relative_position.y * vh)
               },
-              0.6 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 0.2 }, 10, &win, &mut com
+              0.6 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 0.2 }, GAME_UI_Z-2, &win, &mut com
             );
             // shorter, matte line
             draw_line(
@@ -684,7 +683,7 @@ fn main_thread(
                 x: (data.aim_direction.normalize().x * range_limited * vh) + (relative_position.x * vh),
                 y: (data.aim_direction.normalize().y * range_limited * vh) + (relative_position.y * vh)
               },
-              0.4 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
+              0.4 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 1.0 }, GAME_UI_Z-1, &win, &mut com
             );
             if data.player.character == Character::Hernani {
               let range: f32 = data.character_properties[&Character::Hernani].secondary_range * data.player.camera.zoom;
@@ -704,7 +703,7 @@ fn main_thread(
                   x: (aim_dir.x * range + aim_dir_gamma.x * width) * vh + relative_position.x * vh,
                   y: (aim_dir.y * range + aim_dir_gamma.y * width) * vh + relative_position.y * vh
                 },
-                0.4 * vh, Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 }, 10, &win, &mut com
+                0.4 * vh, Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 }, GAME_UI_Z-1, &win, &mut com
               );
             }
           }
@@ -712,11 +711,11 @@ fn main_thread(
           
           // MARK: | | Draw Players
           if !data.player.is_dead {
-            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), GAME_PLAYER_Z+1, &mut com, &win);
           }
           for player in data.players.clone() {
             if !player.is_dead {
-              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), 15, &mut com, &win);
+              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), GAME_PLAYER_Z+1, &mut com, &win);
             }
           }
 
@@ -724,15 +723,15 @@ fn main_thread(
           let trail_y_offset: f32 = 0.6;
           for player in data.players.clone() {
             if player.character == Character::Cynewynn && !player.is_dead {
-              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.0, 1.0, 10, &win, &mut com);
-              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.3, 0.5, 10, &win, &mut com);
-              draw_lines(player.previous_positions,         data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.6, 0.25, 10, &win, &mut com);
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.0, 1.0, GAME_PLAYER_Z, &win, &mut com);
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.1, 0.5, GAME_PLAYER_Z, &win, &mut com);
+              draw_lines(player.previous_positions,         data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.2, 0.25, GAME_PLAYER_Z, &win, &mut com);
             }
           }
           if data.player.character == Character::Cynewynn && !data.player.is_dead {
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.0, 0.6, 10, &win, &mut com);
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.3, 0.4, 10, &win, &mut com);
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.6, 0.2, 10, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.0, 0.6, GAME_PLAYER_Z, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.1, 0.4, GAME_PLAYER_Z, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.2, 0.2, GAME_PLAYER_Z, &win, &mut com);
           }
 
           // Draw raphaelle's tethering.
@@ -749,7 +748,7 @@ fn main_thread(
                     true => GREEN,
                     false => ORANGE,
                   };
-                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, vw, 10, &win, &mut com);
+                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z, &win, &mut com);
                 }
               }
             }
@@ -1363,7 +1362,7 @@ fn main_thread(
           }
         }
         if data.paused {
-          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, 50, &font, &mut win, &mut com, &m, k);
+          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, ESC_MENU_Z, &font, &mut win, &mut com, &m, k);
           data.paused = paused;
           if quit {
             // if in menus
@@ -1394,16 +1393,16 @@ fn main_thread(
         let input_size = Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale };
         let user_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 35.0 * uiscale};
         let password_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 45.0 * uiscale};
-        draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, 0, Justify::Left, &win, &mut com);
-        tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, 1, &win, &mut com);
-        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, vh, &font, 0, &mut com, &win, &m, &k, &mut ki);
-        tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, 1, &win, &mut com);
-        draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, 0, Justify::Left, &win, &mut com);
-        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, vh, &font, 0, &mut com, &win, &m, &k, &mut ki);
+        draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
+        tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, vh, &font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
+        tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
+        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, vh, &font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
 
         // confirm button
         let mut confirm_button = Button::new(bl_anchor + Vector2 { x: 35.0*uiscale, y: -20.0*uiscale}, Vector2 { x: 20.0*uiscale, y: 5.0*uiscale }, if logging_in {"Login"} else {"Register"}, 4.0*uiscale);
-        confirm_button.draw(uiscale, true, 0, &font, &win, &mut com);
+        confirm_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
 
         // remember me checkbox
         let credentials_checkbox_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale};
@@ -1412,11 +1411,11 @@ fn main_thread(
         if credentials_changed {
           data.settings.save();
         }
-        tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores the password in your OS keyring, like most browsers do.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vw, &font, mouse_pos, 1, &win, &mut com);
+        tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores the password in your OS keyring, like most browsers do.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
 
         // offline mode
         let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 28.0 * uiscale,y: 7.0 * uiscale }, Vector2 { x: 26.0*uiscale, y: 5.0*uiscale }, "Play offline", 4.0*uiscale);
-        offline_mode_button.draw(uiscale, true, 0, &font, &win, &mut com);
+        offline_mode_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
         if offline_mode_button.was_released(&win, &m) {
           data.current_menu = MenuScreen::Main(0);
         }
@@ -1465,7 +1464,7 @@ fn main_thread(
               data.opake_data.timeout = Instant::now();
               
               // Attempt connection to server.
-              draw_text(&font, "Attempting connection...", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale }, BLACK, 5.0 * uiscale, 0, Justify::Left, &win, &mut com);
+              draw_text(&font, "Attempting connection...", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale }, BLACK, 5.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
               
               if data.server_stream.is_none() {
                 match TcpStream::connect(&server_ip) {

@@ -41,35 +41,25 @@ The GDD is in `assets/README.md`.
 
 ## To do
 
-This is just for me.
-
-- [ ] Bevy swap
-  - [ ] Clean up input handling too
-  - [ ] Android port, thanks to bevy
-    - [ ] Fix performance issue
-- [ ] Characters
-  - [ ] Sága
-  - [ ] The assassin
-- [ ] Ranked system
-- [ ] Server stuff
-  - [ ] chat filter
-  - [ ] throttling, etc...
-- [ ] Better anticheat
-- [ ] Art
-  - [x] Animation system
-    - [ ] animations
-  - [ ] Maps with https://www.mapeditor.org/
-  - [ ] Menu
-  - [ ] Better sfx & vfx
-
-- [ ] Bugs
-  - [x] Raphaelle movspeed bonus too high
-  - [ ] show "slow" instead of "- speed"
-  - [ ] ability tooltips have confusing ability naming. integrate with keybinds.
-
-- [ ] Dev QOL
-  - [ ] Cleaner code
-  - [ ] Own parser for character properties that allows comments
+- [ ] programming
+  - [ ] characters
+    - [ ] sága
+      - [ ] design kit
+    - [ ] assassin
+  - [ ] bevy
+    - [ ] re-add friend system
+    - [ ] fix android
+  - [ ] ranked
+  - [ ] anticheat
+  - [ ] server throttling
+  - [ ] chat filters
+  - [ ] new parser
+  - [x] standardize Z layers
+- [ ] art
+  - [ ] better ui
+  - [ ] status effects
+  - [ ] animations
+  - [ ] sfx, voicelines
 
 ### Bugs
 
