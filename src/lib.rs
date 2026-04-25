@@ -28,7 +28,7 @@ pub mod bevy_graphics;
 pub mod bevy_audio;
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime}};
-use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, tasks::futures_lite::io::Sink, window::WindowResolution, winit::{UpdateMode, WinitSettings}};
+use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, tasks::futures_lite::io::Sink, ui, window::WindowResolution, winit::{UpdateMode, WinitSettings}};
 use bevy_immediate::*;
 use bevy_graphics::*;
 use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit, Nonce};
@@ -84,10 +84,8 @@ pub struct GameData {
   pub player_stats: PlayerStatistics,
   pub friend_list: Vec<(String, FriendShipStatus, bool)>,
   pub username: String,
-  pub chat_input: TextInput,
   pub friend_request_input: TextInput,
   pub recv_messages_buffer: Vec<(String, String, ChatMessageType)>,
-  pub chat_timer: Instant,
   pub lobby_invites: Vec<String>,
   pub lobby: Vec<LobbyPlayerInfo>,
   pub packet_queue: Vec<ClientToServer>,
@@ -101,6 +99,11 @@ pub struct GameData {
   pub checkbox_1v1: bool,
   pub checkbox_2v2: bool,
   pub fullscreen_pressed: bool,
+  pub chat_input: TextInput,
+  pub chat_timer: Instant,
+  pub chat_pressed: bool,
+  pub chat_open: bool,
+  pub chat_scroll: f32,
 
   pub game_server_port: u16,
   pub game_id: u128,
@@ -161,14 +164,7 @@ impl Default for GameData {
         hideable: false,
         show_password: false,
       },
-      chat_input: TextInput {
-        selected: false,
-        buffer: String::new(),
-        hideable: false,
-        show_password: false,
-      },
       recv_messages_buffer: Vec::new(),
-      chat_timer: Instant::now(),
       lobby_invites: Vec::new(),
       lobby: Vec::new(),
       packet_queue: Vec::new(),
@@ -182,6 +178,16 @@ impl Default for GameData {
       checkbox_1v1: true,
       checkbox_2v2: true,
       fullscreen_pressed: false,
+      chat_input: TextInput {
+        selected: false,
+        buffer: String::new(),
+        hideable: false,
+        show_password: false,
+      },
+      chat_timer: Instant::now() - Duration::from_secs_f32(2.0),
+      chat_pressed: false,
+      chat_open: false,
+      chat_scroll: 0.0,
 
       game_server_port: 0,
       game_id: 0,
@@ -258,6 +264,8 @@ fn main_thread(
     let mono_font: Handle<Font> = asset_server.load("fonts/Roboto-Mono.ttf");
     let mouse_pos = get_mouse_pos(&win);
 
+    let ui_clickable = !(data.paused || data.chat_open);
+
     let username = data.username.clone();
     match data.current_menu {
       // MARK: Main
@@ -267,9 +275,8 @@ fn main_thread(
         // menu
         if mode != 2 {
           clear_background(WHITE, &win, &mut com);
-          let paused = data.paused;
           data.main_tabs.update_size(tl_anchor + Vector2 { x: 5.0 * vw, y: 5.0 * uiscale}, Vector2 { x: 90.0*vw, y: 8.0*uiscale }, 6.0*uiscale);
-          data.main_tabs.draw_and_process(uiscale, !paused, MENU_Z, &font, &win, &mut com, &m);
+          data.main_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &m);
           
           // play
           if data.main_tabs.selected_tab() == 0 {
@@ -283,7 +290,7 @@ fn main_thread(
             }
 
             let mut play_button = Button::new(br_anchor - Vector2 { x: 30.0*uiscale, y: 15.0*uiscale }, Vector2 { x: 25.0*uiscale, y: 13.0*uiscale }, "Play", 8.0*uiscale);
-            play_button.draw(uiscale, !paused, MENU_Z, &font, &win, &mut com);
+            play_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
             if data.queued {
               draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             }
@@ -339,7 +346,7 @@ fn main_thread(
             // lobby leave button
             if lobby.len() > 1 {
               let mut leave_button = Button::new(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh);
-              leave_button.draw(vh, !paused, MENU_Z, &font, &win, &mut com);
+              leave_button.draw(vh, ui_clickable, MENU_Z, &font, &win, &mut com);
               if leave_button.was_pressed(&win, &m) {
                 data.packet_queue.push(
                   ClientToServer::LobbyLeave,
@@ -355,7 +362,7 @@ fn main_thread(
           // heroes
           if data.main_tabs.selected_tab() == 1 {
             data.heroes_tabs.update_size(bl_anchor + Vector2 { x: 5.0 * vw, y: - 20.0 * uiscale}, Vector2 { x: 90.0*vw, y: 15.0*uiscale }, 5.0*uiscale);
-            data.heroes_tabs.draw_and_process(uiscale, !paused, MENU_Z, &font, &win, &mut com, &m);
+            data.heroes_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &m);
 
             let selected = data.heroes_tabs.selected_tab();
             let selected_character = CHARACTER_LIST[selected];
@@ -373,7 +380,7 @@ fn main_thread(
 
             // practice range
             let mut button = Button::new(tr_anchor + Vector2 { x: -30.0*uiscale, y: 50.0*uiscale }, Vector2 { x: 20.0*uiscale, y: 10.0*uiscale }, "Practice", 4.0*uiscale);
-            button.draw(uiscale, !data.paused, MENU_Z, &font, &win, &mut com);
+            button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
             if button.was_released(&win, &m) {
               data.cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
               let game_port = get_random_port();
@@ -440,7 +447,7 @@ fn main_thread(
           if data.main_tabs.selected_tab() == 3 {
             // refresh button
             let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
-            refresh_button.draw(uiscale, !data.paused, MENU_Z, &font, &win, &mut com);
+            refresh_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
             if refresh_button.was_released(&win, &m) {
               data.packet_queue.push(
                 ClientToServer::PlayerDataRequest
@@ -785,7 +792,7 @@ fn main_thread(
           data.player.shooting_secondary = false;
 
           // only register input if the window is active and the pause menu isn't open
-          if is_window_focused(&win) && !data.paused {
+          if is_window_focused(&win) && ui_clickable {
 
             #[cfg(not(target_os="android"))]
             {
@@ -916,7 +923,6 @@ fn main_thread(
           // CAMERA ZOOM
           let scrollwheel = get_mouse_wheel(&mut mw);
           data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 4.0 * delta_time).clamp(4.0, 16.0);
-
 
           // MARK: | game net
           let mut buffer: [u8; 16384] = [0; 16384];
@@ -1189,11 +1195,113 @@ fn main_thread(
         }
         // MARK: draw chat
       
+
+        if data.paused {
+          data.chat_open = false;
+        }
         
+        let chatbox_pos = bl_anchor + Vector2 {x: 5.0 * uiscale, y: - 100.0 * uiscale};
+        let chatbox_size = Vector2 {x: 50.0 * uiscale, y: 80.0 * uiscale};
+        if data.chat_open {
+          draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
+          
+          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &m, &k, &mut ki);
+          
+          // message sending.
+          if get_keys_pressed(&k).contains(&KeyCode::Enter) {
+            if !data.chat_input.buffer.is_empty() {
+              // send message
+              let msg = data.chat_input.buffer.clone();
+              let recipient = String::from("idk");
+              let recipient_copy = recipient.clone();
+              data.packet_queue.push(
+                ClientToServer::SendChatMessage(recipient, msg.clone())
+              );
+              let msg_type = match recipient_copy.as_str() {
+                "tc" => ChatMessageType::Team,
+                "ac" => ChatMessageType::All,
+                "gc" => ChatMessageType::Group,
+                _ => ChatMessageType::Private,
+              };
+              let sender = match msg_type {
+                ChatMessageType::Private => format!("You -> {}", recipient_copy),
+                _ => "You".to_string(),
+              };
+              data.recv_messages_buffer.push((sender, msg, msg_type));
+              data.chat_input.buffer.clear();
+              //data.chat_input.selected = false;
+              //data.chat_open = false;
+              data.chat_timer = Instant::now();
+            } 
+          }
+        }
+        
+        else {
+          data.chat_input.selected = false;
+        }
+        
+        // chat messages
+        let chat_stay_open_time = 2.0;
+        if data.chat_open || data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time {
+          let font_size = 4.0 * uiscale;
+          let y_step = font_size + 1.0 * uiscale;
+          let mut current_y_step = 0;
+          // in characters
+          let max_line_len = 20;
 
+          let mut messages = data.recv_messages_buffer.clone();
+          messages.reverse();
+          for recv_message in messages {
+            let sender = recv_message.0;
+            let message = recv_message.1;
+            let message_type = recv_message.2;
 
+            let mut text: String = format!("[{}] {}", sender, message);
+            let line_count = text.len() / max_line_len + 1;
 
+            let color: Srgba = match message_type {
+              ChatMessageType::Administrative => YELLOW,
+              ChatMessageType::All => ORANGE,
+              ChatMessageType::Group => GREEN,
+              ChatMessageType::Team => BLUE,
+              ChatMessageType::Private => PINK,
+            };
+            
+            current_y_step += line_count;
+            println!("{:?}", data.chat_scroll);
+            for y in 0..line_count {
+              let text_copy = text.clone();
+              let line_text;
+              if y < line_count-1 {
+                let remaining_text;
+                (line_text, remaining_text) = text_copy.split_at(max_line_len);
+                text = remaining_text.to_string();
+              } else {
+                line_text = &text_copy;
+              }
+              let msg_y_bottom = chatbox_pos.y + chatbox_size.y - 10.0 * uiscale;
+              let text_position = Vector2 {
+                x: chatbox_pos.x,
+                y: msg_y_bottom - (current_y_step - y - 1) as f32 * y_step + data.chat_scroll
+              };
+              if text_position.y <= msg_y_bottom && text_position.y > chatbox_pos.y {
+                draw_text(&mono_font, &line_text, text_position, Vector2 { x: 100.0*vh, y: 100.0*vh }, color, font_size, CHAT_Z+2, Justify::Left, &win, &mut com);
+              }
+            }
 
+          }
+
+        }
+
+        // chat bg
+        if data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time && !data.chat_open{
+          draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
+        }
+
+        let scrollwheel = get_mouse_wheel(&mut mw);
+        if data.chat_open {
+          data.chat_scroll = (data.chat_scroll + scrollwheel.y * 300.0 * uiscale * delta_time).clamp(0.0, 10000.0*uiscale);
+        }
 
 
         // talk to main server
@@ -1324,6 +1432,7 @@ fn main_thread(
               }
               data.recv_messages_buffer.push((sender, message, message_type));
               data.chat_timer = Instant::now();
+              data.chat_scroll = 0.0;
             }
             // lobby
             ServerToClient::LobbyInvite(inviting_user) => {
@@ -1362,12 +1471,25 @@ fn main_thread(
         data.nonce = nonce;
 
         // settings screen
-        if get_keys_pressed(&k).contains(&KeyCode::Escape){
-          data.paused = !data.paused;
-          if data.paused == false {
-            data.settings_open = false;
+        if get_keys_pressed(&k).contains(&KeyCode::Escape) {
+          if data.chat_open {
+            data.chat_open = false;
+            data.chat_input.buffer = String::new();
+          }
+          else {
+            data.paused = !data.paused;
+            if data.paused == false {
+              data.settings_open = false;
+            }
           }
         }
+        if get_keys_pressed(&k).contains(&KeyCode::Enter) {
+          data.chat_open = !data.chat_open;
+          data.chat_scroll = 0.0;
+          data.chat_input.selected = data.chat_open;
+          data.chat_timer = Instant::now();
+        }
+
         if data.paused {
           let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, ESC_MENU_Z, &font, &mut win, &mut com, &m, k);
           data.paused = paused;
@@ -1828,20 +1950,33 @@ fn main_thread(
       // key binds
       if keys.is_empty() {
         data.fullscreen_pressed = false;
+        data.chat_pressed = false;
       }
+
       for key in keys {
         let key = key as u16;
-        // move
-        if (key == data.settings.keybinds.fullscreen.0 || key == data.settings.keybinds.fullscreen.1) {
+        if key == data.settings.keybinds.fullscreen.0 || key == data.settings.keybinds.fullscreen.1 {
           if !data.fullscreen_pressed {
             data.settings.fullscreen = !data.settings.fullscreen;
-            println!("fullscreening");
             data.fullscreen_pressed = true;
             set_fullscreen(data.settings.fullscreen, &mut win);
           }
-        } else {
-          data.fullscreen_pressed = false;
         }
+        //if key == data.settings.keybinds.open_chat.0 || key == data.settings.keybinds.open_chat.1 {
+        //  if !data.chat_pressed && data.chat_timer.elapsed().as_secs_f32() > 0.5 {
+        //    //data.chat_open = !data.chat_open;
+        //    println!("chat open: {:?}", data.chat_open);
+        //    data.chat_pressed = true;
+        //    data.chat_open = true;
+        //    data.chat_input.selected = true;
+        //    data.chat_timer = Instant::now();
+        //  }
+        //  //data.chat_open = true;
+        //  //data.chat_input.selected = true;
+        //  //data.chat_pressed = true;
+        //} else {
+        //  data.chat_pressed = false;
+        //}
       }
     }
     // debug

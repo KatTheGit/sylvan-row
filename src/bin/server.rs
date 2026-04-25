@@ -1077,7 +1077,7 @@ async fn main() {
                   }
                   // MARK: Chat Message
                   ClientToServer::SendChatMessage(peer_username, message) => {
-                    println!("Chat message: {} : {}", peer_username, message);
+                    println!("Chat | {} -> {} | {}", username, peer_username, message);
                     let mut peers_are_friends: bool = false;
                     let mut internal_error_occurred: bool = false;
                     let mut channel_invalid: bool = false;

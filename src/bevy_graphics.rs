@@ -66,7 +66,8 @@ impl Button {
     draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
     let inner_shrink: f32 = 1.0 * vh;
     draw_rect(Color::Srgba(SKY_BLUE), position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z+1, window, commands);
-    draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
+    //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
+    draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3, Justify::Center, window, commands);
     let mouse: Vector2 = get_mouse_pos(&window);
     if self.clickable {
       if mouse.x > position.x && mouse.x < (position.x + size.x) {
@@ -156,7 +157,9 @@ impl Tabs {
       draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
       let inner_shrink: f32 = 1.0 * vh;
       draw_rect(Color::Srgba(SKY_BLUE), position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-      draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
+      //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
+      draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3, Justify::Center, window, commands);
+      
       if selected {
         draw_rect(Color::Srgba(GRAY), position, size, z+1, window, commands);
       }
@@ -343,7 +346,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     ),
     _ => "Unkown",
   };
-  draw_text(&font, text, Vector2 { x: (position.x), y: (position.y + size.y * 1.05)}, size, BLACK, size.x * 0.25, z, Justify::Left, window, commands);
+  draw_text(&font, text, Vector2 { x: position.x - size.x * 0.5, y: position.y + size.y * 1.05}, Vector2 { x: size.x*2.0, y: size.y }, BLACK, size.x * 0.25, z, Justify::Center, window, commands);
   let ability = match ability_index {
     1 => character_descriptions[&character].primary.clone(),
     2 => character_descriptions[&character].secondary.clone(),
@@ -482,8 +485,8 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mu
         was_edited |= keybind_edit_buttons("Secondary",  &mut data.settings.keybinds.secondary,  Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
         was_edited |= keybind_edit_buttons("Dash",       &mut data.settings.keybinds.dash,       Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
         was_edited |= keybind_edit_buttons("Fullscreen", &mut data.settings.keybinds.fullscreen, Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Open Chat",  &mut data.settings.keybinds.open_chat,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Cycle Friends (Chat)",  &mut data.settings.keybinds.cycle_friends,  Vector2 { x: 10.0 * vw, y: base_y + size * 9.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        //was_edited |= keybind_edit_buttons("Open Chat",  &mut data.settings.keybinds.open_chat,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        //was_edited |= keybind_edit_buttons("Cycle Friends (Chat)",  &mut data.settings.keybinds.cycle_friends,  Vector2 { x: 10.0 * vw, y: base_y + size * 9.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
       }
       
       if was_edited {
@@ -1201,7 +1204,7 @@ impl TextInput {
     draw_rect(Color::Srgba(bg), position, size, z, window, commands);
     
     if self.hideable {
-      checkbox(Vector2 { x: position.x + size.x + margin, y: position.y + size.y * 0.15 }, size.y * 0.7, "show", font_size, vh, &mut self.show_password, z, font, window, commands, mouse_buttons);
+      checkbox(Vector2 { x: position.x + size.x + margin, y: position.y}, size.y, "show", font_size, vh, &mut self.show_password, z, font, window, commands, mouse_buttons);
     }
     
     if self.selected {
