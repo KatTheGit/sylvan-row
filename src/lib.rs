@@ -104,6 +104,7 @@ pub struct GameData {
   pub chat_pressed: bool,
   pub chat_open: bool,
   pub chat_scroll: f32,
+  pub selected_friend: usize,
 
   pub game_server_port: u16,
   pub game_id: u128,
@@ -188,6 +189,7 @@ impl Default for GameData {
       chat_pressed: false,
       chat_open: false,
       chat_scroll: 0.0,
+      selected_friend: 0,
 
       game_server_port: 0,
       game_id: 0,
@@ -921,8 +923,10 @@ fn main_thread(
           }
 
           // CAMERA ZOOM
-          let scrollwheel = get_mouse_wheel(&mut mw);
-          data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 4.0 * delta_time).clamp(4.0, 16.0);
+          if ui_clickable {
+            let scrollwheel = get_mouse_wheel(&mut mw);
+            data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 4.0 * delta_time).clamp(4.0, 16.0);
+          }
 
           // MARK: | game net
           let mut buffer: [u8; 16384] = [0; 16384];
@@ -1203,28 +1207,92 @@ fn main_thread(
         let chatbox_pos = bl_anchor + Vector2 {x: 5.0 * uiscale, y: - 100.0 * uiscale};
         let chatbox_size = Vector2 {x: 50.0 * uiscale, y: 80.0 * uiscale};
         if data.chat_open {
+          let mut valid_msg = true;
           draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
           
           data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &m, &k, &mut ki);
           
+          // cycle through friends
+          // get a list of online friends (which we can chat to).
+          let mut online_friends: Vec<String> = Vec::new();
+          if data.current_menu == MenuScreen::Main(2) {
+            online_friends.push(String::from("tc"));
+            online_friends.push(String::from("ac"));
+          }
+          for friend in data.friend_list.clone() {
+            if friend.1 == FriendShipStatus::Friends
+            && friend.2 == true  {
+              online_friends.push(friend.0);
+            }
+          }
+          // cycle through friends if TAB is pressed
+          if online_friends.len() >= 2 {
+            if get_keys_pressed(&k).contains(&KeyCode::Tab) {
+              data.selected_friend += 1;
+              if data.selected_friend >= online_friends.len() {
+                data.selected_friend = 0;
+              }
+            }
+          } else {
+            data.selected_friend = 0;
+          }
+
+          // draw selected friend indicator
+          //let selected_friend_indicator_size = Vector2 {x: size.x}
+          let peer_username;
+          let mut message_type = ChatMessageType::Private;
+          let mut displayed_selected_friend = if online_friends.len() > 0 {
+            let split: Vec<&str> = (*online_friends[data.selected_friend]).split(":").collect();
+            if *split[0] == username {
+              peer_username = split[1];
+            } else {
+              peer_username = split[0];
+            }
+            peer_username
+          } else {
+            valid_msg = false; // don't bother the server.
+            peer_username = "You";
+            "No friends online."
+          };
+          if displayed_selected_friend == "tc" {
+            message_type = ChatMessageType::Team;
+            displayed_selected_friend = "Team";
+          }
+          if displayed_selected_friend == "ac" {
+            message_type = ChatMessageType::All;
+            displayed_selected_friend = "All";
+          }
+          let color = match message_type {
+            ChatMessageType::Administrative => YELLOW,
+            ChatMessageType::Private => PINK,
+            ChatMessageType::Group => GREEN,
+            ChatMessageType::Team => BLUE,
+            ChatMessageType::All => ORANGE,
+          };
+          draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), Vector2 { x: chatbox_pos.x, y: chatbox_pos.y + chatbox_size.y - 9.0*uiscale }, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, color, 3.0 * uiscale, CHAT_Z+3, Justify::Left, &win, &mut com);
+
+
           // message sending.
           if get_keys_pressed(&k).contains(&KeyCode::Enter) {
             if !data.chat_input.buffer.is_empty() {
               // send message
               let msg = data.chat_input.buffer.clone();
-              let recipient = String::from("idk");
-              let recipient_copy = recipient.clone();
-              data.packet_queue.push(
-                ClientToServer::SendChatMessage(recipient, msg.clone())
-              );
-              let msg_type = match recipient_copy.as_str() {
+              // send message
+
+              if valid_msg {
+
+                data.packet_queue.push(
+                  ClientToServer::SendChatMessage(peer_username.to_string(), msg.clone())
+                );
+              }
+              let msg_type = match peer_username {
                 "tc" => ChatMessageType::Team,
                 "ac" => ChatMessageType::All,
                 "gc" => ChatMessageType::Group,
                 _ => ChatMessageType::Private,
               };
               let sender = match msg_type {
-                ChatMessageType::Private => format!("You -> {}", recipient_copy),
+                ChatMessageType::Private => format!("You -> {}", peer_username),
                 _ => "You".to_string(),
               };
               data.recv_messages_buffer.push((sender, msg, msg_type));
@@ -1242,7 +1310,7 @@ fn main_thread(
         
         // chat messages
         let chat_stay_open_time = 2.0;
-        if data.chat_open || data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time {
+        if data.chat_open || data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time && !data.paused {
           let font_size = 4.0 * uiscale;
           let y_step = font_size + 1.0 * uiscale;
           let mut current_y_step = 0;
@@ -1268,7 +1336,6 @@ fn main_thread(
             };
             
             current_y_step += line_count;
-            println!("{:?}", data.chat_scroll);
             for y in 0..line_count {
               let text_copy = text.clone();
               let line_text;
@@ -1279,7 +1346,7 @@ fn main_thread(
               } else {
                 line_text = &text_copy;
               }
-              let msg_y_bottom = chatbox_pos.y + chatbox_size.y - 10.0 * uiscale;
+              let msg_y_bottom = chatbox_pos.y + chatbox_size.y - 14.0 * uiscale;
               let text_position = Vector2 {
                 x: chatbox_pos.x,
                 y: msg_y_bottom - (current_y_step - y - 1) as f32 * y_step + data.chat_scroll
@@ -1998,7 +2065,7 @@ fn setup(mut commands: Commands) {
   commands.spawn(Camera2d);
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MenuScreen {
   /// Login menu. Used as starting menu screen. The u8 starts at 0.
   /// 
