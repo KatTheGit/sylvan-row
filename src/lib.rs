@@ -157,7 +157,11 @@ impl Default for GameData {
       last_nonce: 0,
       nonce: 1,
       player_stats: PlayerStatistics { wins: 0 },
-      friend_list: Vec::new(),
+      friend_list:Vec::new(), //vec![
+      //  (String::from("joe1"), FriendShipStatus::Friends, false),
+      //  (String::from("jane2"), FriendShipStatus::Friends, true),
+      //  (String::from("john3"), FriendShipStatus::PendingForA, false),
+      //],
       username: "Player".to_string(),
       friend_request_input: TextInput {
         selected: false,
@@ -462,9 +466,102 @@ fn main_thread(
             draw_text(&font, format!("wins: {}", wins).as_str(), tl_anchor + Vector2 {x: 10.0 * uiscale, y: 35.0 * uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 4.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
           }
           
-          // friends
+          // friends tab
           if data.main_tabs.selected_tab() == 4 {
+            // refresh button
+            let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
+            refresh_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
+            if refresh_button.was_released(&win, &m) {
+              data.packet_queue.push(
+                ClientToServer::GetFriendList,
+              )
+            }
+
             
+            // FRIEND LIST
+            let y_offset = 6.0 * uiscale;
+            let y_start = 30.0*uiscale;
+            for f_index in 0..data.friend_list.len() {
+              let friend = data.friend_list[f_index].clone();
+              let current_offset = y_offset * f_index as f32;
+              let peer_username;
+              let split: Vec<&str> = friend.0.split(":").collect();
+              if *split[0] == username {
+                peer_username = split[1];
+              } else {
+                peer_username = split[0];
+              }
+
+              draw_text(&font, peer_username, Vector2 { x: 10.0*uiscale, y: y_start + current_offset }, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 4.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
+              
+              let status: &str;
+              match friend.1 {
+                FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
+                  let pending_for_you_status = database::get_friend_request_type(&username, &peer_username);
+                  if pending_for_you_status != friend.1 {
+                    // This user is requesting to be friends.
+                    status = "Awaiting your response.";
+                    let accept_button = Button::new(Vector2 { x: 70.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Accept", 4.0*uiscale);
+                    if accept_button.was_pressed(&win, &m) {
+                      // Accept the friend request by sending a friend request to this user, which the
+                      // server processes as an accept.
+                      data.packet_queue.push(
+                        ClientToServer::SendFriendRequest(String::from(peer_username)),
+                      );
+                      data.packet_queue.push(
+                        ClientToServer::GetFriendList,
+                      );
+                      //friend_request_input = peer_username.to_string();
+                    }
+
+                  } else {
+                    // We sent a request to this user,
+                    status = "Friend request sent..."
+                  }
+                }
+                FriendShipStatus::Blocked => {
+                  status = "Blocked"
+                }
+                FriendShipStatus::Friends => {
+                  status = "Friends";
+                  let online = friend.2;
+                  draw_text(&font, match online {true => "Online", false => "Offline"}, Vector2 { x: 70.0*uiscale, y: 30.0*uiscale + current_offset }, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 4.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
+
+                  // if we were invited by this user, show accept button
+                  if data.lobby_invites.contains(&String::from(peer_username)) {
+                    let mut accept_button = Button::new(
+                      Vector2 { x: 70.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Join", 4.0*uiscale
+                    );
+                    accept_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
+                    if accept_button.was_pressed(&win, &m) {
+                      data.packet_queue.push(
+                        ClientToServer::LobbyInviteAccept(String::from(peer_username)),
+                      );
+                      data.lobby_invites.retain(|element| element != peer_username);  
+                    }
+                  }
+                  // invite user button
+                  else {
+                    if online {
+                      let mut invite_button = Button::new(
+                        Vector2 { x: 90.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Invite", 4.0*uiscale
+                      );
+                      invite_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
+                      if invite_button.was_pressed(&win, &m) {
+                        data.packet_queue.push(
+                          ClientToServer::LobbyInvite(String::from(peer_username)),
+                        );
+                        data.notifications.push(
+                          Notification::new(&format!("Invited {} to lobby.", peer_username), 1.5)
+                        );
+                      }
+                    }
+                  }
+                }
+              }
+              draw_text(&font, status, Vector2 { x: 40.0*uiscale, y: 30.0*uiscale + current_offset }, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 4.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
+            }
+
           }
         }
         // MARK: Game
