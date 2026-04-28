@@ -42,6 +42,7 @@ The GDD is in `assets/README.md`.
 ## To do
 
 - [ ] programming
+  - [ ] gamemode
   - [ ] characters
     - [ ] sága
       - [ ] design kit
