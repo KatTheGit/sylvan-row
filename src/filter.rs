@@ -21,3 +21,17 @@ pub fn valid_username(text: String) -> bool {
   }
   return true;
 }
+
+pub fn contains_swears(_text: String) -> bool {
+
+
+
+  return false;
+}
+
+pub fn contains_slurs(_text: String) -> bool {
+
+  
+
+  return false;
+}

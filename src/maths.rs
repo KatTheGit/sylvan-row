@@ -1,11 +1,11 @@
 // MARK: Vectors
 // utility
-use macroquad::math::Vec2;
 use std::time::SystemTime;
 use crate::const_params::*;
 use crate::gamedata::*;
 use std::sync::MutexGuard;
 use std::collections::HashMap;
+use bevy::prelude::*;
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct Vector2 {
@@ -175,8 +175,10 @@ pub fn object_aware_movement(
   desired_position.x += movement.x;
   desired_position.y += movement.y;
 
-  let player_size = TILE_SIZE/4.0;
-  let tile_size = TILE_SIZE/2.0;
+
+  // beautiful hardcoded hitboxes
+  let player_size = 1.0/4.0;
+  let tile_size = 1.0/2.0;
   let collision_size = tile_size + player_size;
 
   for game_object in game_objects.clone() {
@@ -369,7 +371,7 @@ pub fn apply_simple_bullet_logic_extra(
       if !ricochet || (ricochet && bullet_data.hitpoints == 0){
         let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
         let buffer = 0.5 * 1.2;
-        if distance < (TILE_SIZE*buffer + wall_hit_radius) {
+        if distance < (buffer + wall_hit_radius) {
           // delete the bullet
           game_objects[o_index].to_be_deleted = true;
           // damage the wall if it's not unbreakable
@@ -389,14 +391,14 @@ pub fn apply_simple_bullet_logic_extra(
       if ricochet && bullet_data.hitpoints > 0 {
         let pos = game_object.position;
         let direction = bullet_data.direction;
-        let check_distance = TILE_SIZE * 0.1;
+        let check_distance = 0.1;
         let buffer = 0.5 * 1.6;
         let check_position: Vector2 = Vector2 {
           x: pos.x + direction.x * check_distance ,
           y: pos.y + direction.y * check_distance ,
         };
         let distance = Vector2::distance(check_position, game_objects[victim_object_index].position);
-        if distance < (TILE_SIZE*buffer + wall_hit_radius) {
+        if distance < (buffer + wall_hit_radius) {
           
           if bullet_data.hitpoints == 0 {
             return (players, game_objects, false);
@@ -421,8 +423,8 @@ pub fn apply_simple_bullet_logic_extra(
               }
             }
             //game_objects[o_index].lifetime = characters[&character].primary_range / characters[&character].primary_shot_speed;
-            game_objects[o_index].position.x += bullet_data.direction.x * (TILE_SIZE*0.3); // this might break at very low freq like 26Hz
-            game_objects[o_index].position.y += bullet_data.direction.y * (TILE_SIZE*0.3);
+            game_objects[o_index].position.x += bullet_data.direction.x * (0.3); // this might break at very low freq like 26Hz
+            game_objects[o_index].position.y += bullet_data.direction.y * (0.3);
 
             // reset the lifetime (which in turn resets its range)
             let distance = characters[&character].primary_range;
@@ -442,7 +444,7 @@ pub fn apply_simple_bullet_logic_extra(
     if game_objects[victim_object_index].object_type == GameObjectType::CenterOrb {
       // if it's colliding
       let distance = Vector2::distance(game_object.position, game_objects[victim_object_index].position);
-      if distance < (0.5 * TILE_SIZE + wall_hit_radius) {
+      if distance < (0.5 + wall_hit_radius) {
         if bullet_data.hit_players.contains(&548) {
           continue;
         }
@@ -450,8 +452,8 @@ pub fn apply_simple_bullet_logic_extra(
         add_event_all(GameEvent::AttackHit(game_object.object_type.clone(), owner_username.clone(), "o".to_string()), &mut players);
 
         let mut direction: Vector2 = bullet_data.direction;
-        direction.x *= damage as f32 / 2.0;
-        direction.y *= damage as f32 / 2.0;
+        direction.x *= damage as f32 / 16.0;
+        direction.y *= damage as f32 / 16.0;
 
         let mut orb_wall_data = game_objects[victim_object_index].get_wall_data();
         if orb_wall_data.hitpoints > damage {

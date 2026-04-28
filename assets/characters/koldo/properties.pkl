@@ -23,16 +23,16 @@ secondary_damage = 0
 secondary_heal = 0
 secondary_hit_charge = 10
 secondary_heal_charge = 0
-secondary_passive_charge = 2
+secondary_passive_charge = 4
 secondary_range = 0.0
 secondary_charge_use = 100
 secondary_cooldown = 0.0
 
-dash_distance = 3.0
-dash_cooldown = 4.0
-dash_damage_multiplier = 0.8
+dash_distance = 4.5
+dash_cooldown = 3.5
+dash_damage_multiplier = 1.0
 dash_speed = 25.0
 
 passive_value = 0
-passive_range = 0.2
+passive_range = 2.0
 passive_cooldown = 0.4

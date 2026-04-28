@@ -41,29 +41,25 @@ The GDD is in `assets/README.md`.
 
 ## To do
 
-This is just for me.
-
-- [ ] Bevy swap
-  - [ ] Clean up input handling too
-- [ ] Characters
-  - [ ] Sága
-  - [ ] The assassin
-- [ ] Ranked system
-- [ ] Server stuff
-  - [ ] chat filter
-  - [ ] throttling, etc...
-- [ ] Better anticheat
-- [ ] Art
-  - [ ] Animation system & animations
-  - [ ] Maps with https://www.mapeditor.org/
-  - [ ] Menu
-  - [ ] Better sfx & vfx
-- [ ] Android port, thanks to bevy
-
-## Irrelevant for game, jut dev QOL
-
-- [ ] Cleaner code
-- [ ] Own parser for character properties that allows comments
+- [ ] programming
+  - [ ] characters
+    - [ ] sága
+      - [ ] design kit
+    - [ ] assassin
+  - [ ] bevy
+    - [ ] re-add friend system
+    - [ ] fix android
+  - [ ] ranked
+  - [ ] anticheat
+  - [ ] server throttling
+  - [ ] chat filters
+  - [ ] new parser
+  - [x] standardize Z layers
+- [ ] art
+  - [ ] better ui
+  - [ ] status effects
+  - [ ] animations
+  - [ ] sfx, voicelines
 
 ### Bugs
 
@@ -72,19 +68,6 @@ This is just for me.
   - [x] When the party leader leaves the party, other players aren't properly informed of the new leader, it's still the old leader.
 - [x] Gameserver's `owner_port` has to be reworked into `owner_username`.
 - [ ] Weird indexing errors in gameserver.
-
-## Side quests
-
-- [ ] Change game engine
-- [ ] Clean up code
-  - [x] IMPORTANT: Reorganise mutexes to avoid deadlocks
-  - [ ] Health u8 -> f16
-  - [ ] Server vulnerabilities
-  - [ ] Variable names, readability
-  - [ ] Organisation
-    - [ ] structure into proper modules, like networking, maths, players, ui, etc...
-  - [ ] Packet size
-  - [ ] Write own parser
 
 ## Reminders
 - Update Wiro projectile list when new char

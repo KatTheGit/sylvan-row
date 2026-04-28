@@ -1,8 +1,6 @@
 use crate::gamedata::GameObjectType;
 use opaque_ke::CipherSuite;
 
-
-pub const TILE_SIZE: f32 = 8.0;
 pub const ORB_HEALING: u8 = 20;
 
 pub const WALL_HP: u8 = 30;
@@ -12,9 +10,9 @@ pub const WALL_TYPES_ALL: [GameObjectType; 5] = [GameObjectType::Wall, GameObjec
 
 // debug constants. disable ALL for prod
 /// Whether to spawn one dummy in the game
-pub const SPAWN_DUMMY: bool = false;
+pub const SPAWN_DUMMY: bool = true;
 /// Whether the server allows to start a game with only 1 player in queue
-pub const MATCHMAKE_ALONE: bool = false;
+pub const MATCHMAKE_ALONE: bool = true;
 
 pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
@@ -34,7 +32,7 @@ pub const PACKET_AVERAGE_SAMPLES: u8 = 5;
 /// default address of the server.
 pub const SERVER_PORT:        u16 = 25569;
 /// Default IP to be used when there's an issue with the moba_ip.txt file.
-pub const DEFAULT_SERVER_IP: &str = "13.38.240.14"; // my AWS instance address
+pub const DEFAULT_SERVER_IP: &str = "13.38.240.14"; // my AWS instance's address
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Copy)]
 pub struct DefaultCipherSuite;

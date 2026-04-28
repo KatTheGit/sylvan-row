@@ -1,6 +1,8 @@
 # Contents of `assets` directory: CC BY-NC-ND
 
-All files in the `assets` directory are © 2025 Kathleen (KatTheGit) and licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+All files in the `assets` directory are © 2025 Kathleen (KatTheGit) and licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/), except for:
+- Files in the `assets/fonts` directory.
+- Files in the `assets/audio` directory.
 
 ### Summary of license terms:
 You are free to copy and redistribute the material in any medium or format. The licensor cannot revoke these freedoms as long as you follow the license terms:

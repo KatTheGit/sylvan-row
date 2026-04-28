@@ -56,7 +56,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
 
   // since only the main thread is allowed to read mouse position using macroquad,
   // main thread will have to modify it, and input thread will read it.
-  let mut mouse_position: Vec2 = Vec2::new(0.0, 0.0);
+  let mut mouse_position: Vector2 = Vector2::new();
 
   let mut menu_paused = false;
   let mut settings_open_flag = false;
@@ -321,7 +321,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     mouse_position.x =(((((mouse_position_local().x + 1.0) / 2.0) * 100.0 * (16.0/9.0)) / (vw * 100.0)) * screen_width()  - 50.0 * (16.0 / 9.0)) / player_copy.camera.zoom + player_copy.camera.position.x; 
     mouse_position.y =(((((mouse_position_local().y + 1.0) / 2.0) * 100.0             ) / (vh * 100.0)) * screen_height() - 50.0               ) / player_copy.camera.zoom + player_copy.camera.position.y;
     let keyboard_mode: MutexGuard<bool> = keyboard_mode.lock().unwrap();
-    let mut aim_direction: Vector2 = Vector2::from(mouse_position.clone()) - player_copy.position;
+    let mut aim_direction: Vector2 = mouse_position.clone() - player_copy.position;
     if !*keyboard_mode {
       aim_direction = player_copy.aim_direction;
     }
@@ -461,7 +461,7 @@ pub async fn game(server_ip: String, character: Character, client_port: u16, ser
     let relative_position_y = 50.0              + (player_copy.position.y - player_copy.camera.position.y) * player_copy.camera.zoom;
 
     if !player_copy.is_dead {
-      let mut range_limited: f32 = Vector2::distance(player_copy.position, Vector2::from(mouse_position.clone())) * player_copy.camera.zoom;
+      let mut range_limited: f32 = Vector2::distance(player_copy.position, mouse_position.clone()) * player_copy.camera.zoom;
       if range_limited > range {
         range_limited = range;
       }
