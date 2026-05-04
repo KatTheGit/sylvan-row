@@ -13,25 +13,29 @@ When you run the game, a file called `moba_ip.txt` will be created in the same d
 
 ## Compile and run it yourself
 
-You can build the binaries with cargo
+You will need [the Rust compiler](https://rust-lang.org/).
+
+To run the game client:
 ```sh
-cargo build --release
+cargo run --bin sylvan_row --release #or ./client.sh
 ```
 
-Or directly run the game:
-```sh
-cargo run --bin game --release # or ./client.sh
-```
-Or the server:
+To run the server:
 ```sh
 cargo run --bin server # or ./server.sh
 ```
 
-Always build the game with `--release`, otherwise the game will run very poorly.
+To compile the game client (for distribution) run `compile-pc.sh` or `compile-android.sh`. To compile the server run:
+
+```sh
+cargo build --bin server --release
+```
 
 ### Dependencies
 
 On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-config` (apt package names) to compile the code.
+
+NOTE: Not sure if this is still true.
 
 ## Other info
 
@@ -64,10 +68,6 @@ The GDD is in `assets/README.md`.
 
 ### Bugs
 
-- [x] Parties requeue without consent
-- [x] 4 players don't always get matchmade 2v2
-  - [x] When the party leader leaves the party, other players aren't properly informed of the new leader, it's still the old leader.
-- [x] Gameserver's `owner_port` has to be reworked into `owner_username`.
 - [ ] Weird indexing errors in gameserver.
 
 ## Reminders

@@ -1707,7 +1707,7 @@ fn main_thread(
         tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores your password in your OS keyring, like Safari.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
 
         // offline mode
-        let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 28.0 * uiscale,y: 7.0 * uiscale }, Vector2 { x: 26.0*uiscale, y: 5.0*uiscale }, "Play offline", 4.0*uiscale);
+        let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 33.0 * uiscale,y: 11.0 * uiscale }, Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, "Play offline", 4.0*uiscale);
         offline_mode_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
         if offline_mode_button.was_released(&win, &m) {
           data.current_menu = MenuScreen::Main(0);
@@ -1723,11 +1723,12 @@ fn main_thread(
           0 => {
             if confirm_button.was_released(&win, &m) {
               // check credential validity.
-
+              let mut credentials_valid = true;
               if !valid_password(password.clone()) {
                 data.notifications.push(
                   Notification::new("Unsafe password", 1.0)
                 );
+                credentials_valid = false;
                 data.username_input.selected = false;
                 data.password_input.selected = true;
               }
@@ -1735,44 +1736,49 @@ fn main_thread(
                 data.notifications.push(
                   Notification::new("Invalid username", 1.0)
                 );
+                credentials_valid = false;
                 data.username_input.selected = true;
                 data.password_input.selected = false;
               }
 
-              // store credentials.
-              if data.settings.store_credentials {
-                data.settings.saved_username = data.username_input.buffer.clone();
-                save_password(&password, &data.settings.saved_username.clone(), &mut data.notifications);
-              }
+              if credentials_valid {
 
-              // set next step.
-              if logging_in {
-                data.current_menu = MenuScreen::Login(1)
-              }
-              else {
-                data.current_menu = MenuScreen::Login(3)
-              }
 
-              // set timer
-              data.opake_data.timeout = Instant::now();
-              
-              // Attempt connection to server.
-              draw_text(&font, "Attempting connection...", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale }, BLACK, 5.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
-              
-              if data.server_stream.is_none() {
-                match TcpStream::connect(&server_ip) {
-                  Ok(stream) => {
-                    data.server_stream = Some(stream);
-                    if let Some(ref server_stream) = data.server_stream {
-                      server_stream.set_nonblocking(true).expect("idk");
+                // store credentials.
+                if data.settings.store_credentials {
+                  data.settings.saved_username = data.username_input.buffer.clone();
+                  save_password(&password, &data.settings.saved_username.clone(), &mut data.notifications);
+                }
+
+                // set next step.
+                if logging_in {
+                  data.current_menu = MenuScreen::Login(1)
+                }
+                else {
+                  data.current_menu = MenuScreen::Login(3)
+                }
+
+                // set timer
+                data.opake_data.timeout = Instant::now();
+                
+                // Attempt connection to server.
+                draw_text(&font, "Attempting connection...", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale }, BLACK, 5.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
+                
+                if data.server_stream.is_none() {
+                  match TcpStream::connect(&server_ip) {
+                    Ok(stream) => {
+                      data.server_stream = Some(stream);
+                      if let Some(ref server_stream) = data.server_stream {
+                        server_stream.set_nonblocking(true).expect("idk");
+                      }
                     }
-                  }
-                  Err(err) => {
-                    // back to login screen.
-                    data.current_menu = MenuScreen::Login(0);
-                    data.notifications.push(
-                      Notification::new(&format!("Connection to server failed. Reason: {:?}", err), 5.0)
-                    )
+                    Err(err) => {
+                      // back to login screen.
+                      data.current_menu = MenuScreen::Login(0);
+                      data.notifications.push(
+                        Notification::new(&format!("Connection to server failed. Reason: {:?}", err), 5.0)
+                      )
+                    }
                   }
                 }
               }

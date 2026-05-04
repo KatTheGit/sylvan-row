@@ -1,5 +1,5 @@
 # compile
-./android.sh
+./compile-android.sh
 
 # compile the java
 cd android
