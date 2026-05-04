@@ -49,7 +49,7 @@ async fn main() {
     }
   }));
 
-  let listener = TcpListener::bind(format!("{}:{}", "127.0.0.1", SERVER_PORT)).await.unwrap();
+  let listener = TcpListener::bind(format!("{}:{}", "0.0.0.0", SERVER_PORT)).await.unwrap();
 
   let players: Vec<PlayerInfo> = Vec::new();
   // Arc allows for shared access, and Mutex makes it mutually exclusive.
