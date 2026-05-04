@@ -106,6 +106,8 @@ pub struct GameData {
   pub chat_scroll: f32,
   pub selected_friend: usize,
 
+  pub server_ip: String,
+  pub game_server_ip: String,
   pub game_server_port: u16,
   pub game_id: u128,
   pub game_socket: Option<UdpSocket>,
@@ -195,6 +197,8 @@ impl Default for GameData {
       chat_scroll: 0.0,
       selected_friend: 0,
 
+      server_ip: String::from("13.38.240.14:25569"),
+      game_server_ip: String::from("13.38.240.14"),
       game_server_port: 0,
       game_id: 0,
       game_socket: None,
@@ -254,9 +258,6 @@ fn main_thread(
 
     // synchronise settings with the exit thread
     *settings_sync = data.settings.clone();
-
-
-    let server_ip = "127.0.0.1:25569";
 
     // calculate UI scale
     let size_min = f32::min(vw, vh);
@@ -417,6 +418,7 @@ fn main_thread(
               });
               data.player.character = practice_character;
               data.game_server_port = practice_game_port;
+              data.game_server_ip = String::from("127.0.0.1");
               data.game_id = 0;
               data.queued = false;
               data.game_last_nonce = 0;
@@ -1286,7 +1288,7 @@ fn main_thread(
             
             let serialized_nonce: Vec<u8> = bincode::serialize::<u32>(&data.nonce).expect("oops");
             let serialized = [&serialized_nonce[..], &ciphered[..]].concat();
-            let game_server_ip = server_ip.split(":").collect::<Vec<&str>>()[0];
+            let game_server_ip = data.game_server_ip.clone(); // .split(":").collect::<Vec<&str>>()[0];
             let game_server_ip = format!("{}:{}", game_server_ip, data.game_server_port);
             if let Some(ref mut game_socket) = data.game_socket {
               game_socket.send_to(&serialized, game_server_ip).expect("oops");
@@ -1514,6 +1516,7 @@ fn main_thread(
               let selected_char = data.heroes_tabs.selected_tab();
               data.player.character = CHARACTER_LIST[selected_char];
               data.game_server_port = info.port;
+              data.server_ip = String::from("13.38.240.14:25569");
               data.game_id = info.game_id;
               data.queued = false;
               data.game_last_nonce = 0;
@@ -1711,6 +1714,7 @@ fn main_thread(
         offline_mode_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
         if offline_mode_button.was_released(&win, &m) {
           data.current_menu = MenuScreen::Main(0);
+          data.server_ip = String::from("127.0.0.1:25569")
         }
 
         // keep these immutable.
@@ -1765,7 +1769,7 @@ fn main_thread(
                 draw_text(&font, "Attempting connection...", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale }, BLACK, 5.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
                 
                 if data.server_stream.is_none() {
-                  match TcpStream::connect(&server_ip) {
+                  match TcpStream::connect(&data.server_ip) {
                     Ok(stream) => {
                       data.server_stream = Some(stream);
                       if let Some(ref server_stream) = data.server_stream {

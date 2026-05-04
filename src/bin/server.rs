@@ -506,9 +506,7 @@ async fn main() {
                       // match players
                       let player_count_1v1 = if MATCHMAKE_ALONE {1} else {2};
 
-                      println!("{:?}", queued_1v1);
-                      println!("{:?}", queued_2v2_solo);
-                      println!("{:?}", queued_2v2_duo);
+                      println!("1v1{:?}, 2v2s{:?}, 2v2d{:?}", queued_1v1, queued_2v2_solo, queued_2v2_duo);
                       
                       // 1v1 matchmaking
                       if queued_1v1.len() >= player_count_1v1 {
