@@ -39,6 +39,7 @@ use ring::hkdf;
 use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
+const CURRENT_SERVER_IP: &str = "13.38.240.14:25569";
 
 #[bevy_main]
 pub fn main() {
@@ -197,7 +198,7 @@ impl Default for GameData {
       chat_scroll: 0.0,
       selected_friend: 0,
 
-      server_ip: String::from("13.38.240.14:25569"),
+      server_ip: String::from(CURRENT_SERVER_IP),
       game_server_ip: String::from("13.38.240.14"),
       game_server_port: 0,
       game_id: 0,
@@ -1516,7 +1517,7 @@ fn main_thread(
               let selected_char = data.heroes_tabs.selected_tab();
               data.player.character = CHARACTER_LIST[selected_char];
               data.game_server_port = info.port;
-              data.server_ip = String::from("13.38.240.14:25569");
+              data.server_ip = String::from(CURRENT_SERVER_IP);
               data.game_id = info.game_id;
               data.queued = false;
               data.game_last_nonce = 0;
