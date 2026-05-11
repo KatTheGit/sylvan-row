@@ -1714,12 +1714,13 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           let target_position: Vector2 = players[owner_index].position;
           let object_position: Vector2 = game_objects[o_index].position;
           let speed = characters[&players[owner_index].character].primary_shot_speed;
-          let direction: Vector2 = Vector2::difference(object_position, target_position);
+          let distance = Vector2::difference(object_position, target_position);
+          let direction: Vector2 = distance.normalize();
           // update position
-          game_objects[o_index].position.x += direction.normalize().x * speed * true_delta_time as f32;
-          game_objects[o_index].position.y += direction.normalize().y * speed * true_delta_time as f32;
+          game_objects[o_index].position.x += direction.x * speed * true_delta_time as f32;
+          game_objects[o_index].position.y += direction.y * speed * true_delta_time as f32;
           // If the projectiles are close enough to us, delete them, since their trip is over.
-          if direction.magnitude() < 1.0 /* arbitrary value */ {
+          if distance.magnitude() < 1.0 /* arbitrary value */ {
             game_objects[o_index].to_be_deleted = true;
           }
           let hit_radius = characters[&players[owner_index].character].primary_hit_radius;
@@ -1733,6 +1734,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             && players[p_index].team != players[owner_index].team {
               // damage them
               players[p_index].damage(damage, characters.clone());
+              add_event_all(GameEvent::AttackHit(GameObjectType::FedyaProjectileGroundRecalled, players[owner_index].username.clone(), players[p_index].username.clone()), &mut players);
               // and check if they were already hit by a projectile.
               let mut was_already_hit: bool = false;
               for o_index_2 in 0..game_objects.len() {
@@ -1766,6 +1768,10 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
               game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
             }
           }
+          // Update direction.
+          let mut bullet_data = game_objects[o_index].get_bullet_data();
+          bullet_data.direction = direction;
+          game_objects[o_index].extra_data = ObjectData::BulletData(bullet_data);
         }
         // Fedya'S TURRET
         GameObjectType::FedyaTurret => {

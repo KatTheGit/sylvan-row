@@ -46,7 +46,14 @@ The GDD is in `assets/README.md`.
 ## To do
 
 - [ ] programming
+  - [ ] Pre-game screen
+  - [ ] Post-game screen
   - [ ] gamemode
+    - [ ] capture point
+    - [ ] ui
+      - [ ] all players
+      - [ ] game status
+      - [ ] your player
   - [ ] characters
     - [ ] sága
       - [ ] design kit

@@ -19,24 +19,24 @@ use keyring;
 
 // Standardise Z values
 /// Background tiles. -100 to -51
-pub const GAME_BG_Z: i8 = -100;
+pub const GAME_BG_Z: i8 = -120;
 /// Normal objects. -50 to -1
-pub const GAME_OBJ_Z: i8 = -50;
+pub const GAME_OBJ_Z: i8 = -100;
 /// Player. 0-9
 pub const GAME_PLAYER_Z: i8 = 0;
 /// In-game foreground. 10-19
 pub const GAME_FG_Z: i8 = 10;
 
 /// Main menu. 20-29
-pub const MENU_Z: i8 = 20;
+pub const MENU_Z: i8 = 40;
 /// Game UI (healthbars, etc). 30-49
-pub const GAME_UI_Z: i8 = 30;
+pub const GAME_UI_Z: i8 = 70;
 /// Chat. 50-79
-pub const CHAT_Z: i8 = 50;
+pub const CHAT_Z: i8 = 90;
 /// Pause menu. 80-99
-pub const ESC_MENU_Z: i8 = 80;
+pub const ESC_MENU_Z: i8 = 100;
 /// Tooltips. 100-127
-pub const TOOLTIP_Z: i8 = 100;
+pub const TOOLTIP_Z: i8 = 110;
 
 
 // MARK: Buttons & fluff
@@ -396,6 +396,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mu
   let button_y_separation: f32 = 15.0 * uiscale;
   let button_y_offset: f32 = 25.0 * uiscale;
   let button_font_size = 5.0 * uiscale;
+
 
   let button_size: Vector2 = Vector2 { x: 25.0 * uiscale, y: 9.0 * uiscale };
   // semi-transparent background
