@@ -449,7 +449,7 @@ pub fn apply_simple_bullet_logic_extra(
           continue;
         }
         // confirmed hit on orb
-        add_event_all(GameEvent::AttackHit(game_object.object_type.clone(), owner_username.clone(), "o".to_string()), &mut players);
+        add_event_all(GameEvent::AttackHit(game_object.object_type.clone(), owner_username.clone(), "o".to_string(), damage), &mut players);
 
         let mut direction: Vector2 = bullet_data.direction;
         direction.x *= damage as f32 / 16.0;
@@ -504,7 +504,7 @@ pub fn apply_simple_bullet_logic_extra(
         if players[p_index].team != player.team {
           // Confirmed hit.
           hit = true;
-          add_event_all(GameEvent::AttackHit(game_object.object_type.clone(), owner_username.clone(), players[p_index].username.clone()), &mut players);
+          add_event_all(GameEvent::AttackHit(game_object.object_type.clone(), owner_username.clone(), players[p_index].username.clone(), damage), &mut players);
           players[p_index].damage(damage, characters.clone());
           bullet_data.hit_players.push(p_index);
           // Destroy the bullet if it doesn't pierce.

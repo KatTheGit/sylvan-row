@@ -1734,7 +1734,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             && players[p_index].team != players[owner_index].team {
               // damage them
               players[p_index].damage(damage, characters.clone());
-              add_event_all(GameEvent::AttackHit(GameObjectType::FedyaProjectileGroundRecalled, players[owner_index].username.clone(), players[p_index].username.clone()), &mut players);
+              add_event_all(GameEvent::AttackHit(GameObjectType::FedyaProjectileGroundRecalled, players[owner_index].username.clone(), players[p_index].username.clone(), damage), &mut players);
               // and check if they were already hit by a projectile.
               let mut was_already_hit: bool = false;
               for o_index_2 in 0..game_objects.len() {

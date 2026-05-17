@@ -123,7 +123,7 @@ impl ClientPlayer {
       current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     }
   }
-  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, z: i8, commands: &mut Commands, window: &Window) {
+  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, characters: HashMap<Character, CharacterProperties>, z: i8, commands: &mut Commands, window: &Window) {
     // TODO: animations
     
 
@@ -151,12 +151,13 @@ impl ClientPlayer {
       false => self.username.clone(),
     };
     
-    let nametag_pos = nametag_pos + Vector2 {x: 0.0, y: 0.0};
+    let nametag_pos = nametag_pos + Vector2 {x: 0.0, y: -1.0};
 
-    let screen_text_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh  + Vector2 {x: 0.0, y: -10.0 * uiscale};
-    let screen_healthbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: -5.0 * uiscale};
-    let screen_secondarybar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 0.0 * uiscale};
-    let screen_x_offset = 100.0 * uiscale; // whatever
+    let screen_text_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh  + Vector2 {x: 0.0, y: 0.0 * uiscale};
+    let screen_healthbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 5.0 * uiscale};
+    let screen_secondarybar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 10.0 * uiscale};
+    let screen_stackbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 15.0 * uiscale};
+    let screen_x_offset = 300.0 * uiscale; // whatever
     
     draw_text(font, &displayed_name, screen_text_pos - Vector2 {x: screen_x_offset, y: 0.0}, Vector2 { x: screen_x_offset*2.0, y: 10.0*uiscale }, team_color, 4.0*uiscale, z, Justify::Center, window, commands);
     
@@ -167,6 +168,7 @@ impl ClientPlayer {
     draw_rect(Color::Srgba(LIMEGREEN), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
     draw_rect(Color::Srgba(GRAY), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
     draw_rect(Color::Srgba(BLACK), screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    draw_text(font, &format!("{}", self.health), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.health {
         let pos = Vector2 {x: x as f32 * healthbar_x_size * 2.0 / 10.0 + screen_healthbar_pos.x - healthbar_x_size, y: screen_healthbar_pos.y};
@@ -174,15 +176,63 @@ impl ClientPlayer {
       }
     }
 
-    draw_rect(Color::Srgba(ORANGE), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 2.0*uiscale }, z+3, window, commands);
-    draw_rect(Color::Srgba(GRAY), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 2.0*uiscale }, z+2, window, commands);
-    draw_rect(Color::Srgba(BLACK), screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 2.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    draw_rect(Color::Srgba(ORANGE), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
+    draw_rect(Color::Srgba(GRAY), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
+    draw_rect(Color::Srgba(BLACK), screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    draw_text(font, &format!("{}", self.secondary_charge), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.secondary_charge {
         let pos = Vector2 {x: x as f32 * healthbar_x_size * 2.0 / 10.0 + screen_secondarybar_pos.x - healthbar_x_size, y: screen_secondarybar_pos.y};
-        draw_line(pos, pos + Vector2 {x: 0.0, y: 2.0*uiscale}, 0.5*uiscale, BROWN, z+4, window, commands);
+        draw_line(pos, pos + Vector2 {x: 0.0, y: 3.0*uiscale}, 0.5*uiscale, BROWN, z+4, window, commands);
       }
     }
+
+    // draw stacks. character dependent
+
+    let mut max_stacks: Option<u8> = None;
+    match self.character {
+      // raphaelle: 0-1 stack
+      Character::Raphaelle => {
+        max_stacks = Some(1);
+      }
+      // temerity: 0-2 stacks
+      Character::Temerity => {
+        max_stacks = Some(2);
+      }
+      // koldo: analog stack
+      Character::Koldo => {
+        max_stacks = Some(0);
+      }
+      // fedya: no stacks
+      // hernani: no stacks
+      // cynewynn: no stacks
+      // wiro: no stacks
+      _ => {
+        // skip
+      }
+    }
+    if let Some(max_stacks) = max_stacks {
+      // analog
+      if max_stacks == 0 {
+        let progress = match self.character {
+          Character::Koldo => (self.passive_elapsed / characters[&Character::Koldo].passive_cooldown).clamp(0.0, 1.0),
+          _ => panic!()
+        };
+        draw_rect(Color::Srgba(GRAY), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2, window, commands);
+        draw_rect(Color::Srgba(PINK), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * progress, y: 1.5*uiscale }, z+3, window, commands);
+        draw_rect(Color::Srgba(BLACK), screen_stackbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 1.5*uiscale + outline_size*2.0 }, z+1, window, commands);
+      }
+      else {
+        if self.stacks > 0 {
+          for x in 0..self.stacks {
+            let x_size = 5.0 * uiscale;
+            let x_margin = 1.0 * uiscale;
+            draw_rect(Color::Srgba(PINK), screen_stackbar_pos + Vector2 {x: -healthbar_x_size + x as f32 * (x_size + x_margin), y: 0.0}, Vector2 { x: x_size, y: 1.5*uiscale }, z+3, window, commands);
+          }
+        }
+      }
+    }
+
 
     //draw_text_relative(
     //  &displayed_name,
@@ -520,8 +570,8 @@ pub fn index_by_username(username: &str, players: Vec<ServerPlayer>) -> usize{
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub enum GameEvent {
-  /// Informs that an attack of type `GameObjectType` (owned by `String` #1) has hit a player (`String` #2)
-  AttackHit(GameObjectType, String, String),
+  /// Informs that an attack of type `GameObjectType` (owned by `String` #1) has hit a player (`String` #2), and the dmg number (u8)
+  AttackHit(GameObjectType, String, String, u8),
   /// Attack of type `GameObjectType` was fired by its owner `String`.
   AttackFired(GameObjectType, String),
   /// Wall was hit by object `GameObjectType`, owned by `String`.

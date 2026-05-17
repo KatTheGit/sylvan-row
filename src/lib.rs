@@ -28,7 +28,7 @@ pub mod bevy_graphics;
 pub mod bevy_audio;
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime}};
-use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, tasks::futures_lite::io::Sink, ui, window::WindowResolution, winit::{UpdateMode, WinitSettings}};
+use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*};
 use bevy_immediate::*;
 use bevy_graphics::*;
 use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit, Nonce};
@@ -129,6 +129,7 @@ pub struct GameData {
   pub gamemode_info:      GameModeInfo,
   pub game_object_animations: HashMap<GameObjectType, AnimationState>,
   pub background_tiles: Vec<BackGroundTile>,
+  pub floating_numbers: Vec<FloatingNumber>,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -219,6 +220,7 @@ impl Default for GameData {
       gamemode_info: GameModeInfo::new(),
       game_object_animations: HashMap::new(),
       background_tiles: Vec::new(),
+      floating_numbers: Vec::new(),
     }
   }
 }
@@ -817,15 +819,34 @@ fn main_thread(
               );
             }
           }
+          // floating numbers
+          let mut numbers_to_keep = Vec::new();
+          for number in data.floating_numbers.clone() {
+            if !number.is_expired() {
+              let mut number_copy = number.clone();
+              if number_copy.victim_name == data.player.username {
+                number_copy.world_pos = data.player.position;
+              } else {
+                for player in data.players.clone() {
+                  if player.username == number_copy.victim_name {
+                    number_copy.world_pos = player.position;
+                  }
+                }
+              }
+              numbers_to_keep.push(number_copy);
+            }
+            number.draw(uiscale, vh, vw, data.player.camera.clone(), &font, &mut com, &win);
+          }
+          data.floating_numbers = numbers_to_keep;
 
           
           // MARK: | | Draw Players
           if !data.player.is_dead {
-            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), GAME_PLAYER_Z+1, &mut com, &win);
+            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
           }
           for player in data.players.clone() {
             if !player.is_dead {
-              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), GAME_PLAYER_Z+1, &mut com, &win);
+              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
             }
           }
 
@@ -1165,18 +1186,20 @@ fn main_thread(
             for event in events {
               //println!("{:?}", event);
               match event {
-                GameEvent::AttackHit(object_type, owner, victim) => {
+                GameEvent::AttackHit(object_type, owner, victim, damage) => {
+                  println!("{:?}, {:?}, {:?}, {:?}", object_type, owner, victim, damage);
                   // if the bullet is ours
                   if owner == data.player.username {
                     let sound: &str = match object_type {
                       GameObjectType::HernaniBullet =>                    "audio/sword-hit.ogg",
                       GameObjectType::CynewynnSword =>                    "audio/sword-hit.ogg",
                       GameObjectType::FedyaProjectileRicochet =>          "audio/sword-hit.ogg",
+                      GameObjectType::FedyaProjectileGroundRecalled =>    "audio/sword-hit.ogg",
                       GameObjectType::FedyaTurretProjectile =>            "audio/sword-hit.ogg",
                       GameObjectType::RaphaelleBullet =>                  "audio/sword-hit.ogg",
                       GameObjectType::RaphaelleBulletEmpowered =>         "audio/sword-hit.ogg",
                       GameObjectType::TemerityRocket =>                   "audio/explosion.ogg",
-                      GameObjectType::TemerityRocketSecondary =>          "audio/sword-hit.ogg",
+                      GameObjectType::TemerityRocketSecondary =>          "audio/explosion.ogg",
                       GameObjectType::WiroGunShot =>                      "audio/sword-hit.ogg",
                       GameObjectType::KoldoCannonBall =>                  "audio/sword-hit.ogg",
                       GameObjectType::KoldoCannonBallEmpowered =>         "audio/sword-hit.ogg",
@@ -1185,10 +1208,29 @@ fn main_thread(
                     };
                     sound_queue.push((sound, AudioTrack::SoundEffectSelf, 0.0));
                   }
+                  let mut floating_number_pos = Vector2::new();
                   // if it hit us
                   if victim == data.player.username {
-
+                    floating_number_pos = data.player.position;
                   }
+                  else {
+                    for player in data.players.clone() {
+                      if player.username == victim {
+                        floating_number_pos = player.position;
+                      }
+                    }
+                  }
+                  // floating number
+                  data.floating_numbers.push(
+                    FloatingNumber {
+                      value: damage,
+                      victim_name: victim,
+                      world_pos: floating_number_pos,
+                      spawn_time: Instant::now(),
+                      duration: 1.5,
+                     }
+                  );
+
                 }
                 GameEvent::AttackFired(object_type, owner) => {
                   let sound: &str = match object_type {

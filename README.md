@@ -48,6 +48,7 @@ The GDD is in `assets/README.md`.
 - [ ] programming
   - [ ] Pre-game screen
   - [ ] Post-game screen
+  - [ ] Variable matchmaker
   - [ ] gamemode
     - [ ] capture point
     - [ ] ui
@@ -70,6 +71,7 @@ The GDD is in `assets/README.md`.
 - [ ] art
   - [ ] better ui
   - [ ] status effects
+  - [ ] floating dmg numbers
   - [ ] animations
   - [ ] sfx, voicelines
 

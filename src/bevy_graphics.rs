@@ -378,6 +378,34 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
   draw_rect(Color::Srgba(Srgba {red: 0.0, green: 1.0, blue: 0.1, alpha: 1.0}), Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2{x: ( size * (player.health as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
 }
 
+// MARK: Floating numbers
+#[derive(Clone)]
+pub struct FloatingNumber {
+  pub value: u8,
+  pub victim_name: String,
+  pub world_pos: Vector2,
+  pub spawn_time: Instant,
+  pub duration: f32,
+}
+impl FloatingNumber {
+  pub fn draw(&self, uiscale: f32, vh: f32, vw: f32, camera: Camera, font: &Handle<Font>, commands: &mut Commands, window: &Window) {
+    let size = Vector2 { x: 20.0 * uiscale, y: 10.0 * uiscale };
+    let alpha = if self.spawn_time.elapsed().as_secs_f32() / self.duration < 0.5 {
+      1.0
+    } else {
+      2.0 - (self.spawn_time.elapsed().as_secs_f32() / self.duration) * 2.0
+    };
+    let color = Srgba { red: 1.0, green: 1.0, blue: 0.0, alpha: alpha };
+    let screen_pos = world_to_screen(self.world_pos, camera, vh, vw)*vh;
+    let time_y_offset = -6.0 * uiscale + (self.spawn_time.elapsed().as_secs_f32() / self.duration).powf(2.0) * 15.0 * uiscale;
+    let x_offset = 8.0 * uiscale;
+    draw_text(font, &format!("{}", self.value), screen_pos - size/2.0 + Vector2 {x: x_offset, y: time_y_offset}, size, color, 5.0 * uiscale, GAME_UI_Z, Justify::Center, window, commands);
+  }
+  pub fn is_expired(&self) -> bool {
+    return self.duration < self.spawn_time.elapsed().as_secs_f32()
+  }
+}
+
 // MARK: Esc Menu
 
 /// Not actually a pause menu, but you get the point
