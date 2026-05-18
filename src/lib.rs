@@ -910,9 +910,9 @@ fn main_thread(
           let mut position = data.player.position;
           let mut movement = Vector2::new();
           //let mut aim_direction = Vector2::new();
-          data.player.dashing = false;
-          data.player.shooting_primary = false;
-          data.player.shooting_secondary = false;
+          //data.player.dashing = false;
+          //data.player.shooting_primary = false;
+          //data.player.shooting_secondary = false;
 
           // only register input if the window is active and the pause menu isn't open
           if is_window_focused(&win) && ui_clickable {
@@ -1317,6 +1317,9 @@ fn main_thread(
               packet_interval: PACKET_INTERVAL,
               timestamp: SystemTime::now(),
             };
+            data.player.shooting_primary = false;
+            data.player.dashing = false;
+            data.player.shooting_secondary = false;
 
             // send data to server
             let serialized_packet: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");

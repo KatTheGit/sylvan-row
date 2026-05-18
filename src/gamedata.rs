@@ -151,12 +151,12 @@ impl ClientPlayer {
       false => self.username.clone(),
     };
     
-    let nametag_pos = nametag_pos + Vector2 {x: 0.0, y: -1.0};
+    let nametag_pos = nametag_pos + Vector2 {x: 0.0, y: 0.5};
 
-    let screen_text_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh  + Vector2 {x: 0.0, y: 0.0 * uiscale};
-    let screen_healthbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 5.0 * uiscale};
-    let screen_secondarybar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 10.0 * uiscale};
-    let screen_stackbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 15.0 * uiscale};
+    let screen_text_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh  + Vector2 {x: 0.0, y: -15.0 * uiscale};
+    let screen_healthbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: -10.0 * uiscale};
+    let screen_secondarybar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: -5.0 * uiscale};
+    let screen_stackbar_pos = world_to_screen(nametag_pos, camera.clone(), vh, vw)*vh + Vector2 {x: 0.0, y: 0.0 * uiscale};
     let screen_x_offset = 300.0 * uiscale; // whatever
     
     draw_text(font, &displayed_name, screen_text_pos - Vector2 {x: screen_x_offset, y: 0.0}, Vector2 { x: screen_x_offset*2.0, y: 10.0*uiscale }, team_color, 4.0*uiscale, z, Justify::Center, window, commands);

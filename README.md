@@ -68,16 +68,17 @@ The GDD is in `assets/README.md`.
   - [ ] chat filters
   - [ ] new parser
   - [x] standardize Z layers
-- [ ] art
   - [ ] better ui
-  - [ ] status effects
-  - [ ] floating dmg numbers
+  - [ ] status effects  
+    - [x] stacks
+  - [x] floating dmg numbers
   - [ ] animations
   - [ ] sfx, voicelines
 
 ### Bugs
 
 - [ ] Weird indexing errors in gameserver.
+- [ ] Weird Z-layer errors regarding text.
 
 ## Reminders
 - Update Wiro projectile list when new char
