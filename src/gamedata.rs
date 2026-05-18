@@ -200,13 +200,13 @@ impl ClientPlayer {
         max_stacks = Some(2);
       }
       // koldo: analog stack
-      Character::Koldo => {
+      // wiro: analog stacks
+      Character::Koldo | Character::Wiro => {
         max_stacks = Some(0);
       }
       // fedya: no stacks
       // hernani: no stacks
       // cynewynn: no stacks
-      // wiro: no stacks
       _ => {
         // skip
       }
@@ -216,6 +216,7 @@ impl ClientPlayer {
       if max_stacks == 0 {
         let progress = match self.character {
           Character::Koldo => (self.passive_elapsed / characters[&Character::Koldo].passive_cooldown).clamp(0.0, 1.0),
+          Character::Wiro => (self.last_secondary_time / characters[&Character::Wiro].secondary_cooldown).clamp(0.0, 1.0),
           _ => panic!()
         };
         draw_rect(Color::Srgba(GRAY), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2, window, commands);
