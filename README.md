@@ -33,7 +33,12 @@ cargo build --bin server --release
 
 ### Dependencies
 
-On Linux, you need to additionally install `libudev-dev`, `libx11-dev` and `pkg-config` (apt package names) to compile the code.
+On Linux, you need to additionally install the following packages to compile the code. (package names for apt)
+- pkg-condfig
+- libwayland-dev
+- libudev-dev
+- libalsa-ocaml-dev
+- libx11-dev
 
 NOTE: Not sure if this is still true.
 
