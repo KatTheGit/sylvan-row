@@ -803,6 +803,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
           }
           // MARK: Game End
           if gamemode_info.rounds_won_blue >= ROUNDS_TO_WIN {
+            println!("returning winning team: blue!");
             return MatchEndResult {
               winning_team: Team::Blue,
               is_draw: false,
@@ -810,6 +811,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
             };
           }
           if gamemode_info.rounds_won_red >= ROUNDS_TO_WIN {
+            println!("returning winning team: red!");
             return MatchEndResult {
               winning_team: Team::Red,
               is_draw: false,
@@ -898,6 +900,7 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
         let player_team_copy = players[p_index].team.clone();
         players.remove(p_index);
         if players.is_empty() {
+          println!("returning winning team after no players left.");
           return MatchEndResult {
             winning_team: player_team_copy,
             is_draw: false,

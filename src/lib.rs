@@ -39,7 +39,7 @@ use ring::hkdf;
 use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
-const CURRENT_SERVER_IP: &str = "13.38.240.14:25569";
+const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; // "13.38.240.14:25569";
 
 #[bevy_main]
 pub fn main() {
@@ -473,6 +473,25 @@ fn main_thread(
           
           // friends tab
           if data.main_tabs.selected_tab() == 4 {
+
+            // friend search bar
+            data.friend_request_input.text_input(
+              Vector2 { x: 35.0 * uiscale, y: 20.0*uiscale },
+              Vector2 { x: 50.0 * uiscale, y: 7.0*uiscale },
+              5.0*uiscale, 20, uiscale, &font, MENU_Z,
+              &mut com, &win, &m, &k, &mut ki
+            );
+            // send fr button
+            let mut fr_button = Button::new(tl_anchor + Vector2 {x: 85.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 25.0 * uiscale, y: 7.0*uiscale}, "Add friend", 5.0*uiscale);
+            fr_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
+            if fr_button.was_released(&win, &m) {
+              let recipient = data.friend_request_input.buffer.clone();
+              data.packet_queue.push(
+                ClientToServer::SendFriendRequest(recipient),
+              )
+            }
+
+
             // refresh button
             let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
             refresh_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
@@ -505,8 +524,9 @@ fn main_thread(
                   let pending_for_you_status = database::get_friend_request_type(&username, &peer_username);
                   if pending_for_you_status != friend.1 {
                     // This user is requesting to be friends.
-                    status = "Awaiting your response.";
-                    let accept_button = Button::new(Vector2 { x: 70.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Accept", 4.0*uiscale);
+                    status = "Accept friend?";
+                    let mut accept_button = Button::new(Vector2 { x: 70.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Accept", 4.0*uiscale);
+                    accept_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
                     if accept_button.was_pressed(&win, &m) {
                       // Accept the friend request by sending a friend request to this user, which the
                       // server processes as an accept.
@@ -521,7 +541,7 @@ fn main_thread(
 
                   } else {
                     // We sent a request to this user,
-                    status = "Friend request sent..."
+                    status = "Request sent."
                   }
                 }
                 FriendShipStatus::Blocked => {
@@ -535,7 +555,7 @@ fn main_thread(
                   // if we were invited by this user, show accept button
                   if data.lobby_invites.contains(&String::from(peer_username)) {
                     let mut accept_button = Button::new(
-                      Vector2 { x: 70.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Join", 4.0*uiscale
+                      Vector2 { x: 90.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Join", 4.0*uiscale
                     );
                     accept_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
                     if accept_button.was_pressed(&win, &m) {
@@ -1563,6 +1583,7 @@ fn main_thread(
               data.player.character = CHARACTER_LIST[selected_char];
               data.game_server_port = info.port;
               data.server_ip = String::from(CURRENT_SERVER_IP);
+              data.game_server_ip = String::from(CURRENT_SERVER_IP.split(":").collect::<Vec<&str>>()[0]);
               data.game_id = info.game_id;
               data.queued = false;
               data.game_last_nonce = 0;

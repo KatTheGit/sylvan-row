@@ -1,0 +1,8 @@
+{
+  "exclude": {
+    "rules": {
+      "lines": [],
+      "size": []
+    }
+  }
+}

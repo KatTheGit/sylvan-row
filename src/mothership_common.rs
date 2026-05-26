@@ -148,10 +148,19 @@ pub struct ServerToClientPacket {
 }
 
 // OTHER
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug, Eq, Hash, )]
 pub enum GameMode {
   Standard1V1,
   Standard2V2,
+}
+
+impl GameMode {
+  pub fn team_size(&self) -> usize {
+    return match &self {
+      GameMode::Standard1V1 => 1,
+      GameMode::Standard2V2 => 2,
+    }
+  }
 }
 
 /// contains the channel and identifier of a player thread.
