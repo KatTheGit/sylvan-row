@@ -28,7 +28,7 @@ pub mod bevy_graphics;
 pub mod bevy_audio;
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime}};
-use bevy::{color::palettes::css::*, input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*};
+use bevy::{color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*};
 use bevy_immediate::*;
 use bevy_graphics::*;
 use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit, Nonce};
@@ -239,6 +239,8 @@ fn main_thread(
   t: Res<Touches>,
   mut exit: MessageWriter<AppExit>,
   mut settings_sync: ResMut<Settings>,
+  gp_ax: MessageReader<GamepadAxisChangedEvent>,
+  gp_bt: MessageReader<GamepadButtonChangedEvent>,
 ) {
   if let Some(mut data) = data {
     // MAIN LOOP
@@ -1548,6 +1550,8 @@ fn main_thread(
                 Notification::new("Server has disconnected.", 2.0)
               );
               data.current_menu = MenuScreen::Login(0);
+              // fix some random flags
+              data.queued = false;
               return;
             }
             Ok(length) => {
@@ -1992,6 +1996,7 @@ fn main_thread(
                   }
                   // login successful, go to main screen.
                   data.username = data.username_input.buffer.clone();
+                  data.player.username = data.username_input.buffer.clone();
                   data.current_menu = MenuScreen::Main(0);
                   data.packet_queue.push(ClientToServer::GetFriendList);
                   return;
@@ -2174,8 +2179,10 @@ fn main_thread(
     // MARK: Always running:
 
     // draw notifications
+    let mut offset: f32 = 0.0;
     for n_index in 0..data.notifications.len() {
-      data.notifications[n_index].draw(uiscale, tr_anchor, 4.0*uiscale, n_index, 127, &font, &win, &mut com);
+      data.notifications[n_index].draw(uiscale, tr_anchor, 4.0*uiscale, offset, 127, &font, &win, &mut com);
+      offset += data.notifications[n_index].get_y_size(4.0) * uiscale;
     }
     for n_index in 0..data.notifications.len() {
       if data.notifications[n_index].start_time.elapsed().as_secs_f32() > data.notifications[n_index].duration {

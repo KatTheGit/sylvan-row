@@ -97,6 +97,9 @@ pub fn touch_pressed(touches: &Res<Touches>) -> Vec<Vec2> {
   return pressed;
 }
 
+//MARK: Gamepad
+
+
 // MARK: Window
 pub fn set_fullscreen(fullscreen: bool, window: &mut Window) {
   if fullscreen {

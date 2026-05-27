@@ -567,9 +567,9 @@ pub struct Notification {
   pub duration: f32,
 }
 impl Notification {
-  pub fn draw(&self, vh: f32, tr_anchor: Vector2, font_size: f32, offset: usize, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands) {
-    let size: Vector2 = Vector2 { x: 60.0*vh, y: 20.0*vh };
-    let position = tr_anchor + Vector2 {x: -size.x, y: offset as f32 * size.y};
+  pub fn draw(&self, vh: f32, tr_anchor: Vector2, font_size: f32, offset: f32, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands) {
+    let size: Vector2 = Vector2 { x: 60.0*vh, y: self.get_y_size(font_size/vh)*vh };
+    let position = tr_anchor + Vector2 {x: -size.x, y: offset};
     let inner_shrink: f32 = 1.0 * vh;
     draw_rect(Color::Srgba(BLUE), position, size, z, window, commands);
     draw_rect(Color::Srgba(SKY_BLUE), position + Vector2 {x: inner_shrink, y: inner_shrink}, size - Vector2 {x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
@@ -577,6 +577,9 @@ impl Notification {
   }
   pub fn new(text: &str, duration: f32) -> Notification {
     return Notification { start_time: Instant::now(), text: String::from(text), duration }
+  }
+  pub fn get_y_size(&self, font_size: f32) -> f32 {
+    return (self.text.len() as f32 / 30.0 + 1.0) * font_size * 1.5
   }
 }
 
@@ -605,7 +608,7 @@ impl Settings {
       fullscreen: false,
       saved_username: String::new(),
       store_credentials: false,
-      master_volume: 80.0,
+      master_volume: 50.0,
       music_volume: 100.0,
       sfx_self_volume: 100.0,
       sfx_other_volume: 50.0,
