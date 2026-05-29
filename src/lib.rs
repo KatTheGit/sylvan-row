@@ -36,10 +36,10 @@ use maths::*;
 use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
 use ring::hkdf;
-use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}, network::get_ip};
+use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
-const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; // "13.38.240.14:25569";
+const CURRENT_SERVER_IP: &str = "13.38.240.14:25569";
 
 #[bevy_main]
 pub fn main() {
@@ -231,16 +231,16 @@ fn main_thread(
   asset_server: Res<AssetServer>,
   time: Res<Time>,
   mut window: Query<&mut Window>,
-  mut cam: Query<&mut Camera2d>,
+  _cam: Query<&mut Camera2d>,
   k: Res<ButtonInput<KeyCode>>,
   m: Res<ButtonInput<MouseButton>>,
   mut ki: MessageReader<KeyboardInput>,
   mut mw: MessageReader<MouseWheel>,
-  t: Res<Touches>,
+  _t: Res<Touches>,
   mut exit: MessageWriter<AppExit>,
   mut settings_sync: ResMut<Settings>,
-  gp_ax: MessageReader<GamepadAxisChangedEvent>,
-  gp_bt: MessageReader<GamepadButtonChangedEvent>,
+  _gp_ax: MessageReader<GamepadAxisChangedEvent>,
+  _gp_bt: MessageReader<GamepadButtonChangedEvent>,
 ) {
   if let Some(mut data) = data {
     // MAIN LOOP
@@ -481,7 +481,7 @@ fn main_thread(
               Vector2 { x: 35.0 * uiscale, y: 20.0*uiscale },
               Vector2 { x: 50.0 * uiscale, y: 7.0*uiscale },
               5.0*uiscale, 20, uiscale, &font, MENU_Z,
-              &mut com, &win, &m, &k, &mut ki
+              &mut com, &win, &m, &mut ki
             );
             // send fr button
             let mut fr_button = Button::new(tl_anchor + Vector2 {x: 85.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 25.0 * uiscale, y: 7.0*uiscale}, "Add friend", 5.0*uiscale);
@@ -704,16 +704,16 @@ fn main_thread(
                 GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: 2.0, y: 2.0 },
                 _ => Vector2 {x: 1.0, y: 1.0},
               };
-              let shadow_offset: f32 = 5.0;
+              //let shadow_offset: f32 = 5.0;
               
               // Draw shadows on certain objects
-              let shaded_objects = vec![GameObjectType::RaphaelleBullet,
-                GameObjectType::RaphaelleBulletEmpowered,
-                GameObjectType::HernaniBullet,
-                GameObjectType::CynewynnSword,
-                GameObjectType::CenterOrb,
-                GameObjectType::FedyaProjectileRicochet,
-              ];
+              //let shaded_objects = vec![GameObjectType::RaphaelleBullet,
+              //  GameObjectType::RaphaelleBulletEmpowered,
+              //  GameObjectType::HernaniBullet,
+              //  GameObjectType::CynewynnSword,
+              //  GameObjectType::CenterOrb,
+              //  GameObjectType::FedyaProjectileRicochet,
+              //];
               let rotation: Vector2 = match game_object.get_bullet_data_safe() {
                 Ok(data) => {
                   data.direction
@@ -864,11 +864,11 @@ fn main_thread(
           
           // MARK: | | Draw Players
           if !data.player.is_dead {
-            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&data.player.character].clone(), data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
+            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
           }
           for player in data.players.clone() {
             if !player.is_dead {
-              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.character_properties[&player.character].clone(), data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
+              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
             }
           }
 
@@ -929,7 +929,7 @@ fn main_thread(
           }
 
           // MARK: | game input
-          let mut position = data.player.position;
+          let position = data.player.position;
           let mut movement = Vector2::new();
           //let mut aim_direction = Vector2::new();
           //data.player.dashing = false;
@@ -1377,7 +1377,7 @@ fn main_thread(
           let mut valid_msg = true;
           draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
           
-          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &m, &k, &mut ki);
+          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &m, &mut ki);
           
           // cycle through friends
           // get a list of online friends (which we can chat to).
@@ -1729,7 +1729,7 @@ fn main_thread(
         }
 
         if data.paused {
-          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, ESC_MENU_Z, &font, &mut win, &mut com, &m, k);
+          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, ESC_MENU_Z, &font, &mut win, &mut com, &m);
           data.paused = paused;
           if quit {
             // if in menus
@@ -1762,10 +1762,10 @@ fn main_thread(
         let password_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 45.0 * uiscale};
         draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
-        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
+        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &mut ki);
         tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
-        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &k, &mut ki);
+        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &mut ki);
 
         // confirm button
         let mut confirm_button = Button::new(bl_anchor + Vector2 { x: 35.0*uiscale, y: -20.0*uiscale}, Vector2 { x: 20.0*uiscale, y: 5.0*uiscale }, if logging_in {"Login"} else {"Register"}, 4.0*uiscale);
@@ -2285,7 +2285,7 @@ pub enum AudioTrack {
 
 
 #[derive(Debug, Clone)]
-struct BackGroundTile {
+pub struct BackGroundTile {
   position: Vector2,
   object_type: GameObjectType,
 }
@@ -2337,7 +2337,7 @@ fn exit_catcher(mut exit_events: MessageReader<AppExit>, settings: Res<Settings>
         settings.save();
       }
       AppExit::Error(err) => {
-        println!("App exited with an error.");
+        println!("App exited with an error:\n{:?}", err);
       }
     }
   }

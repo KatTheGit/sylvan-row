@@ -123,7 +123,7 @@ impl ClientPlayer {
       current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     }
   }
-  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, character: CharacterProperties, settings: Settings, characters: HashMap<Character, CharacterProperties>, z: i8, commands: &mut Commands, window: &Window) {
+  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, settings: Settings, characters: HashMap<Character, CharacterProperties>, z: i8, commands: &mut Commands, window: &Window) {
     // TODO: animations
     
 
@@ -698,7 +698,7 @@ pub struct CharacterProperties {
 }
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
-  let mut characters: HashMap<Character, CharacterProperties> = HashMap::from([
+  let characters: HashMap<Character, CharacterProperties> = HashMap::from([
     (Character::Dummy, CharacterProperties::from_pkl(include_str!("../assets/characters/dummy/properties.pkl"))),
     (Character::Hernani, CharacterProperties::from_pkl(include_str!("../assets/characters/hernani/properties.pkl"))),
     (Character::Raphaelle, CharacterProperties::from_pkl(include_str!("../assets/characters/raphaelle/properties.pkl"))),
@@ -993,7 +993,7 @@ pub struct AbilityDescription {
 }
 impl CharacterDescription {
   pub fn create_all_descriptions(character_properties: HashMap<Character, CharacterProperties>) -> HashMap<Character, CharacterDescription> {
-    let mut character_descriptions: HashMap<Character, CharacterDescription> = HashMap::from([
+    let character_descriptions: HashMap<Character, CharacterDescription> = HashMap::from([
       (Character::Cynewynn, {
         CharacterDescription {
           primary:   AbilityDescription {

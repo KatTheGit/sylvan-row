@@ -347,24 +347,24 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     _ => "Unkown",
   };
   draw_text(&font, text, Vector2 { x: position.x - size.x * 0.5, y: position.y + size.y * 1.05}, Vector2 { x: size.x*2.0, y: size.y }, BLACK, size.x * 0.25, z, Justify::Center, window, commands);
-  let ability = match ability_index {
-    1 => character_descriptions[&character].primary.clone(),
-    2 => character_descriptions[&character].secondary.clone(),
-    3 => character_descriptions[&character].dash.clone(),
-    4 => character_descriptions[&character].passive.clone(),
-    _ => character_descriptions[&character].passive.clone(),
-  };
-  let text = ability.to_text();
+  //let ability = match ability_index {
+  //  1 => character_descriptions[&character].primary.clone(),
+  //  2 => character_descriptions[&character].secondary.clone(),
+  //  3 => character_descriptions[&character].dash.clone(),
+  //  4 => character_descriptions[&character].passive.clone(),
+  //  _ => character_descriptions[&character].passive.clone(),
+  //};
+  //let text = ability.to_text();
   let mouse_pos = get_mouse_pos(window);
   //tooltip(position, size, &text, Vector2 { x: 55.0 * vh, y: 25.0 * vh }, vh, vw, font, mouse_pos, z+10, window, commands);
   ability_tooltip(ability_index, character, character_descriptions, position, size, uiscale, vh, vw, font, mouse_pos, TOOLTIP_Z, settings, window, commands);
 }
 
 pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Handle<Font>, vh: f32, settings: Settings, z: i8, window: &Window, commands: &mut Commands) -> () {
-  let color = match player.team {
-    Team::Red => RED,
-    Team::Blue => BLUE,
-  };
+  //let color = match player.team {
+  //  Team::Red => RED,
+  //  Team::Blue => BLUE,
+  //};
   let displayed_name =
     if settings.display_char_name_instead {
       player.character.name()
@@ -418,7 +418,7 @@ impl FloatingNumber {
 /// - sfx self
 /// - sfx other
 /// - music
-pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle)*/, z: i8, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, keys: Res<ButtonInput<KeyCode>>) -> (bool, bool) {
+pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle)*/, z: i8, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * uiscale;
@@ -491,9 +491,9 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mu
       settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 49.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (Others)", 5.0*uiscale, uiscale, &mut data.settings.sfx_other_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
       if settings_modified {
         // update volumes.
-        let sfx_self_volume = data.settings.master_volume * data.settings.sfx_self_volume / 100.0;
-        let sfx_other_volume = data.settings.master_volume * data.settings.sfx_other_volume / 100.0;
-        let music_volume = data.settings.master_volume * data.settings.music_volume / 100.0;
+        //let sfx_self_volume = data.settings.master_volume * data.settings.sfx_self_volume / 100.0;
+        //let sfx_other_volume = data.settings.master_volume * data.settings.sfx_other_volume / 100.0;
+        //let music_volume = data.settings.master_volume * data.settings.music_volume / 100.0;
         //audio::set_volume(sfx_self_volume, &mut tracks.0);
         //audio::set_volume(sfx_other_volume, &mut tracks.1);
         //audio::set_volume(music_volume, &mut tracks.2);
@@ -996,10 +996,9 @@ pub fn chatbox(
   mouse_wheel:               &mut MessageReader<MouseWheel>,
   key_events:                &mut MessageReader<KeyboardInput>,
   mouse_buttons:             &Res<ButtonInput<MouseButton>>,
-  key_inputs:                &Res<ButtonInput<KeyCode>>,
 ) {
 
-  let margin: f32 = 1.5 * vh;
+  //let margin: f32 = 1.5 * vh;
 
   let mut message_type = ChatMessageType::Private;
 
@@ -1108,16 +1107,16 @@ pub fn chatbox(
       message_type = ChatMessageType::All;
       displayed_selected_friend = "All";
     }
-    let color = match message_type {
-      ChatMessageType::Administrative => YELLOW,
-      ChatMessageType::Private => PINK,
-      ChatMessageType::Group => GREEN,
-      ChatMessageType::Team => SKY_BLUE,
-      ChatMessageType::All => ORANGE,
-    };
+    //let color = match message_type {
+    //  ChatMessageType::Administrative => YELLOW,
+    //  ChatMessageType::Private => PINK,
+    //  ChatMessageType::Group => GREEN,
+    //  ChatMessageType::Team => SKY_BLUE,
+    //  ChatMessageType::All => ORANGE,
+    //};
     draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), position, size, BLACK, 3.0 * vh, z, Justify::Left, window, commands);
     // draw input textbox
-    chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, 15, vh, font, z, commands, window, mouse_buttons, key_inputs.clone(), key_events);
+    chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, 15, vh, font, z, commands, window, mouse_buttons, key_events);
     
     // Send message if ENTER is pressed and buffer is not empty
     // and a friend can be messaged and input field selected.
@@ -1161,7 +1160,7 @@ pub fn chatbox(
         ChatMessageType::Team => {"Team"},
         ChatMessageType::All => {"All"},
       };
-      let mut formatted_message = format!("[{}] {}: {}", message_type, message.0, message.1);
+      let formatted_message = format!("[{}] {}: {}", message_type, message.0, message.1);
       //while measure_text(&formatted_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width > size.x - margin {
       //  let mut new_message = String::new();
       //  while measure_text(&new_message, TextParams::default().font, (3.0 * vh) as u16, 1.0).width < size.x - margin {
@@ -1185,13 +1184,13 @@ pub fn chatbox(
         if pos_y < position.y {
           break;
         }
-        let color = match formatted_messages[m_index].1 {
-          ChatMessageType::Administrative => YELLOW,
-          ChatMessageType::Private => PINK,
-          ChatMessageType::Group => GREEN,
-          ChatMessageType::Team => SKY_BLUE,
-          ChatMessageType::All => ORANGE,
-        };
+        //let color = match formatted_messages[m_index].1 {
+        //  ChatMessageType::Administrative => YELLOW,
+        //  ChatMessageType::Private => PINK,
+        //  ChatMessageType::Group => GREEN,
+        //  ChatMessageType::Team => SKY_BLUE,
+        //  ChatMessageType::All => ORANGE,
+        //};
         let current_y_size = (formatted_messages[m_index].0.len() / 14) as f32;
         y_offset += current_y_size;
         draw_text(&font, &formatted_messages[m_index].0, Vector2 { x: position.x, y: pos_y }, Vector2 { x: size.x, y: current_y_size }, BLACK, 3.0 * vh, z, Justify::Left, window, commands);
@@ -1221,7 +1220,7 @@ pub struct TextInput {
 impl TextInput {
 
   /// A text input field.
-  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, max_chars: u8, vh: f32, font: &Handle<Font>, z: i8, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, keys: &Res<ButtonInput<KeyCode>>, key_events: &mut MessageReader<KeyboardInput>) {
+  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, max_chars: u8, vh: f32, font: &Handle<Font>, z: i8, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, key_events: &mut MessageReader<KeyboardInput>) {
     let margin: f32 = 1.0 * vh;
     let mouse = get_mouse_pos(window);
     
@@ -1283,7 +1282,7 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vecto
   && mouse_pos.y < position.y + size.y
   && mouse_pos.y > position.y {
     //let lines: Vec<&str> = text.split("\n").collect();
-    let y_offset = 4.0 * vh;
+    //let y_offset = 4.0 * vh;
 
     let visibility_x_offset: f32 = if mouse_pos.x > 60.0 * vw {
       - tooltip_size.x - 10.0
@@ -1310,7 +1309,7 @@ pub fn ability_tooltip(ability: usize, character: Character, character_descripti
   && mouse_pos.y < position.y + size.y
   && mouse_pos.y > position.y {
     //let lines: Vec<&str> = text.split("\n").collect();
-    let y_offset = 4.0 * uiscale;
+    //let y_offset = 4.0 * uiscale;
 
     let tooltip_size = Vector2 { x: 65.0 * uiscale, y: 25.0 * uiscale };
 
