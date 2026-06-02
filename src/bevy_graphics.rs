@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::time::Instant;
+use crate::bevy_audio::set_track_volume;
 use crate::database::FriendShipStatus;
 use crate::gamedata::Camera;
 use crate::mothership_common::{ChatMessageType, ClientToServerPacket, ClientToServer};
-use crate::{gamedata::*, GameData};
+use crate::{AudioParams, AudioTrack, GameData, gamedata::*};
 use crate::maths::Vector2;
 use crate::bevy_immediate::*;
 use bevy::color::palettes::css::*;
@@ -418,7 +419,7 @@ impl FloatingNumber {
 /// - sfx self
 /// - sfx other
 /// - music
-pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mut tracks: (&mut TrackHandle, &mut TrackHandle, &mut TrackHandle)*/, z: i8, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> (bool, bool) {
+pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audio_sinks: &mut AudioParams, z: i8, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * uiscale;
@@ -490,6 +491,9 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData/*, mu
       settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (You)", 5.0*uiscale, uiscale, &mut data.settings.sfx_self_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
       settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 49.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (Others)", 5.0*uiscale, uiscale, &mut data.settings.sfx_other_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
       if settings_modified {
+        set_track_volume(audio_sinks, AudioTrack::Music, (data.settings.master_volume * data.settings.music_volume) / (100.0 * 100.0));
+        set_track_volume(audio_sinks, AudioTrack::SoundEffectOther, (data.settings.master_volume * data.settings.sfx_other_volume) / (100.0 * 100.0));
+        set_track_volume(audio_sinks, AudioTrack::SoundEffectSelf, (data.settings.master_volume * data.settings.sfx_self_volume) / (100.0 * 100.0));
         // update volumes.
         //let sfx_self_volume = data.settings.master_volume * data.settings.sfx_self_volume / 100.0;
         //let sfx_other_volume = data.settings.master_volume * data.settings.sfx_other_volume / 100.0;

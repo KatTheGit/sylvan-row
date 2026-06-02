@@ -391,7 +391,6 @@ async fn main() {
 
                     {
                       // Find players to match.
-                      // I'm not smart enough to make this modular. Hardcoded it is!
                       let mut players = local_players.lock().unwrap();
 
                       let own_index = from_user(&username, players.clone()).expect("oops");
@@ -401,10 +400,6 @@ async fn main() {
                       players[own_index].queued_gamemodes.truncate(2);
 
                       players[own_index].selected_character = data.character;
-                      
-                      //let mut queued_1v1: Vec<usize> = Vec::new();
-                      //let mut queued_2v2_solo: Vec<usize> = Vec::new();
-                      //let mut queued_2v2_duo: Vec<usize> = Vec::new();
 
                       let mut queues: HashMap<GameMode, Vec<Vec<usize>>> = HashMap::from(
                         [
@@ -412,7 +407,6 @@ async fn main() {
                           (GameMode::Standard2V2, (Vec::new())),
                         ]
                       );
-
 
                       if !players[own_index].queued_with.is_empty() {
                         let mut party_leader_index = own_index;
@@ -458,13 +452,6 @@ async fn main() {
                           
                           // if solo queueing
                           if players[player_index].queued_with.is_empty() {
-                            //if players[player_index].queued_gamemodes.contains(&GameMode::Standard1V1) {
-                            //  queued_1v1.push(player_index);
-                            //  
-                            //}
-                            //if players[player_index].queued_gamemodes.contains(&GameMode::Standard2V2) {
-                            //  queued_2v2_solo.push(player_index);
-                            //}
                             for gamemode in players[player_index].queued_gamemodes.clone() {
                               queues.get_mut(&gamemode).unwrap().push(vec![player_index]);
                             }
@@ -500,24 +487,6 @@ async fn main() {
                                   lobby.push(lobby_owner_index);
                                   queues.get_mut(&queued_gamemode).unwrap().push(lobby);
                                 }
-                                //// if there are more than 2 players, put them in a private game.
-                                //// only needs to be bigger than 1 since party owner is not included
-                                //if lobby_players.len() > 1 {
-                                //  for player in lobby_players {
-                                //    players_to_match.push(player);
-                                //    players[player].queued = false;
-                                //  }
-                                //  players_to_match.push(lobby_owner_index);
-                                //  continue;
-                                //}
-                                //// standard matchmaking
-                                //else {
-                                //  queued_2v2_duo.push(lobby_owner_index);
-                                //  queued_2v2_duo.push(lobby_players[0]);
-                                //}
-
-                                
-
                               }
                             }
                           }

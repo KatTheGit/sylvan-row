@@ -40,8 +40,6 @@ On Linux, you need to additionally install the following packages to compile the
 - libalsa-ocaml-dev
 - libx11-dev
 
-NOTE: Not sure if this is still true.
-
 ## Other info
 
 There is no documentation for the code yet, as a lot of it is in a temporary state.
@@ -53,7 +51,6 @@ The GDD is in `assets/README.md`.
 - [ ] programming
   - [ ] Pre-game screen
   - [ ] Post-game screen
-  - [ ] Variable matchmaker
   - [ ] gamemode
     - [ ] capture point
     - [ ] ui
@@ -82,7 +79,7 @@ The GDD is in `assets/README.md`.
 
 ### To do 2 electric boogaloo
 - [ ] Gamemodes
-- [ ] Matchmaker
+- [x] Matchmaker
 - [ ] Client gamemode selection
 - [ ] Gamemode-specific game logic
 - [ ] Maps
@@ -117,41 +114,3 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
   - Assault Android Cactus
   - Battlerite
   - League of Legends
-
-
-
-
-
-algorithm for a 3v3 matchmaker
-
-
-find highest group size -> find a group to fill gap
-
-
-check if every pair can be made into a team. also check individuals.
-
-check every triplet, pair and unit.
-
-pick an element. see if a team can be made with another element or alone. remove matched elements. do twice.
-
-pick an element. see if a team can be made with the next element. if not, next n-1 elements. if not
-
-pick and element. if good, send it. else, see if the next element can be added. if yes add it. else next.
-
-1 2 2 3 2
-
-3 2 1
-
-1 1 2 1 1
-
-3 3
-
-
-for each element:
-  if size is team size:
-    we got a team
-  for each other element:
-    if can be added:
-      add it to a variable
-    if variable's stored size is team size:
-      we got a team

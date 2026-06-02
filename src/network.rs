@@ -152,9 +152,12 @@ pub fn tcp_decode_decrypt<T: serde::de::DeserializeOwned>(mut data: Vec<u8>, key
 //  
 //}
 
+//use directories::BaseDirs;
+
 pub fn get_ip() -> String {
   let mut server_ip: String;
   let ip_file_name = "moba_ip.txt";
+  //let base_dir = BaseDirs::new().expect("oops").home_dir();
   let ip_file = File::open(ip_file_name);
   let default_ip: String = format!("{}:{}", DEFAULT_SERVER_IP, SERVER_PORT);
   match ip_file {

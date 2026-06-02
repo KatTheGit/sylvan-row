@@ -31,6 +31,7 @@ use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, U
 use bevy::{color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*};
 use bevy_immediate::*;
 use bevy_graphics::*;
+use bevy_audio::*;
 use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit, Nonce};
 use maths::*;
 use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
@@ -130,6 +131,7 @@ pub struct GameData {
   pub game_object_animations: HashMap<GameObjectType, AnimationState>,
   pub background_tiles: Vec<BackGroundTile>,
   pub floating_numbers: Vec<FloatingNumber>,
+  pub game_startup: bool,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -221,26 +223,54 @@ impl Default for GameData {
       game_object_animations: HashMap::new(),
       background_tiles: Vec::new(),
       floating_numbers: Vec::new(),
+      game_startup: true,
     }
   }
 }
 
+use bevy::ecs::system::SystemParam;
+
+#[derive(SystemParam)]
+struct InputParams<'w, 's> {
+  k: Res<'w, ButtonInput<KeyCode>>,
+  m: Res<'w, ButtonInput<MouseButton>>,
+  ki: MessageReader<'w, 's, KeyboardInput>,
+  mw: MessageReader<'w, 's, MouseWheel>,
+  _t: Res<'w, Touches>,
+  _gp_ax: MessageReader<'w, 's, GamepadAxisChangedEvent>,
+  _gp_bt: MessageReader<'w, 's, GamepadButtonChangedEvent>,
+}
+#[derive(SystemParam)]
+pub struct AudioParams<'w, 's> {
+  music: Query<'w, 's, &'static mut AudioSink, (With<MusicChannel>, Without<SfxChannelSelf>, Without<SfxChannelOther>)>,
+  sfx_self: Query<'w, 's, &'static mut AudioSink, (With<SfxChannelSelf>, Without<MusicChannel>, Without<SfxChannelOther>)>,
+  sfx_other: Query<'w, 's, &'static mut AudioSink, (With<SfxChannelOther>, Without<SfxChannelSelf>, Without<MusicChannel>)>,
+  entity_music: Query<'w, 's, Entity, (With<MusicChannel>, Without<SfxChannelSelf>, Without<SfxChannelOther>)>,
+  entity_sfx_self: Query<'w, 's, Entity, (With<SfxChannelSelf>, Without<MusicChannel>, Without<SfxChannelOther>)>,
+  entity_sfx_other: Query<'w, 's, Entity, (With<SfxChannelOther>, Without<SfxChannelSelf>, Without<MusicChannel>)>,
+}
+
 fn main_thread(
+  mut input: InputParams,
   mut com: Commands,
   data: Option<ResMut<GameData>>,
   asset_server: Res<AssetServer>,
   time: Res<Time>,
   mut window: Query<&mut Window>,
   _cam: Query<&mut Camera2d>,
-  k: Res<ButtonInput<KeyCode>>,
-  m: Res<ButtonInput<MouseButton>>,
-  mut ki: MessageReader<KeyboardInput>,
-  mut mw: MessageReader<MouseWheel>,
-  _t: Res<Touches>,
+  //k: Res<ButtonInput<KeyCode>>,
+  //m: Res<ButtonInput<MouseButton>>,
+  //mut ki: MessageReader<KeyboardInput>,
+ // mut mw: MessageReader<MouseWheel>,
+  //_t: Res<Touches>,
   mut exit: MessageWriter<AppExit>,
   mut settings_sync: ResMut<Settings>,
-  _gp_ax: MessageReader<GamepadAxisChangedEvent>,
-  _gp_bt: MessageReader<GamepadButtonChangedEvent>,
+  mut audio_sinks: AudioParams,
+  //_gp_ax: MessageReader<GamepadAxisChangedEvent>,
+  //_gp_bt: MessageReader<GamepadButtonChangedEvent>,
+  //mut music_sinks: Query<&mut AudioSink, With<MusicChannel>>,
+  //mut sfx_self_sinks: Query<&mut AudioSink, With<SfxChannelSelf>>,
+  //mut sfx_other_sinks: Query<&mut AudioSink, With<SfxChannelOther>>,
 ) {
   if let Some(mut data) = data {
     // MAIN LOOP
@@ -286,19 +316,22 @@ fn main_thread(
 
         // menu
         if mode != 2 {
+          // reset client match startup flag
+          data.game_startup = true;
+
           clear_background(WHITE, &win, &mut com);
           data.main_tabs.update_size(tl_anchor + Vector2 { x: 5.0 * vw, y: 5.0 * uiscale}, Vector2 { x: 90.0*vw, y: 8.0*uiscale }, 6.0*uiscale);
-          data.main_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &m);
-          
+          data.main_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &input.m);
+
           // play
           if data.main_tabs.selected_tab() == 0 {
             let selected_char = data.heroes_tabs.selected_tab();
             if !data.queued {
-              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1, MENU_Z, &font, &win, &mut com, &m);
-              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2, MENU_Z, &font, &win, &mut com, &m);
+              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1, MENU_Z, &font, &win, &mut com, &input.m);
+              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2, MENU_Z, &font, &win, &mut com, &input.m);
             } if data.queued {
-              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1.clone(), MENU_Z, &font, &win, &mut com, &m); // clone to disable writes
-              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2.clone(), MENU_Z, &font, &win, &mut com, &m);
+              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1.clone(), MENU_Z, &font, &win, &mut com, &input.m); // clone to disable writes
+              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2.clone(), MENU_Z, &font, &win, &mut com, &input.m);
             }
 
             let mut play_button = Button::new(br_anchor - Vector2 { x: 30.0*uiscale, y: 15.0*uiscale }, Vector2 { x: 25.0*uiscale, y: 13.0*uiscale }, "Play", 8.0*uiscale);
@@ -306,7 +339,7 @@ fn main_thread(
             if data.queued {
               draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             }
-            if play_button.was_pressed(&win, &m) {
+            if play_button.was_pressed(&win, &input.m) {
               data.queued = !data.queued;
               if data.queued {
                 let mut selected_gamemodes: Vec<GameMode> = Vec::new();
@@ -359,7 +392,7 @@ fn main_thread(
             if lobby.len() > 1 {
               let mut leave_button = Button::new(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh);
               leave_button.draw(vh, ui_clickable, MENU_Z, &font, &win, &mut com);
-              if leave_button.was_pressed(&win, &m) {
+              if leave_button.was_pressed(&win, &input.m) {
                 data.packet_queue.push(
                   ClientToServer::LobbyLeave,
                 );
@@ -374,7 +407,7 @@ fn main_thread(
           // heroes
           if data.main_tabs.selected_tab() == 1 {
             data.heroes_tabs.update_size(bl_anchor + Vector2 { x: 5.0 * vw, y: - 20.0 * uiscale}, Vector2 { x: 90.0*vw, y: 15.0*uiscale }, 5.0*uiscale);
-            data.heroes_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &m);
+            data.heroes_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &input.m);
 
             let selected = data.heroes_tabs.selected_tab();
             let selected_character = CHARACTER_LIST[selected];
@@ -393,7 +426,7 @@ fn main_thread(
             // practice range
             let mut button = Button::new(tr_anchor + Vector2 { x: -30.0*uiscale, y: 50.0*uiscale }, Vector2 { x: 20.0*uiscale, y: 10.0*uiscale }, "Practice", 4.0*uiscale);
             button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if button.was_released(&win, &m) {
+            if button.was_released(&win, &input.m) {
               data.cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
               let game_port = get_random_port();
               let practice_game_port = game_port.clone();
@@ -461,7 +494,7 @@ fn main_thread(
             // refresh button
             let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
             refresh_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if refresh_button.was_released(&win, &m) {
+            if refresh_button.was_released(&win, &input.m) {
               data.packet_queue.push(
                 ClientToServer::PlayerDataRequest
               )
@@ -481,12 +514,12 @@ fn main_thread(
               Vector2 { x: 35.0 * uiscale, y: 20.0*uiscale },
               Vector2 { x: 50.0 * uiscale, y: 7.0*uiscale },
               5.0*uiscale, 20, uiscale, &font, MENU_Z,
-              &mut com, &win, &m, &mut ki
+              &mut com, &win, &input.m, &mut input.ki
             );
             // send fr button
             let mut fr_button = Button::new(tl_anchor + Vector2 {x: 85.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 25.0 * uiscale, y: 7.0*uiscale}, "Add friend", 5.0*uiscale);
             fr_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if fr_button.was_released(&win, &m) {
+            if fr_button.was_released(&win, &input.m) {
               let recipient = data.friend_request_input.buffer.clone();
               data.packet_queue.push(
                 ClientToServer::SendFriendRequest(recipient),
@@ -497,7 +530,7 @@ fn main_thread(
             // refresh button
             let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
             refresh_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if refresh_button.was_released(&win, &m) {
+            if refresh_button.was_released(&win, &input.m) {
               data.packet_queue.push(
                 ClientToServer::GetFriendList,
               )
@@ -529,7 +562,7 @@ fn main_thread(
                     status = "Accept friend?";
                     let mut accept_button = Button::new(Vector2 { x: 70.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Accept", 4.0*uiscale);
                     accept_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-                    if accept_button.was_pressed(&win, &m) {
+                    if accept_button.was_pressed(&win, &input.m) {
                       // Accept the friend request by sending a friend request to this user, which the
                       // server processes as an accept.
                       data.packet_queue.push(
@@ -560,7 +593,7 @@ fn main_thread(
                       Vector2 { x: 90.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Join", 4.0*uiscale
                     );
                     accept_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-                    if accept_button.was_pressed(&win, &m) {
+                    if accept_button.was_pressed(&win, &input.m) {
                       data.packet_queue.push(
                         ClientToServer::LobbyInviteAccept(String::from(peer_username)),
                       );
@@ -574,7 +607,7 @@ fn main_thread(
                         Vector2 { x: 90.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Invite", 4.0*uiscale
                       );
                       invite_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-                      if invite_button.was_pressed(&win, &m) {
+                      if invite_button.was_pressed(&win, &input.m) {
                         data.packet_queue.push(
                           ClientToServer::LobbyInvite(String::from(peer_username)),
                         );
@@ -593,6 +626,16 @@ fn main_thread(
         }
         // MARK: Game
         if mode == 1 || mode == 2 {
+
+          // game startup
+          if data.game_startup {
+
+            // TEMPORARY
+            let music_vol = (data.settings.master_volume * data.settings.music_volume) / (100.0 * 100.0);
+            play_sound("audio/music/1.ogg".to_string(), &mut com, asset_server.clone(), music_vol, AudioTrack::Music);
+            data.game_startup = false;
+          }
+
 
           // MARK: | Interpolation
           // for now this is just simple linear interpolation, no shenanigans yet.
@@ -943,7 +986,7 @@ fn main_thread(
             {
               let device_state: DeviceState = DeviceState::new();
               let keys: Vec<Keycode> = device_state.get_keys();
-              let mouse: Vec<MouseButton> = get_mouse_down(&m);
+              let mouse: Vec<MouseButton> = get_mouse_down(&input.m);
               if !keys.is_empty() {
                 movement = Vector2::new();
                 //keyboard_mode = true; // since we used the keyboard
@@ -1067,7 +1110,7 @@ fn main_thread(
 
           // CAMERA ZOOM
           if ui_clickable {
-            let scrollwheel = get_mouse_wheel(&mut mw);
+            let scrollwheel = get_mouse_wheel(&mut input.mw);
             data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 4.0 * delta_time).clamp(4.0, 16.0);
           }
 
@@ -1322,7 +1365,7 @@ fn main_thread(
 
               let volume = raw_volume * distance_volume_modifier;
               //println!("{:?}", volume);
-              bevy_audio::play_sound(sound_path.to_string(), &mut com, asset_server.clone(), volume);
+              bevy_audio::play_sound(sound_path.to_string(), &mut com, asset_server.clone(), volume, track);
             }
           }
           // send our packet, at a lower frequency.
@@ -1377,7 +1420,7 @@ fn main_thread(
           let mut valid_msg = true;
           draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
           
-          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &m, &mut ki);
+          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &input.m, &mut input.ki);
           
           // cycle through friends
           // get a list of online friends (which we can chat to).
@@ -1394,7 +1437,7 @@ fn main_thread(
           }
           // cycle through friends if TAB is pressed
           if online_friends.len() >= 2 {
-            if get_keys_pressed(&k).contains(&KeyCode::Tab) {
+            if get_keys_pressed(&input.k).contains(&KeyCode::Tab) {
               data.selected_friend += 1;
               if data.selected_friend >= online_friends.len() {
                 data.selected_friend = 0;
@@ -1440,7 +1483,7 @@ fn main_thread(
 
 
           // message sending.
-          if get_keys_pressed(&k).contains(&KeyCode::Enter) {
+          if get_keys_pressed(&input.k).contains(&KeyCode::Enter) {
             if !data.chat_input.buffer.is_empty() {
               // send message
               let msg = data.chat_input.buffer.clone();
@@ -1532,7 +1575,7 @@ fn main_thread(
           draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
         }
 
-        let scrollwheel = get_mouse_wheel(&mut mw);
+        let scrollwheel = get_mouse_wheel(&mut input.mw);
         if data.chat_open {
           data.chat_scroll = (data.chat_scroll + scrollwheel.y * 300.0 * uiscale * delta_time).clamp(0.0, 10000.0*uiscale);
         }
@@ -1709,7 +1752,7 @@ fn main_thread(
         data.nonce = nonce;
 
         // settings screen
-        if get_keys_pressed(&k).contains(&KeyCode::Escape) {
+        if get_keys_pressed(&input.k).contains(&KeyCode::Escape) {
           if data.chat_open {
             data.chat_open = false;
             data.chat_input.buffer = String::new();
@@ -1721,7 +1764,7 @@ fn main_thread(
             }
           }
         }
-        if get_keys_pressed(&k).contains(&KeyCode::Enter) {
+        if get_keys_pressed(&input.k).contains(&KeyCode::Enter) {
           data.chat_open = !data.chat_open;
           data.chat_scroll = 0.0;
           data.chat_input.selected = data.chat_open;
@@ -1729,7 +1772,7 @@ fn main_thread(
         }
 
         if data.paused {
-          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, ESC_MENU_Z, &font, &mut win, &mut com, &m);
+          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, &mut audio_sinks, ESC_MENU_Z, &font, &mut win, &mut com, &input.m);
           data.paused = paused;
           if quit {
             // if in menus
@@ -1739,6 +1782,7 @@ fn main_thread(
             // if in-game
             else {
               data.current_menu = MenuScreen::Main(0);
+              stop_sounds_in_track(&mut audio_sinks, AudioTrack::Music, &mut com);
             }
           }
         }
@@ -1750,7 +1794,7 @@ fn main_thread(
 
         // login / register tabs
         data.tabs_login.update_size(tl_anchor + Vector2 { x: 35.0 * uiscale, y: 20.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 6.0*uiscale }, 4.0*uiscale);
-        data.tabs_login.draw_and_process(uiscale, true, 0, &font, &win, &mut com, &m);
+        data.tabs_login.draw_and_process(uiscale, true, 0, &font, &win, &mut com, &input.m);
         let logging_in = match data.tabs_login.selected_tab() {
           0 => {true}
           _ => {false}
@@ -1762,10 +1806,10 @@ fn main_thread(
         let password_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 45.0 * uiscale};
         draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
-        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &mut ki);
+        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
         tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
-        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &m, &mut ki);
+        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
 
         // confirm button
         let mut confirm_button = Button::new(bl_anchor + Vector2 { x: 35.0*uiscale, y: -20.0*uiscale}, Vector2 { x: 20.0*uiscale, y: 5.0*uiscale }, if logging_in {"Login"} else {"Register"}, 4.0*uiscale);
@@ -1774,7 +1818,7 @@ fn main_thread(
         // remember me checkbox
         let credentials_checkbox_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale};
         let credentials_checkbox_size = 5.0 * uiscale;
-        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0, &font, &win, &mut com, &m);
+        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0, &font, &win, &mut com, &input.m);
         if credentials_changed {
           data.settings.save();
         }
@@ -1783,7 +1827,7 @@ fn main_thread(
         // offline mode
         let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 33.0 * uiscale,y: 11.0 * uiscale }, Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, "Play offline", 4.0*uiscale);
         offline_mode_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
-        if offline_mode_button.was_released(&win, &m) {
+        if offline_mode_button.was_released(&win, &input.m) {
           data.current_menu = MenuScreen::Main(0);
           data.server_ip = String::from("127.0.0.1:25569")
         }
@@ -1796,7 +1840,7 @@ fn main_thread(
         match login_step {
           // MARK: Login/Register 0
           0 => {
-            if confirm_button.was_released(&win, &m) {
+            if confirm_button.was_released(&win, &input.m) {
               // check credential validity.
               let mut credentials_valid = true;
               if !valid_password(password.clone()) {
