@@ -150,8 +150,12 @@ pub struct ServerToClientPacket {
 // OTHER
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug, Eq, Hash, )]
 pub enum GameMode {
+  /// 1V1 fight to the death.
   Standard1V1,
+  /// 2V2 fight to the death.
   Standard2V2,
+  /// Capture the Point
+  Ctp2V2,
 }
 
 impl GameMode {
@@ -159,6 +163,7 @@ impl GameMode {
     return match &self {
       GameMode::Standard1V1 => 1,
       GameMode::Standard2V2 => 2,
+      GameMode::Ctp2V2 => 2,
     }
   }
 }

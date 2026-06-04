@@ -40,7 +40,7 @@ use ring::hkdf;
 use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
-const CURRENT_SERVER_IP: &str = "13.38.240.14:25569";
+const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; // "13.38.240.14:25569";
 
 #[bevy_main]
 pub fn main() {
@@ -1521,11 +1521,11 @@ fn main_thread(
         // chat messages
         let chat_stay_open_time = 2.0;
         if data.chat_open || data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time && !data.paused {
-          let font_size = 4.0 * uiscale;
+          let font_size = 2.5 * uiscale;
           let y_step = font_size + 1.0 * uiscale;
           let mut current_y_step = 0;
           // in characters
-          let max_line_len = 20;
+          let max_line_len = 33;
 
           let mut messages = data.recv_messages_buffer.clone();
           messages.reverse();
@@ -1535,7 +1535,7 @@ fn main_thread(
             let message_type = recv_message.2;
 
             let mut text: String = format!("[{}] {}", sender, message);
-            let line_count = text.len() / max_line_len + 1;
+            let line_count = (text.len() as f32 / max_line_len as f32).ceil() as usize;
 
             let color: Srgba = match message_type {
               ChatMessageType::Administrative => YELLOW,
@@ -1572,7 +1572,7 @@ fn main_thread(
 
         // chat bg
         if data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time && !data.chat_open{
-          draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
+          draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }), chatbox_pos, chatbox_size + Vector2 {x: 0.0, y: - 9.0 * uiscale}, CHAT_Z, &win, &mut com);
         }
 
         let scrollwheel = get_mouse_wheel(&mut input.mw);
