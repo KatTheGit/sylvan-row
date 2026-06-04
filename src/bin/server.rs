@@ -54,6 +54,14 @@ async fn main() {
   let players: Vec<PlayerInfo> = Vec::new();
   // Arc allows for shared access, and Mutex makes it mutually exclusive.
   let players = Arc::new(Mutex::new(players));
+
+  // Current set of gamemodes proposed by the matchmaker.
+  let gamemode_rotation: Vec<GameMode> = vec![
+    GameMode::Standard1V1,
+    GameMode::Standard2V2,
+    GameMode::Ctp2V2,
+  ];
+  let gamemode_rotation = Arc::new(Mutex::new(gamemode_rotation));
   
   // Contains all threads running game servers
   let fleet: Vec<JoinHandle<()>> = Vec::new();
@@ -84,8 +92,9 @@ async fn main() {
     let local_players = Arc::clone(&players);
     let local_fleet = Arc::clone(&fleet);
     let local_database = Arc::clone(&database);
-    let mut logged_in: bool = false;
     let local_server_setup = Arc::clone(&server_setup);
+    let local_gamemode_rotation = Arc::clone(&gamemode_rotation);
+    let mut logged_in: bool = false;
     tokio::spawn(async move {
       // Username the client claims to be.
       let mut username: String = String::from("");
@@ -495,7 +504,6 @@ async fn main() {
                       
                       // match players
                       
-                      // println!("1v1{:?}, 2v2s{:?}, 2v2d{:?}", queued_1v1, queued_2v2_solo, queued_2v2_duo);
                       println!("{:?}", queues);
                       
                       
@@ -543,28 +551,6 @@ async fn main() {
                                   queued_players = current_queued_players;
                                   break;
                                 }
-                                //// remove players that were matched.
-                                //if current_team.len() == team_size {
-                                //  for player in current_team.clone() {
-                                //    matched_players.push(player);
-                                //    let mut indices_to_remove: Vec<usize> = Vec::new();
-                                //    for queued_party_index in 0..queued_players.len() {
-                                //      if queued_players[queued_party_index].contains(&player) {
-                                //        indices_to_remove.push(queued_party_index)
-                                //      }
-                                //    }
-                                //    println!("current team: {:?}", current_team);
-                                //    println!("trying to remove: {:?}", indices_to_remove);
-                                //    let mut new_queued_players = Vec::new();
-                                //    for party_index in 0..queued_players.len() {
-                                //      if !indices_to_remove.contains(&party_index) {
-                                //        new_queued_players.push(queued_players[party_index].clone());
-                                //      }
-                                //    }
-                                //    queued_players = new_queued_players;
-                                //  }
-                                //  break;
-                                //}
                               }
                             }
                             // team successfully created
@@ -584,67 +570,7 @@ async fn main() {
                           break;
                         }
                       }
-                      
 
-
-                      //// 1v1 matchmaking
-                      //let player_count_1v1 = if MATCHMAKE_ALONE {1} else {2};
-                      //if queued_1v1.len() >= player_count_1v1 {
-                        //  for _ in 0..player_count_1v1 {
-                          //    // unset queued status
-                          //    players[queued_1v1[0]].queued = false;
-                          //    players_to_match.push(queued_1v1[0]);
-                          //    queued_1v1.remove(0);
-                          //    continue;
-                          //  }
-                          //}
-                          //
-                          //// 2v2 matchmaking
-                          //
-                          //// soloq vs soloq
-                          //if queued_2v2_solo.len() >= 4 {
-                            //  for _ in 0..4 {
-                              //    players[queued_2v2_solo[0]].queued = false;
-                      //    players_to_match.push(queued_2v2_solo[0]);
-                      //    queued_2v2_solo.remove(0);
-                      //  }
-                      //  continue;
-                      //}
-                      //// duoq vs duoq
-                      //if queued_2v2_duo.len() >= 4 {
-                      //  for _ in 0..4 {
-                      //    players[queued_2v2_duo[0]].queued = false;
-                      //    players_to_match.push(queued_2v2_duo[0]);
-                      //    queued_2v2_duo.remove(0);
-                      //    continue;
-                      //  }
-                      //}
-                      //// duoq vs soloq
-                      //if queued_2v2_duo.len() >= 2 && queued_2v2_solo.len() >= 2 {
-                      //  // first the 2 solo players
-                      //  for _ in 0..2 {
-                      //    players[queued_2v2_solo[0]].queued = false;
-                      //    players_to_match.push(queued_2v2_solo[0]);
-                      //    queued_2v2_solo.remove(0);
-                      //  }
-                      //  // then the duo
-                      //  for _ in 0..2 {
-                      //    players[queued_2v2_duo[0]].queued = false;
-                      //    players_to_match.push(queued_2v2_duo[0]);
-                      //    queued_2v2_duo.remove(0);
-                      //  }
-                      //  continue;
-                      //}
-                      //// assigm teams
-                      //let mut team_counter: usize = 0;
-                      //for player_index in players_to_match.clone() {
-                      //  if team_counter < (players_to_match.len() / 2) {
-                      //    players[player_index].assigned_team = Team::Red;
-                      //    println!("yo");
-                      //    team_counter += 1;
-                      //  }
-                      //}
-                      // for each player, store who they're in this match with.
                       let mut team_counter = 0;
                       for player_index in players_to_match.clone() {
                         if team_counter < (players_to_match.len() / 2) {
