@@ -11,6 +11,8 @@ pub struct ClientToServerPacket {
 pub enum ClientToServer {
   MatchRequest(MatchRequestData),
   MatchRequestCancel,
+  /// User requests information about current gamemode rotation.
+  GameModeDataRequest,
   /// User requests their statistics
   PlayerDataRequest,
   /// User requests a list of friends/pending/blocked players
@@ -69,6 +71,7 @@ pub enum ServerToClient {
   MatchEnded(MatchEndResult),
   /// The game server crashed.
   GameServerCrashApology,
+  GameModeDataResponse(Vec<GameMode>),
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchEndResult {
@@ -136,6 +139,8 @@ pub enum RefusalReason {
   AlreadyInPary,
   /// The selected chat channel is not valid.
   InvalidChannel,
+  /// An invalid gamemode was requested for matchmaking.
+  InvalidGameModeQueued,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
@@ -165,6 +170,13 @@ impl GameMode {
       GameMode::Standard2V2 => 2,
       GameMode::Ctp2V2 => 2,
     }
+  }
+  pub fn get_name(&self) -> String {
+    return match &self {
+      GameMode::Standard1V1 => "Elimination 1V1",
+      GameMode::Standard2V2 => "Elimination 2V2",
+      GameMode::Ctp2V2 => "Capture the Point 2V2",
+    }.to_string()
   }
 }
 

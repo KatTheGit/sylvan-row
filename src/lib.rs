@@ -107,6 +107,7 @@ pub struct GameData {
   pub chat_open: bool,
   pub chat_scroll: f32,
   pub selected_friend: usize,
+  pub gamemode_rotation: Vec<(GameMode, bool)>,
 
   pub server_ip: String,
   pub game_server_ip: String,
@@ -200,6 +201,7 @@ impl Default for GameData {
       chat_open: false,
       chat_scroll: 0.0,
       selected_friend: 0,
+      gamemode_rotation: Vec::new(),
 
       server_ip: String::from(CURRENT_SERVER_IP),
       game_server_ip: String::from("13.38.240.14"),
@@ -326,15 +328,24 @@ fn main_thread(
           // play
           if data.main_tabs.selected_tab() == 0 {
             let selected_char = data.heroes_tabs.selected_tab();
-            if !data.queued {
-              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1, MENU_Z, &font, &win, &mut com, &input.m);
-              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2, MENU_Z, &font, &win, &mut com, &input.m);
-            } if data.queued {
-              checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1.clone(), MENU_Z, &font, &win, &mut com, &input.m); // clone to disable writes
-              checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2.clone(), MENU_Z, &font, &win, &mut com, &input.m);
+            //if !data.queued {
+            //  checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1, MENU_Z, &font, &win, &mut com, &input.m);
+            //  checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2, MENU_Z, &font, &win, &mut com, &input.m);
+            //} if data.queued {
+            //  checkbox(br_anchor - Vector2 {x: 30.0*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "1v1", 4.0*uiscale, uiscale, &mut data.checkbox_1v1.clone(), MENU_Z, &font, &win, &mut com, &input.m); // clone to disable writes
+            //  checkbox(br_anchor - Vector2 {x: 17.5*uiscale, y: 21.0*uiscale }, 4.0*uiscale, "2v2", 4.0*uiscale, uiscale, &mut data.checkbox_2v2.clone(), MENU_Z, &font, &win, &mut com, &input.m);
+            //}
+            let checkbox_pos = br_anchor - Vector2 {x: 45.0*uiscale, y: 21.0*uiscale };
+            let checkbox_y_step = - 5.0 * uiscale;
+            let mut checkbox_y_current_step = 0.0;
+            let queued = data.queued.clone();
+            for (gamemode, selected) in &mut data.gamemode_rotation {
+              let mut selected_copy = selected.clone();
+              checkbox(checkbox_pos + Vector2 {x: 0.0, y: checkbox_y_current_step * checkbox_y_step}, 4.0*uiscale, &gamemode.get_name(), 3.8*uiscale, uiscale, if queued {&mut selected_copy} else {selected}, MENU_Z, &font, &win, &mut com, &input.m);
+              checkbox_y_current_step += 1.0;
             }
 
-            let mut play_button = Button::new(br_anchor - Vector2 { x: 30.0*uiscale, y: 15.0*uiscale }, Vector2 { x: 25.0*uiscale, y: 13.0*uiscale }, "Play", 8.0*uiscale);
+            let mut play_button = Button::new(br_anchor - Vector2 { x: 45.0*uiscale, y: 15.0*uiscale }, Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, if data.queued {"Cancel"} else {"Play"}, 8.0*uiscale);
             play_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
             if data.queued {
               draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
@@ -343,8 +354,11 @@ fn main_thread(
               data.queued = !data.queued;
               if data.queued {
                 let mut selected_gamemodes: Vec<GameMode> = Vec::new();
-                if data.checkbox_1v1 {selected_gamemodes.push(GameMode::Standard1V1)}
-                if data.checkbox_2v2 {selected_gamemodes.push(GameMode::Standard2V2)}
+                for (gamemode, selected) in data.gamemode_rotation.clone() {
+                  if selected {
+                    selected_gamemodes.push(gamemode);
+                  }
+                }
                 if selected_gamemodes.is_empty() {
                   data.notifications.push(Notification::new("Pick a gamemode!", 1.0));
                   data.queued = false;
@@ -512,12 +526,13 @@ fn main_thread(
             // friend search bar
             data.friend_request_input.text_input(
               Vector2 { x: 35.0 * uiscale, y: 20.0*uiscale },
-              Vector2 { x: 50.0 * uiscale, y: 7.0*uiscale },
-              5.0*uiscale, 20, uiscale, &font, MENU_Z,
+              Vector2 { x: 50.0 * uiscale, y: 6.0*uiscale },
+              4.0*uiscale, 20, uiscale, &mono_font, MENU_Z,
               &mut com, &win, &input.m, &mut input.ki
             );
-            // send fr button
-            let mut fr_button = Button::new(tl_anchor + Vector2 {x: 85.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 25.0 * uiscale, y: 7.0*uiscale}, "Add friend", 5.0*uiscale);
+            data.friend_request_input.buffer.truncate(20);
+            // send friend request button
+            let mut fr_button = Button::new(tl_anchor + Vector2 {x: 85.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 25.0 * uiscale, y: 6.0*uiscale}, "Add friend", 5.0*uiscale);
             fr_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
             if fr_button.was_released(&win, &input.m) {
               let recipient = data.friend_request_input.buffer.clone();
@@ -1678,6 +1693,7 @@ fn main_thread(
                 RefusalReason::InvalidInvite => "Invite expired/invalid",
                 RefusalReason::AlreadyInPary => "Already in a party",
                 RefusalReason::InvalidChannel => "Invalid selected channel",
+                RefusalReason::InvalidGameModeQueued => "Queued gamemode(s) invalid. Try restarting your game.",
                 //there is no reason for these to exist here
                 RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
                 RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",
@@ -1732,6 +1748,12 @@ fn main_thread(
             }
             ServerToClient::MatchEnded(result) => {
               println!("Match ended! {:?}", result);
+            }
+            ServerToClient::GameModeDataResponse(recv_gamemode_rotation) => {
+              data.gamemode_rotation.clear();
+              for gamemode in recv_gamemode_rotation {
+                data.gamemode_rotation.push((gamemode, true));
+              }
             }
             _ => {}
           }
@@ -1793,7 +1815,7 @@ fn main_thread(
         clear_background(WHITE, &win, &mut com);
 
         // login / register tabs
-        data.tabs_login.update_size(tl_anchor + Vector2 { x: 35.0 * uiscale, y: 20.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 6.0*uiscale }, 4.0*uiscale);
+        data.tabs_login.update_size(tl_anchor + Vector2 { x: 20.0 * uiscale, y: 20.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 6.0*uiscale }, 4.0*uiscale);
         data.tabs_login.draw_and_process(uiscale, true, 0, &font, &win, &mut com, &input.m);
         let logging_in = match data.tabs_login.selected_tab() {
           0 => {true}
@@ -1802,21 +1824,21 @@ fn main_thread(
 
         // input fields
         let input_size = Vector2 { x: 40.0*uiscale, y: 5.0 * uiscale };
-        let user_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 35.0 * uiscale};
-        let password_input_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 45.0 * uiscale};
-        draw_text(&font, "Username", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 32.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
+        let user_input_pos = tl_anchor + Vector2 {x: 20.0 * uiscale, y: 30.0 * uiscale};
+        let password_input_pos = tl_anchor + Vector2 {x: 20.0 * uiscale, y: 40.0 * uiscale};
+        draw_text(&font, "Username", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 27.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
         tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
-        draw_text(&font, "Password", tl_anchor + Vector2 {x: 35.0 * uiscale, y: 42.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
+        draw_text(&font, "Password", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 37.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
-
+        
         // confirm button
-        let mut confirm_button = Button::new(bl_anchor + Vector2 { x: 35.0*uiscale, y: -20.0*uiscale}, Vector2 { x: 20.0*uiscale, y: 5.0*uiscale }, if logging_in {"Login"} else {"Register"}, 4.0*uiscale);
+        let mut confirm_button = Button::new(tl_anchor + Vector2 { x: 20.0*uiscale, y: 48.0*uiscale}, Vector2 { x: 20.0*uiscale, y: 8.0*uiscale }, if logging_in {"Login"} else {"Register"}, 4.0*uiscale);
         confirm_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
-
+        
         // remember me checkbox
-        let credentials_checkbox_pos = tl_anchor + Vector2 {x: 35.0 * uiscale, y: 55.0 * uiscale};
+        let credentials_checkbox_pos = tl_anchor + Vector2 {x: 45.0 * uiscale, y: 49.6 * uiscale};
         let credentials_checkbox_size = 5.0 * uiscale;
         let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0, &font, &win, &mut com, &input.m);
         if credentials_changed {
@@ -1825,7 +1847,7 @@ fn main_thread(
         tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores your password in your OS keyring, like Safari.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
 
         // offline mode
-        let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 33.0 * uiscale,y: 11.0 * uiscale }, Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, "Play offline", 4.0*uiscale);
+        let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 33.0 * uiscale,y: 11.0 * uiscale }, Vector2 { x: 28.0*uiscale, y: 6.0*uiscale }, "Offline play", 4.0*uiscale);
         offline_mode_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
         if offline_mode_button.was_released(&win, &input.m) {
           data.current_menu = MenuScreen::Main(0);
@@ -2043,6 +2065,7 @@ fn main_thread(
                   data.player.username = data.username_input.buffer.clone();
                   data.current_menu = MenuScreen::Main(0);
                   data.packet_queue.push(ClientToServer::GetFriendList);
+                  data.packet_queue.push(ClientToServer::GameModeDataRequest);
                   return;
                 }
 

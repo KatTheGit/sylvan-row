@@ -386,9 +386,30 @@ async fn main() {
                 match packet.information {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
-                    if data.gamemodes.len() > 2 {
+                    if data.gamemodes.len() > 3 {
                       // ignore invalid request
                       continue;
+                    }
+                    let mut gamemodes_valid = true;
+                    {
+                      let gamemodes = local_gamemode_rotation.lock().unwrap();
+                      for gamemode in data.gamemodes.clone() {
+                        if !gamemodes.contains(&gamemode) {
+                          // trying to queue for a gamemode that is not in the current rotaion.
+                          gamemodes_valid = false;
+                        }
+                      }
+                    }
+                    if !gamemodes_valid {
+                      match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                        information: ServerToClient::InteractionRefused(RefusalReason::InvalidGameModeQueued),
+                      })).await{
+                        Ok(_) => {},
+                        Err(err) => {
+                          println!("{:?}", err);
+                          error!("{:?}", err);
+                        },
+                      };
                     }
                     let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
                     let mut lobby_info: Vec<LobbyPlayerInfo> = Vec::new();
@@ -404,18 +425,16 @@ async fn main() {
 
                       let own_index = from_user(&username, players.clone()).expect("oops");
                       players[own_index].queued = true;
-
                       players[own_index].queued_gamemodes = data.gamemodes;
-                      players[own_index].queued_gamemodes.truncate(2);
-
                       players[own_index].selected_character = data.character;
 
-                      let mut queues: HashMap<GameMode, Vec<Vec<usize>>> = HashMap::from(
-                        [
-                          (GameMode::Standard1V1, (Vec::new())),
-                          (GameMode::Standard2V2, (Vec::new())),
-                        ]
-                      );
+                      let mut queues: HashMap<GameMode, Vec<Vec<usize>>> = HashMap::new();
+                      {
+                        let gamemodes = local_gamemode_rotation.lock().unwrap();
+                        for gamemode in gamemodes.clone() {
+                          queues.insert(gamemode, Vec::new());
+                        }
+                      }
 
                       if !players[own_index].queued_with.is_empty() {
                         let mut party_leader_index = own_index;
@@ -621,12 +640,13 @@ async fn main() {
                             player_info.push(player);
                           }
                         }
-                        // MARK: Game Server
+                        // MARK: | Game Server
                         let thread_database = Arc::clone(&local_database);
                         let thread_players = Arc::clone(&local_players);
                         fleet.push(
                           std::thread::spawn(move || {
                             let player_info = player_info.clone();
+                            println!("{:?}", match_gamemode);
                             match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info.clone(), false)}){
                               // game ended successfully.
                               Ok(mut match_result) => {
@@ -796,6 +816,24 @@ async fn main() {
                         },
                       };
                     }
+                  }
+                  // MARK: Gamemode request
+                  ClientToServer::GameModeDataRequest => {
+                    let gamemodes: Vec<GameMode>;
+                    {
+                      gamemodes = local_gamemode_rotation.lock().unwrap().clone();
+                    }
+                    match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                      information: ServerToClient::GameModeDataResponse(
+                        gamemodes
+                      ),
+                    })).await{
+                      Ok(_) => {},
+                      Err(err) => {
+                        error!("{:?}", err);
+                        println!("{:?}", err);
+                      },
+                    };
                   }
                   // MARK: Data Request
                   ClientToServer::PlayerDataRequest => {
