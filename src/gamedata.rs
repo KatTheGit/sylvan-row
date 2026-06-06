@@ -10,6 +10,7 @@ use std::vec;
 use crate::bevy_immediate::*;
 use crate::const_params::*;
 use crate::maths::*;
+use crate::mothership_common::GameMode;
 use std::time::SystemTime;
 use crate::bevy_graphics::*;
 use std::time::Instant;
@@ -580,39 +581,42 @@ pub enum GameEvent {
 }
 // (vscode) MARK: Gamemode
 
+
+/// Necessary information
+/// - Elimination
+///   - time
+///   - roudns won
+/// - Capture the Point
+///   - time
+///   - capture progress b & r
+///   - overall progress b & r
+///   - current capturer
+/// - Practice
+///   - time
+
+
 /// This struct contains information related to the current match.
 /// It is sent over network.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct GameModeInfo {
-  /// Length of the game in seconds
   pub time: u16,
-  /// How many rounds were won by the red team
-  pub rounds_won_red: u8,
-  /// How many rounds were won by the blue team
-  pub rounds_won_blue: u8,
-  /// Amount of players left on the red team
-  pub alive_red: u8,
-  /// Total amount of players on the team
-  pub total_red: u8,
-  /// Amount of players left on the blue team
-  pub alive_blue: u8,
-  /// Total amount of players on the team
-  pub total_blue: u8,
-  /// Whether the game has started and is in aciton (true), or
-  /// we're waiting for a round;
-  pub game_active: bool
+  pub points_red: u8,
+  pub points_blue: u8,
+  pub capture_progress_red: f32,
+  pub capture_progress_blue: f32,
+  pub point_progress_red: f32,
+  pub point_progress_blue: f32,
 }
 impl GameModeInfo {
   pub fn new() -> GameModeInfo {
     return GameModeInfo {
       time: 0,
-      rounds_won_blue: 0,
-      rounds_won_red: 0,
-      total_red: 0,
-      total_blue: 0,
-      alive_red: 0,
-      alive_blue: 0,
-      game_active: false,
+      points_red: 0,
+      points_blue: 0,
+      capture_progress_red: 0.0,
+      capture_progress_blue: 0.0,
+      point_progress_red: 0.0,
+      point_progress_blue: 0.0,
     }
   }
 }

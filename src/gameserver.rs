@@ -21,14 +21,14 @@ static SPAWN_RED: Vector2 = Vector2 {x: 31.0, y: 14.0};
 static SPAWN_BLUE: Vector2 = Vector2 {x: 3.0, y: 14.0};
 
 /// Gameplay server. Returns a winning team.
-pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, is_practice: bool) -> MatchEndResult {
+pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode) -> MatchEndResult {
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
   println!("Loaded character properties.");
 
   let mut players: Vec<ServerPlayer> = Vec::new();
   // initiate the players
-  for player in player_info {
+  for player in player_info.clone() {
     players.push(
       ServerPlayer {
         username: player.username,
@@ -674,13 +674,60 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
   // Used for game time counter. Can be reset when going into new rounds, for example...
   let mut game_start_time: Instant = Instant::now();
 
-  
-  // part of dummy summoning
-  // set to TRUE in release server, so dummy doesn't get spawned
-  let mut dummy_summoned: bool = !SPAWN_DUMMY && !is_practice;
+  let gamemode_params = gamemode.get_data();
 
   // (vscode) MARK: Server Loop
   let main_gamemode_info = Arc::clone(&general_gamemode_info);
+
+  let mut round_reset = true;
+  // whether the match is running. whether the game is on.
+  let mut game_active = false;
+
+  // DO necessary initialisation
+  {
+    let mut players = main_loop_players.lock().unwrap();
+    let mut gamemode_info = main_gamemode_info.lock().unwrap();
+    
+    *gamemode_info = GameModeInfo::new();
+
+    // summon dummies
+    if gamemode == GameMode::Practice {
+      players.push(
+        ServerPlayer {
+          username: String::from("Enemy Dummy"),
+          cipher_key: Vec::new(),
+          last_nonce: 0,
+          ip: String::from("hello"),
+          port: 12,
+          team: Team::Red,
+          character: Character::Dummy,
+          health: 100,
+          position: Vector2 { x: 10.0, y: 10.0 },
+          shooting: true,
+          last_dash_time: Instant::now(),
+          last_shot_time: Instant::now(),
+          shooting_secondary: false,
+          secondary_cast_time: Instant::now(),
+          secondary_charge: 0,
+          aim_direction: Vector2 { x: -1.0, y: 0.0 },
+          move_direction: Vector2::new(),
+          had_illegal_position: false,
+          is_dashing: false,
+          dash_direction: Vector2::new(),
+          dashed_distance: 0.0,
+          previous_positions: vec![],
+          is_dead: false,
+          death_timer_start: Instant::now(),
+          stacks: 0,
+          buffs: Vec::new(),
+          last_packet_time: Instant::now(),
+          events: Vec::new(),
+          passive_timer: Instant::now(),
+        }
+      );
+    }
+  }
+
   loop {
 
     // claim all mutexes
@@ -688,7 +735,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
     let mut game_objects = main_game_objects.lock().unwrap();
     let mut game_object_id_counter = main_game_object_id_counter.lock().unwrap();
     let mut gamemode_info = main_gamemode_info.lock().unwrap();
-
 
     let mut tick: bool = false;
     let mut tenth_tick: bool = false;
@@ -715,160 +761,219 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
     
     // (vscode) MARK: Gamemode Logic
     if tenth_tick {
-      gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
-      let mut total_players: u8 = 0;
-      let mut red_players: u8 = 0;
-      let mut blue_players: u8 = 0;
-      let mut red_alive: u8 = 0;
-      let mut blue_alive: u8 = 0;
-      for player in players.clone() {
-        total_players += 1;
-        if player.team == Team::Red {
-          red_players += 1;
-          if !player.is_dead {
-            red_alive += 1;
-          }
-        } else {
-          blue_players += 1;
-          if !player.is_dead {
-            blue_alive += 1;
-          }
-        }
-      }
-      gamemode_info.total_red = red_players;
-      gamemode_info.total_blue = blue_players;
-      gamemode_info.alive_red = red_alive;
-      gamemode_info.alive_blue = blue_alive;
 
-      // we can start the game
-      if total_players >= min_players as u8 {
 
-        let mut reset = false;
-        if red_alive == 0 &&(!(MATCHMAKE_ALONE | is_practice) | SPAWN_DUMMY) { //debug
-          gamemode_info.rounds_won_blue += 1;
-          reset = true;
-        }
-        if blue_alive == 0 &&(!(MATCHMAKE_ALONE | is_practice) | SPAWN_DUMMY) {
-          gamemode_info.rounds_won_red += 1;
-          reset = true;
-        }
-        // set the game state as inactive, and update the timer
-        if reset {
-          gamemode_info.game_active = false;
-          game_start_time = Instant::now();
-        }
-
-        // if the round is over, or the game started:
-        if gamemode_info.game_active == false {
-          // reset player aliveness
-          for p_index in 0..players.len() {
-            players[p_index].is_dead = false;
-          }
-
-          // at the start of this in-between phase...
-          if game_start_time.elapsed().as_secs_f32() < 0.5 {
-            // force the map with player cages
-            *game_objects = load_map_from_file(include_str!("../assets/maps/map1-cages.map"), &mut game_object_id_counter);
-            // reset player positions
-            for p_index in 0..players.len() {
-              players[p_index].is_dead = false;
-              players[p_index].secondary_charge = 0;
-              players[p_index].stacks = 0;
-              players[p_index].health = 100;
-              players[p_index].position = match players[p_index].team {
-                Team::Blue => SPAWN_BLUE,
-                Team::Red => SPAWN_RED,
-              };
-            }
-          }
-
-          // restart the round after the end of the in-between phase
-          if game_start_time.elapsed().as_secs_f32() > 3.0 {
-            // set the game as active for the rest of the code
-            gamemode_info.game_active = true;
-            game_start_time = Instant::now();
-            // reset player data, but not positions. It's ok if players get a small headstart
-            // in the palyer "cages".
-            for p_index in 0..players.len() {
-              players[p_index].is_dead = false;
-              players[p_index].secondary_charge = 0;
-              players[p_index].stacks = 0;
-              players[p_index].health = 100;
-              //players[p_index].last_dash_time = Instant::now();
-              //players[p_index].last_shot_time = Instant::now();
-              //players[p_index].secondary_cast_time = Instant::now();
-            }
-            // reset the game objects too
-            *game_objects = load_map_from_file(include_str!("../assets/maps/map1.map"), &mut game_object_id_counter);
-          }
-          // MARK: Game End
-          if gamemode_info.rounds_won_blue >= ROUNDS_TO_WIN {
-            println!("returning winning team: blue!");
-            return MatchEndResult {
-              winning_team: Team::Blue,
-              is_draw: false,
-              game_id: 0, // don't worry about this value, the main server handles it.
-            };
-          }
-          if gamemode_info.rounds_won_red >= ROUNDS_TO_WIN {
-            println!("returning winning team: red!");
-            return MatchEndResult {
-              winning_team: Team::Red,
-              is_draw: false,
-              game_id: 0, // don't worry about this value, the main server handles it.
-            };
-          }
-        }
-
-      // if we don't have enough players, kindly wait
+      if players.len() >= (gamemode_params.team_count * gamemode_params.team_size) {
+        // there are now enough players.
+        game_active = true;
       } else {
+        // if we don't have enough players, kindly wait
         // and make sure the start time doesn't update
         game_start_time = Instant::now();
       }
-    }
 
-    // Summon a dummy for testing
-    if !dummy_summoned {
-      dummy_summoned = true;
+      if round_reset {
+        // reset the flag
+        round_reset = false;
 
-      players.push(
-        ServerPlayer {
-          username: String::from("Dummy McDummington"),
-          cipher_key: Vec::new(),
-          last_nonce: 0,
-          ip: String::from("hello"),
-          port: 12,
-          team: Team::Red,
-          character: Character::Dummy,
-          health: 100,
-          position: Vector2 { x: 100.0, y: 100.0 },
-          shooting: true,
-          last_dash_time: Instant::now(),
-          last_shot_time: Instant::now(),
-          shooting_secondary: false,
-          secondary_cast_time: Instant::now(),
-          secondary_charge: 0,
-          aim_direction: Vector2 { x: -1.0, y: 0.0 },
-          move_direction: Vector2::new(),
-          had_illegal_position: false,
-          is_dashing: false,
-          dash_direction: Vector2::new(),
-          dashed_distance: 0.0,
-          previous_positions: vec![],
-          is_dead: false,
-          death_timer_start: Instant::now(),
-          stacks: 0,
-          buffs: Vec::new(),
-          last_packet_time: Instant::now(),
-          events: Vec::new(),
-          passive_timer: Instant::now(),
+        // reset the players
+        for p_index in 0..players.len() {
+          players[p_index].is_dead = false;
+          players[p_index].secondary_charge = 0;
+          players[p_index].stacks = 0;
+          players[p_index].health = 100;
+          players[p_index].previous_positions = Vec::new();
+          players[p_index].position = match players[p_index].team {
+            Team::Blue => SPAWN_BLUE,
+            Team::Red => SPAWN_RED,
+          };
         }
-      );
+      }
+
+      // do gamemode checks
+      if game_active {
+        match gamemode {
+          GameMode::Ctp1V1 | GameMode::Ctp2V2 => {
+
+          }
+          GameMode::Standard1V1 | GameMode::Standard2V2 => {
+            let mut alive_red = 0;
+            let mut alive_blue = 0;
+            for player in players.clone() {
+              if !player.is_dead {
+                if player.team == Team::Blue {
+                  alive_blue += 1;
+                }
+                else {
+                  alive_red += 1;
+                }
+              }
+            }
+            if alive_red == 0 && alive_blue == 0 {
+              // a draw! how rare!
+              round_reset = true;
+            } else {
+              if alive_red == 0 {
+                round_reset = true;
+                gamemode_info.points_blue += 1;
+              }
+              if alive_blue == 0 {
+                gamemode_info.points_red += 1;
+                round_reset = true;
+              }
+            }
+            // RED WINS!
+            if gamemode_info.points_red == 2 {
+              return MatchEndResult {
+                winning_team: Team::Red,
+                is_draw: false,
+                game_id: 0, // don't worry about this value, the main server handles it.
+              };
+            }
+            // BLUE WINS!
+            if gamemode_info.points_blue == 2 {
+              return MatchEndResult {
+                winning_team: Team::Blue,
+                is_draw: false,
+                game_id: 0, // don't worry about this value, the main server handles it.
+              };
+            }
+          }
+          GameMode::Practice => {
+
+          }
+        }
+      }
+
+      //gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
+      //let mut total_players: u8 = 0;
+      //let mut red_players: u8 = 0;
+      //let mut blue_players: u8 = 0;
+      //let mut red_alive: u8 = 0;
+      //let mut blue_alive: u8 = 0;
+      //for player in players.clone() {
+      //  total_players += 1;
+      //  if player.team == Team::Red {
+      //    red_players += 1;
+      //    if !player.is_dead {
+      //      red_alive += 1;
+      //    }
+      //  } else {
+      //    blue_players += 1;
+      //    if !player.is_dead {
+      //      blue_alive += 1;
+      //    }
+      //  }
+      //}
+      //gamemode_info.total_red = red_players;
+      //gamemode_info.total_blue = blue_players;
+      //gamemode_info.alive_red = red_alive;
+      //gamemode_info.alive_blue = blue_alive;
+      //let min_players = player_info.len();
+      ////let mut min_players = gamemode.team_size() * 2;
+      ////if gamemode == GameMode::Practice {
+      ////  min_players = 1;
+      ////}
+      //if total_players >= min_players as u8 {
+      //  
+      //} else {
+      //  // if we don't have enough players, kindly wait
+      //  // and make sure the start time doesn't update
+      //  game_start_time = Instant::now();
+      //}
+      //
+      //match gamemode {
+      //  GameMode::Standard1V1 | GameMode::Standard2V2 => {
+      //
+      //    // we can start the game
+      //    let mut reset = false;
+      //    if red_alive == 0 &&(!(MATCHMAKE_ALONE) | SPAWN_DUMMY) { //debug
+      //      gamemode_info.rounds_won_blue += 1;
+      //      reset = true;
+      //    }
+      //    if blue_alive == 0 &&(!(MATCHMAKE_ALONE) | SPAWN_DUMMY) {
+      //      gamemode_info.rounds_won_red += 1;
+      //      reset = true;
+      //    }
+      //    // set the game state as inactive, and update the timer
+      //    if reset {
+      //      gamemode_info.game_active = false;
+      //      game_start_time = Instant::now();
+      //    }
+      //
+      //    // if the round is over, or the game started:
+      //    if gamemode_info.game_active == false {
+      //      // reset player aliveness
+      //      for p_index in 0..players.len() {
+      //        players[p_index].is_dead = false;
+      //      }
+      //
+      //      // at the start of this in-between phase...
+      //      if game_start_time.elapsed().as_secs_f32() < 0.5 {
+      //        // force the map with player cages
+      //        *game_objects = load_map_from_file(include_str!("../assets/maps/map1-cages.map"), &mut game_object_id_counter);
+      //        // reset player positions
+      //        for p_index in 0..players.len() {
+      //          players[p_index].is_dead = false;
+      //          players[p_index].secondary_charge = 0;
+      //          players[p_index].stacks = 0;
+      //          players[p_index].health = 100;
+      //          players[p_index].position = match players[p_index].team {
+      //            Team::Blue => SPAWN_BLUE,
+      //            Team::Red => SPAWN_RED,
+      //          };
+      //        }
+      //      }
+      //
+      //      // restart the round after the end of the in-between phase
+      //      if game_start_time.elapsed().as_secs_f32() > 3.0 {
+      //        // set the game as active for the rest of the code
+      //        gamemode_info.game_active = true;
+      //        game_start_time = Instant::now();
+      //        // reset player data, but not positions. It's ok if players get a small headstart
+      //        // in the palyer "cages".
+      //        for p_index in 0..players.len() {
+      //          players[p_index].is_dead = false;
+      //          players[p_index].secondary_charge = 0;
+      //          players[p_index].stacks = 0;
+      //          players[p_index].health = 100;
+      //          //players[p_index].last_dash_time = Instant::now();
+      //          //players[p_index].last_shot_time = Instant::now();
+      //          //players[p_index].secondary_cast_time = Instant::now();
+      //        }
+      //        // reset the game objects too
+      //        *game_objects = load_map_from_file(include_str!("../assets/maps/map1.map"), &mut game_object_id_counter);
+      //      }
+      //      // MARK: Game End
+      //      if gamemode_info.rounds_won_blue >= ROUNDS_TO_WIN {
+      //        println!("returning winning team: blue!");
+      //        return MatchEndResult {
+      //          winning_team: Team::Blue,
+      //          is_draw: false,
+      //          game_id: 0, // don't worry about this value, the main server handles it.
+      //        };
+      //      }
+      //      if gamemode_info.rounds_won_red >= ROUNDS_TO_WIN {
+      //        println!("returning winning team: red!");
+      //        return MatchEndResult {
+      //          winning_team: Team::Red,
+      //          is_draw: false,
+      //          game_id: 0, // don't worry about this value, the main server handles it.
+      //        };
+      //      }
+      //    }
+      //  }
+      //  GameMode::Ctp2V2 | GameMode::Ctp1V1 => {
+      //
+      //  }
+      //  GameMode::Practice => {
+      //
+      //  }
+      //}
     }
     
     // (vscode) MARK: Player logic
     for p_index in 0..players.len() {
-
 
       let shooting = players[p_index].shooting;
       let shooting_secondary = players[p_index].shooting_secondary;
@@ -886,13 +991,14 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
         players[p_index].kill(SPAWN_RED, SPAWN_BLUE);
       }
 
-      // IGNORE ANYTHING BELOW IF PLAYER HAS DIED
+      // respawn players if gamemode supports it
       if players[p_index].is_dead {
-        if is_practice {
-          if players[p_index].death_timer_start.elapsed().as_secs_f32() > 1.0 {
+        if gamemode_params.do_respawns {
+          if players[p_index].death_timer_start.elapsed().as_secs_f32() > gamemode_params.respawn_timer {
             players[p_index].is_dead = false;
           }
         }
+        // if the player is dead, don't worry about the following code.
         continue;
       }
       if players[p_index].last_packet_time.elapsed().as_secs_f32() > 5.0
@@ -909,7 +1015,6 @@ pub fn game_server(min_players: usize, port: u16, player_info: Vec<PlayerInfo>, 
         }
         break;
       }
-
 
       // (vscode) MARK: Passives & Other
       // Handling of passive abilities and anything else that may need to be run all the time.

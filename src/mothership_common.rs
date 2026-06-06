@@ -161,23 +161,72 @@ pub enum GameMode {
   Standard2V2,
   /// Capture the Point
   Ctp2V2,
+  /// Capture the Point
+  Ctp1V1,
+  /// The Practice Range
+  Practice,
 }
 
 impl GameMode {
-  pub fn team_size(&self) -> usize {
-    return match &self {
-      GameMode::Standard1V1 => 1,
-      GameMode::Standard2V2 => 2,
-      GameMode::Ctp2V2 => 2,
-    }
+  pub fn get_data(&self) -> GameModeParams {
+    return match self {
+      Self::Ctp1V1 => {
+        GameModeParams {
+          do_respawns: true,
+          respawn_timer: 3.0,
+          team_size: 1,
+          team_count: 2,
+          description: "Capture the Point 1v1".to_string(),
+        }
+      }
+      Self::Ctp2V2 => {
+        GameModeParams {
+          do_respawns: true,
+          respawn_timer: 3.0,
+          team_size: 2,
+          team_count: 2,
+          description: "Capture the Point 2v2".to_string(),
+        }
+      }
+      Self::Practice => {
+        GameModeParams {
+          do_respawns: true,
+          respawn_timer: 0.0,
+          team_size: 1,
+          team_count: 1,
+          description: "Practice Range".to_string(),
+        }
+      }
+      Self::Standard1V1 => {
+        GameModeParams {
+          do_respawns: false,
+          respawn_timer: 0.0,
+          team_size: 1,
+          team_count: 2,
+          description: "Elimination 1v1".to_string(),
+        }
+      }
+      Self::Standard2V2 => {
+        GameModeParams {
+          do_respawns: false,
+          respawn_timer: 0.0,
+          team_size: 2,
+          team_count: 2,
+          description: "Elimination 2v2".to_string(),
+        }
+      }
+    };
   }
-  pub fn get_name(&self) -> String {
-    return match &self {
-      GameMode::Standard1V1 => "Elimination 1V1",
-      GameMode::Standard2V2 => "Elimination 2V2",
-      GameMode::Ctp2V2 => "Capture the Point 2V2",
-    }.to_string()
-  }
+}
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub struct GameModeParams {
+  /// Whether this gamemode respawns players before round end.
+  pub do_respawns: bool,
+  /// How long death lasts before respawn.
+  pub respawn_timer: f32,
+  pub team_size: usize,
+  pub team_count: usize,
+  pub description: String,
 }
 
 /// contains the channel and identifier of a player thread.

@@ -133,6 +133,9 @@ pub struct GameData {
   pub background_tiles: Vec<BackGroundTile>,
   pub floating_numbers: Vec<FloatingNumber>,
   pub game_startup: bool,
+  pub match_ended: bool,
+  pub post_match_timer: Instant,
+  pub winning_team: Team,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -226,6 +229,9 @@ impl Default for GameData {
       background_tiles: Vec::new(),
       floating_numbers: Vec::new(),
       game_startup: true,
+      match_ended: false,
+      post_match_timer: Instant::now(),
+      winning_team: Team::Blue,
     }
   }
 }
@@ -341,7 +347,7 @@ fn main_thread(
             let queued = data.queued.clone();
             for (gamemode, selected) in &mut data.gamemode_rotation {
               let mut selected_copy = selected.clone();
-              checkbox(checkbox_pos + Vector2 {x: 0.0, y: checkbox_y_current_step * checkbox_y_step}, 4.0*uiscale, &gamemode.get_name(), 3.8*uiscale, uiscale, if queued {&mut selected_copy} else {selected}, MENU_Z, &font, &win, &mut com, &input.m);
+              checkbox(checkbox_pos + Vector2 {x: 0.0, y: checkbox_y_current_step * checkbox_y_step}, 4.0*uiscale, &gamemode.get_data().description, 3.8*uiscale, uiscale, if queued {&mut selected_copy} else {selected}, MENU_Z, &font, &win, &mut com, &input.m);
               checkbox_y_current_step += 1.0;
             }
 
@@ -450,23 +456,25 @@ fn main_thread(
               let (tx, mut _rx): (tokio::sync::mpsc::Sender<PlayerMessage>, tokio::sync::mpsc::Receiver<PlayerMessage>)
                 = tokio::sync::mpsc::channel(32);
               let _game_server = std::thread::spawn(move || {
-                game_server(1, practice_game_port, vec![
-                  PlayerInfo {
-                    // a lot of dummy data.
-                    username: practice_username,
-                    session_key: session_key,
-                    channel: tx,
-                    queued: true,
-                    is_party_leader: true,
-                    queued_with: Vec::new(),
-                    invited_by: Vec::new(),
-                    queued_gamemodes: Vec::new(),
-                    selected_character: practice_character,
-                    assigned_team: Team::Blue,
-                    in_game_with: Vec::new(),
-                  }
-                ],
-                true)
+                game_server(
+                  practice_game_port, vec![
+                    PlayerInfo {
+                      // a lot of dummy data.
+                      username: practice_username,
+                      session_key: session_key,
+                      channel: tx,
+                      queued: true,
+                      is_party_leader: true,
+                      queued_with: Vec::new(),
+                      invited_by: Vec::new(),
+                      queued_gamemodes: Vec::new(),
+                      selected_character: practice_character,
+                      assigned_team: Team::Blue,
+                      in_game_with: Vec::new(),
+                    }
+                  ],
+                  GameMode::Practice,
+                )
               });
               data.player.character = practice_character;
               data.game_server_port = practice_game_port;
@@ -672,10 +680,6 @@ fn main_thread(
           }
 
           // MARK: | game graphics
-
-
-
-
 
           // MARK: | | Animation handl.
 
@@ -919,6 +923,17 @@ fn main_thread(
           }
           data.floating_numbers = numbers_to_keep;
 
+
+
+          // MATCH END
+
+          if data.match_ended {
+            if data.post_match_timer.elapsed().as_secs_f64() > 1.0 {
+              data.match_ended = false;
+              data.current_menu = MenuScreen::Main(0);
+            }
+          }
+
           
           // MARK: | | Draw Players
           if !data.player.is_dead {
@@ -1126,7 +1141,7 @@ fn main_thread(
           // CAMERA ZOOM
           if ui_clickable {
             let scrollwheel = get_mouse_wheel(&mut input.mw);
-            data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 4.0 * delta_time).clamp(4.0, 16.0);
+            data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 10.0 * delta_time).clamp(4.0, 16.0);
           }
 
           // MARK: | game net
@@ -1748,6 +1763,9 @@ fn main_thread(
             }
             ServerToClient::MatchEnded(result) => {
               println!("Match ended! {:?}", result);
+              data.match_ended = true;
+              data.post_match_timer = Instant::now();
+              data.winning_team = result.winning_team;
             }
             ServerToClient::GameModeDataResponse(recv_gamemode_rotation) => {
               data.gamemode_rotation.clear();

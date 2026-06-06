@@ -60,6 +60,7 @@ async fn main() {
     GameMode::Standard1V1,
     GameMode::Standard2V2,
     GameMode::Ctp2V2,
+    GameMode::Ctp1V1,
   ];
   let gamemode_rotation = Arc::new(Mutex::new(gamemode_rotation));
   
@@ -386,7 +387,14 @@ async fn main() {
                 match packet.information {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
-                    if data.gamemodes.len() > 3 {
+                    let mut gamemode_rotation = Vec::new();
+                    {
+                      let gamemodes = local_gamemode_rotation.lock().unwrap();
+                      for gamemode in gamemodes.clone() {
+                        gamemode_rotation.push(gamemode);
+                      }
+                    }
+                    if data.gamemodes.len() > gamemode_rotation.len()  {
                       // ignore invalid request
                       continue;
                     }
@@ -429,11 +437,8 @@ async fn main() {
                       players[own_index].selected_character = data.character;
 
                       let mut queues: HashMap<GameMode, Vec<Vec<usize>>> = HashMap::new();
-                      {
-                        let gamemodes = local_gamemode_rotation.lock().unwrap();
-                        for gamemode in gamemodes.clone() {
-                          queues.insert(gamemode, Vec::new());
-                        }
+                      for gamemode in gamemode_rotation.clone() {
+                        queues.insert(gamemode, Vec::new());
                       }
 
                       if !players[own_index].queued_with.is_empty() {
@@ -538,12 +543,13 @@ async fn main() {
 
                       for queue in queues.clone() {
                         let queued_gamemode = queue.0;
-                        let team_size = queued_gamemode.team_size();
                         let mut queued_players = queue.1.clone();
-
                         let mut matched_players: Vec<usize> = Vec::new();
-
-                        let team_count = 2;
+                        
+                        let gamemode_parameters = queued_gamemode.get_data();
+                        let team_size = gamemode_parameters.team_size;
+                        let team_count = gamemode_parameters.team_count;
+                        
                         for _ in 0..team_count {
                           println!("{:?}: {:?}", queued_gamemode, queued_players);
                           for party_1_index in 0..queued_players.len() {
@@ -581,7 +587,7 @@ async fn main() {
                           }
                         }
 
-                        if matched_players.len() == queued_gamemode.team_size() * team_count {
+                        if matched_players.len() == team_size * team_count {
                           // the match is on!
                           println!("Matched: {:?}", matched_players);
                           players_to_match = matched_players;
@@ -647,7 +653,7 @@ async fn main() {
                           std::thread::spawn(move || {
                             let player_info = player_info.clone();
                             println!("{:?}", match_gamemode);
-                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(player_info.len(), port, player_info.clone(), false)}){
+                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(port, player_info.clone(), match_gamemode)}){
                               // game ended successfully.
                               Ok(mut match_result) => {
                                 // update to the correct game_id since the gameserver isn't aware of it.
