@@ -197,7 +197,7 @@ pub fn draw_sprite_ex(
   );
 }
 pub fn draw_rect(
-  color: Color,
+  color: Srgba,
   position: Vector2,
   size: Vector2,
   z: i8,
@@ -207,7 +207,7 @@ pub fn draw_rect(
   commands.spawn((
     DeleteAfterFrame {},
     Sprite {
-      color,
+      color: Color::Srgba(color),
       ..Default::default()
     },
     Transform {
@@ -225,7 +225,7 @@ pub fn draw_text(
   color: Srgba,
   font_size: f32,
   z: i8,
-  alighment: Justify,
+  alignment: Justify,
   window: &Window,
   commands: &mut Commands,
 ) {
@@ -244,7 +244,7 @@ pub fn draw_text(
       Text2d::new(text),
       slightly_smaller_text_font.clone()
         .with_font_smoothing(FontSmoothing::None),
-      TextLayout::new(alighment, LineBreak::WordBoundary),
+      TextLayout::new(alignment, LineBreak::WordBoundary),
       TextBounds::from(size.as_vec2()),
       Transform::from_translation(Vec3{x: 0.0, y: 0.0, z: z as f32}),
       TextColor(Color::Srgba(color)),

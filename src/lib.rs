@@ -136,6 +136,7 @@ pub struct GameData {
   pub match_ended: bool,
   pub post_match_timer: Instant,
   pub winning_team: Team,
+  pub current_gamemode: GameMode,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -232,6 +233,7 @@ impl Default for GameData {
       match_ended: false,
       post_match_timer: Instant::now(),
       winning_team: Team::Blue,
+      current_gamemode: GameMode::Practice,
     }
   }
 }
@@ -401,8 +403,8 @@ fn main_thread(
             let inner_shrink: f32 = 1.0 * uiscale;
             draw_text(&font, "Lobby", Vector2 {x: lobby_position.x, y: lobby_position.y-3.0*uiscale}, Vector2 {x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             for (i, player) in lobby.iter().enumerate() {
-              draw_rect(Color::Srgba(BLUE), lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, MENU_Z, &win, &mut com );
-              draw_rect(Color::Srgba(SKY_BLUE), lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, MENU_Z, &win, &mut com);
+              draw_rect((BLUE), lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, MENU_Z, &win, &mut com );
+              draw_rect((SKY_BLUE), lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, MENU_Z, &win, &mut com);
               let is_ready_color = if player.is_ready {LIME} else {RED};
               let is_ready_text = if player.is_ready {"Ready"} else {"Not Ready"};
               draw_text(&font, &format!("{}", player.username), Vector2 {x: lobby_position.x + 2.0*vh, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
@@ -924,6 +926,46 @@ fn main_thread(
           data.floating_numbers = numbers_to_keep;
 
 
+
+          let top_center_anchor = (tl_anchor + tr_anchor) / 2.0;
+          // Gamemode UI
+          match data.current_gamemode {
+            GameMode::Practice => {
+              draw_text(&font, "Practice", top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+            }
+            GameMode::Ctp1V1 | GameMode::Ctp2V2 => {
+              draw_text(&font, &format!("Time: {}", data.gamemode_info.time), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+
+              let mut progress = 0.0;
+              let mut capturing_color = BLUE;
+              if data.gamemode_info.capture_progress_blue > 0.0 {
+                progress = data.gamemode_info.capture_progress_blue;
+              }
+              if data.gamemode_info.capture_progress_red > 0.0 {
+                progress = data.gamemode_info.capture_progress_red;
+                capturing_color = RED;
+              }
+              if progress != 0.0 {
+                draw_text(&font, &format!("Capturing: {}%", progress), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, capturing_color, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              } else {
+                draw_text(&font, "Capture the point!", top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              }
+
+              let x_offset = 30.0 * uiscale;
+              let x_size = 30.0 * uiscale;
+              draw_rect(RED, top_center_anchor + Vector2 {x: x_offset, y: 3.0 * uiscale}, Vector2 { x: (data.gamemode_info.point_progress_red / 100.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z+1, &win, &mut com);
+              draw_rect(GRAY, top_center_anchor + Vector2 {x: x_offset, y: 3.0 * uiscale}, Vector2 { x: (1.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z, &win, &mut com);
+
+              draw_rect(BLUE, top_center_anchor + Vector2 {x: - x_offset- x_size, y: 3.0 * uiscale}, Vector2 { x: (data.gamemode_info.point_progress_blue / 100.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z+1, &win, &mut com);
+              draw_rect(GRAY, top_center_anchor + Vector2 {x: - x_offset- x_size, y: 3.0 * uiscale}, Vector2 { x: (1.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z, &win, &mut com);
+            }
+            GameMode::Standard1V1 | GameMode::Standard2V2 => {
+              draw_text(&font, &format!("Time: {}", data.gamemode_info.time), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              draw_text(&font, &format!("{}", data.gamemode_info.points_blue), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLUE, 6.0 * uiscale, GAME_UI_Z, Justify::Left, &win, &mut com);
+              draw_text(&font, &format!("{}", data.gamemode_info.points_red), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, RED, 6.0 * uiscale, GAME_UI_Z, Justify::Right, &win, &mut com);
+            }
+          }
+          
 
           // MATCH END
 
@@ -1448,7 +1490,7 @@ fn main_thread(
         let chatbox_size = Vector2 {x: 50.0 * uiscale, y: 80.0 * uiscale};
         if data.chat_open {
           let mut valid_msg = true;
-          draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
+          draw_rect((Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
           
           data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &input.m, &mut input.ki);
           
@@ -1602,7 +1644,7 @@ fn main_thread(
 
         // chat bg
         if data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time && !data.chat_open{
-          draw_rect(Color::Srgba(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }), chatbox_pos, chatbox_size + Vector2 {x: 0.0, y: - 9.0 * uiscale}, CHAT_Z, &win, &mut com);
+          draw_rect((Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }), chatbox_pos, chatbox_size + Vector2 {x: 0.0, y: - 9.0 * uiscale}, CHAT_Z, &win, &mut com);
         }
 
         let scrollwheel = get_mouse_wheel(&mut input.mw);
@@ -1665,6 +1707,7 @@ fn main_thread(
               data.queued = false;
               data.game_last_nonce = 0;
               data.background_tiles = load_background_tiles(32, 24);
+              data.current_gamemode = info.gamemode;
               //let full_ip = get_ip();
               //let ip = full_ip.split(":").collect::<Vec<&str>>()[0];
               //let game_server_ip = format!("{}:{}", ip, info.port);

@@ -10,7 +10,6 @@ use std::vec;
 use crate::bevy_immediate::*;
 use crate::const_params::*;
 use crate::maths::*;
-use crate::mothership_common::GameMode;
 use std::time::SystemTime;
 use crate::bevy_graphics::*;
 use std::time::Instant;
@@ -166,9 +165,9 @@ impl ClientPlayer {
     let healthbar_x_size = 10.0 * uiscale;
 
     let outline_size = 0.5 * uiscale;
-    draw_rect(Color::Srgba(LIMEGREEN), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
-    draw_rect(Color::Srgba(GRAY), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
-    draw_rect(Color::Srgba(BLACK), screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    draw_rect((LIMEGREEN), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
+    draw_rect((GRAY), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
+    draw_rect((BLACK), screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
     draw_text(font, &format!("{}", self.health), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.health {
@@ -177,9 +176,9 @@ impl ClientPlayer {
       }
     }
 
-    draw_rect(Color::Srgba(ORANGE), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
-    draw_rect(Color::Srgba(GRAY), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
-    draw_rect(Color::Srgba(BLACK), screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    draw_rect((ORANGE), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
+    draw_rect((GRAY), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
+    draw_rect((BLACK), screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
     draw_text(font, &format!("{}", self.secondary_charge), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.secondary_charge {
@@ -220,16 +219,16 @@ impl ClientPlayer {
           Character::Wiro => (self.last_secondary_time / characters[&Character::Wiro].secondary_cooldown).clamp(0.0, 1.0),
           _ => panic!()
         };
-        draw_rect(Color::Srgba(GRAY), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2, window, commands);
-        draw_rect(Color::Srgba(PINK), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * progress, y: 1.5*uiscale }, z+3, window, commands);
-        draw_rect(Color::Srgba(BLACK), screen_stackbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 1.5*uiscale + outline_size*2.0 }, z+1, window, commands);
+        draw_rect((GRAY), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2, window, commands);
+        draw_rect((PINK), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * progress, y: 1.5*uiscale }, z+3, window, commands);
+        draw_rect((BLACK), screen_stackbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 1.5*uiscale + outline_size*2.0 }, z+1, window, commands);
       }
       else {
         if self.stacks > 0 {
           for x in 0..self.stacks {
             let x_size = 5.0 * uiscale;
             let x_margin = 1.0 * uiscale;
-            draw_rect(Color::Srgba(PINK), screen_stackbar_pos + Vector2 {x: -healthbar_x_size + x as f32 * (x_size + x_margin), y: 0.0}, Vector2 { x: x_size, y: 1.5*uiscale }, z+3, window, commands);
+            draw_rect((PINK), screen_stackbar_pos + Vector2 {x: -healthbar_x_size + x as f32 * (x_size + x_margin), y: 0.0}, Vector2 { x: x_size, y: 1.5*uiscale }, z+3, window, commands);
           }
         }
       }
@@ -798,6 +797,9 @@ pub enum ObjectData {
 /// enumerates all possible gameobjects. Their effects are then handled by the server.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq, Hash, Eq)]
 pub enum GameObjectType {
+  RedSpawn,
+  BlueSpawn,
+  ControlPoint,
   Wall,
   HernaniWall,
   RaphaelleAura,
@@ -909,6 +911,61 @@ impl GameObject {
   }
 }
 
+
+/// Loads a map from a string. This string is a CSV export of a tiled map editor map.
+/// 
+/// Returns (foreground, background)
+pub fn load_map_from_file(map: &str, id: &mut u16) -> (Vec<GameObject>, Vector2, Vector2) {
+  let mut tiles: Vec<GameObject> = Vec::new();
+  let mut blue_spawn: Vector2 = Vector2::new();
+  let mut red_spawn: Vector2 = Vector2::new();
+
+  for (y, line) in map.lines().enumerate() {
+    for (x, token) in line.split(",").enumerate() {
+      let object_type_id: i32 = token.parse::<i32>().expect("Map parsing error");
+      let object_type = match object_type_id {
+        0 => GameObjectType::Wall,
+        3 => GameObjectType::UnbreakableWall,
+        4 => GameObjectType::ControlPoint,
+        5 => GameObjectType::BlueSpawn,
+        6 => GameObjectType::RedSpawn,
+        _ => {continue}
+      };
+      if object_type == GameObjectType::RedSpawn {
+        red_spawn = Vector2 {
+          x: x as f32,
+          y: y as f32,
+        }
+      }
+      if object_type == GameObjectType::BlueSpawn {
+        blue_spawn = Vector2 {
+          x: x as f32,
+          y: y as f32,
+        }
+      }
+      tiles.push(
+        GameObject {
+          id: id.increment(),
+          object_type,
+          extra_data: ObjectData::WallData(
+            WallData {
+              lifetime: f32::INFINITY,
+              hitpoints: WALL_HP,
+            }
+          ),
+          position: Vector2 {
+            x: x as f32,
+            y: y as f32,
+          },
+          to_be_deleted: false,
+        }
+      );
+    }
+  }
+
+  return (tiles, blue_spawn, red_spawn)
+}
+
 /// Loads any map from a properly formatted string: `<object> [posX] [posY]`
 /// 
 /// example:
@@ -923,7 +980,7 @@ impl GameObject {
 /// wall 40.0 10.0
 /// unbreakablewall 50.0 10.0
 /// ```
-pub fn load_map_from_file(map: &str, id: &mut u16) -> Vec<GameObject> {
+pub fn load_map_from_file_old(map: &str, id: &mut u16) -> Vec<GameObject> {
   let mut map_to_return: Vec<GameObject> = Vec::new();
   for line in map.lines() {
     let opcodes: Vec<&str> = line.split(" ").collect();

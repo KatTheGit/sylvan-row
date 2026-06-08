@@ -145,7 +145,8 @@ pub enum RefusalReason {
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {
   pub port: u16,
-  pub game_id: u128
+  pub game_id: u128,
+  pub gamemode: GameMode,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct ServerToClientPacket {

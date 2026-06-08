@@ -649,11 +649,12 @@ async fn main() {
                         // MARK: | Game Server
                         let thread_database = Arc::clone(&local_database);
                         let thread_players = Arc::clone(&local_players);
+                        let match_gamemode_copy = match_gamemode.clone();
                         fleet.push(
                           std::thread::spawn(move || {
                             let player_info = player_info.clone();
-                            println!("{:?}", match_gamemode);
-                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(port, player_info.clone(), match_gamemode)}){
+                            println!("{:?}", match_gamemode_copy);
+                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(port, player_info.clone(), match_gamemode_copy)}){
                               // game ended successfully.
                               Ok(mut match_result) => {
                                 // update to the correct game_id since the gameserver isn't aware of it.
@@ -737,6 +738,7 @@ async fn main() {
                               MatchAssignmentData {
                                 port: port,
                                 game_id,
+                                gamemode: match_gamemode.clone(),
                               }
                             )
                           }
