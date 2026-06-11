@@ -16,7 +16,7 @@ use chacha20poly1305::{
 use opaque_ke::generic_array::GenericArray;
 
 /// Gameplay server. Returns a winning team.
-pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode) -> MatchEndResult {
+pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, map: Map) -> MatchEndResult {
   // Load character properties
   let characters: HashMap<Character, CharacterProperties> = load_characters();
   println!("Loaded character properties.");
@@ -59,7 +59,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode) 
     );
   }
   let mut game_object_id_counter: u16 = 0;
-  let (game_objects, blue_spawn, red_spawn): (Vec<GameObject>, Vector2, Vector2) = load_map_from_file(include_str!("../assets/maps/tiledtestmap_foreground.csv"), &mut game_object_id_counter);
+  let (game_objects, blue_spawn, red_spawn): (Vec<GameObject>, Vector2, Vector2) = load_map_from_file(map.get_fg(), &mut game_object_id_counter);
   let game_object_id_counter = Arc::new(Mutex::new(game_object_id_counter));
   let players = Arc::new(Mutex::new(players));
   println!("Loaded map game objects.");

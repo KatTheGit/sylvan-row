@@ -925,6 +925,8 @@ pub fn load_map_from_file(map: &str, id: &mut u16) -> (Vec<GameObject>, Vector2,
       let object_type_id: i32 = token.parse::<i32>().expect("Map parsing error");
       let object_type = match object_type_id {
         0 => GameObjectType::Wall,
+        1 => GameObjectType::Grass1,
+        2 => GameObjectType::Grass1Bright,
         3 => GameObjectType::UnbreakableWall,
         4 => GameObjectType::ControlPoint,
         5 => GameObjectType::BlueSpawn,
@@ -1259,5 +1261,35 @@ impl AbilityDescription {
 pub fn add_event_all(event: GameEvent, players: &mut MutexGuard<Vec<ServerPlayer>>) {
   for p_index in 0..players.len() {
     players[p_index].events.push(event.clone());
+  }
+}
+
+// MARK: Maps
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub enum Map {
+  Control1,
+  Control2,
+  Elimination1,
+  Elimination2,
+  PracticeRange,
+}
+impl Map {
+  pub fn get_fg(&self) -> &str {
+    return match self {
+      Map::Control1 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
+      Map::Control2 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
+      Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
+      Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
+      Map::PracticeRange => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
+    }
+  }
+  pub fn get_bg(&self) -> &str {
+    return match self {
+      Map::Control1 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
+      Map::Control2 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
+      Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
+      Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
+      Map::PracticeRange => {include_str!("../assets/maps/tiledtestmap_background.csv")},
+    }
   }
 }

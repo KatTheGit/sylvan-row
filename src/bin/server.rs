@@ -633,6 +633,7 @@ async fn main() {
                         },
                       };
                     }
+                    let map = Map::Control1;
                     // Create a game
                     if !players_to_match.is_empty() {
                       let game_id: u128 = rand::thread_rng().gen_range(0..u128::MAX);
@@ -650,11 +651,12 @@ async fn main() {
                         let thread_database = Arc::clone(&local_database);
                         let thread_players = Arc::clone(&local_players);
                         let match_gamemode_copy = match_gamemode.clone();
+                        let match_map_copy = map.clone();
                         fleet.push(
                           std::thread::spawn(move || {
                             let player_info = player_info.clone();
                             println!("{:?}", match_gamemode_copy);
-                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(port, player_info.clone(), match_gamemode_copy)}){
+                            match std::panic::catch_unwind(|| {sylvan_row::gameserver::game_server(port, player_info.clone(), match_gamemode_copy, match_map_copy)}){
                               // game ended successfully.
                               Ok(mut match_result) => {
                                 // update to the correct game_id since the gameserver isn't aware of it.
@@ -739,6 +741,7 @@ async fn main() {
                                 port: port,
                                 game_id,
                                 gamemode: match_gamemode.clone(),
+                                map: map.clone(),
                               }
                             )
                           }

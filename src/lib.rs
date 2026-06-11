@@ -130,7 +130,7 @@ pub struct GameData {
   pub game_objects:       Vec<GameObject>,
   pub gamemode_info:      GameModeInfo,
   pub game_object_animations: HashMap<GameObjectType, AnimationState>,
-  pub background_tiles: Vec<BackGroundTile>,
+  pub background_tiles: Vec<GameObject>,
   pub floating_numbers: Vec<FloatingNumber>,
   pub game_startup: bool,
   pub match_ended: bool,
@@ -476,6 +476,7 @@ fn main_thread(
                     }
                   ],
                   GameMode::Practice,
+                  Map::PracticeRange,
                 )
               });
               data.player.character = practice_character;
@@ -484,7 +485,7 @@ fn main_thread(
               data.game_id = 0;
               data.queued = false;
               data.game_last_nonce = 0;
-              data.background_tiles = load_background_tiles(32, 24);
+              (data.background_tiles, _, _) = load_map_from_file(Map::PracticeRange.get_bg(), &mut 0);
 
               // bind to udp socket for gameserver.
               let port = get_random_port();
@@ -700,7 +701,7 @@ fn main_thread(
           for background_tile in data.background_tiles.clone() {
             if let Ok(texture) = data.game_object_animations[&background_tile.object_type].current_frame() {
               let size: Vector2 = Vector2 { x: 1.0, y: 1.0 };
-              draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y - size.y/2.0, size.x, size.y, vh, vw, data.player.camera.clone(), GAME_BG_Z, &win, &mut com);
+              draw_image_relative(&texture, background_tile.position.x - size.x/2.0, background_tile.position.y /*- size.y/2.0*/, size.x, size.y, vh, vw, data.player.camera.clone(), GAME_BG_Z, &win, &mut com);
             }
           }
 
@@ -1706,7 +1707,7 @@ fn main_thread(
               data.game_id = info.game_id;
               data.queued = false;
               data.game_last_nonce = 0;
-              data.background_tiles = load_background_tiles(32, 24);
+              (data.background_tiles, _, _) = load_map_from_file(info.map.get_bg(), &mut 0);
               data.current_gamemode = info.gamemode;
               //let full_ip = get_ip();
               //let ip = full_ip.split(":").collect::<Vec<&str>>()[0];
@@ -2411,50 +2412,43 @@ pub enum AudioTrack {
   SoundEffectOther,
 }
 
-
-#[derive(Debug, Clone)]
-pub struct BackGroundTile {
-  position: Vector2,
-  object_type: GameObjectType,
-}
-
-fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile> {
-  let mut tiles: Vec<BackGroundTile> = Vec::new();
-  let bright_tiles = vec![GameObjectType::Grass1Bright,
-                                               GameObjectType::Grass2Bright,
-                                               GameObjectType::Grass3Bright,
-                                               GameObjectType::Grass4Bright,
-                                               GameObjectType::Grass5Bright,
-                                               GameObjectType::Grass6Bright,
-                                               GameObjectType::Grass7Bright, ];
-  let dark_tiles = vec![GameObjectType::Grass1,
-                                               GameObjectType::Grass2,
-                                               GameObjectType::Grass3,
-                                               GameObjectType::Grass4,
-                                               GameObjectType::Grass5,
-                                               GameObjectType::Grass6,
-                                               GameObjectType::Grass7, ];
-  let extra_offset_x: u16 = 9;
-  let extra_offset_y: u16 = 5;
-  for x in 0..map_size_x + (extra_offset_x*2) {
-    for y in 0..map_size_y + (extra_offset_y*2) {
-      let random_num_raw = crappy_random();
-      let mut random_num_f = (random_num_raw as f64) / u32::MAX as f64;
-      random_num_f *= 6.0;
-      let random_num = random_num_f.round() as usize;
-      let pos_x: i16 = x.try_into().unwrap();
-      let pos_x: f32 = (pos_x - extra_offset_x as i16) as f32;
-      let pos_y: i16 = y.try_into().unwrap();
-      let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 + 0.5;
-      if (x + y) % 2 == 1 {
-        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num].clone() });
-      } else {
-        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: dark_tiles[random_num].clone() });
-      }
-    }
-  }
-  return tiles;
-}
+//fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile> {
+//  let mut tiles: Vec<BackGroundTile> = Vec::new();
+//  let bright_tiles = vec![GameObjectType::Grass1Bright,
+//                                               GameObjectType::Grass2Bright,
+//                                               GameObjectType::Grass3Bright,
+//                                               GameObjectType::Grass4Bright,
+//                                               GameObjectType::Grass5Bright,
+//                                               GameObjectType::Grass6Bright,
+//                                               GameObjectType::Grass7Bright, ];
+//  let dark_tiles = vec![GameObjectType::Grass1,
+//                                               GameObjectType::Grass2,
+//                                               GameObjectType::Grass3,
+//                                               GameObjectType::Grass4,
+//                                               GameObjectType::Grass5,
+//                                               GameObjectType::Grass6,
+//                                               GameObjectType::Grass7, ];
+//  let extra_offset_x: u16 = 9;
+//  let extra_offset_y: u16 = 5;
+//  for x in 0..map_size_x + (extra_offset_x*2) {
+//    for y in 0..map_size_y + (extra_offset_y*2) {
+//      let random_num_raw = crappy_random();
+//      let mut random_num_f = (random_num_raw as f64) / u32::MAX as f64;
+//      random_num_f *= 6.0;
+//      let random_num = random_num_f.round() as usize;
+//      let pos_x: i16 = x.try_into().unwrap();
+//      let pos_x: f32 = (pos_x - extra_offset_x as i16) as f32;
+//      let pos_y: i16 = y.try_into().unwrap();
+//      let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 + 0.5;
+//      if (x + y) % 2 == 1 {
+//        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num].clone() });
+//      } else {
+//        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: dark_tiles[random_num].clone() });
+//      }
+//    }
+//  }
+//  return tiles;
+//}
 
 fn exit_catcher(mut exit_events: MessageReader<AppExit>, settings: Res<Settings>) {
   for exit_event in exit_events.read() {
