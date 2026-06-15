@@ -50,7 +50,8 @@ The GDD is in `assets/README.md`.
 
 - [ ] programming
   - [ ] Pre-game screen
-  - [ ] Post-game screen
+    - [x] infrastructure
+  - [x] Post-game screen
   - [x] gamemode
     - [x] capture point
     - [x] ui
@@ -77,13 +78,18 @@ The GDD is in `assets/README.md`.
   - [ ] animations
   - [ ] sfx, voicelines
 
-### To do 2 electric boogaloo
-- [x] Gamemodes
-- [x] Matchmaker
-- [x] Client gamemode selection
-- [x] Gamemode-specific game logic
-- [x] Maps
-- [ ] Start and end screens
+## Todo 2
+
+- [x] Fix anticheat
+- [ ] Username filter
+- [ ] Ranked system (?)
+- [ ] Find fix for android
+- [ ] Art
+  - [ ] Sprites
+  - [ ] Maps
+  - [ ] Audio
+  - [ ] UI
+
 
 ### Bugs
 
@@ -94,17 +100,9 @@ The GDD is in `assets/README.md`.
 - Update Wiro projectile list when new char
 - Update wall list when new wall
 
-## Issues that won't be solved
-
-- Fullcreen issue on Linux (Macroquad issue)
-  - [x] Holy shit they fixed it
-- Icon doesn't show up on Linux (Macroquad issue)
-  - [x] Holy guacamole they fixed it
-- Any MITM mitigation that goes beyond making sure data is secure and legitimate.
-
 # Notes
 
-This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the original repository](https://github.com/OrnitOnGithub/moba?tab=readme-ov-file#notice)
+This was previously owned by OrnitOnGithub, my previous account, as mentioned in the [original repository](https://github.com/OrnitOnGithub/moba?tab=readme-ov-file#notice).
 
 ## Extra credits
 
@@ -114,12 +112,3 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
   - Assault Android Cactus
   - Battlerite
   - League of Legends
-
-
-Start and end screens:
-
-- MatchAssign packet arrives
-- Show pre-game screen
-- in-game, controls are locked
-- Game starts, hide screen
-- 

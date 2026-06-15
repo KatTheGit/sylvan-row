@@ -205,7 +205,7 @@ pub fn object_aware_movement(
   return (adjusted_raw_movement, adjusted_movement);
 }
 
-pub fn dashing_logic(mut is_dashing: bool, mut dashed_distance: f32, dash_direction: Vector2, delta_time: f64, char_dash_speed: f32, char_dash_distance: f32, game_objects: Vec<GameObject>, current_position: Vector2) -> (Vector2, f32, bool) {
+pub fn dashing_logic(mut is_dashing: bool, mut dashed_distance: f32, dash_direction: Vector2, delta_time: f32, char_dash_speed: f32, char_dash_distance: f32, game_objects: Vec<GameObject>, current_position: Vector2) -> (Vector2, f32, bool) {
   let mut new_position = Vector2::new();
   let player_dashing_speed: f32 = char_dash_speed;
   let player_max_dash_distance: f32 = char_dash_distance;

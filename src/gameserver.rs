@@ -55,6 +55,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
         last_packet_time: Instant::now(),
         events: Vec::new(),
         passive_timer: Instant::now(),
+        packet_times: Vec::new(),
       }
     );
   }
@@ -149,17 +150,20 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           recieved_player_info.aim_direction.clean();
           recieved_player_info.movement.clean();
           recieved_player_info.position.clean();
-          recieved_player_info.packet_interval.clean();
 
-          // If this check passes, we're now running logic for the player that sent the packet.
-          // This block of code handles recieving data, and then sends out a return packet.
-          let time_since_last_packet = recieved_player_info.packet_interval as f64;
-          // if time_since_last_packet < MAX_PACKET_INTERVAL &&
-          // time_since_last_packet > MIN_PACKET_INTERVAL  {
-          //   // ignore this packet since it's coming in too fast
-          //   player_found = true;
-          //   break;
-          // }
+          // do packet averaging calculations
+          player.packet_times.push(player.last_packet_time.elapsed().as_secs_f32());
+          player.last_packet_time = Instant::now();
+
+          let mut average_packet_time = 0.0;
+          if player.packet_times.len() > 30 {
+            player.packet_times.remove(0);
+          }
+          for time in player.packet_times.clone() {
+            average_packet_time += time;
+          }
+          average_packet_time /= player.packet_times.len() as f32;
+          println!("{:?}", 1.0 / average_packet_time);
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           player.shooting = recieved_player_info.shooting_primary;
@@ -392,7 +396,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                 //let wallride_distance = TILE_SIZE * scale * f32::powf(f32::powf(f32::abs(difference.x), pow) + f32::powf(f32::abs(difference.y), pow), 1.0/pow);
 
                 // now apply this movement as our new movement vector
-                new_position = player.position + difference_perpendicular * speed * time_since_last_packet as f32;
+                new_position = player.position + difference_perpendicular * speed * average_packet_time;
                 
                 // lock our position at the right distance.
                 let mut diff: Vector2 = (new_position - closest_pos).normalize();
@@ -421,7 +425,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                   player.is_dashing,
                   player.dashed_distance, 
                   player.dash_direction, 
-                  time_since_last_packet, 
+                  average_packet_time, 
                   characters[&player.character].dash_speed, 
                   characters[&player.character].dash_distance, 
                   game_objects.clone(), 
@@ -456,7 +460,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
               }
             }
 
-            let movement = raw_movement * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
+            let movement = raw_movement * (player_movement_speed + extra_speed) * average_packet_time;
 
             // calculate current expected position based on input
             let (new_movement_raw, _): (Vector2, Vector2) = object_aware_movement(
@@ -466,7 +470,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
               game_objects.clone()
             );
 
-            new_position = previous_position + new_movement_raw * (player_movement_speed + extra_speed) * time_since_last_packet as f32;
+            new_position = previous_position + new_movement_raw * (player_movement_speed + extra_speed) * average_packet_time;
 
             player.move_direction = new_movement_raw;
 
@@ -718,6 +722,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           last_packet_time: Instant::now(),
           events: Vec::new(),
           passive_timer: Instant::now(),
+          packet_times: Vec::new(),
         }
       );
     }
@@ -903,10 +908,42 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                 }
               }
             }
+
+            // orb spawn!!
+            orb_timer += 1.0 as f32;
+            let mut orb_found = false;
+            for game_object in game_objects.clone() {
+              if game_object.object_type == GameObjectType::CenterOrb {
+                orb_found = true;
+                orb_timer = 0.0;
+                break;
+              }
+            }
+            if orb_timer > orb_spawn_interval && !orb_found {
+              let mut orb_position: Vector2 = (red_spawn + blue_spawn) / 2.0;
+
+              game_objects.push(
+                GameObject {
+                  object_type: GameObjectType::CenterOrb,
+                  position: orb_position,
+                  to_be_deleted: false,
+                  id: game_object_id_counter.increment(),
+                  extra_data: ObjectData::WallData(
+                    WallData {
+                      hitpoints: 60,
+                      lifetime: f32::INFINITY,
+                    }
+                  ),
+                }
+              );
+            }
+
+            // wincons! 
             if alive_red == 0 && alive_blue == 0 {
               // a draw! how rare!
               round_reset = true;
-            } else {
+            }
+            else {
               if alive_red == 0 {
                 round_reset = true;
                 gamemode_info.points_blue += 1;
@@ -917,6 +954,13 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
               }
             }
             // RED WINS!
+            if gamemode_info.points_red == 2 && gamemode_info.points_blue == 2 {
+              // a draw, what the heck!
+              return MatchEndResult {
+                winning_team: TeamWinResult::Draw,
+                game_id: 0, // don't worry about this value, the main server handles it.
+              };
+            }
             if gamemode_info.points_red == 2 {
               return MatchEndResult {
                 winning_team: TeamWinResult::RedWin,
@@ -1626,42 +1670,8 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
     // (vscode) MARK: Object Handlin'
     // Do all logic related to game objects
 
-    // contemplating my orb
     if tick {
-      orb_timer += 1.0 as f32;
-      let mut orb_found = false;
-      for game_object in game_objects.clone() {
-        if game_object.object_type == GameObjectType::CenterOrb {
-          orb_found = true;
-          orb_timer = 0.0;
-          break;
-        }
-      }
-      if orb_timer > orb_spawn_interval && !orb_found {
-        let mut orb_position: Vector2 = Vector2::new();
-        // check if there's already an orb
-        // get the position of the spawner
-        for game_object in game_objects.clone() {
-          if game_object.object_type == GameObjectType::CenterOrbSpawnPoint {
-            orb_position = game_object.position;
-            break;
-          }
-        }
-        game_objects.push(
-          GameObject {
-            object_type: GameObjectType::CenterOrb,
-            position: orb_position,
-            to_be_deleted: false,
-            id: game_object_id_counter.increment(),
-            extra_data: ObjectData::WallData(
-              WallData {
-                hitpoints: 60,
-                lifetime: f32::INFINITY,
-              }
-            ),
-          }
-        );
-      }
+
     }
 
     for o_index in 0..game_objects.len() {

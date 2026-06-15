@@ -64,16 +64,16 @@ impl Button {
     let size = self.size;
     let text = self.text.as_str();
     let font_size = self.font_size;
-    draw_rect((BLUE), position, size, z, window, commands);
+    draw_rect(BLUE, position, size, z, window, commands);
     let inner_shrink: f32 = 1.0 * vh;
-    draw_rect((SKY_BLUE), position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z+1, window, commands);
+    draw_rect(SKY_BLUE, position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z+1, window, commands);
     //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
     draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3, Justify::Center, window, commands);
     let mouse: Vector2 = get_mouse_pos(&window);
     if self.clickable {
       if mouse.x > position.x && mouse.x < (position.x + size.x) {
         if mouse.y > position.y && mouse.y < (position.y + size.y) {
-          draw_rect((GRAY), position, size, z+2, window, commands);
+          draw_rect(GRAY, position, size, z+2, window, commands);
           //draw_text(&font, text, Vector2 { x: position.x + 1.0*vh + 10.0, y: position.y + size.y * 0.65 }, size, font_size, z, window, commands);
         }
       }
@@ -155,20 +155,20 @@ impl Tabs {
   }
   pub fn draw_and_process(&mut self, vh: f32, clickable: bool, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) {
     fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool, clickable: bool, z: i8, window: &Window, commands: &mut Commands, font: &Handle<Font>, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
-      draw_rect((BLUE), position, size, z, window, commands);
+      draw_rect(BLUE, position, size, z, window, commands);
       let inner_shrink: f32 = 1.0 * vh;
-      draw_rect((SKY_BLUE), position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
+      draw_rect(SKY_BLUE, position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
       //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
       draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3, Justify::Center, window, commands);
       
       if selected {
-        draw_rect((GRAY), position, size, z+1, window, commands);
+        draw_rect(GRAY, position, size, z+1, window, commands);
       }
       let mouse: Vector2 = get_mouse_pos(window);
       if clickable {
         if mouse.x > position.x && mouse.x < (position.x + size.x) {
           if mouse.y > position.y && mouse.y < (position.y + size.y)   {
-            draw_rect((GRAY), position, size, z+2, window, commands);
+            draw_rect(GRAY, position, size, z+2, window, commands);
             //draw_text(&font, text, Vector2 {x: position.x + 1.0 *vh + 10.0, y: position.y}, size, font_size, z+2, window, commands);
             if get_mouse_released(mouse_buttons).contains(&MouseButton::Left) {
               return true;
@@ -228,9 +228,9 @@ impl Tabs {
 /// Reads a `selected` boolean and modifies it. If the value was changed this frame,
 /// returns `true`.
 pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
-  draw_rect((BLUE), position, Vector2 { x: size, y: size }, z, window, commands);
+  draw_rect(BLUE, position, Vector2 { x: size, y: size }, z, window, commands);
   let inner_shrink: f32 = 0.2 * vh;
-  draw_rect((BLUE), position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2 { x: size, y: size }- Vector2 { x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
+  draw_rect(BLUE, position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2 { x: size, y: size }- Vector2 { x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
   draw_text(&font, text, Vector2 {x: position.x + size + 1.0 *vh, y: position.y}, Vector2 { x: size + 300.0*vh, y: size }, BLACK, font_size , z, Justify::Left, window, commands);
 
   
@@ -241,7 +241,7 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
   let mouse: Vector2 = get_mouse_pos(window);
   if mouse.x > position.x && mouse.x < (position.x + size) {
     if mouse.y > position.y && mouse.y < (position.y + size) {
-      draw_rect((Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.2 }), position, Vector2 { x: size, y: size }, z, window, commands);
+      draw_rect(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.2 }, position, Vector2 { x: size, y: size }, z, window, commands);
       if get_mouse_released(mouse_buttons).contains(&MouseButton::Left) {
         *selected = !*selected;
         return true;
@@ -255,13 +255,13 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
 /// Returns true if the value was modified.
 pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32, font: &Handle<Font>, z: i8, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
   let shrink = 1.0*vh;
-  draw_rect((BLUE), position, size, z, window, commands);
+  draw_rect(BLUE, position, size, z, window, commands);
 
-  draw_rect((SKY_BLUE), position + Vector2 {x: shrink, y: shrink}, size - Vector2 {x: shrink*2.0, y:shrink*2.0}, z, window, commands);
+  draw_rect(SKY_BLUE, position + Vector2 {x: shrink, y: shrink}, size - Vector2 {x: shrink*2.0, y:shrink*2.0}, z, window, commands);
 
   let slider_width = 2.0 * vh;
   let slider_x_pos = position.x + (size.x - slider_width) * ((*value-value_min) / (value_max - value_min));
-  draw_rect((BLUE), Vector2 { x: slider_x_pos, y: position.y }, Vector2 { x: slider_width, y: size.y }, z+2, window, commands);
+  draw_rect(BLUE, Vector2 { x: slider_x_pos, y: position.y }, Vector2 { x: slider_width, y: size.y }, z+2, window, commands);
   let mut formatted_value: String = format!("{:.2}", value);
   if *value >= 1.0 {
     formatted_value = format!("{:.1}", value);
@@ -321,7 +321,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     },
     z, window, commands
   );
-  draw_rect((Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }), Vector2{x: (position.x + squish_offset/2.0), y:(position.y + squish_offset/2.0)}, Vector2{x: (size.x - squish_offset), y: ((size.y - squish_offset) * (1.0 - progress))}, z+1, window, commands);
+  draw_rect(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }, Vector2{x: (position.x + squish_offset/2.0), y:(position.y + squish_offset/2.0)}, Vector2{x: (size.x - squish_offset), y: ((size.y - squish_offset) * (1.0 - progress))}, z+1, window, commands);
   let text = match ability_index {
     0 => "PASSIVE",
     1 => &format!("PRIMARY\n({})",
@@ -375,8 +375,8 @@ pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font
     };
   
   draw_text(&font, &displayed_name, Vector2 { x: position.x * vh, y: position.y * vh }, Vector2 { x: 100.0*vh, y: 100.0*vh }, BLACK, size * 0.5 * vh, z, Justify::Left, window, commands);
-  draw_rect((Srgba {red: 0.0, green: 0.0, blue: 0.0, alpha: 0.5}), Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2 {x: (size * (100.0 as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
-  draw_rect((Srgba {red: 0.0, green: 1.0, blue: 0.1, alpha: 1.0}), Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2{x: ( size * (player.health as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
+  draw_rect(Srgba {red: 0.0, green: 0.0, blue: 0.0, alpha: 0.5}, Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2 {x: (size * (100.0 as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
+  draw_rect(Srgba {red: 0.0, green: 1.0, blue: 0.1, alpha: 1.0}, Vector2 {x: (position.x) * vh, y: (position.y + 1.5) * vh}, Vector2{x: ( size * (player.health as f32 / 100.0) * 2.0 ) * vh, y: (size * 0.25 ) * vh}, z, window, commands);
 }
 
 // MARK: Floating numbers
@@ -429,7 +429,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
 
   let button_size: Vector2 = Vector2 { x: 25.0 * uiscale, y: 9.0 * uiscale };
   // semi-transparent background
-  draw_rect((Srgba { red: 1.0, green: 1.0, blue: 1.0, alpha: 0.9 }), Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, z, window, commands);
+  draw_rect(Srgba { red: 1.0, green: 1.0, blue: 1.0, alpha: 0.9 }, Vector2 {x:0.0, y: 0.0}, Vector2 {x: vw * 100.0, y: vh * 100.0}, z, window, commands);
   if !data.settings_open {
     // buttons
     let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
@@ -575,8 +575,8 @@ impl Notification {
     let size: Vector2 = Vector2 { x: 60.0*vh, y: self.get_y_size(font_size/vh)*vh };
     let position = tr_anchor + Vector2 {x: -size.x, y: offset};
     let inner_shrink: f32 = 1.0 * vh;
-    draw_rect((BLUE), position, size, z, window, commands);
-    draw_rect((SKY_BLUE), position + Vector2 {x: inner_shrink, y: inner_shrink}, size - Vector2 {x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
+    draw_rect(BLUE, position, size, z, window, commands);
+    draw_rect(SKY_BLUE, position + Vector2 {x: inner_shrink, y: inner_shrink}, size - Vector2 {x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
     draw_text(&font, self.text.as_str(), Vector2 {x: position.x + 2.0 * vh, y: position.y}, size, BLACK, font_size, z, Justify::Left, window, commands);
   }
   pub fn new(text: &str, duration: f32) -> Notification {
@@ -1298,8 +1298,8 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vecto
     } else {
       10.0
     };
-    draw_rect((BLUE), mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*vh, y: tooltip_size.y + 1.0*vh }, z, window, commands);
-    draw_rect((SKY_BLUE), mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
+    draw_rect(BLUE, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*vh, y: tooltip_size.y + 1.0*vh }, z, window, commands);
+    draw_rect(SKY_BLUE, mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
     draw_text(&font, text, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset + 1.0 * vh, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*vh, y: 0.0}, BLACK, font_size, z+1, Justify::Left, window, commands);
   }
 }
@@ -1327,8 +1327,8 @@ pub fn ability_tooltip(ability: usize, character: Character, character_descripti
     } else {
       10.0
     };
-    draw_rect((BLUE), mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*uiscale, y: tooltip_size.y + 1.0*uiscale }, z, window, commands);
-    draw_rect((SKY_BLUE), mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
+    draw_rect(BLUE, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*uiscale, y: tooltip_size.y + 1.0*uiscale }, z, window, commands);
+    draw_rect(SKY_BLUE, mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
     let ability_description = match ability {
       1 => character_descriptions[&character].primary.clone(),
       2 => character_descriptions[&character].secondary.clone(),
@@ -1443,7 +1443,7 @@ pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, co
 pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
   let relative_position = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
 
-  draw_rect((color), relative_position * vh, Vector2 { x: w*vh*camera.zoom, y: h*vh*camera.zoom }, z, window, commands);
+  draw_rect(color, relative_position * vh, Vector2 { x: w*vh*camera.zoom, y: h*vh*camera.zoom }, z, window, commands);
 }
 pub fn draw_text_relative(text: &str, position: Vector2, size: Vector2, font: &Handle<Font>, color: Srgba, font_size: f32, vh: f32, vw: f32, camera: Camera, z: i8, alignment: Justify, window: &Window, commands: &mut Commands) -> () {
   let relative_position = world_to_screen(position, camera.clone(), vh, vw);

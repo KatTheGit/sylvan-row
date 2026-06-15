@@ -403,8 +403,8 @@ fn main_thread(
             let inner_shrink: f32 = 1.0 * uiscale;
             draw_text(&font, "Lobby", Vector2 {x: lobby_position.x, y: lobby_position.y-3.0*uiscale}, Vector2 {x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             for (i, player) in lobby.iter().enumerate() {
-              draw_rect((BLUE), lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, MENU_Z, &win, &mut com );
-              draw_rect((SKY_BLUE), lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, MENU_Z, &win, &mut com);
+              draw_rect(BLUE, lobby_position + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size, MENU_Z, &win, &mut com );
+              draw_rect(SKY_BLUE, lobby_position + Vector2{x: inner_shrink, y:inner_shrink} + Vector2 {x: 0.0, y: (i as f32)*y_offset}, lobby_size - Vector2{x: inner_shrink*2.0, y:inner_shrink*2.0}, MENU_Z, &win, &mut com);
               let is_ready_color = if player.is_ready {LIME} else {RED};
               let is_ready_text = if player.is_ready {"Ready"} else {"Not Ready"};
               draw_text(&font, &format!("{}", player.username), Vector2 {x: lobby_position.x + 2.0*vh, y: lobby_position.y + (i as f32)*y_offset}, Vector2{x: 100.0*vh, y: 100.0*vh}, BLACK, 3.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
@@ -1166,7 +1166,7 @@ fn main_thread(
                 data.player.is_dashing,
                 data.player.dashed_distance,
                 movement_raw,
-                delta_time as f64,
+                delta_time,
                 data.character_properties[&data.player.character].dash_speed,
                 data.character_properties[&data.player.character].dash_distance,
                 data.game_objects.clone(),
@@ -1477,7 +1477,6 @@ fn main_thread(
               shooting_primary: data.player.shooting_primary,
               shooting_secondary: data.player.shooting_secondary,
               dashing: data.player.dashing,
-              packet_interval: PACKET_INTERVAL,
               timestamp: SystemTime::now(), // ping!
             };
             data.player.shooting_primary = false;
@@ -1516,7 +1515,7 @@ fn main_thread(
         let chatbox_size = Vector2 {x: 50.0 * uiscale, y: 80.0 * uiscale};
         if data.chat_open {
           let mut valid_msg = true;
-          draw_rect((Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }), chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
+          draw_rect(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }, chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
           
           data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &input.m, &mut input.ki);
           
@@ -1670,7 +1669,7 @@ fn main_thread(
 
         // chat bg
         if data.chat_timer.elapsed().as_secs_f32() < chat_stay_open_time && !data.chat_open{
-          draw_rect((Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }), chatbox_pos, chatbox_size + Vector2 {x: 0.0, y: - 9.0 * uiscale}, CHAT_Z, &win, &mut com);
+          draw_rect(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.25 }, chatbox_pos, chatbox_size + Vector2 {x: 0.0, y: - 9.0 * uiscale}, CHAT_Z, &win, &mut com);
         }
 
         let scrollwheel = get_mouse_wheel(&mut input.mw);

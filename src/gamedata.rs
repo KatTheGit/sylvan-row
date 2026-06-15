@@ -166,9 +166,9 @@ impl ClientPlayer {
     let healthbar_x_size = 10.0 * uiscale;
 
     let outline_size = 0.5 * uiscale;
-    draw_rect((LIMEGREEN), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
-    draw_rect((GRAY), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
-    draw_rect((BLACK), screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    draw_rect(LIMEGREEN, screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
+    draw_rect(GRAY, screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
+    draw_rect(BLACK, screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
     draw_text(font, &format!("{}", self.health), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.health {
@@ -177,9 +177,9 @@ impl ClientPlayer {
       }
     }
 
-    draw_rect((ORANGE), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
-    draw_rect((GRAY), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
-    draw_rect((BLACK), screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
+    draw_rect(ORANGE, screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
+    draw_rect(GRAY, screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
+    draw_rect(BLACK, screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
     draw_text(font, &format!("{}", self.secondary_charge), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.secondary_charge {
@@ -220,16 +220,16 @@ impl ClientPlayer {
           Character::Wiro => (self.last_secondary_time / characters[&Character::Wiro].secondary_cooldown).clamp(0.0, 1.0),
           _ => panic!()
         };
-        draw_rect((GRAY), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2, window, commands);
-        draw_rect((PINK), screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * progress, y: 1.5*uiscale }, z+3, window, commands);
-        draw_rect((BLACK), screen_stackbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 1.5*uiscale + outline_size*2.0 }, z+1, window, commands);
+        draw_rect(GRAY, screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2, window, commands);
+        draw_rect(PINK, screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * progress, y: 1.5*uiscale }, z+3, window, commands);
+        draw_rect(BLACK, screen_stackbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 1.5*uiscale + outline_size*2.0 }, z+1, window, commands);
       }
       else {
         if self.stacks > 0 {
           for x in 0..self.stacks {
             let x_size = 5.0 * uiscale;
             let x_margin = 1.0 * uiscale;
-            draw_rect((PINK), screen_stackbar_pos + Vector2 {x: -healthbar_x_size + x as f32 * (x_size + x_margin), y: 0.0}, Vector2 { x: x_size, y: 1.5*uiscale }, z+3, window, commands);
+            draw_rect(PINK, screen_stackbar_pos + Vector2 {x: -healthbar_x_size + x as f32 * (x_size + x_margin), y: 0.0}, Vector2 { x: x_size, y: 1.5*uiscale }, z+3, window, commands);
           }
         }
       }
@@ -376,7 +376,6 @@ pub struct ClientPacket {
   pub aim_direction:      Vector2,
   pub shooting_primary:   bool,
   pub shooting_secondary: bool,
-  pub packet_interval:    f32,
   pub dashing:         bool,
   pub timestamp: SystemTime,
 }
@@ -493,8 +492,9 @@ pub struct ServerPlayer {
   pub stacks:  u8,
   /// list of buffs
   pub buffs:                Vec<Buff>,
+  pub events:               Vec<GameEvent>,
   pub last_packet_time:     Instant,
-  pub events: Vec<GameEvent>,
+  pub packet_times:         Vec<f32>,
 }
 impl ServerPlayer {
   pub fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
