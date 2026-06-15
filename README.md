@@ -51,18 +51,18 @@ The GDD is in `assets/README.md`.
 - [ ] programming
   - [ ] Pre-game screen
   - [ ] Post-game screen
-  - [ ] gamemode
-    - [ ] capture point
-    - [ ] ui
+  - [x] gamemode
+    - [x] capture point
+    - [x] ui
       - [ ] all players
-      - [ ] game status
+      - [x] game status
       - [ ] your player
   - [ ] characters
     - [ ] sága
       - [ ] design kit
     - [ ] assassin
   - [ ] bevy
-    - [ ] re-add friend system
+    - [x] re-add friend system
     - [ ] fix android
   - [ ] ranked
   - [ ] anticheat
@@ -78,11 +78,11 @@ The GDD is in `assets/README.md`.
   - [ ] sfx, voicelines
 
 ### To do 2 electric boogaloo
-- [ ] Gamemodes
+- [x] Gamemodes
 - [x] Matchmaker
-- [ ] Client gamemode selection
-- [ ] Gamemode-specific game logic
-- [ ] Maps
+- [x] Client gamemode selection
+- [x] Gamemode-specific game logic
+- [x] Maps
 - [ ] Start and end screens
 
 ### Bugs
@@ -114,3 +114,12 @@ This was previously owned by OrnitOnGithub, my alt account, as mentioned [in the
   - Assault Android Cactus
   - Battlerite
   - League of Legends
+
+
+Start and end screens:
+
+- MatchAssign packet arrives
+- Show pre-game screen
+- in-game, controls are locked
+- Game starts, hide screen
+- 

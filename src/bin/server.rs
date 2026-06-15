@@ -665,7 +665,7 @@ async fn main() {
                                   let mut database = thread_database.lock().unwrap();
                                   // assign victories.
                                   for player in player_info.clone() {
-                                    if player.assigned_team == match_result.winning_team {
+                                    if player.assigned_team.to_result() == match_result.winning_team {
                                       // put the victory in the database
                                       let mut player_data: PlayerData = match database::get_player(&database, &player.username) {
                                         Ok(data) => data,

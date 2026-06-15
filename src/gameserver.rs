@@ -758,13 +758,34 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
     if tenth_tick {
 
 
-      if players.len() >= (gamemode_params.team_count * gamemode_params.team_size) {
-        // there are now enough players.
-        game_active = true;
-      } else {
-        // if we don't have enough players, kindly wait
-        // and make sure the start time doesn't update
-        game_start_time = Instant::now();
+      if game_active == false {
+        // after our waiting period:
+        if game_start_time.elapsed().as_secs_f32() > MATCH_WAIT_TIME {
+          // if all players are present
+          if players.len() >= (gamemode_params.team_count * gamemode_params.team_size) {
+            // there are now enough players.
+            // all is good!
+            game_active = true;
+          }
+          // if all players aren't here...
+          else {
+            // terminate the lobby
+            return MatchEndResult {
+              winning_team: TeamWinResult::Draw,
+              game_id: 0,
+            };
+          }
+        }
+        // prior to the end of the waiting period, inhibit player movement and actions
+        else {
+          for p_index in 0..players.len() {
+            // lock positions (anticheat measure)
+            players[p_index].position = match players[p_index].team {
+              Team::Blue => blue_spawn,
+              Team::Red => red_spawn,
+            };
+          }
+        }
       }
 
       if round_reset {
@@ -784,6 +805,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           };
         }
       }
+      gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
 
       // do gamemode checks
       if game_active {
@@ -897,16 +919,14 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             // RED WINS!
             if gamemode_info.points_red == 2 {
               return MatchEndResult {
-                winning_team: Team::Red,
-                is_draw: false,
+                winning_team: TeamWinResult::RedWin,
                 game_id: 0, // don't worry about this value, the main server handles it.
               };
             }
             // BLUE WINS!
             if gamemode_info.points_blue == 2 {
               return MatchEndResult {
-                winning_team: Team::Blue,
-                is_draw: false,
+                winning_team: TeamWinResult::BlueWin,
                 game_id: 0, // don't worry about this value, the main server handles it.
               };
             }
@@ -916,6 +936,11 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           }
         }
       }
+    }
+
+    // do nothing prior to the game start
+    if game_start_time.elapsed().as_secs_f32() < MATCH_WAIT_TIME {
+      continue;
     }
     
     // (vscode) MARK: Player logic
@@ -954,8 +979,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
         if players.is_empty() {
           println!("returning winning team after no players left.");
           return MatchEndResult {
-            winning_team: player_team_copy,
-            is_draw: false,
+            winning_team: player_team_copy.to_result(),
             game_id: 0, // don't worry about this value, the main server handles it.
           };
         }

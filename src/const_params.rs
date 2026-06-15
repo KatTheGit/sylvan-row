@@ -16,6 +16,9 @@ pub const MATCHMAKE_ALONE: bool = false;
 
 pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
+/// The amount of time the game server waits for players to connect.
+pub const MATCH_WAIT_TIME: f32 = 3.0;
+
 //// this is bs
 ///// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
 //pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 30.0;

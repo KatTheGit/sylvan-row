@@ -37,7 +37,7 @@ use maths::*;
 use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
 use ring::hkdf;
-use crate::{bevy_graphics::Button, const_params::*, database::{get_friend_request_type, FriendShipStatus}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket}};
+use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus, get_friend_request_type}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket, TeamWinResult}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
 const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; // "13.38.240.14:25569";
@@ -135,7 +135,7 @@ pub struct GameData {
   pub game_startup: bool,
   pub match_ended: bool,
   pub post_match_timer: Instant,
-  pub winning_team: Team,
+  pub winning_team: TeamWinResult,
   pub current_gamemode: GameMode,
 }
 impl Default for GameData {
@@ -232,7 +232,7 @@ impl Default for GameData {
       game_startup: true,
       match_ended: false,
       post_match_timer: Instant::now(),
-      winning_team: Team::Blue,
+      winning_team: TeamWinResult::Draw,
       current_gamemode: GameMode::Practice,
     }
   }
@@ -968,10 +968,30 @@ fn main_thread(
           }
           
 
-          // MATCH END
-
+          // MATCH END, draw game end screen
           if data.match_ended {
-            if data.post_match_timer.elapsed().as_secs_f64() > 1.0 {
+
+            let tm_anchor = (tl_anchor + tr_anchor) / 2.0;
+            let leave_button_size = Vector2 {x: 30.0 * uiscale, y: 10.0 * uiscale};
+            let mut leave_button = Button::new(tm_anchor + Vector2 {x: -leave_button_size.x/2.0, y: 60.0 * uiscale}, leave_button_size, "Ok", 7.0 * uiscale);
+            leave_button.draw(vh, ui_clickable, GAME_UI_Z, &font, &win, &mut com);
+
+            let text;
+            let color;
+            if data.winning_team == data.player.team.to_result() {
+              text = "You win!";
+              color = BLUE;
+            }
+            else if data.winning_team != data.player.team.to_result() {
+              text = "You lose!!! xd loser";
+              color = RED;
+            } else {
+              text = "Draw";
+              color = GREY;
+            };
+            draw_text(&font, text, tm_anchor + Vector2 {x: -100.0 * uiscale, y: 50.0 * uiscale}, Vector2 {x: 200.0 * uiscale, y: 10.0 * uiscale}, color, 7.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+
+            if leave_button.was_released(&win, &input.m) {
               data.match_ended = false;
               data.current_menu = MenuScreen::Main(0);
             }
@@ -1102,6 +1122,11 @@ fn main_thread(
           if movement.magnitude() > 1.0 {
             // println!("normalizing");
             movement = movement.normalize();
+          }
+
+          // lock movement at the start of the game
+          if (data.gamemode_info.time as f32) < MATCH_WAIT_TIME {
+            movement = Vector2::new();
           }
 
           let mut movement_raw: Vector2 = movement;
@@ -1453,7 +1478,7 @@ fn main_thread(
               shooting_secondary: data.player.shooting_secondary,
               dashing: data.player.dashing,
               packet_interval: PACKET_INTERVAL,
-              timestamp: SystemTime::now(),
+              timestamp: SystemTime::now(), // ping!
             };
             data.player.shooting_primary = false;
             data.player.dashing = false;

@@ -75,9 +75,14 @@ pub enum ServerToClient {
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchEndResult {
-  pub winning_team: Team,
-  pub is_draw: bool,
+  pub winning_team: TeamWinResult,
   pub game_id: u128,
+}
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
+pub enum TeamWinResult {
+  RedWin,
+  BlueWin,
+  Draw,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct LobbyPlayerInfo {

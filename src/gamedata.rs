@@ -10,6 +10,7 @@ use std::vec;
 use crate::bevy_immediate::*;
 use crate::const_params::*;
 use crate::maths::*;
+use crate::mothership_common::TeamWinResult;
 use std::time::SystemTime;
 use crate::bevy_graphics::*;
 use std::time::Instant;
@@ -383,6 +384,14 @@ pub struct ClientPacket {
 pub enum Team {
   Red = 0,
   Blue = 1,
+}
+impl Team {
+  pub fn to_result(&self) -> TeamWinResult {
+    match self {
+      Team::Blue=> TeamWinResult::BlueWin,
+      Team::Red => TeamWinResult::RedWin,
+    }
+  }
 }
 // MARK: Server
 /// Information sent by srever to client about themself
