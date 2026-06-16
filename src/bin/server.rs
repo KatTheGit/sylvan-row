@@ -1,5 +1,5 @@
 use redb::{Database, Result};
-use sylvan_row::{const_params::*, database::{self, FriendShipStatus, PlayerData}, filter, gamedata::*, mothership_common::*, network} ;
+use sylvan_row::{const_params::*, database::{self, FriendShipStatus, PlayerData}, filter::{self, ProfanityLevel, contains_profanity}, gamedata::*, mothership_common::*, network} ;
 use std::{collections::HashMap, io::Write, sync::{Arc, Mutex}, thread::JoinHandle, vec};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
@@ -179,7 +179,7 @@ async fn main() {
                   ClientToServer::RegisterRequestStep1(recieved_username, client_message) => {
                     println!("user wants to register");
                     username = recieved_username.clone();
-                    let valid = filter::valid_username(username.clone());
+                    let valid = filter::valid_username(&username) && !contains_profanity(&username, ProfanityLevel::SlursAndSwears);
                     if !valid {
                       let _ = socket.write_all(&network::tcp_encode(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::InvalidUsername),

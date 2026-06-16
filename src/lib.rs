@@ -37,7 +37,8 @@ use maths::*;
 use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
 use ring::hkdf;
-use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus, get_friend_request_type}, filter::{valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket, TeamWinResult}};
+use rustrict::{Censor, Type};
+use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus, get_friend_request_type}, filter::{ProfanityLevel, censor_profanity, contains_profanity, valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket, TeamWinResult}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
 const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; // "13.38.240.14:25569";
@@ -146,7 +147,7 @@ impl Default for GameData {
       tabs_login: Tabs::new(vec!["Login".to_string(), "Register".to_string()]),
       settings: Settings::load(),
       username_input: TextInput {
-        selected: false,
+        selected: true,
         buffer: String::new(),
         hideable: false,
         show_password: false,
@@ -1504,8 +1505,8 @@ fn main_thread(
             data.nonce += 1;
           }
         }
+
         // MARK: draw chat
-      
 
         if data.paused {
           data.chat_open = false;
@@ -1632,6 +1633,17 @@ fn main_thread(
             let message_type = recv_message.2;
 
             let mut text: String = format!("[{}] {}", sender, message);
+            let mut censorship_level = match message_type {
+              ChatMessageType::Private => ProfanityLevel::None,
+              ChatMessageType::Group => ProfanityLevel::Slurs,
+              ChatMessageType::Administrative => ProfanityLevel::None,
+              ChatMessageType::Team => ProfanityLevel::Slurs,
+              ChatMessageType::All => ProfanityLevel::Slurs,
+            };
+            if data.settings.censor_profanity {
+              censorship_level = ProfanityLevel::SlursAndSwears;
+            }
+            text = censor_profanity(&text, censorship_level);
             let line_count = (text.len() as f32 / max_line_len as f32).ceil() as usize;
 
             let color: Srgba = match message_type {
@@ -1913,9 +1925,9 @@ fn main_thread(
         let user_input_pos = tl_anchor + Vector2 {x: 20.0 * uiscale, y: 30.0 * uiscale};
         let password_input_pos = tl_anchor + Vector2 {x: 20.0 * uiscale, y: 40.0 * uiscale};
         draw_text(&font, "Username", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 27.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
-        tooltip(user_input_pos, input_size, "3-20 characters.", Vector2 { x: 30.0*uiscale, y: 5.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        tooltip(user_input_pos, input_size, "3-20 characters and no swears.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
-        tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 10.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         draw_text(&font, "Password", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 37.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
         
@@ -1948,18 +1960,12 @@ fn main_thread(
         match login_step {
           // MARK: Login/Register 0
           0 => {
-            if confirm_button.was_released(&win, &input.m) {
+            if confirm_button.was_released(&win, &input.m) |
+            (get_keys_pressed(&input.k).contains(&KeyCode::Enter) && !data.username_input.selected) {
+
               // check credential validity.
               let mut credentials_valid = true;
-              if !valid_password(password.clone()) {
-                data.notifications.push(
-                  Notification::new("Unsafe password", 1.0)
-                );
-                credentials_valid = false;
-                data.username_input.selected = false;
-                data.password_input.selected = true;
-              }
-              if !valid_username(username.clone()) {
+              if !valid_username(&username) | contains_profanity(&username, filter::ProfanityLevel::SlursAndSwears) {
                 data.notifications.push(
                   Notification::new("Invalid username", 1.0)
                 );
@@ -1967,7 +1973,15 @@ fn main_thread(
                 data.username_input.selected = true;
                 data.password_input.selected = false;
               }
-
+              if !valid_password(&password) {
+                data.notifications.push(
+                  Notification::new("Unsafe password", 1.0)
+                );
+                credentials_valid = false;
+                data.username_input.selected = false;
+                data.password_input.selected = true;
+              }
+              
               if credentials_valid {
 
 
@@ -2008,6 +2022,13 @@ fn main_thread(
                     }
                   }
                 }
+              }
+            }
+            else {
+              // keybinds
+              if get_keys_pressed(&input.k).contains(&KeyCode::Enter) && data.username_input.selected {
+                data.username_input.selected = false;
+                data.password_input.selected = true;
               }
             }
           }

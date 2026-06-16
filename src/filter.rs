@@ -1,6 +1,8 @@
+use rustrict::*;
+
 /// Conditions for validity:
 /// - 8 characters or more
-pub fn valid_password(text: String) -> bool {
+pub fn valid_password(text: &str) -> bool {
   if text.len() < 8 {
     return false;
   }
@@ -9,7 +11,8 @@ pub fn valid_password(text: String) -> bool {
 /// Conditions for validity:
 /// - 3-20 characters
 /// - Does not contain `:`
-pub fn valid_username(text: String) -> bool {
+/// - Does not contain swears and slurs.
+pub fn valid_username(text: &str) -> bool {
   if text.len() < 3 {
     return false;
   }
@@ -22,16 +25,51 @@ pub fn valid_username(text: String) -> bool {
   return true;
 }
 
-pub fn contains_swears(_text: String) -> bool {
 
-
-
-  return false;
+pub enum ProfanityLevel {
+  Swears,
+  Slurs,
+  SlursAndSwears,
+  None,
 }
 
-pub fn contains_slurs(_text: String) -> bool {
+pub fn contains_profanity(text: &str, level: ProfanityLevel) -> bool {
 
-  
+  match level {
+    ProfanityLevel::Swears => {
+      return text.is(Type::SEVERE)
+    }
+    ProfanityLevel::SlursAndSwears => {
+      return text.is(Type::ANY)
+    }
+    ProfanityLevel::Slurs => {
+      return text.is(Type::OFFENSIVE)
+    }
+    ProfanityLevel::None => {
+      return text.is(Type::NONE)
+    }
+  }
+}
 
-  return false;
+pub fn censor_profanity(text: &str, level: ProfanityLevel) -> String {
+  match level {
+    ProfanityLevel::Slurs => {
+      return Censor::from_str(text)
+        .with_censor_threshold(Type::OFFENSIVE)
+        .censor();
+    }
+    ProfanityLevel::SlursAndSwears => {
+      return Censor::from_str(text)
+        .with_censor_threshold(Type::ANY)
+        .censor();
+    }
+    ProfanityLevel::Swears => {
+      return Censor::from_str(text)
+        .with_censor_threshold(Type::SEVERE)
+        .censor();
+    }
+    ProfanityLevel::None => {
+      return text.to_string();
+    }
+  }
 }

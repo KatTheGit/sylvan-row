@@ -18,6 +18,7 @@ rand = "0.8.5"
 rand_core = "0.6.4"
 redb = "2.6.3"
 ring = "0.17.14"
+rustrict = "0.7.38"
 rusty-pkl = "0.1.2"
 serde = { version = "1.0.204", features = ["derive"] }
 sha2 = "0.10.9"

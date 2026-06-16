@@ -529,14 +529,18 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     }
     // Other
     if data.settings_tabs.selected_tab() == 4 {
-      let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 30.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset settings", 4.0*uiscale);
-      reset_button.draw(uiscale, true, z, font, window, commands);
+
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Censor profanity", 4.0*uiscale, uiscale, &mut data.settings.censor_profanity, z, font, window, commands, mouse_buttons);
+
+
+      let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 60.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset settings", 4.0*uiscale);
+      reset_button.draw(uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, z, font, window, commands);
       if reset_button.was_released(window, mouse_buttons) {
         data.settings = Settings::new();
         settings_modified = true;
       }
-      let mut reset_keybinds_button = Button::new(Vector2 { x: 40.0*vw, y: 40.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset keybinds", 4.0*uiscale);
-      reset_keybinds_button.draw(uiscale, true, z, font, window, commands);
+      let mut reset_keybinds_button = Button::new(Vector2 { x: 40.0*vw, y: 70.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset keybinds", 4.0*uiscale);
+      reset_keybinds_button.draw(uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, z, font, window, commands);
       if reset_keybinds_button.was_released(window, mouse_buttons) {
         data.settings.keybinds = KeybindSettings::new();
         settings_modified = true;
@@ -603,6 +607,7 @@ pub struct Settings {
   pub sfx_self_volume: f32,
   pub sfx_other_volume: f32,
   pub keybinds: KeybindSettings,
+  pub censor_profanity: bool,
 }
 impl Settings {
   pub fn new() -> Settings{
@@ -617,6 +622,7 @@ impl Settings {
       sfx_self_volume: 100.0,
       sfx_other_volume: 50.0,
       keybinds: KeybindSettings::new(),
+      censor_profanity: true,
     }
   }
   pub fn load() -> Settings {

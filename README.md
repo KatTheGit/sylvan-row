@@ -68,7 +68,7 @@ The GDD is in `assets/README.md`.
   - [ ] ranked
   - [ ] anticheat
   - [ ] server throttling
-  - [ ] chat filters
+  - [x] chat filters
   - [ ] new parser
   - [x] standardize Z layers
   - [ ] better ui
