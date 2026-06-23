@@ -56,6 +56,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
         events: Vec::new(),
         passive_timer: Instant::now(),
         packet_times: Vec::new(),
+        last_damage_time: Instant::now(),
       }
     );
   }
@@ -163,7 +164,6 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             average_packet_time += time;
           }
           average_packet_time /= player.packet_times.len() as f32;
-          println!("{:?}", 1.0 / average_packet_time);
 
           player.aim_direction = recieved_player_info.aim_direction.normalize();
           player.shooting = recieved_player_info.shooting_primary;
@@ -449,7 +449,6 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                 extra_speed += player.buffs[b_index].value;
               }
               if player.buffs[b_index].buff_type == BuffType::Impulse {
-                println!("{:?}", player.buffs[b_index]);
                 // yeet
                 let direction = player.buffs[b_index].direction.normalize();
                 // time left serves as impulse decay
@@ -723,6 +722,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           events: Vec::new(),
           passive_timer: Instant::now(),
           packet_times: Vec::new(),
+          last_damage_time: Instant::now(),
         }
       );
     }
@@ -920,12 +920,12 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
               }
             }
             if orb_timer > orb_spawn_interval && !orb_found {
-              let mut orb_position: Vector2 = (red_spawn + blue_spawn) / 2.0;
+              let map_center: Vector2 = (red_spawn + blue_spawn) / 2.0;
 
               game_objects.push(
                 GameObject {
                   object_type: GameObjectType::CenterOrb,
-                  position: orb_position,
+                  position: map_center,
                   to_be_deleted: false,
                   id: game_object_id_counter.increment(),
                   extra_data: ObjectData::WallData(
@@ -979,6 +979,18 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             // hmm...
           }
         }
+        // do passive healing
+        if gamemode_params.do_respawns {
+          if tenth_tick {
+            let passive_healing: u8 = 1; //per tick
+            let passive_healing_start = 5.0; //in second
+            for p_index in 0..players.len() {
+              if players[p_index].last_damage_time.elapsed().as_secs_f32() > passive_healing_start {
+                players[p_index].heal(passive_healing, characters.clone());
+              }
+            }
+          }
+        }
       }
     }
 
@@ -1024,7 +1036,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           println!("returning winning team after no players left.");
           return MatchEndResult {
             winning_team: player_team_copy.to_result(),
-            game_id: 0, // don't worry about this value, the main server handles it.
+            game_id: 69, // don't worry about this value, the main server handles it.
           };
         }
         break;

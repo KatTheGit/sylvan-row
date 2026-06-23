@@ -969,6 +969,8 @@ fn main_thread(
           }
           
 
+          
+
           // MATCH END, draw game end screen
           if data.match_ended {
 
@@ -998,7 +1000,42 @@ fn main_thread(
             }
           }
 
-          
+          // match start
+          if (data.gamemode_info.time as f32) < MATCH_WAIT_TIME {
+            // draw player info
+            let y_start_offset = 20.0 * uiscale;
+            let y_step_offset = 15.0 * uiscale;
+            let mut blue_step = 0.0;
+            let mut red_step = 0.0;
+            let x_offset = 5.0 * uiscale;
+            let font_size = 8.0 * uiscale;
+            println!("{:?}", data.players);
+            let mut all_players = data.players.clone();
+            all_players.push(data.player.clone());
+            for player in all_players {
+              if player.team == Team::Blue {
+                blue_step += 1.0;
+                draw_text(&font, &player.username, tl_anchor + Vector2 {x: x_offset, y: blue_step * y_step_offset + y_start_offset}, Vector2 { x: 200.0 * uiscale, y: 15.0 * uiscale }, BLUE, font_size, GAME_UI_Z, Justify::Left, &win, &mut com);
+              } else {
+                red_step += 1.0;
+                draw_text(&font, &player.username, tr_anchor + Vector2 {x: -x_offset - 200.0 * uiscale, y: red_step * y_step_offset + y_start_offset}, Vector2 { x: 200.0 * uiscale, y: 15.0 * uiscale }, RED, font_size, GAME_UI_Z, Justify::Right, &win, &mut com);
+              }
+            }
+          }
+          let screen_center = Vector2 {x: 50.0* vw, y: 50.0 * vh};
+          let number_size = Vector2 {x: 20.0 * uiscale, y: 20.0 * uiscale};
+          if (data.gamemode_info.time as f32) - MATCH_WAIT_TIME < -2.0 {
+            draw_text(&font, "3", screen_center - number_size/2.0, number_size, RED, 20.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+          }
+          else if (data.gamemode_info.time as f32) - MATCH_WAIT_TIME < -1.0 {
+            draw_text(&font, "2", screen_center - number_size/2.0, number_size, ORANGE, 20.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+          }
+          else if (data.gamemode_info.time as f32) - MATCH_WAIT_TIME < -0.0 {
+            draw_text(&font, "1", screen_center - number_size/2.0, number_size, YELLOW, 20.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+          }
+
+
+
           // MARK: | | Draw Players
           if !data.player.is_dead {
             data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);

@@ -180,7 +180,7 @@ impl GameMode {
       Self::Ctp1V1 => {
         GameModeParams {
           do_respawns: true,
-          respawn_timer: 3.0,
+          respawn_timer: 5.0,
           team_size: 1,
           team_count: 2,
           description: "Capture the Point 1v1".to_string(),
@@ -189,7 +189,7 @@ impl GameMode {
       Self::Ctp2V2 => {
         GameModeParams {
           do_respawns: true,
-          respawn_timer: 3.0,
+          respawn_timer: 5.0,
           team_size: 2,
           team_count: 2,
           description: "Capture the Point 2v2".to_string(),
@@ -198,7 +198,7 @@ impl GameMode {
       Self::Practice => {
         GameModeParams {
           do_respawns: true,
-          respawn_timer: 0.0,
+          respawn_timer: 1.0,
           team_size: 1,
           team_count: 1,
           description: "Practice Range".to_string(),

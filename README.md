@@ -66,7 +66,7 @@ The GDD is in `assets/README.md`.
     - [x] re-add friend system
     - [ ] fix android
   - [ ] ranked
-  - [ ] anticheat
+  - [x] anticheat
   - [ ] server throttling
   - [x] chat filters
   - [ ] new parser

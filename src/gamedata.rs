@@ -495,6 +495,7 @@ pub struct ServerPlayer {
   pub events:               Vec<GameEvent>,
   pub last_packet_time:     Instant,
   pub packet_times:         Vec<f32>,
+  pub last_damage_time:     Instant,
 }
 impl ServerPlayer {
   pub fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
@@ -521,13 +522,14 @@ impl ServerPlayer {
     } else {
       self.health -= dmg;
     }
+
+    self.last_damage_time = Instant::now();
   }
   pub fn heal(&mut self, heal: u8, characters: HashMap<Character, CharacterProperties>) -> () {
     if self.is_dead {
       return;
     }
 
-    // this edge case crashes the server
     if self.health as i16 + heal as i16 > characters[&self.character].health as i16 {
       self.health = characters[&self.character].health;
     } else {
