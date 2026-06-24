@@ -1826,6 +1826,7 @@ fn main_thread(
                 RefusalReason::AlreadyInPary => "Already in a party",
                 RefusalReason::InvalidChannel => "Invalid selected channel",
                 RefusalReason::InvalidGameModeQueued => "Queued gamemode(s) invalid. Try restarting your game.",
+                RefusalReason::RateLimit => "You've been rate limited for at least 4s. Stop doing that!",
                 //there is no reason for these to exist here
                 RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
                 RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",

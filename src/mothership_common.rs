@@ -146,6 +146,8 @@ pub enum RefusalReason {
   InvalidChannel,
   /// An invalid gamemode was requested for matchmaking.
   InvalidGameModeQueued,
+  /// The user has been rate limited.
+  RateLimit,
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {

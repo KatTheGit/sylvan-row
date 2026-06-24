@@ -1,6 +1,6 @@
 use redb::{Database, Result};
 use sylvan_row::{const_params::*, database::{self, FriendShipStatus, PlayerData}, filter::{self, ProfanityLevel, contains_profanity}, gamedata::*, mothership_common::*, network} ;
-use std::{collections::HashMap, io::Write, sync::{Arc, Mutex}, thread::JoinHandle, vec};
+use std::{collections::HashMap, io::Write, sync::{Arc, Mutex}, thread::JoinHandle, time::Instant, vec};
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
 use ring::hkdf;
 use opaque_ke::{ServerLoginStartResult};
@@ -106,6 +106,10 @@ async fn main() {
       let mut server_login_start_result: Option<ServerLoginStartResult<DefaultCipherSuite>> = None;
       // cipher key, also session key.
       let mut cipher_key: Vec<u8> = Vec::new();
+
+      let mut rate_limit_counter: u8 = 0;
+      let mut last_packet_time = Instant::now();
+
       loop {
         // this thing is really cool and handles whichever branch is ready first
         tokio::select! {
@@ -375,7 +379,48 @@ async fn main() {
             // logged in, so use cipher
             // MARK: ===============
             else {
+              // rate limiting calculations
+              
+              println!("pre decay: {:?}", rate_limit_counter);
+              let rate_limit_decay = 3.0;
+              let elapsed = last_packet_time.elapsed().as_secs_f32();
+              let decay = (elapsed * rate_limit_decay) as u8;
+              // if we are above threshold, make the decay sctricter.
+              if rate_limit_counter > RATE_LIMIT_THRESHOLD {
+                if elapsed > 3.0 {
+                  if decay > rate_limit_counter {
+                    rate_limit_counter = 0;
+                  } else {
+                    rate_limit_counter -= decay;
+                  }
+                }
+              } else {
+                // otherwise be nice to the user.
+                if decay > rate_limit_counter {
+                  rate_limit_counter = 0;
+                } else {
+                  rate_limit_counter -= decay;
+                }
+              }
+              rate_limit_counter = rate_limit_counter.clamp(0, (RATE_LIMIT_THRESHOLD as f32 * 1.5) as u8);
+              println!("decay: {:?}", decay);
+              last_packet_time = Instant::now();
+              println!("post decay: {:?}", rate_limit_counter);
 
+              if rate_limit_counter > RATE_LIMIT_THRESHOLD {
+                match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
+                  information: ServerToClient::InteractionRefused(RefusalReason::RateLimit),
+                })).await{
+                  Ok(_) => {},
+                  Err(err) => {
+                    println!("{:?}", err);
+                    error!("{:?}", err);
+                  },
+                };
+                continue;
+              }
+              
+              
               let packets = network::tcp_decode_decrypt::<ClientToServerPacket>(buffer[..len].to_vec(), cipher_key.clone(), &mut last_nonce);
               let packets = match packets {
                 Ok(packets) => {packets},
@@ -387,6 +432,9 @@ async fn main() {
                 match packet.information {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
+
+                    rate_limit_counter += 10;
+
                     let mut gamemode_rotation = Vec::new();
                     {
                       let gamemodes = local_gamemode_rotation.lock().unwrap();
@@ -758,6 +806,8 @@ async fn main() {
                   // MARK: Match Cancel
                   ClientToServer::MatchRequestCancel => {
 
+                    //rate_limit_counter += 0;
+
                     let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
                     let mut lobby_info: Vec<LobbyPlayerInfo> = Vec::new();
                     {
@@ -830,6 +880,9 @@ async fn main() {
                   }
                   // MARK: Gamemode request
                   ClientToServer::GameModeDataRequest => {
+
+                    rate_limit_counter += 20;
+
                     let gamemodes: Vec<GameMode>;
                     {
                       gamemodes = local_gamemode_rotation.lock().unwrap().clone();
@@ -848,6 +901,7 @@ async fn main() {
                   }
                   // MARK: Data Request
                   ClientToServer::PlayerDataRequest => {
+                    rate_limit_counter += 20;
                     // client wants to see their stats!!!
                     let player_stats: PlayerStatistics;
                     {
@@ -876,6 +930,8 @@ async fn main() {
                   // MARK: Get Friend List
                   // expensive operation
                   ClientToServer::GetFriendList => {
+                    rate_limit_counter += 10;
+
                     let friend_list: Result<Vec<(String, FriendShipStatus)>, redb::Error>;
                     {
                       let database = local_database.lock().unwrap();
@@ -935,6 +991,9 @@ async fn main() {
                   // FR = Friend Request
                   // MARK: FR / FR Accept
                   ClientToServer::SendFriendRequest(other_user) => {
+                    
+                    rate_limit_counter += 5;
+
                     if username == other_user {
                       match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::ThatsYouDummy),
@@ -945,6 +1004,8 @@ async fn main() {
                           error!("{:?}", err);
                         },
                       };
+                      rate_limit_counter += 10;
+
                       continue;
                     }
                     let username_exists: Result<bool, redb::Error>;
@@ -1006,6 +1067,7 @@ async fn main() {
                                 println!("{:?}", err);
                               },
                             };
+                            rate_limit_counter += 10;
                             continue;
                           }
                           FriendShipStatus::PendingForA | FriendShipStatus::PendingForB => {
@@ -1140,6 +1202,8 @@ async fn main() {
                   }
                   // MARK: Chat Message
                   ClientToServer::SendChatMessage(peer_username, message) => {
+                    rate_limit_counter += 2;
+
                     println!("Chat | {} -> {} | {}", username, peer_username, message);
                     let mut peers_are_friends: bool = false;
                     let mut internal_error_occurred: bool = false;
@@ -1305,6 +1369,8 @@ async fn main() {
                   }
                   // MARK: Lobby invite
                   ClientToServer::LobbyInvite(other_player) => {
+                    rate_limit_counter += 5;
+
                     println!("Lobby invite");
                     let mut player_not_found = false;
                     let mut not_friends = false;
@@ -1388,6 +1454,8 @@ async fn main() {
                   }
                   // MARK: Lobby accept
                   ClientToServer::LobbyInviteAccept(other_player) => {
+                    rate_limit_counter += 5;
+
                     println!("Lobby accept");
                     let mut users_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
                     let mut lobby_info_update: Vec<LobbyPlayerInfo> = Vec::new();
@@ -1511,6 +1579,8 @@ async fn main() {
                   }
                   // MARK: Lobby leave
                   ClientToServer::LobbyLeave => {
+                    rate_limit_counter += 5;
+
                     println!("Lobby leave");
                     let mut users_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
                     let mut lobby_info_update: Vec<LobbyPlayerInfo> = Vec::new();
@@ -1636,7 +1706,9 @@ async fn main() {
                       };
                     }
                   }
+                  // MARK: Match Leave
                   ClientToServer::MatchLeave => {
+                    rate_limit_counter += 5;
                     {
                       let mut players = local_players.lock().unwrap();
                       let p_index = from_user(&username, players.clone()).expect("oops");
