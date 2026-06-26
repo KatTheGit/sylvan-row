@@ -437,7 +437,7 @@ fn main_thread(
             for i in 0..4 {
               let texture = asset_server.load(format!("ui/temp_ability_{}.png", i+1));
               let size = Vector2 { x: 10.0*uiscale, y: 10.0*uiscale };
-              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, vh, vw, uiscale, &font, character_descriptions.clone(), selected_character, MENU_Z+1, &texture, &win, &mut com, data.settings.clone());
+              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, vh, vw, uiscale, &font, character_descriptions.clone(), selected_character, MENU_Z+1.0, &texture, &win, &mut com, data.settings.clone());
             }
             let profile_texture = asset_server.load(format!("characters/{}/textures/mini-profile.png", selected_character.name().to_lowercase() ));
             let profile_texture = Texture {
@@ -871,7 +871,7 @@ fn main_thread(
                 x: (data.aim_direction.normalize().x * range * vh) + (relative_position.x * vh),
                 y: (data.aim_direction.normalize().y * range * vh) + (relative_position.y * vh)
               },
-              0.6 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 0.2 }, GAME_UI_Z-2, &win, &mut com
+              0.6 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 0.2 }, GAME_UI_Z-2.0, &win, &mut com
             );
             // shorter, matte line
             draw_line(
@@ -883,7 +883,7 @@ fn main_thread(
                 x: (data.aim_direction.normalize().x * range_limited * vh) + (relative_position.x * vh),
                 y: (data.aim_direction.normalize().y * range_limited * vh) + (relative_position.y * vh)
               },
-              0.4 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 1.0 }, GAME_UI_Z-1, &win, &mut com
+              0.4 * vh, Srgba { red: 1.0, green: 0.2, blue: 0.0, alpha: 1.0 }, GAME_UI_Z-1.0, &win, &mut com
             );
             if data.player.character == Character::Hernani {
               let range: f32 = data.character_properties[&Character::Hernani].secondary_range * data.player.camera.zoom;
@@ -903,7 +903,7 @@ fn main_thread(
                   x: (aim_dir.x * range + aim_dir_gamma.x * width) * vh + relative_position.x * vh,
                   y: (aim_dir.y * range + aim_dir_gamma.y * width) * vh + relative_position.y * vh
                 },
-                0.4 * vh, Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 }, GAME_UI_Z-1, &win, &mut com
+                0.4 * vh, Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0 }, GAME_UI_Z-1.0, &win, &mut com
               );
             }
           }
@@ -955,10 +955,10 @@ fn main_thread(
 
               let x_offset = 30.0 * uiscale;
               let x_size = 30.0 * uiscale;
-              draw_rect(RED, top_center_anchor + Vector2 {x: x_offset, y: 3.0 * uiscale}, Vector2 { x: (data.gamemode_info.point_progress_red / 100.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z+1, &win, &mut com);
+              draw_rect(RED, top_center_anchor + Vector2 {x: x_offset, y: 3.0 * uiscale}, Vector2 { x: (data.gamemode_info.point_progress_red / 100.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z+1.0, &win, &mut com);
               draw_rect(GRAY, top_center_anchor + Vector2 {x: x_offset, y: 3.0 * uiscale}, Vector2 { x: (1.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z, &win, &mut com);
 
-              draw_rect(BLUE, top_center_anchor + Vector2 {x: - x_offset- x_size, y: 3.0 * uiscale}, Vector2 { x: (data.gamemode_info.point_progress_blue / 100.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z+1, &win, &mut com);
+              draw_rect(BLUE, top_center_anchor + Vector2 {x: - x_offset- x_size, y: 3.0 * uiscale}, Vector2 { x: (data.gamemode_info.point_progress_blue / 100.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z+1.0, &win, &mut com);
               draw_rect(GRAY, top_center_anchor + Vector2 {x: - x_offset- x_size, y: 3.0 * uiscale}, Vector2 { x: (1.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z, &win, &mut com);
             }
             GameMode::Standard1V1 | GameMode::Standard2V2 => {
@@ -1038,11 +1038,11 @@ fn main_thread(
 
           // MARK: | | Draw Players
           if !data.player.is_dead {
-            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
+            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1.0, &mut com, &win);
           }
           for player in data.players.clone() {
             if !player.is_dead {
-              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1, &mut com, &win);
+              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1.0, &mut com, &win);
             }
           }
 
@@ -1111,6 +1111,9 @@ fn main_thread(
           //data.player.shooting_secondary = false;
 
           // only register input if the window is active and the pause menu isn't open
+          let mut currently_shooting_primary = false;
+          let mut currently_shooting_secondary = false;
+          let mut currently_dashing = false;
           if is_window_focused(&win) && ui_clickable {
 
             #[cfg(not(target_os="android"))]
@@ -1132,11 +1135,11 @@ fn main_thread(
                 if key == data.settings.keybinds.walk_left.0  || key == data.settings.keybinds.walk_left.1  { movement.x += -1.0 }
                 if key == data.settings.keybinds.walk_right.0 || key == data.settings.keybinds.walk_right.1 { movement.x +=  1.0 }
                 // primary
-                if key == data.settings.keybinds.primary.0    || key == data.settings.keybinds.primary.1    { data.player.shooting_primary = true; /*keyboard_mode = true*/ }
+                if key == data.settings.keybinds.primary.0    || key == data.settings.keybinds.primary.1    { currently_shooting_primary = true; /*keyboard_mode = true*/ }
                 // secondary
-                if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { data.player.shooting_secondary = true; /*keyboard_mode = true*/ }
+                if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
                 // dash
-                if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { data.player.dashing = true; /*keyboard_mode = true*/ }
+                if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { currently_dashing = true; /*keyboard_mode = true*/ }
               }
               
               // mouse button binds
@@ -1148,11 +1151,20 @@ fn main_thread(
                 if button == data.settings.keybinds.walk_left.2  || button == data.settings.keybinds.walk_left.3  { movement.x += -1.0 }
                 if button == data.settings.keybinds.walk_right.2 || button == data.settings.keybinds.walk_right.3 { movement.x +=  1.0 }
                 // primary
-                if button == data.settings.keybinds.primary.2    || button == data.settings.keybinds.primary.3    { data.player.shooting_primary = true; /*keyboard_mode = true*/ }
+                if button == data.settings.keybinds.primary.2    || button == data.settings.keybinds.primary.3    { currently_shooting_primary = true; /*keyboard_mode = true*/ }
                 // secondary
-                if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { data.player.shooting_secondary = true; /*keyboard_mode = true*/ }
+                if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
                 // dash
-                if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { data.player.dashing = true; /*keyboard_mode = true*/ }
+                if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { currently_dashing = true; /*keyboard_mode = true*/ }
+              }
+              if currently_shooting_primary {
+                data.player.shooting_primary = true;
+              }
+              if currently_shooting_secondary {
+                data.player.shooting_secondary = true;
+              }
+              if currently_dashing {
+                data.player.dashing = true;
               }
             }
           }
@@ -1517,9 +1529,9 @@ fn main_thread(
               dashing: data.player.dashing,
               timestamp: SystemTime::now(), // ping!
             };
-            data.player.shooting_primary = false;
-            data.player.dashing = false;
-            data.player.shooting_secondary = false;
+            data.player.shooting_primary   = currently_shooting_primary;
+            data.player.dashing            = currently_dashing;
+            data.player.shooting_secondary = currently_shooting_secondary;
 
             // send data to server
             let serialized_packet: Vec<u8> = bincode::serialize(&client_packet).expect("Failed to serialize message");
@@ -1555,7 +1567,7 @@ fn main_thread(
           let mut valid_msg = true;
           draw_rect(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }, chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
           
-          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1, &mut com, &win, &input.m, &mut input.ki);
+          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1.0, &mut com, &win, &input.m, &mut input.ki);
           
           // cycle through friends
           // get a list of online friends (which we can chat to).
@@ -1614,7 +1626,7 @@ fn main_thread(
             ChatMessageType::Team => BLUE,
             ChatMessageType::All => ORANGE,
           };
-          draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), Vector2 { x: chatbox_pos.x, y: chatbox_pos.y + chatbox_size.y - 9.0*uiscale }, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, color, 3.0 * uiscale, CHAT_Z+3, Justify::Left, &win, &mut com);
+          draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), Vector2 { x: chatbox_pos.x, y: chatbox_pos.y + chatbox_size.y - 9.0*uiscale }, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, color, 3.0 * uiscale, CHAT_Z+3.0, Justify::Left, &win, &mut com);
 
 
           // message sending.
@@ -1708,7 +1720,7 @@ fn main_thread(
                 y: msg_y_bottom - (current_y_step - y - 1) as f32 * y_step + data.chat_scroll
               };
               if text_position.y <= msg_y_bottom && text_position.y > chatbox_pos.y {
-                draw_text(&mono_font, &line_text, text_position, Vector2 { x: 100.0*vh, y: 100.0*vh }, color, font_size, CHAT_Z+2, Justify::Left, &win, &mut com);
+                draw_text(&mono_font, &line_text, text_position, Vector2 { x: 100.0*vh, y: 100.0*vh }, color, font_size, CHAT_Z+2.0, Justify::Left, &win, &mut com);
               }
             }
 
@@ -1952,7 +1964,7 @@ fn main_thread(
 
         // login / register tabs
         data.tabs_login.update_size(tl_anchor + Vector2 { x: 20.0 * uiscale, y: 20.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 6.0*uiscale }, 4.0*uiscale);
-        data.tabs_login.draw_and_process(uiscale, true, 0, &font, &win, &mut com, &input.m);
+        data.tabs_login.draw_and_process(uiscale, true, MENU_Z, &font, &win, &mut com, &input.m);
         let logging_in = match data.tabs_login.selected_tab() {
           0 => {true}
           _ => {false}
@@ -1976,7 +1988,7 @@ fn main_thread(
         // remember me checkbox
         let credentials_checkbox_pos = tl_anchor + Vector2 {x: 45.0 * uiscale, y: 49.6 * uiscale};
         let credentials_checkbox_size = 5.0 * uiscale;
-        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0, &font, &win, &mut com, &input.m);
+        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0.0, &font, &win, &mut com, &input.m);
         if credentials_changed {
           data.settings.save();
         }
@@ -2393,7 +2405,7 @@ fn main_thread(
     // draw notifications
     let mut offset: f32 = 0.0;
     for n_index in 0..data.notifications.len() {
-      data.notifications[n_index].draw(uiscale, tr_anchor, 4.0*uiscale, offset, 127, &font, &win, &mut com);
+      data.notifications[n_index].draw(uiscale, tr_anchor, 4.0*uiscale, offset, MENU_Z + 5.0, &font, &win, &mut com);
       offset += data.notifications[n_index].get_y_size(4.0) * uiscale;
     }
     for n_index in 0..data.notifications.len() {
@@ -2440,7 +2452,7 @@ fn main_thread(
       }
     }
     // debug
-    draw_text(&font, &format!("fps: {:?}", (1.0 / time.delta().as_secs_f32()) as u16), Vector2 { x: 0.0, y: 0.0 }, Vector2 { x: 100.0, y: 100.0 }, BLACK, 10.0, 127, Justify::Left, &win, &mut com);
+    draw_text(&font, &format!("fps: {:?}", (1.0 / time.delta().as_secs_f32()) as u16), Vector2 { x: 0.0, y: 0.0 }, Vector2 { x: 100.0, y: 100.0 }, BLACK, 10.0, TOOLTIP_Z, Justify::Left, &win, &mut com);
   }
 }
 

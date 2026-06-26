@@ -124,7 +124,7 @@ impl ClientPlayer {
       current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     }
   }
-  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, settings: Settings, characters: HashMap<Character, CharacterProperties>, z: i8, commands: &mut Commands, window: &Window) {
+  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, settings: Settings, characters: HashMap<Character, CharacterProperties>, z: f32, commands: &mut Commands, window: &Window) {
     // TODO: animations
     
 
@@ -166,25 +166,25 @@ impl ClientPlayer {
     let healthbar_x_size = 10.0 * uiscale;
 
     let outline_size = 0.5 * uiscale;
-    draw_rect(LIMEGREEN, screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
-    draw_rect(GRAY, screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
-    draw_rect(BLACK, screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
-    draw_text(font, &format!("{}", self.health), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
+    draw_rect(LIMEGREEN, screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.health as f32 / 100.0), y: 3.0*uiscale }, z+3.0, window, commands);
+    draw_rect(GRAY, screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2.0, window, commands);
+    draw_rect(BLACK, screen_healthbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1.0, window, commands);
+    draw_text(font, &format!("{}", self.health), screen_healthbar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4.0, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.health {
         let pos = Vector2 {x: x as f32 * healthbar_x_size * 2.0 / 10.0 + screen_healthbar_pos.x - healthbar_x_size, y: screen_healthbar_pos.y};
-        draw_line(pos, pos + Vector2 {x: 0.0, y: 3.0*uiscale}, 0.5*uiscale, GREEN, z+4, window, commands);
+        draw_line(pos, pos + Vector2 {x: 0.0, y: 3.0*uiscale}, 0.5*uiscale, GREEN, z+4.0, window, commands);
       }
     }
 
-    draw_rect(ORANGE, screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 3.0*uiscale }, z+3, window, commands);
-    draw_rect(GRAY, screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2, window, commands);
-    draw_rect(BLACK, screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1, window, commands);
-    draw_text(font, &format!("{}", self.secondary_charge), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4, Justify::Left, window, commands);
+    draw_rect(ORANGE, screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * (self.secondary_charge as f32 / 100.0), y: 3.0*uiscale }, z+3.0, window, commands);
+    draw_rect(GRAY, screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 3.0*uiscale }, z+2.0, window, commands);
+    draw_rect(BLACK, screen_secondarybar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 3.0*uiscale + outline_size*2.0 }, z+1.0, window, commands);
+    draw_text(font, &format!("{}", self.secondary_charge), screen_secondarybar_pos - Vector2 {x: healthbar_x_size, y: 0.5*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 3.5*uiscale, z+4.0, Justify::Left, window, commands);
     for x in 1..10 {
       if x * 10 < self.secondary_charge {
         let pos = Vector2 {x: x as f32 * healthbar_x_size * 2.0 / 10.0 + screen_secondarybar_pos.x - healthbar_x_size, y: screen_secondarybar_pos.y};
-        draw_line(pos, pos + Vector2 {x: 0.0, y: 3.0*uiscale}, 0.5*uiscale, BROWN, z+4, window, commands);
+        draw_line(pos, pos + Vector2 {x: 0.0, y: 3.0*uiscale}, 0.5*uiscale, BROWN, z+4.0, window, commands);
       }
     }
 
@@ -220,16 +220,16 @@ impl ClientPlayer {
           Character::Wiro => (self.last_secondary_time / characters[&Character::Wiro].secondary_cooldown).clamp(0.0, 1.0),
           _ => panic!()
         };
-        draw_rect(GRAY, screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2, window, commands);
-        draw_rect(PINK, screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * progress, y: 1.5*uiscale }, z+3, window, commands);
-        draw_rect(BLACK, screen_stackbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 1.5*uiscale + outline_size*2.0 }, z+1, window, commands);
+        draw_rect(GRAY, screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * 1.0, y: 1.5*uiscale }, z+2.0, window, commands);
+        draw_rect(PINK, screen_stackbar_pos - Vector2 {x: healthbar_x_size, y: 0.0}, Vector2 { x: healthbar_x_size * 2.0 * progress, y: 1.5*uiscale }, z+3.0, window, commands);
+        draw_rect(BLACK, screen_stackbar_pos - Vector2 {x: healthbar_x_size + outline_size, y: 0.0 + outline_size}, Vector2 { x: healthbar_x_size*2.0 + outline_size*2.0, y: 1.5*uiscale + outline_size*2.0 }, z+1.0, window, commands);
       }
       else {
         if self.stacks > 0 {
           for x in 0..self.stacks {
             let x_size = 5.0 * uiscale;
             let x_margin = 1.0 * uiscale;
-            draw_rect(PINK, screen_stackbar_pos + Vector2 {x: -healthbar_x_size + x as f32 * (x_size + x_margin), y: 0.0}, Vector2 { x: x_size, y: 1.5*uiscale }, z+3, window, commands);
+            draw_rect(PINK, screen_stackbar_pos + Vector2 {x: -healthbar_x_size + x as f32 * (x_size + x_margin), y: 0.0}, Vector2 { x: x_size, y: 1.5*uiscale }, z+3.0, window, commands);
           }
         }
       }
@@ -251,7 +251,7 @@ impl ClientPlayer {
     ////full line
     //draw_line_relative(nametag_pos.x, nametag_pos.y + health_y_offset, nametag_pos.x + (1.0) * nametag_size.x, nametag_pos.y + health_y_offset, 0.15, GRAY, camera.clone(), vh, vw, z, window, commands);
     ////health line
-    //draw_line_relative(nametag_pos.x, nametag_pos.y + health_y_offset, nametag_pos.x + (self.health as f32 / 100.0) * nametag_size.x, nametag_pos.y + health_y_offset, 0.15, LIMEGREEN, camera.clone(), vh, vw, z+1, window, commands);
+    //draw_line_relative(nametag_pos.x, nametag_pos.y + health_y_offset, nametag_pos.x + (self.health as f32 / 100.0) * nametag_size.x, nametag_pos.y + health_y_offset, 0.15, LIMEGREEN, camera.clone(), vh, vw, z+1.0, window, commands);
     
     // ult bar
 
@@ -261,7 +261,7 @@ impl ClientPlayer {
     ////full line
     //draw_line_relative(nametag_pos.x, nametag_pos.y + secondary_y_offset, nametag_pos.x + (1.0) * nametag_size.x, nametag_pos.y + secondary_y_offset, 0.05, GRAY, camera.clone(), vh, vw, z, window, commands);
     ////health line
-    //draw_line_relative(nametag_pos.x, nametag_pos.y + secondary_y_offset, nametag_pos.x + (self.secondary_charge as f32 / 100.0) * nametag_size.x, nametag_pos.y + secondary_y_offset, 0.05, ORANGE, camera.clone(), vh, vw, z+1, window, commands);
+    //draw_line_relative(nametag_pos.x, nametag_pos.y + secondary_y_offset, nametag_pos.x + (self.secondary_charge as f32 / 100.0) * nametag_size.x, nametag_pos.y + secondary_y_offset, 0.05, ORANGE, camera.clone(), vh, vw, z+1.0, window, commands);
     
     //let bg_offset: Vector2 = Vector2 { x: -12.0, y: -16.5 };
     //let bg_size: Vector2 = Vector2 {x: bg_offset.x*-2.0, y: 7.0};
@@ -435,7 +435,7 @@ pub fn get_random_port() -> u16 {
     let y = crappy_random();
     port = min_port + (y * (max_port - min_port) as f64) as u16;
     print!("Attempted port: {}. Status: ", port);
-    let dummy_ip: String = format!("0.0.0.0:{}", port);
+    let dummy_ip: String = format!("0.0.0:{}", port);
     match std::net::UdpSocket::bind(dummy_ip) {
       Ok(_) => {
         // PORT IS GOOD

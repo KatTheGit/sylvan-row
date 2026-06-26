@@ -20,24 +20,24 @@ use keyring;
 
 // Standardise Z values
 /// Background tiles. -100 to -51
-pub const GAME_BG_Z: i8 = -120;
+pub const GAME_BG_Z: f32 = -400.0;
 /// Normal objects. -50 to -1
-pub const GAME_OBJ_Z: i8 = -100;
+pub const GAME_OBJ_Z: f32 = -200.0;
 /// Player. 0-9
-pub const GAME_PLAYER_Z: i8 = 0;
+pub const GAME_PLAYER_Z: f32 = 0.0;
 /// In-game foreground. 10-19
-pub const GAME_FG_Z: i8 = 10;
+pub const GAME_FG_Z: f32 = 50.0;
 
 /// Main menu. 20-29
-pub const MENU_Z: i8 = 40;
+pub const MENU_Z: f32 = 100.0;
 /// Game UI (healthbars, etc). 30-49
-pub const GAME_UI_Z: i8 = 70;
+pub const GAME_UI_Z: f32 = 150.0;
 /// Chat. 50-79
-pub const CHAT_Z: i8 = 90;
+pub const CHAT_Z: f32 = 200.0;
 /// Pause menu. 80-99
-pub const ESC_MENU_Z: i8 = 100;
+pub const ESC_MENU_Z: f32 = 400.0;
 /// Tooltips. 100-127
-pub const TOOLTIP_Z: i8 = 110;
+pub const TOOLTIP_Z: f32 = 450.0;
 
 
 // MARK: Buttons & fluff
@@ -58,7 +58,7 @@ impl Button {
       clickable: true,
     }
   }
-  pub fn draw(&mut self, vh: f32, clickable: bool, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands) {
+  pub fn draw(&mut self, vh: f32, clickable: bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands) {
     self.clickable = clickable;
     let position = self.position;
     let size = self.size;
@@ -66,14 +66,14 @@ impl Button {
     let font_size = self.font_size;
     draw_rect(BLUE, position, size, z, window, commands);
     let inner_shrink: f32 = 1.0 * vh;
-    draw_rect(SKY_BLUE, position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z+1, window, commands);
-    //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
-    draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3, Justify::Center, window, commands);
+    draw_rect(SKY_BLUE, position + Vector2{x: inner_shrink, y: inner_shrink}, size - Vector2{x:  inner_shrink*2.0, y: inner_shrink*2.0}, z+1.0, window, commands);
+    //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3.0, Justify::Left, window, commands);
+    draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3.0, Justify::Center, window, commands);
     let mouse: Vector2 = get_mouse_pos(&window);
     if self.clickable {
       if mouse.x > position.x && mouse.x < (position.x + size.x) {
         if mouse.y > position.y && mouse.y < (position.y + size.y) {
-          draw_rect(GRAY, position, size, z+2, window, commands);
+          draw_rect(GRAY, position, size, z+2.0, window, commands);
           //draw_text(&font, text, Vector2 { x: position.x + 1.0*vh + 10.0, y: position.y + size.y * 0.65 }, size, font_size, z, window, commands);
         }
       }
@@ -153,23 +153,23 @@ impl Tabs {
       self.selected[i] = i == index;
     }
   }
-  pub fn draw_and_process(&mut self, vh: f32, clickable: bool, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) {
-    fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool, clickable: bool, z: i8, window: &Window, commands: &mut Commands, font: &Handle<Font>, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+  pub fn draw_and_process(&mut self, vh: f32, clickable: bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) {
+    fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool, clickable: bool, z: f32, window: &Window, commands: &mut Commands, font: &Handle<Font>, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
       draw_rect(BLUE, position, size, z, window, commands);
       let inner_shrink: f32 = 1.0 * vh;
       draw_rect(SKY_BLUE, position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
-      //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3, Justify::Left, window, commands);
-      draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3, Justify::Center, window, commands);
+      //draw_text(&font, text, Vector2 {x: position.x + 1.0*vh, y: position.y}, size, BLACK, font_size, z+3.0, Justify::Left, window, commands);
+      draw_text(&font, text, Vector2 {x: position.x, y: position.y + size.y * 0.5 - font_size * 0.6}, size, BLACK, font_size, z+3.0, Justify::Center, window, commands);
       
       if selected {
-        draw_rect(GRAY, position, size, z+1, window, commands);
+        draw_rect(GRAY, position, size, z+1.0, window, commands);
       }
       let mouse: Vector2 = get_mouse_pos(window);
       if clickable {
         if mouse.x > position.x && mouse.x < (position.x + size.x) {
           if mouse.y > position.y && mouse.y < (position.y + size.y)   {
-            draw_rect(GRAY, position, size, z+2, window, commands);
-            //draw_text(&font, text, Vector2 {x: position.x + 1.0 *vh + 10.0, y: position.y}, size, font_size, z+2, window, commands);
+            draw_rect(GRAY, position, size, z+2.0, window, commands);
+            //draw_text(&font, text, Vector2 {x: position.x + 1.0 *vh + 10.0, y: position.y}, size, font_size, z+2.0, window, commands);
             if get_mouse_released(mouse_buttons).contains(&MouseButton::Left) {
               return true;
             }
@@ -227,7 +227,7 @@ impl Tabs {
 /// 
 /// Reads a `selected` boolean and modifies it. If the value was changed this frame,
 /// returns `true`.
-pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
   draw_rect(BLUE, position, Vector2 { x: size, y: size }, z, window, commands);
   let inner_shrink: f32 = 0.2 * vh;
   draw_rect(BLUE, position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2 { x: size, y: size }- Vector2 { x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
@@ -253,7 +253,7 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
 /// slider.
 /// 
 /// Returns true if the value was modified.
-pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32, font: &Handle<Font>, z: i8, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32, font: &Handle<Font>, z: f32, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
   let shrink = 1.0*vh;
   draw_rect(BLUE, position, size, z, window, commands);
 
@@ -261,7 +261,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
 
   let slider_width = 2.0 * vh;
   let slider_x_pos = position.x + (size.x - slider_width) * ((*value-value_min) / (value_max - value_min));
-  draw_rect(BLUE, Vector2 { x: slider_x_pos, y: position.y }, Vector2 { x: slider_width, y: size.y }, z+2, window, commands);
+  draw_rect(BLUE, Vector2 { x: slider_x_pos, y: position.y }, Vector2 { x: slider_width, y: size.y }, z+2.0, window, commands);
   let mut formatted_value: String = format!("{:.2}", value);
   if *value >= 1.0 {
     formatted_value = format!("{:.1}", value);
@@ -269,7 +269,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
   if *value >= 10.0 {
     formatted_value = format!("{:.0}", value);
   }
-  draw_text(&font, format!("{}: {}", text, formatted_value).as_str(), Vector2 { x: position.x + 2.0*vh, y: position.y}, size, BLACK, font_size, z+1, Justify::Left, window, commands);
+  draw_text(&font, format!("{}: {}", text, formatted_value).as_str(), Vector2 { x: position.x + 2.0*vh, y: position.y}, size, BLACK, font_size, z+1.0, Justify::Left, window, commands);
   let mouse: Vector2 = get_mouse_pos(window);
   let margin = size.x * 0.1;
   if mouse.x > (position.x - margin) && mouse.x < (position.x + size.x + margin) {
@@ -298,9 +298,9 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
 ///   - 4: passive
 /// - squished: whether to slightly shrink the icon to show the ability was used
 /// - progress: cooldown / charge, 0.0-1.0
-pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, uiscale: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: i8, texture: &Handle<Image>, window: &Window, commands: &mut Commands, settings: Settings) -> () {
+pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, uiscale: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: f32, texture: &Handle<Image>, window: &Window, commands: &mut Commands, settings: Settings) -> () {
   let squish_offset = match squished {
-    true => 1.0,
+    true => 1.0 * uiscale,
     false => 0.0
   };
   draw_sprite(
@@ -321,7 +321,7 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     },
     z, window, commands
   );
-  draw_rect(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }, Vector2{x: (position.x + squish_offset/2.0), y:(position.y + squish_offset/2.0)}, Vector2{x: (size.x - squish_offset), y: ((size.y - squish_offset) * (1.0 - progress))}, z+1, window, commands);
+  draw_rect(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.4 }, Vector2{x: (position.x + squish_offset/2.0), y:(position.y + squish_offset/2.0)}, Vector2{x: (size.x - squish_offset), y: ((size.y - squish_offset) * (1.0 - progress))}, z+1.0, window, commands);
   let text = match ability_index {
     0 => "PASSIVE",
     1 => &format!("PRIMARY\n({})",
@@ -357,11 +357,11 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
   //};
   //let text = ability.to_text();
   let mouse_pos = get_mouse_pos(window);
-  //tooltip(position, size, &text, Vector2 { x: 55.0 * vh, y: 25.0 * vh }, vh, vw, font, mouse_pos, z+10, window, commands);
+  //tooltip(position, size, &text, Vector2 { x: 55.0 * vh, y: 25.0 * vh }, vh, vw, font, mouse_pos, z+10.0, window, commands);
   ability_tooltip(ability_index, character, character_descriptions, position, size, uiscale, vh, vw, font, mouse_pos, TOOLTIP_Z, settings, window, commands);
 }
 
-pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Handle<Font>, vh: f32, settings: Settings, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_player_info(position: Vector2, size: f32, player: ClientPlayer, font: &Handle<Font>, vh: f32, settings: Settings, z: f32, window: &Window, commands: &mut Commands) -> () {
   //let color = match player.team {
   //  Team::Red => RED,
   //  Team::Blue => BLUE,
@@ -419,7 +419,7 @@ impl FloatingNumber {
 /// - sfx self
 /// - sfx other
 /// - music
-pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audio_sinks: &mut AudioParams, z: i8, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> (bool, bool) {
+pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audio_sinks: &mut AudioParams, z: f32, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * uiscale;
@@ -575,7 +575,7 @@ pub struct Notification {
   pub duration: f32,
 }
 impl Notification {
-  pub fn draw(&self, vh: f32, tr_anchor: Vector2, font_size: f32, offset: f32, z: i8, font: &Handle<Font>, window: &Window, commands: &mut Commands) {
+  pub fn draw(&self, vh: f32, tr_anchor: Vector2, font_size: f32, offset: f32, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands) {
     let size: Vector2 = Vector2 { x: 60.0*vh, y: self.get_y_size(font_size/vh)*vh };
     let position = tr_anchor + Vector2 {x: -size.x, y: offset};
     let inner_shrink: f32 = 1.0 * vh;
@@ -737,7 +737,7 @@ impl KeybindSettings {
   }
 }
 #[cfg(not(target_os="android"))]
-pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8), position: Vector2, size: f32, vh: f32, clickable: bool, font: &Handle<Font>, z: i8, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8), position: Vector2, size: f32, vh: f32, clickable: bool, font: &Handle<Font>, z: f32, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
   let mut font_size = size * 0.8;
   draw_text(&font, keybind_name, Vector2 { x: position.x, y: position.y}, Vector2 { x: size*10.0, y: size }, BLACK, font_size, z, Justify::Left, window, commands);
   for i in 0..2 {
@@ -1000,7 +1000,7 @@ pub fn chatbox(
   timer:                     &mut Instant,
   settings:                  &Settings,
   window:                    &Window,
-  z:                         i8,
+  z:                         f32,
   commands:                  &mut Commands,
   font:                      &Handle<Font>,
   mouse_wheel:               &mut MessageReader<MouseWheel>,
@@ -1230,7 +1230,7 @@ pub struct TextInput {
 impl TextInput {
 
   /// A text input field.
-  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, max_chars: u8, vh: f32, font: &Handle<Font>, z: i8, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, key_events: &mut MessageReader<KeyboardInput>) {
+  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, max_chars: u8, vh: f32, font: &Handle<Font>, z: f32, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, key_events: &mut MessageReader<KeyboardInput>) {
     let margin: f32 = 1.0 * vh;
     let mouse = get_mouse_pos(window);
     
@@ -1285,7 +1285,7 @@ impl TextInput {
 // MARK: Tooltip
 /// When the mouse hovers over the given rectangle with `position`
 /// and `size`, it will display the given text.
-pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vector2, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: i8, window: &Window, commands: &mut Commands) {
+pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vector2, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: f32, window: &Window, commands: &mut Commands) {
   let font_size = 3.5 * vh;
   if mouse_pos.x < position.x + size.x
   && mouse_pos.x > position.x
@@ -1306,13 +1306,13 @@ pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vecto
     };
     draw_rect(BLUE, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, Vector2 { x: tooltip_size.x + 1.0*vh, y: tooltip_size.y + 1.0*vh }, z, window, commands);
     draw_rect(SKY_BLUE, mouse_pos                              + Vector2 {x: visibility_x_offset, y: visibility_y_offset}, tooltip_size, z, window, commands);
-    draw_text(&font, text, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset + 1.0 * vh, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*vh, y: 0.0}, BLACK, font_size, z+1, Justify::Left, window, commands);
+    draw_text(&font, text, mouse_pos - Vector2 {x: 0.5*vh, y: 0.5*vh} + Vector2 {x: visibility_x_offset + 1.0 * vh, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*vh, y: 0.0}, BLACK, font_size, z+1.0, Justify::Left, window, commands);
   }
 }
 
 /// When the mouse hovers over the given rectangle with `position`
 /// and `size`, it will display the given character ability info.
-pub fn ability_tooltip(ability: usize, character: Character, character_descriptions: HashMap<Character, CharacterDescription>, position: Vector2, size: Vector2, uiscale: f32, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: i8, settings: Settings, window: &Window, commands: &mut Commands) {
+pub fn ability_tooltip(ability: usize, character: Character, character_descriptions: HashMap<Character, CharacterDescription>, position: Vector2, size: Vector2, uiscale: f32, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: f32, settings: Settings, window: &Window, commands: &mut Commands) {
   let font_size = 3.5 * uiscale;
   if mouse_pos.x < position.x + size.x
   && mouse_pos.x > position.x
@@ -1342,7 +1342,7 @@ pub fn ability_tooltip(ability: usize, character: Character, character_descripti
       _ => character_descriptions[&character].passive.clone(),
     };
     let text = ability_description.to_text();
-    draw_text(&font, &text, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1, Justify::Left, window, commands);
+    draw_text(&font, &text, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1.0, Justify::Left, window, commands);
     
     if ability_description.cooldown > 0.0 {
       let mut subtext = format!("CD: {}s", ability_description.cooldown);
@@ -1351,13 +1351,13 @@ pub fn ability_tooltip(ability: usize, character: Character, character_descripti
         subtext = format!("Cost: {}", ability_description.cooldown);
       }
 
-      draw_text(&font, &subtext, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale - tooltip_size.y + 4.0*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1, Justify::Left, window, commands);
+      draw_text(&font, &subtext, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale - tooltip_size.y + 4.0*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1.0, Justify::Left, window, commands);
       
       if ability != 0 {
         
         let subtext = format!("{}", get_keybind_name(settings, ability));
         
-        draw_text(&font, &subtext, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale - tooltip_size.y + 4.0*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1, Justify::Right, window, commands);
+        draw_text(&font, &subtext, mouse_pos - Vector2 {x: 0.5*uiscale, y: 0.5*uiscale - tooltip_size.y + 4.0*uiscale} + Vector2 {x: visibility_x_offset + 1.0 * uiscale, y: visibility_y_offset}, tooltip_size + Vector2 {x: -2.0*uiscale, y: 0.0}, BLACK, font_size, z+1.0, Justify::Right, window, commands);
       }
     
     }
@@ -1423,7 +1423,7 @@ pub fn screen_to_world(screen_position: Vector2, camera: Camera, vh: f32, vw: f3
 
 /// same as draw_image but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.
-pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh: f32, vw: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh: f32, vw: f32, camera: Camera, z: f32, window: &Window, commands: &mut Commands) -> () {
 
   // draw relative to position and centered.
   let relative_position = world_to_screen(Vector2 { x: x, y: y }, camera.clone(), vh, vw);
@@ -1433,30 +1433,30 @@ pub fn draw_image_relative(texture: &Texture, x: f32, y: f32, w: f32, h: f32, vh
 }
 /// same as draw_image_ex but draws relative to a ceratain position and centers it.
 /// The x and y parameters are still world coordinates.
-pub fn draw_image_relative_ex(texture: &Texture, x: f32, y: f32, w: f32, h: f32, rotation: Vector2, vh: f32, vw: f32, camera: Camera, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_image_relative_ex(texture: &Texture, x: f32, y: f32, w: f32, h: f32, rotation: Vector2, vh: f32, vw: f32, camera: Camera, z: f32, window: &Window, commands: &mut Commands) -> () {
   // draw relative to position and centered.
   let relative_position = world_to_screen(Vector2 { x: x, y: y }, camera.clone(), vh, vw);
   //let relative_position_x = (x - camera.position.x) * camera.zoom + (50.0 * (16.0/9.0));
   //let relative_position_y = (y - camera.position.y) * camera.zoom + (50.0);
   draw_sprite_ex(texture, relative_position * vh, rotation, Vector2 { x: w * camera.zoom * vh, y: h * camera.zoom * vh }, z, window, commands);
 }
-pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_line_relative(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: f32, window: &Window, commands: &mut Commands) -> () {
   let relative_position_1 = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
   let relative_position_2 = world_to_screen(Vector2 { x: x2, y: y2 }, camera.clone(), vh, vw);
   let relative_thickness = thickness * camera.zoom * vh;
   draw_line(relative_position_1 * vh, relative_position_2 * vh, relative_thickness, color, z, window, commands);
 }
-pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_rectangle_relative(x1: f32, y1: f32, w: f32, h: f32, color: Srgba, camera: Camera, vh:f32, vw: f32, z: f32, window: &Window, commands: &mut Commands) -> () {
   let relative_position = world_to_screen(Vector2 { x: x1, y: y1 }, camera.clone(), vh, vw);
 
   draw_rect(color, relative_position * vh, Vector2 { x: w*vh*camera.zoom, y: h*vh*camera.zoom }, z, window, commands);
 }
-pub fn draw_text_relative(text: &str, position: Vector2, size: Vector2, font: &Handle<Font>, color: Srgba, font_size: f32, vh: f32, vw: f32, camera: Camera, z: i8, alignment: Justify, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_text_relative(text: &str, position: Vector2, size: Vector2, font: &Handle<Font>, color: Srgba, font_size: f32, vh: f32, vw: f32, camera: Camera, z: f32, alignment: Justify, window: &Window, commands: &mut Commands) -> () {
   let relative_position = world_to_screen(position, camera.clone(), vh, vw);
   let relative_size = size * camera.zoom * vh;
   draw_text(&font, text, relative_position * vh, relative_size, color, font_size * vh * camera.zoom, z, alignment, window, commands);
 }
-pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, vw: f32, team: Team, y_offset: f32, alpha: f32, z: i8, window: &Window, commands: &mut Commands) -> () {
+pub fn draw_lines(positions: Vec<Vector2>, camera: Camera, vh: f32, vw: f32, team: Team, y_offset: f32, alpha: f32, z: f32, window: &Window, commands: &mut Commands) -> () {
   if positions.len() < 2 { return; }
   for position_index in 0..positions.len()-1 {
     draw_line_relative(positions[position_index].x, positions[position_index].y + y_offset, positions[position_index+1].x, positions[position_index+1].y + y_offset, 0.1, match team {Team::Blue => Srgba { red: 0.2, green: 1.0-(position_index as f32 / positions.len() as f32), blue: 0.8, alpha: alpha }, Team::Red => Srgba { red: 0.8, green: 0.7-0.3*(position_index as f32 / positions.len() as f32), blue: 0.2, alpha: alpha }}, camera.clone(), vh, vw, z, window, commands);
