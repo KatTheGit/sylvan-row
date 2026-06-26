@@ -29,6 +29,8 @@ This document specifies guidelines to aid with the development of this game from
     - [4.3.3 Koldo](#433-koldo)
 - [5. Gameplay](#5-gameplay)
   - [5.1. Gamemode](#51-gamemode)
+    - [5.1.1. Elimination](#511-elimination)
+    - [5.1.1. Capture the Point](#511-capture-the-point)
   - [5.2. Ranked System](#52-ranked-system)
 - [6. Lore](#6-lore)
   - [6.1. Setting](#61-setting)
@@ -318,16 +320,31 @@ Intended playstyle:
 The format that surrounds the fighting itself.
 
 ## 5.1. Gamemode
-- Format
-  - 1v1 or 2v2
-  - Both teams fight until only one team remains.
-  - Best of 3
-  - 1min intended length for rounds 
-- Gameplay
-  - There is little healing overall
-  - Every 30s or so, an orb spawns in the middle of the map.
-    - Whoever gets the last hit on the orb gives their whole team a bit of health.
-    - Shooting the orb knocks it back a little.
+
+### 5.1.1. Elimination
+
+- Two teams fight with no respawns or passive heal.
+- Last team standing wins the round.
+  - Best of 3.
+
+### 5.1.1. Capture the Point
+
+- If a team is alone on the point, give them capture progress.
+  - If a point is contested, no capture progress is granted.
+- Once the point is captured, it will gain point progress towards the capturing team.
+  - The point remains captured until the opposing team reaches 100% capture progress.
+  - Point progress cannot be stopped as long as the team has capture status.
+- Upon reaching 99% point progress for any team, overtime triggers.
+  - Overtime lasts a minimum of 3s.
+  - Overtime continues if the point is contested.
+  - Once overtime ends
+    - If the team on the point has 99% point progress they win.
+    - Otherwise capture progress is reset for all teams.
+- After 1m30s, capture and point progress are doubled.
+- After 3m00s, the game is ended and the winner is decided based on the following criteria, in order:
+  - Who currently controls the point
+  - Who has the most progress
+  - If the winner cannot be decided, the match is a draw.
 
 ## 5.2. Ranked System
 

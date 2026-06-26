@@ -947,10 +947,15 @@ fn main_thread(
                 progress = data.gamemode_info.capture_progress_red;
                 capturing_color = RED;
               }
-              if progress != 0.0 {
-                draw_text(&font, &format!("Capturing: {}%", progress), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, capturing_color, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              if (data.gamemode_info.point_progress_blue == 99.0 && data.gamemode_info.points_blue > 0)
+              | (data.gamemode_info.point_progress_red == 99.0 && data.gamemode_info.points_red > 0) {
+                draw_text(&font, &format!("OVERTIME"), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, ORANGE, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
               } else {
-                draw_text(&font, "Capture the point!", top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+                if progress != 0.0 {
+                  draw_text(&font, &format!("Capturing: {}%", progress), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, capturing_color, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+                } else {
+                  draw_text(&font, "Capture the point!", top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+                }
               }
 
               let x_offset = 30.0 * uiscale;

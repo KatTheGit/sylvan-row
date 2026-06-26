@@ -681,6 +681,9 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
   // whether the match is running. whether the game is on.
   let mut game_active = false;
 
+  let mut overtime_time: Instant = Instant::now();
+  let mut overtime: bool = false;
+
   // DO necessary initialisation
   {
     let mut players = main_loop_players.lock().unwrap();
@@ -886,14 +889,64 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             // if zone owned by red
             if gamemode_info.points_red > 0 {
               gamemode_info.point_progress_red += point_speed;
-              gamemode_info.point_progress_red = gamemode_info.point_progress_red.clamp(0.0, 100.0);
+              gamemode_info.point_progress_red = gamemode_info.point_progress_red.clamp(0.0, 99.0);
             }
             // if zone owned by blue
             if gamemode_info.points_blue > 0 {
               gamemode_info.point_progress_blue += point_speed;
-              gamemode_info.point_progress_blue = gamemode_info.point_progress_blue.clamp(0.0, 100.0);
+              gamemode_info.point_progress_blue = gamemode_info.point_progress_blue.clamp(0.0, 99.0);
             }
-            
+
+            // if blue has control and is at 99%
+            if gamemode_info.point_progress_blue == 99.0 && gamemode_info.points_blue > 0 {
+              if !overtime {
+                overtime = true;
+                overtime_time = Instant::now();
+              }
+              if overtime {
+                if overtime_time.elapsed().as_secs_f32() > 3.0 {
+                  if inside_red == 0 {
+                    // blue wins!
+                    return MatchEndResult {
+                      winning_team: TeamWinResult::BlueWin,
+                      game_id: 0, // don't worry about this value, the main server handles it.
+                    };
+                  }
+                  if inside_blue == 0 {
+                    // reset everything!
+                    gamemode_info.points_blue = 0;
+                    gamemode_info.capture_progress_blue = 0.0;
+                    overtime = false;
+                  }
+                  // if contested, keep the game going!
+                }
+              }
+            }
+            if gamemode_info.point_progress_red == 99.0 && gamemode_info.points_red > 0 {
+              if !overtime {
+                overtime = true;
+                overtime_time = Instant::now();
+              }
+              if overtime {
+                if overtime_time.elapsed().as_secs_f32() > 3.0 {
+                  if inside_blue == 0 {
+                    // red wins!
+                    return MatchEndResult {
+                      winning_team: TeamWinResult::RedWin,
+                      game_id: 0, // don't worry about this value, the main server handles it.
+                    };
+                  }
+                  if inside_red == 0 {
+                    // reset everything!
+                    gamemode_info.points_red = 0;
+                    gamemode_info.capture_progress_red = 0.0;
+                    overtime = false;
+                  }
+                  // if contested, keep the game going!
+                }
+              }
+            }
+
           }
           GameMode::Standard1V1 | GameMode::Standard2V2 => {
             let mut alive_red = 0;

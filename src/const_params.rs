@@ -18,15 +18,12 @@ pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
 /// The amount of time the game server waits for players to connect.
 pub const MATCH_WAIT_TIME: f32 = 3.0;
+/// The point in the match where players are incentivised to hurry up.
+pub const MATCH_HURRY_UP_TIME: f32 = 90.0;
+/// The maximum time a match can last. At this time, terminate the lobby after deciding a winner.
+pub const MATCH_FORCE_END_TIME: f32 = 180.0;
 
 pub const RATE_LIMIT_THRESHOLD: u8 = 50;
-
-//// this is bs
-///// Any client sending packets faster than this will be ignored, as this could be a cheating attempt.
-//pub const MAX_PACKET_INTERVAL: f64 = 1.0 / 30.0;
-///// A client sending packets slower than this will be ignored, as this could be a cheating attempt.
-//pub const MIN_PACKET_INTERVAL: f64 = 1.0 / 9.0;
-pub const PACKET_INTERVAL_ERROR_MARGIN: f64 = 0.01;
 
 /// Time interval representing our network rate.
 pub const PACKET_INTERVAL: f32 = 1.0 / 30.0;

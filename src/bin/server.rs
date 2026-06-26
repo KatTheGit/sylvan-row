@@ -646,10 +646,9 @@ async fn main() {
 
                       let mut team_counter = 0;
                       for player_index in players_to_match.clone() {
+                        players[player_index].queued = false;
                         if team_counter < (players_to_match.len() / 2) {
-                          players[player_index].queued = false;
                           players[player_index].assigned_team = Team::Red;
-                          println!("yo");
                           team_counter += 1;
                         }
                       }
