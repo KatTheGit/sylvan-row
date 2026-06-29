@@ -546,3 +546,45 @@ pub fn crappy_random() -> f64 {
   )
   + 1.0)/2.0;
 }
+
+pub fn get_storm_pos(red_spawn: Vector2, blue_spawn: Vector2, game_time: f32) -> (Vector2, Vector2) {
+
+  let center_pos = (red_spawn + blue_spawn) / 2.0;
+
+  let size: f32;
+
+  if game_time < ELIM_R1_TIME {
+    size = ELIM_R0_SIZE;
+  }
+  else if game_time > ELIM_R1_TIME && game_time < ELIM_R1_TIME_2 {
+    //size = ((game_time - ELIM_R1_TIME) - (ELIM_R1_TIME_2 - ELIM_R1_TIME)) * ELIM_R0_SIZE + (game_time - ELIM_R1_TIME) * ELIM_R1_SIZE;
+    size = (ELIM_R0_SIZE * (ELIM_R1_TIME_2 - game_time) + ELIM_R1_SIZE * (game_time - ELIM_R1_TIME)) / (ELIM_R1_TIME_2 - ELIM_R1_TIME);
+  }
+  else if game_time > ELIM_R1_TIME_2 && game_time < ELIM_R2_TIME {
+    size = ELIM_R1_SIZE;
+  }
+  else if game_time > ELIM_R2_TIME && game_time < ELIM_R2_TIME_2 {
+    //size = ((game_time - ELIM_R1_TIME) - (ELIM_R1_TIME_2 - ELIM_R1_TIME)) * ELIM_R0_SIZE + (game_time - ELIM_R1_TIME) * ELIM_R1_SIZE;
+    size = (ELIM_R1_SIZE * (ELIM_R2_TIME_2 - game_time) + ELIM_R2_SIZE * (game_time - ELIM_R2_TIME)) / (ELIM_R2_TIME_2 - ELIM_R2_TIME);
+  }
+  else if game_time > ELIM_R2_TIME_2 && game_time < ELIM_R3_TIME {
+    size = ELIM_R2_SIZE;
+  }
+  else if game_time > ELIM_R3_TIME && game_time < ELIM_R3_TIME_2 {
+    //size = ((game_time - ELIM_R1_TIME) - (ELIM_R1_TIME_2 - ELIM_R1_TIME)) * ELIM_R0_SIZE + (game_time - ELIM_R1_TIME) * ELIM_R1_SIZE;
+    size = (ELIM_R2_SIZE * (ELIM_R3_TIME_2 - game_time) + ELIM_R3_SIZE * (game_time - ELIM_R3_TIME)) / (ELIM_R3_TIME_2 - ELIM_R3_TIME);
+  }
+  else if game_time > ELIM_R3_TIME_2 && game_time < ELIM_R4_TIME {
+    size = ELIM_R3_SIZE;
+  }
+  else {
+    size = ((ELIM_R3_SIZE * (ELIM_R4_TIME_2 - game_time) + 0.0 * (game_time - ELIM_R4_TIME)) / (ELIM_R4_TIME_2 - ELIM_R4_TIME))
+      .clamp(0.0, 1000.0);
+  }
+  println!("{:?}", size);
+
+  let pos_1 = Vector2 {x: center_pos.x - size, y: center_pos.y - size};
+  let pos_2 = Vector2 {x: center_pos.x + size, y: center_pos.y + size};
+
+  return (pos_1, pos_2);
+}

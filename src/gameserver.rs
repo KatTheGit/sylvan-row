@@ -812,8 +812,9 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             Team::Red => red_spawn,
           };
         }
+        game_start_time = Instant::now();
       }
-      gamemode_info.time = game_start_time.elapsed().as_secs() as u16;
+      gamemode_info.time = game_start_time.elapsed().as_secs_f32();
 
       // do gamemode checks
       if game_active {
@@ -945,7 +946,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                 }
               }
               // Force an end to the match
-              if game_start_time.elapsed().as_secs_f32() > MATCH_FORCE_END_TIME {
+              if game_start_time.elapsed().as_secs_f32() > CTP_FORCE_END_TIME {
                 if gamemode_info.point_progress_blue > gamemode_info.point_progress_red {
                   return MatchEndResult {
                     winning_team: TeamWinResult::BlueWin,
@@ -1018,6 +1019,20 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                   ),
                 }
               );
+            }
+            // storm !
+
+            let (p1, p2) = get_storm_pos(red_spawn, blue_spawn, game_start_time.elapsed().as_secs_f32());
+            for p_index in 0..players.len() {
+              let player_pos = players[p_index].position;
+              // if inside storm...
+              if player_pos.x < p1.x
+              || player_pos.x > p2.x
+              || player_pos.y < p1.y
+              || player_pos.y > p2.y {
+                // do damage
+                players[p_index].damage(1, characters.clone());
+              }
             }
 
             // wincons! 

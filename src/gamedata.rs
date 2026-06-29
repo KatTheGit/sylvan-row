@@ -609,7 +609,7 @@ pub enum GameEvent {
 /// It is sent over network.
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct GameModeInfo {
-  pub time: u16,
+  pub time: f32,
   pub points_red: u8,
   pub points_blue: u8,
   pub capture_progress_red: f32,
@@ -620,7 +620,7 @@ pub struct GameModeInfo {
 impl GameModeInfo {
   pub fn new() -> GameModeInfo {
     return GameModeInfo {
-      time: 0,
+      time: 0.0,
       points_red: 0,
       points_blue: 0,
       capture_progress_red: 0.0,

@@ -18,10 +18,27 @@ pub const ROUNDS_TO_WIN: u8 = 2; // 2 = best of 3
 
 /// The amount of time the game server waits for players to connect.
 pub const MATCH_WAIT_TIME: f32 = 3.0;
-/// The point in the match where players are incentivised to hurry up.
-pub const MATCH_HURRY_UP_TIME: f32 = 90.0;
-/// The maximum time a match can last. At this time, terminate the lobby after deciding a winner.
-pub const MATCH_FORCE_END_TIME: f32 = 180.0;
+
+/// The maximum time a ctp match can last. At this time, terminate the lobby after deciding a winner.
+pub const CTP_FORCE_END_TIME: f32 = 180.0;
+
+pub const ELIM_R0_SIZE: f32 = 30.0;
+/// The time at which the first ring starts closing in in elimination.
+pub const ELIM_R1_TIME:   f32 = 20.0;
+pub const ELIM_R1_TIME_2: f32 = 30.0;
+pub const ELIM_R1_SIZE: f32 = 12.0;
+
+pub const ELIM_R2_TIME:   f32 = 50.0;
+pub const ELIM_R2_TIME_2: f32 = 60.0;
+pub const ELIM_R2_SIZE: f32 = 6.0;
+
+pub const ELIM_R3_TIME:   f32 = 80.0;
+pub const ELIM_R3_TIME_2: f32 = 90.0;
+pub const ELIM_R3_SIZE: f32 = 4.0;
+
+pub const ELIM_R4_TIME:   f32 = 110.0;
+pub const ELIM_R4_TIME_2: f32 = 120.0;
+
 
 pub const RATE_LIMIT_THRESHOLD: u8 = 50;
 

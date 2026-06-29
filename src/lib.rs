@@ -138,6 +138,7 @@ pub struct GameData {
   pub post_match_timer: Instant,
   pub winning_team: TeamWinResult,
   pub current_gamemode: GameMode,
+  pub current_map: Map,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -235,6 +236,7 @@ impl Default for GameData {
       post_match_timer: Instant::now(),
       winning_team: TeamWinResult::Draw,
       current_gamemode: GameMode::Practice,
+      current_map: Map::PracticeRange,
     }
   }
 }
@@ -940,7 +942,7 @@ fn main_thread(
               draw_text(&font, "Practice", top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
             }
             GameMode::Ctp1V1 | GameMode::Ctp2V2 => {
-              draw_text(&font, &format!("Time: {}:{:0>2}", (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) / 60, (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) % 60), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              draw_text(&font, &format!("Time: {}:{:0>2}", (CTP_FORCE_END_TIME as u16 - data.gamemode_info.time as u16) / 60, (CTP_FORCE_END_TIME as u16 - data.gamemode_info.time as u16) % 60), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
 
               let mut progress = 0.0;
               let mut capturing_color = BLUE;
@@ -971,7 +973,7 @@ fn main_thread(
               draw_rect(GRAY, top_center_anchor + Vector2 {x: - x_offset- x_size, y: 3.0 * uiscale}, Vector2 { x: (1.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z, &win, &mut com);
             }
             GameMode::Standard1V1 | GameMode::Standard2V2 => {
-              draw_text(&font, &format!("Time: {}:{:0>2}", (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) / 60, (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) % 60), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              draw_text(&font, &format!("Time: {}:{:0>2}", (ELIM_R4_TIME_2 as u16 - data.gamemode_info.time as u16) / 60, (ELIM_R4_TIME_2 as u16 - data.gamemode_info.time as u16) % 60), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
               draw_text(&font, &format!("{}", data.gamemode_info.points_blue), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLUE, 6.0 * uiscale, GAME_UI_Z, Justify::Left, &win, &mut com);
               draw_text(&font, &format!("{}", data.gamemode_info.points_red), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, RED, 6.0 * uiscale, GAME_UI_Z, Justify::Right, &win, &mut com);
             }
@@ -1087,6 +1089,21 @@ fn main_thread(
                 }
               }
             }
+          }
+
+          // el storm
+          if data.current_gamemode == GameMode::Standard1V1 || data.current_gamemode == GameMode::Standard2V2 {
+          let (_, blue_spawn, red_spawn): (Vec<GameObject>, Vector2, Vector2) = load_map_from_file(data.current_map.get_fg(), &mut 0);
+
+            let (p1, p2) = get_storm_pos(red_spawn, blue_spawn, data.gamemode_info.time);
+
+            let color = Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 0.4 };
+            
+            draw_rectangle_relative(p1.x - 100.0, p1.y, 200.0, -100.0, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
+            draw_rectangle_relative(p1.x, p1.y, -100.0, p2.y - p1.y, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
+            
+            draw_rectangle_relative(p2.x - 100.0, p2.y, 200.0, 100.0, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
+            draw_rectangle_relative(p2.x, p2.y, 100.0, p1.y - p2.y, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
           }
 
           // CAMERA MOVEMENT
@@ -1802,6 +1819,7 @@ fn main_thread(
               data.game_last_nonce = 0;
               (data.background_tiles, _, _) = load_map_from_file(info.map.get_bg(), &mut 0);
               data.current_gamemode = info.gamemode;
+              data.current_map = info.map;
               //let full_ip = get_ip();
               //let ip = full_ip.split(":").collect::<Vec<&str>>()[0];
               //let game_server_ip = format!("{}:{}", ip, info.port);
