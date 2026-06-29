@@ -27,7 +27,7 @@ pub mod bevy_graphics;
 /// Audio wrapper for bevy.
 pub mod bevy_audio;
 
-use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime}};
+use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime, UNIX_EPOCH}};
 use bevy::{color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*};
 use bevy_immediate::*;
 use bevy_graphics::*;
@@ -450,7 +450,11 @@ fn main_thread(
             let mut button = Button::new(tr_anchor + Vector2 { x: -30.0*uiscale, y: 50.0*uiscale }, Vector2 { x: 20.0*uiscale, y: 10.0*uiscale }, "Practice", 4.0*uiscale);
             button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
             if button.was_released(&win, &input.m) {
-              data.cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+
+              // if we have no cipher key (offline mode)
+              if data.cipher_key.is_empty() {
+                data.cipher_key = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+              }
               let game_port = get_random_port();
               let practice_game_port = game_port.clone();
               let practice_username = username.clone();
@@ -936,7 +940,7 @@ fn main_thread(
               draw_text(&font, "Practice", top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
             }
             GameMode::Ctp1V1 | GameMode::Ctp2V2 => {
-              draw_text(&font, &format!("Time: {}", data.gamemode_info.time), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              draw_text(&font, &format!("Time: {}:{:0>2}", (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) / 60, (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) % 60), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
 
               let mut progress = 0.0;
               let mut capturing_color = BLUE;
@@ -967,7 +971,7 @@ fn main_thread(
               draw_rect(GRAY, top_center_anchor + Vector2 {x: - x_offset- x_size, y: 3.0 * uiscale}, Vector2 { x: (1.0) * x_size, y: 6.0 * uiscale }, GAME_UI_Z, &win, &mut com);
             }
             GameMode::Standard1V1 | GameMode::Standard2V2 => {
-              draw_text(&font, &format!("Time: {}", data.gamemode_info.time), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
+              draw_text(&font, &format!("Time: {}:{:0>2}", (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) / 60, (MATCH_FORCE_END_TIME as u16 - data.gamemode_info.time) % 60), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 1.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLACK, 6.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
               draw_text(&font, &format!("{}", data.gamemode_info.points_blue), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, BLUE, 6.0 * uiscale, GAME_UI_Z, Justify::Left, &win, &mut com);
               draw_text(&font, &format!("{}", data.gamemode_info.points_red), top_center_anchor + Vector2 { x: -30.0 * uiscale, y: 6.0 * uiscale }, Vector2 { x: 60.0 * uiscale, y: 10.0 * uiscale }, RED, 6.0 * uiscale, GAME_UI_Z, Justify::Right, &win, &mut com);
             }
@@ -1014,7 +1018,6 @@ fn main_thread(
             let mut red_step = 0.0;
             let x_offset = 5.0 * uiscale;
             let font_size = 8.0 * uiscale;
-            println!("{:?}", data.players);
             let mut all_players = data.players.clone();
             all_players.push(data.player.clone());
             for player in all_players {
@@ -1844,11 +1847,12 @@ fn main_thread(
                 RefusalReason::InvalidChannel => "Invalid selected channel",
                 RefusalReason::InvalidGameModeQueued => "Queued gamemode(s) invalid. Try restarting your game.",
                 RefusalReason::RateLimit => "You've been rate limited for at least 4s. Stop doing that!",
+                RefusalReason::Ban(time) => &format!("You have been banned for {:?} days.", ((time - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64) / (60 * 60 * 24))),
                 //there is no reason for these to exist here
                 RefusalReason::InvalidUsername => "Unexpected Error (InvalidUsername)",
                 RefusalReason::UsernameTaken => "Unexpected Error (UsernameTaken)",
               };
-              data.notifications.push(Notification::new(text, 1.0));
+              data.notifications.push(Notification::new(text, 2.0));
             }
             ServerToClient::FriendRequestSuccessful => {
               data.notifications.push(Notification::new("Friend request sent", 1.0));
@@ -2239,8 +2243,9 @@ fn main_thread(
                       RefusalReason::InvalidUsername => String::from("Invalid Username"),
                       RefusalReason::UsernameTaken => String::from("Username Taken"),
                       RefusalReason::UsernameInexistent => String::from("Incorrect Username"),
+                      RefusalReason::Ban(time) => format!("You are banned for {:?} more days", ((time - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64) / (60 * 60 * 24))),
                       _ => String::from("Unexpected Error"),
-                    }, duration: 1.5 }
+                    }, duration: 2.0 }
                   );
                   data.username_input.selected = true;
                   data.password_input.selected = false;
@@ -2410,7 +2415,7 @@ fn main_thread(
     // draw notifications
     let mut offset: f32 = 0.0;
     for n_index in 0..data.notifications.len() {
-      data.notifications[n_index].draw(uiscale, tr_anchor, 4.0*uiscale, offset, MENU_Z + 5.0, &font, &win, &mut com);
+      data.notifications[n_index].draw(uiscale, tr_anchor, 4.0*uiscale, offset, TOOLTIP_Z, &font, &win, &mut com);
       offset += data.notifications[n_index].get_y_size(4.0) * uiscale;
     }
     for n_index in 0..data.notifications.len() {

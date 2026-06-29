@@ -1,7 +1,7 @@
 use redb::{Database, Result};
 use sylvan_row::{const_params::*, database::{self, FriendShipStatus, PlayerData}, filter::{self, ProfanityLevel, contains_profanity}, gamedata::*, mothership_common::*, network} ;
-use std::{collections::HashMap, io::Write, sync::{Arc, Mutex}, thread::JoinHandle, time::Instant, vec};
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc, net::{TcpListener}};
+use std::{collections::HashMap, io::Write, sync::{Arc, Mutex}, thread::JoinHandle, time::{Instant, SystemTime, UNIX_EPOCH}, vec};
+use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt}, net::TcpListener, sync::mpsc};
 use ring::hkdf;
 use opaque_ke::{ServerLoginStartResult};
 use rand::{rngs::OsRng};
@@ -77,8 +77,137 @@ async fn main() {
 
   // the server is now started so none of the code below should use .expect() or .unwrap(), unless
   // it is perfectly safe to do so.
+  // MARK: Console input
+  let commandline_players = Arc::clone(&players);
+  let commandline_database = Arc::clone(&database);
+  tokio::spawn(async move {
+    let stdin = tokio::io::stdin();
+    let mut lines = tokio::io::BufReader::new(stdin).lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+      let tokens: Vec<&str> = line.split_whitespace().collect();
+      println!("{:?}", tokens);
+      if let Some(token_0) = tokens.get(0) {
+        match *token_0 {
+          // chat announcement for every player.
+          // announce <message>
+          "announce" => {
+            // ignore if no parameters.
+            if let Some(token_1) = tokens.get(1) { } else {
+              println!("Enter message.");
+              continue;
+            }
+            let players_copy;
+            {
+              let players = commandline_players.lock().unwrap();
+              players_copy = players.clone()
+            }
+            let message: String = line[9..].to_string();
+            for player in players_copy.clone() {
+              match player.channel.send(
+                PlayerMessage::SendPacket(ServerToClientPacket { information: ServerToClient::ChatMessage(String::from("Server Announcement"), message.clone(), ChatMessageType::Administrative) })
+              ).await {
+                Ok(_) => {}
+                Err(_) => {}
+              };
+            }
+          }
+          // ban <user> <days>
+          "ban" => {
+            if let Some(token_1) = tokens.get(1) {
+              if let Some(token_2) = tokens.get(2) {
+                // get the current time as seconds.
+                let current_time = SystemTime::now()
+                  .duration_since(UNIX_EPOCH)
+                  .unwrap()
+                  .as_secs() as i64;
+                match token_2.parse::<i64>() {
+                  Ok(ban_days) => {
+                    let banned_until: i64 = current_time + ban_days * 24 * 60 * 60;
+                    // if the player is online, get them out of here.
+                    let players_copy;
+                    {
+                      let players = commandline_players.lock().unwrap();
+                      players_copy = players.clone()
+                    }
+                    for player in players_copy {
+                      if player.username == *token_1 {
+                        // inform of ban
+                        match player.channel.send(
+                          PlayerMessage::SendPacket(ServerToClientPacket { information: ServerToClient::InteractionRefused(RefusalReason::Ban(banned_until)) })
+                        ).await {
+                          Ok(_) => {}
+                          Err(_) => {}
+                        };
+                        // force disconnect
+                        match player.channel.send(
+                          PlayerMessage::ForceDisconnect
+                        ).await {
+                          Ok(_) => {}
+                          Err(_) => {}
+                        };
+                        break;
+                      }
+                    }
+                    // save the ban in the database
+                    {
+                      let mut database = commandline_database.lock().unwrap();
+                      let player_data_result = database::get_player(&database, token_1);
+                      match player_data_result {
+                        Ok(mut player_data) => {
+                          player_data.ban = banned_until;
+                          let _ = database::create_player(&mut database, token_1, player_data);
+                          println!("{} banned.", token_1);
+                        }
+                        Err(_) => {
+                          println!("Database error");
+                        }
+                      }
+                    }
+                  }
+                  Err(_) => {
+                    println!("That's not a number! Enter the number of days to ban this user as your second argument.");
+                  }
+                }
+              } else {
+                println!("Please enter the number of days to ban this user as your second argument.");
+              }
+            } else {
+              println!("Please enter the bannee's username.");
+            }
+          }
+          // unban <user>
+          "unban" => {
+            if let Some(token_1) = tokens.get(1) {
+              {
+                let mut database = commandline_database.lock().unwrap();
+                let player_data_result = database::get_player(&database, *token_1);
+                match player_data_result {
+                  Ok(mut player_data) => {
+                    player_data.ban = 0;
+                    let _ = database::create_player(&mut database, token_1, player_data);
+                    println!("{} unbanned.", token_1);
+                  }
+                  Err(_) => {
+                    println!("Database error");
+                  }
+                }
+              }
+            }
+          }
+          _ => {
+            println!("Unrecognised command.");
+          }
+        }
+      }
+      // no command
+      else {
+        println!("Enter a command.");
+      }
+    }
+  });
   info!("Server started.");
   loop {
+    // MARK: Net init
     // Accept a new peer.
     let (mut socket, _addr) = match listener.accept().await {
       Ok(info) => info,
@@ -250,14 +379,14 @@ async fn main() {
                   // MARK: Login
                   ClientToServer::LoginRequestStep1(recv_username, client_message) => {
                     username = recv_username;
-                    let password_file: Result<PlayerData, redb::Error>;
+                    let player_data_result: Result<PlayerData, redb::Error>;
                     let password_file_real: ServerRegistration<DefaultCipherSuite>;
                     let user_exists: Result<bool, redb::Error>;
                     let user_exists_real: bool;
                     {
                       let database = local_database.lock().unwrap();
                       user_exists = database::username_taken(&database, &username);
-                      password_file = database::get_player(&database, &username);
+                      player_data_result = database::get_player(&database, &username);
                     }
                     match user_exists {
                       Ok(exists) => user_exists_real = exists,
@@ -274,8 +403,18 @@ async fn main() {
                       }).expect("hi7")).await;
                       continue;
                     }
-                    match password_file {
-                      Ok(playerdata) => password_file_real = playerdata.password_hash,
+                    match player_data_result {
+                      Ok(player_data) => {
+                        password_file_real = player_data.password_hash;
+                        // check if this user is banned.
+                        let ban_duration = player_data.ban - SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64;
+                        if ban_duration > 0 {
+                          let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
+                            information: ServerToClient::InteractionRefused(RefusalReason::Ban(player_data.ban)),
+                          }).expect("hi7")).await;
+                          continue;
+                        }
+                      },
                       Err(_err) => {
                       let _ = socket.write_all(&network::tcp_encode(&ServerToClientPacket {
                         information: ServerToClient::InteractionRefused(RefusalReason::InternalError),

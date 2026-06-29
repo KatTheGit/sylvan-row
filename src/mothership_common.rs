@@ -148,6 +148,8 @@ pub enum RefusalReason {
   InvalidGameModeQueued,
   /// The user has been rate limited.
   RateLimit,
+  /// This user has been banned (until i64).
+  Ban(i64),
 }
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Debug)]
 pub struct MatchAssignmentData {

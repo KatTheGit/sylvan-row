@@ -3,6 +3,7 @@ use opaque_ke::{ServerRegistration, ServerSetup};
 use crate::const_params::DefaultCipherSuite;
 use redb::{Database, Error, ReadableTable, TableDefinition};
 use rand_core::OsRng;
+use serde_json;
 
 const DATABASE_LOCATION: &str = "./database";
 const SERVER_SETUP_LOCATION: &str = "./server_setup";
@@ -16,7 +17,7 @@ pub fn get_player(database: &Database, username: &str) -> Result<PlayerData, Err
   let table = read_txn.open_table(USER_TABLE)?;
   let data = table.get(username)?;
   if let Some(data) = data {
-    let deserialized = bincode::deserialize::<PlayerData>(data.value());
+    let deserialized = serde_json::from_slice::<PlayerData>(data.value());
     match deserialized {
       Ok(data) => {
         return Ok(data);
@@ -36,8 +37,8 @@ pub fn get_player(database: &Database, username: &str) -> Result<PlayerData, Err
 pub fn create_player(database: &mut Database, username: &str, player_data: PlayerData) -> Result<(), Error>{
   let write_txn = database.begin_write()?;
   {
-    let mut table = write_txn.open_table(USER_TABLE)?;
-    let serialized = match bincode::serialize(&player_data) {
+    let mut table: redb::Table<'_, &str, &[u8]> = write_txn.open_table(USER_TABLE)?;
+    let serialized = match serde_json::to_vec(&player_data) {
       Ok(data) => {
         data
       },
@@ -112,16 +113,26 @@ pub struct PlayerData {
   /// Sensitive password hash used by PAKE protocol.
   pub password_hash: ServerRegistration<DefaultCipherSuite>,
   /// Win count
+  #[serde(default)]
   pub wins: usize,
+  /// When this user's ban ends. A value of 0 means not banned.
+  #[serde(default)]
+  pub ban: i64,
 }
 impl PlayerData {
   pub fn new(password_hash: ServerRegistration<DefaultCipherSuite>) -> PlayerData {
     return PlayerData {
       password_hash,
       wins: 0,
+      ban: 0,
     }
   }
 }
+//impl Default for PlayerData {
+//  fn default() -> PlayerData {
+//    return PlayerData { password_hash: , wins: (), ban_end: () }
+//  }
+//}
 
 // MARK: Friends
 

@@ -81,7 +81,7 @@ The GDD is in `assets/README.md`.
 ## Todo 2
 
 - [x] Fix anticheat
-- [ ] Username filter
+- [x] Username filter
 - [ ] Ranked system (?)
 - [ ] Find fix for android
 - [ ] Art
@@ -89,7 +89,13 @@ The GDD is in `assets/README.md`.
   - [ ] Maps
   - [ ] Audio
   - [ ] UI
-
+- [ ] Complete the gamemodes
+  - [x] Capture the point
+    - [x] Overtime
+    - [x] End time
+  - [ ] Elimination
+    - [ ] Storm
+    - [ ] End time
 
 ### Bugs
 

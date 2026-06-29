@@ -340,7 +340,6 @@ The format that surrounds the fighting itself.
   - Once overtime ends
     - If the team on the point has 99% point progress they win.
     - Otherwise capture progress is reset for all teams.
-- After 1m30s, capture and point progress are doubled.
 - After 3m00s, the game is ended and the winner is decided based on the following criteria, in order:
   - Who currently controls the point
   - Who has the most progress

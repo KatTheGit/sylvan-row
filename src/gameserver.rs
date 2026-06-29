@@ -897,13 +897,17 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
               gamemode_info.point_progress_blue = gamemode_info.point_progress_blue.clamp(0.0, 99.0);
             }
 
-            // if blue has control and is at 99%
-            if gamemode_info.point_progress_blue == 99.0 && gamemode_info.points_blue > 0 {
+            // trigger overtime
+            if (gamemode_info.point_progress_blue == 99.0 && gamemode_info.points_blue > 0)
+            || (gamemode_info.point_progress_red == 99.0 && gamemode_info.points_red > 0) {
               if !overtime {
                 overtime = true;
                 overtime_time = Instant::now();
               }
-              if overtime {
+            }
+            if overtime {
+              // if blue has control and is at 99%
+              if gamemode_info.point_progress_blue == 99.0 && gamemode_info.points_blue > 0 {
                 if overtime_time.elapsed().as_secs_f32() > 3.0 {
                   if inside_red == 0 {
                     // blue wins!
@@ -921,13 +925,8 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                   // if contested, keep the game going!
                 }
               }
-            }
-            if gamemode_info.point_progress_red == 99.0 && gamemode_info.points_red > 0 {
-              if !overtime {
-                overtime = true;
-                overtime_time = Instant::now();
-              }
-              if overtime {
+              // if red has control and is at 99%
+              if gamemode_info.point_progress_red == 99.0 && gamemode_info.points_red > 0 {
                 if overtime_time.elapsed().as_secs_f32() > 3.0 {
                   if inside_blue == 0 {
                     // red wins!
@@ -945,8 +944,38 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                   // if contested, keep the game going!
                 }
               }
+              // Force an end to the match
+              if game_start_time.elapsed().as_secs_f32() > MATCH_FORCE_END_TIME {
+                if gamemode_info.point_progress_blue > gamemode_info.point_progress_red {
+                  return MatchEndResult {
+                    winning_team: TeamWinResult::BlueWin,
+                    game_id: 0, // don't worry about this value, the main server handles it.
+                  };
+                }
+                if gamemode_info.point_progress_red > gamemode_info.point_progress_blue {
+                  return MatchEndResult {
+                    winning_team: TeamWinResult::RedWin,
+                    game_id: 0, // don't worry about this value, the main server handles it.
+                  };
+                }
+                if gamemode_info.capture_progress_blue > gamemode_info.capture_progress_red {
+                  return MatchEndResult {
+                    winning_team: TeamWinResult::BlueWin,
+                    game_id: 0, // don't worry about this value, the main server handles it.
+                  };
+                }
+                if gamemode_info.capture_progress_red > gamemode_info.capture_progress_blue {
+                  return MatchEndResult {
+                    winning_team: TeamWinResult::RedWin,
+                    game_id: 0, // don't worry about this value, the main server handles it.
+                  };
+                }
+                return MatchEndResult {
+                  winning_team: TeamWinResult::Draw,
+                  game_id: 0, // don't worry about this value, the main server handles it.
+                };
+              }
             }
-
           }
           GameMode::Standard1V1 | GameMode::Standard2V2 => {
             let mut alive_red = 0;
