@@ -139,6 +139,7 @@ pub struct GameData {
   pub winning_team: TeamWinResult,
   pub current_gamemode: GameMode,
   pub current_map: Map,
+  pub slow_update_timer: Instant,
 }
 impl Default for GameData {
   fn default() -> Self {
@@ -237,6 +238,7 @@ impl Default for GameData {
       winning_team: TeamWinResult::Draw,
       current_gamemode: GameMode::Practice,
       current_map: Map::PracticeRange,
+      slow_update_timer: Instant::now(),
     }
   }
 }
@@ -659,6 +661,14 @@ fn main_thread(
         }
         // MARK: Game
         if mode == 1 || mode == 2 {
+
+          let tick;
+          if data.slow_update_timer.elapsed().as_secs_f32() > 1.0 {
+            tick = true;
+            data.slow_update_timer = Instant::now();
+          } else {
+            tick = false;
+          }
 
           // game startup
           if data.game_startup {
@@ -1381,7 +1391,10 @@ fn main_thread(
             data.player.passive_elapsed = recieved_server_info.player_packet_is_sent_to.passive_elapsed;
             
             data.game_objects = recieved_server_info.game_objects;
+
+            // only update gamemode_info's time once per second.
             data.gamemode_info = recieved_server_info.gamemode_info;
+
 
             // UPDATE OTHER PLAYERS
             let mut recieved_players: Vec<ClientPlayer> = Vec::new();
@@ -1919,10 +1932,13 @@ fn main_thread(
               data.lobby.retain(|element| element.username != username);
             }
             ServerToClient::MatchEnded(result) => {
-              println!("Match ended! {:?}", result);
-              data.match_ended = true;
-              data.post_match_timer = Instant::now();
-              data.winning_team = result.winning_team;
+              if result.game_id == data.game_id {
+                println!("Match ended! {:?}", result);
+                data.match_ended = true;
+                data.post_match_timer = Instant::now();
+                data.winning_team = result.winning_team;
+                data.game_id = 0;
+              }
             }
             ServerToClient::GameModeDataResponse(recv_gamemode_rotation) => {
               data.gamemode_rotation.clear();

@@ -1289,8 +1289,8 @@ impl Map {
     return match self {
       Map::Control1 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
       Map::Control2 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
-      Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
-      Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
+      Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_elim_foreground.csv")},
+      Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_elim_foreground.csv")},
       Map::PracticeRange => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
     }
   }
@@ -1298,8 +1298,8 @@ impl Map {
     return match self {
       Map::Control1 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
       Map::Control2 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
-      Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
-      Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
+      Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_elim_background.csv")},
+      Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_elim_background.csv")},
       Map::PracticeRange => {include_str!("../assets/maps/tiledtestmap_background.csv")},
     }
   }

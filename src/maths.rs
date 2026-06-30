@@ -581,7 +581,6 @@ pub fn get_storm_pos(red_spawn: Vector2, blue_spawn: Vector2, game_time: f32) ->
     size = ((ELIM_R3_SIZE * (ELIM_R4_TIME_2 - game_time) + 0.0 * (game_time - ELIM_R4_TIME)) / (ELIM_R4_TIME_2 - ELIM_R4_TIME))
       .clamp(0.0, 1000.0);
   }
-  println!("{:?}", size);
 
   let pos_1 = Vector2 {x: center_pos.x - size, y: center_pos.y - size};
   let pos_2 = Vector2 {x: center_pos.x + size, y: center_pos.y + size};

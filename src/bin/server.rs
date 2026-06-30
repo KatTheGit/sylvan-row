@@ -1,10 +1,10 @@
 use redb::{Database, Result};
-use sylvan_row::{const_params::*, database::{self, FriendShipStatus, PlayerData}, filter::{self, ProfanityLevel, contains_profanity}, gamedata::*, mothership_common::*, network} ;
+use sylvan_row::{const_params::*, database::{self, FriendShipStatus, PlayerData}, filter::{self, ProfanityLevel, contains_profanity}, gamedata::*, maths::crappy_random, mothership_common::*, network} ;
 use std::{collections::HashMap, io::Write, sync::{Arc, Mutex}, thread::JoinHandle, time::{Instant, SystemTime, UNIX_EPOCH}, vec};
 use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt}, net::TcpListener, sync::mpsc};
 use ring::hkdf;
 use opaque_ke::{ServerLoginStartResult};
-use rand::{rngs::OsRng};
+use rand::{rngs::OsRng, seq::SliceRandom};
 use opaque_ke::{
   RegistrationResponse, ServerLogin,
   ServerLoginParameters, ServerRegistration,
@@ -520,7 +520,6 @@ async fn main() {
             else {
               // rate limiting calculations
               
-              println!("pre decay: {:?}", rate_limit_counter);
               let rate_limit_decay = 3.0;
               let elapsed = last_packet_time.elapsed().as_secs_f32();
               let decay = (elapsed * rate_limit_decay) as u8;
@@ -542,9 +541,7 @@ async fn main() {
                 }
               }
               rate_limit_counter = rate_limit_counter.clamp(0, (RATE_LIMIT_THRESHOLD as f32 * 1.5) as u8);
-              println!("decay: {:?}", decay);
               last_packet_time = Instant::now();
-              println!("post decay: {:?}", rate_limit_counter);
 
               if rate_limit_counter > RATE_LIMIT_THRESHOLD {
                 match tx.send(PlayerMessage::SendPacket(ServerToClientPacket {
@@ -713,10 +710,7 @@ async fn main() {
                         }
                       }
                       
-                      // match players
-                      
-                      println!("{:?}", queues);
-                      
+                      // match players                      
                       
                       // ALGORITHM
                       //for each element:
@@ -738,7 +732,6 @@ async fn main() {
                         let team_count = gamemode_parameters.team_count;
                         
                         for _ in 0..team_count {
-                          println!("{:?}: {:?}", queued_gamemode, queued_players);
                           for party_1_index in 0..queued_players.len() {
                             // if already team size
                             if queued_players[party_1_index].len() == team_size {
@@ -776,7 +769,6 @@ async fn main() {
 
                         if matched_players.len() == team_size * team_count {
                           // the match is on!
-                          println!("Matched: {:?}", matched_players);
                           players_to_match = matched_players;
                           match_gamemode = queued_gamemode;
                           break;
@@ -819,7 +811,19 @@ async fn main() {
                         },
                       };
                     }
-                    let map = Map::Control1;
+
+                    let rng = crappy_random();
+                    let map = match match_gamemode {
+                      GameMode::Ctp1V1 | GameMode::Ctp2V2 => {
+                        vec![Map::Control1, Map::Control2][(rng * 1.9) as usize].clone()
+                      }
+                      GameMode::Standard1V1 | GameMode::Standard2V2 => {
+                        vec![Map::Elimination1, Map::Elimination2][(rng * 1.9) as usize].clone()
+                      }
+                      _ => {
+                        Map::Control1
+                      }
+                    };
                     // Create a game
                     if !players_to_match.is_empty() {
                       let game_id: u128 = rand::thread_rng().gen_range(0..u128::MAX);

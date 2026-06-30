@@ -992,34 +992,34 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
               }
             }
 
-            // orb spawn!!
-            orb_timer += 1.0 as f32;
-            let mut orb_found = false;
-            for game_object in game_objects.clone() {
-              if game_object.object_type == GameObjectType::CenterOrb {
-                orb_found = true;
-                orb_timer = 0.0;
-                break;
-              }
-            }
-            if orb_timer > orb_spawn_interval && !orb_found {
-              let map_center: Vector2 = (red_spawn + blue_spawn) / 2.0;
-
-              game_objects.push(
-                GameObject {
-                  object_type: GameObjectType::CenterOrb,
-                  position: map_center,
-                  to_be_deleted: false,
-                  id: game_object_id_counter.increment(),
-                  extra_data: ObjectData::WallData(
-                    WallData {
-                      hitpoints: 60,
-                      lifetime: f32::INFINITY,
-                    }
-                  ),
-                }
-              );
-            }
+            //// orb spawn!!
+            //orb_timer += 1.0 as f32;
+            //let mut orb_found = false;
+            //for game_object in game_objects.clone() {
+            //  if game_object.object_type == GameObjectType::CenterOrb {
+            //    orb_found = true;
+            //    orb_timer = 0.0;
+            //    break;
+            //  }
+            //}
+            //if orb_timer > orb_spawn_interval && !orb_found {
+            //  let map_center: Vector2 = (red_spawn + blue_spawn) / 2.0;
+            //
+            //  game_objects.push(
+            //    GameObject {
+            //      object_type: GameObjectType::CenterOrb,
+            //      position: map_center,
+            //      to_be_deleted: false,
+            //      id: game_object_id_counter.increment(),
+            //      extra_data: ObjectData::WallData(
+            //        WallData {
+            //          hitpoints: 60,
+            //          lifetime: f32::INFINITY,
+            //        }
+            //      ),
+            //    }
+            //  );
+            //}
             // storm !
 
             let (p1, p2) = get_storm_pos(red_spawn, blue_spawn, game_start_time.elapsed().as_secs_f32());
