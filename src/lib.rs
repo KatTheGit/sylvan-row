@@ -41,7 +41,7 @@ use rustrict::{Censor, Type};
 use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus, get_friend_request_type}, filter::{ProfanityLevel, censor_profanity, contains_profanity, valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket, TeamWinResult}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
-const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; // "13.38.240.14:25569";
+const CURRENT_SERVER_IP: &str = "13.38.240.14:25569"; // "127.0.0.1:25569"; 
 
 #[bevy_main]
 pub fn main() {

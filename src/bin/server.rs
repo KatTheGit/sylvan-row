@@ -206,6 +206,7 @@ async fn main() {
     }
   });
   info!("Server started.");
+  println!("Server started.");
   loop {
     // MARK: Net init
     // Accept a new peer.
@@ -568,8 +569,6 @@ async fn main() {
                 match packet.information {
                   // MARK: Match Request
                   ClientToServer::MatchRequest(data) => {
-
-                    rate_limit_counter += 10;
 
                     let mut gamemode_rotation = Vec::new();
                     {
@@ -948,7 +947,7 @@ async fn main() {
                   // MARK: Match Cancel
                   ClientToServer::MatchRequestCancel => {
 
-                    //rate_limit_counter += 0;
+                    rate_limit_counter += 10;
 
                     let mut players_to_inform: Vec<tokio::sync::mpsc::Sender<PlayerMessage>> = Vec::new();
                     let mut lobby_info: Vec<LobbyPlayerInfo> = Vec::new();
