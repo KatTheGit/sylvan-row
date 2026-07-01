@@ -435,17 +435,17 @@ pub fn get_random_port() -> u16 {
     let y = crappy_random();
     port = min_port + (y * (max_port - min_port) as f64) as u16;
     print!("Attempted port: {}. Status: ", port);
-    let dummy_ip: String = format!("0.0.0:{}", port);
+    let dummy_ip: String = format!("0.0.0.0:{}", port);
     match std::net::UdpSocket::bind(dummy_ip) {
       Ok(_) => {
         // PORT IS GOOD
         println!("Good");
         break;
       }
-      Err(_) => {
+      Err(e) => {
         // PORT IS BAD
         // try again
-        println!("Bad. Trying again.");
+        println!("Bad. Trying again. {:?}", e);
       }
     }
   }
