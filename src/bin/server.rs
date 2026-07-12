@@ -4,7 +4,7 @@ use std::{collections::HashMap, io::Write, sync::{Arc, Mutex}, thread::JoinHandl
 use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt}, net::TcpListener, sync::mpsc};
 use ring::hkdf;
 use opaque_ke::{ServerLoginStartResult};
-use rand::{rngs::OsRng, seq::SliceRandom};
+use rand::rngs::OsRng;
 use opaque_ke::{
   RegistrationResponse, ServerLogin,
   ServerLoginParameters, ServerRegistration,
@@ -92,7 +92,7 @@ async fn main() {
           // announce <message>
           "announce" => {
             // ignore if no parameters.
-            if let Some(token_1) = tokens.get(1) { } else {
+            if let Some(_token_1) = tokens.get(1) { } else {
               println!("Enter message.");
               continue;
             }

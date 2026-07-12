@@ -18,25 +18,14 @@ use device_query::{DeviceQuery, DeviceState, Keycode};
 use keyring;
 //use kira::track::TrackHandle;
 
-// Standardise Z values
-/// Background tiles. -100 to -51
 pub const GAME_BG_Z: f32 = -400.0;
-/// Normal objects. -50 to -1
-pub const GAME_OBJ_Z: f32 = -200.0;
-/// Player. 0-9
-pub const GAME_PLAYER_Z: f32 = 0.0;
-/// In-game foreground. 10-19
-pub const GAME_FG_Z: f32 = 50.0;
+pub const GAME_OBJ_BG_Z: f32 = -200.0;
+pub const GAME_Z: f32 = 0.0;
 
-/// Main menu. 20-29
 pub const MENU_Z: f32 = 100.0;
-/// Game UI (healthbars, etc). 30-49
 pub const GAME_UI_Z: f32 = 150.0;
-/// Chat. 50-79
 pub const CHAT_Z: f32 = 200.0;
-/// Pause menu. 80-99
 pub const ESC_MENU_Z: f32 = 400.0;
-/// Tooltips. 100-127
 pub const TOOLTIP_Z: f32 = 450.0;
 
 
@@ -419,7 +408,7 @@ impl FloatingNumber {
 /// - sfx self
 /// - sfx other
 /// - music
-pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audio_sinks: &mut AudioParams, z: f32, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> (bool, bool) {
+pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audio_sinks: &mut AudioParams, z: f32, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, mouse_pos: Vector2) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * uiscale;
@@ -483,6 +472,10 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
         set_fullscreen(data.settings.fullscreen, window);
       }
       settings_modified |= fullscreen_changed;
+
+      let gpu_setting_pos = Vector2 { x: vw * 25.0, y: uiscale * 35.0 };
+      settings_modified |= checkbox(gpu_setting_pos, 4.0 * uiscale, "Use high performance GPU", 4.0*uiscale, uiscale, &mut data.settings.use_high_performance_gpu, z, font, window, commands, mouse_buttons);
+      tooltip(gpu_setting_pos, Vector2 { x: 4.0 * uiscale, y: 4.0 * uiscale }, "Whether to use higher performance GPU. Toggle if you experience visual artefacts (i.e. when alt-tabbing). Requires game restart to take effect.", Vector2 { x: 70.0 * uiscale, y: 25.0 * uiscale }, vh, vw, font, mouse_pos, TOOLTIP_Z, window, commands);
     }
     // Audio
     if data.settings_tabs.selected_tab() == 2 {
@@ -608,6 +601,7 @@ pub struct Settings {
   pub sfx_other_volume: f32,
   pub keybinds: KeybindSettings,
   pub censor_profanity: bool,
+  pub use_high_performance_gpu: bool,
 }
 impl Settings {
   pub fn new() -> Settings{
@@ -623,6 +617,7 @@ impl Settings {
       sfx_other_volume: 50.0,
       keybinds: KeybindSettings::new(),
       censor_profanity: true,
+      use_high_performance_gpu: true,
     }
   }
   pub fn load() -> Settings {

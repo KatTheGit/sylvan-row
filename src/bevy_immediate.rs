@@ -231,8 +231,8 @@ pub fn draw_text(
 ) {
   let box_position = Vec2::new(position.x - window.width() / 2.0 + size.x / 2.0, -position.y - size.y / 2.0 + window.height() / 2.0);
   let slightly_smaller_text_font = TextFont {
-    font: font.clone(),
-    font_size: font_size,
+    font: FontSource::Handle(font.clone()),
+    font_size: FontSize::Px(font_size),
     ..default()
   };
 

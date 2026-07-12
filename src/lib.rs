@@ -28,7 +28,7 @@ pub mod bevy_graphics;
 pub mod bevy_audio;
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime, UNIX_EPOCH}};
-use bevy::{color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*};
+use bevy::{camera::Viewport, color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, render::{RenderPlugin, settings::WgpuSettings}};
 use bevy_immediate::*;
 use bevy_graphics::*;
 use bevy_audio::*;
@@ -37,18 +37,21 @@ use maths::*;
 use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParameters, ClientLoginStartResult, ClientRegistration, ClientRegistrationFinishParameters, ClientRegistrationStartResult};
 use rand::rngs::OsRng;
 use ring::hkdf;
-use rustrict::{Censor, Type};
 use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus, get_friend_request_type}, filter::{ProfanityLevel, censor_profanity, contains_profanity, valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket, TeamWinResult}};
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
-const CURRENT_SERVER_IP: &str = "13.38.240.14:25569"; //"127.0.0.1:25569";
+const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; //"13.38.240.14:25569";
 
 #[bevy_main]
 pub fn main() {
+
+  let settings = Settings::load();
+  
   App::new()
     .add_systems(Startup, setup)
     .add_systems(PreUpdate, sprite_clearer)
     .add_systems(PostUpdate, exit_catcher)
+    .add_systems(Update, update_viewport)
     .add_systems(Update, main_thread)
     .add_plugins(
       DefaultPlugins.set(WindowPlugin {
@@ -62,7 +65,21 @@ pub fn main() {
           ..default()
         }),
         ..default()
-      })
+      }).set(
+        RenderPlugin {
+          render_creation: bevy::render::settings::RenderCreation::Automatic(
+            Box::new(WgpuSettings {
+              power_preference: if settings.use_high_performance_gpu {
+                bevy::render::settings::PowerPreference::HighPerformance
+              } else {
+                bevy::render::settings::PowerPreference::LowPower
+              },
+              ..Default::default()
+            })
+          ),
+          ..Default::default()
+        }
+      )
     )
     .run();
 }
@@ -662,13 +679,13 @@ fn main_thread(
         // MARK: Game
         if mode == 1 || mode == 2 {
 
-          let tick;
-          if data.slow_update_timer.elapsed().as_secs_f32() > 1.0 {
-            tick = true;
-            data.slow_update_timer = Instant::now();
-          } else {
-            tick = false;
-          }
+          //let tick;
+          //if data.slow_update_timer.elapsed().as_secs_f32() > 1.0 {
+          //  tick = true;
+          //  data.slow_update_timer = Instant::now();
+          //} else {
+          //  tick = false;
+          //}
 
           // game startup
           if data.game_startup {
@@ -769,22 +786,23 @@ fn main_thread(
           for game_object in data.game_objects.clone() {
             if let Ok(texture) = data.game_object_animations[&game_object.object_type].current_frame() {
 
-              let size = match game_object.object_type {
-                GameObjectType::Wall => Vector2 {x: 1.0, y: 2.0 },
-                GameObjectType::UnbreakableWall => Vector2 {x: 1.0, y: 2.0},
-                GameObjectType::HernaniWall => Vector2 {x: 1.0, y: 2.0},
-                GameObjectType::HernaniBullet => Vector2 { x: 1.0 * (10.0/4.0), y: 1.0 },
-                GameObjectType::RaphaelleBullet => Vector2 { x: 2.0, y: 2.0 },
-                GameObjectType::RaphaelleBulletEmpowered => Vector2 { x: 2.0, y: 2.0 },
-                GameObjectType::RaphaelleAura => Vector2 {x: data.character_properties[&Character::Raphaelle].secondary_range*2.0, y: data.character_properties[&Character::Raphaelle].secondary_range*2.0,},
-                GameObjectType::WiroShield => Vector2 { x: 0.5, y: data.character_properties[&Character::Wiro].secondary_range },
-                GameObjectType::TemerityRocketSecondary => Vector2 { x: 2.0, y: 2.0 },
-                GameObjectType::CenterOrb => Vector2 { x: 2.0, y: 2.0 },
-                GameObjectType::CynewynnSword => Vector2 { x: 3.0, y: 3.0 },
-                GameObjectType::KoldoCannonBall => Vector2 { x: 2.0, y: 2.0 },
-                GameObjectType::KoldoCannonBallEmpowered => Vector2 { x: 2.0, y: 2.0 },
-                GameObjectType::KoldoCannonBallEmpoweredUltimate => Vector2 { x: 2.0, y: 2.0 },
-                _ => Vector2 {x: 1.0, y: 1.0},
+              let (layer, size) = match game_object.object_type {
+                GameObjectType::Wall => (GAME_Z, Vector2 {x: 1.0, y: 2.0 }),
+                GameObjectType::UnbreakableWall => (GAME_Z, Vector2 {x: 1.0, y: 2.0}),
+                GameObjectType::HernaniWall => (GAME_Z, Vector2 {x: 1.0, y: 2.0}),
+                GameObjectType::HernaniBullet => (GAME_Z, Vector2 { x: 1.0 * (10.0/4.0), y: 1.0 }),
+                GameObjectType::RaphaelleBullet => (GAME_Z, Vector2 { x: 2.0, y: 2.0 }),
+                GameObjectType::RaphaelleBulletEmpowered => (GAME_Z, Vector2 { x: 2.0, y: 2.0 }),
+                GameObjectType::RaphaelleAura => (GAME_OBJ_BG_Z, Vector2 {x: data.character_properties[&Character::Raphaelle].secondary_range*2.0, y: data.character_properties[&Character::Raphaelle].secondary_range*2.0,}),
+                GameObjectType::WiroShield => (GAME_Z, Vector2 { x: 0.5, y: data.character_properties[&Character::Wiro].secondary_range }),
+                GameObjectType::TemerityRocketSecondary => (GAME_Z, Vector2 { x: 2.0, y: 2.0 }),
+                GameObjectType::CenterOrb => (GAME_Z, Vector2 { x: 2.0, y: 2.0 }),
+                GameObjectType::CynewynnSword => (GAME_Z, Vector2 { x: 3.0, y: 3.0 }),
+                GameObjectType::KoldoCannonBall => (GAME_Z, Vector2 { x: 2.0, y: 2.0 }),
+                GameObjectType::KoldoCannonBallEmpowered => (GAME_Z, Vector2 { x: 2.0, y: 2.0 }),
+                GameObjectType::KoldoCannonBallEmpoweredUltimate => (GAME_Z, Vector2 { x: 2.0, y: 2.0 }),
+                GameObjectType::FedyaProjectileGroundRecalled => (GAME_OBJ_BG_Z, Vector2 {x: 1.0, y: 1.0}),
+                _ => (GAME_Z, Vector2 {x: 1.0, y: 1.0}),
               };
               //let shadow_offset: f32 = 5.0;
               
@@ -816,7 +834,8 @@ fn main_thread(
               //    Color { r: 0.05, g: 0.0, b: 0.1, a: 0.15 }
               //  );
               //}
-              draw_image_relative_ex(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, rotation, vh, vw, data.player.camera.clone(), GAME_OBJ_Z, &win, &mut com);
+              let z_layer = layer + game_object.position.y;
+              draw_image_relative_ex(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, rotation, vh, vw, data.player.camera.clone(), z_layer, &win, &mut com);
             }
           }
           // MARK: | |  Game UI
@@ -1058,11 +1077,13 @@ fn main_thread(
 
           // MARK: | | Draw Players
           if !data.player.is_dead {
-            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1.0, &mut com, &win);
+            let z_layer = GAME_Z + data.player.position.y;
+            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), z_layer, &mut com, &win);
           }
           for player in data.players.clone() {
+            let z_layer = GAME_Z + player.position.y;
             if !player.is_dead {
-              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), GAME_PLAYER_Z+1.0, &mut com, &win);
+              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), z_layer, &mut com, &win);
             }
           }
 
@@ -1070,15 +1091,15 @@ fn main_thread(
           let trail_y_offset: f32 = 0.6;
           for player in data.players.clone() {
             if player.character == Character::Cynewynn && !player.is_dead {
-              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.0, 1.0, GAME_PLAYER_Z, &win, &mut com);
-              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.1, 0.5, GAME_PLAYER_Z, &win, &mut com);
-              draw_lines(player.previous_positions,         data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.2, 0.25, GAME_PLAYER_Z, &win, &mut com);
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.0, 1.0, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
+              draw_lines(player.previous_positions.clone(), data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.1, 0.5, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
+              draw_lines(player.previous_positions,         data.player.camera.clone(), vh, vw, player.team, trail_y_offset-0.2, 0.25, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
             }
           }
           if data.player.character == Character::Cynewynn && !data.player.is_dead {
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.0, 0.6, GAME_PLAYER_Z, &win, &mut com);
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.1, 0.4, GAME_PLAYER_Z, &win, &mut com);
-            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.2, 0.2, GAME_PLAYER_Z, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.0, 0.6, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.1, 0.4, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
+            draw_lines(data.player.previous_positions.clone(), data.player.camera.clone(), vh, vw, data.player.team, trail_y_offset-0.2, 0.2, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
           }
 
           // Draw raphaelle's tethering.
@@ -1095,7 +1116,7 @@ fn main_thread(
                     true => GREEN,
                     false => ORANGE,
                   };
-                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z, &win, &mut com);
+                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, vw, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
                 }
               }
             }
@@ -1109,11 +1130,11 @@ fn main_thread(
 
             let color = Srgba { red: 1.0, green: 0.5, blue: 0.0, alpha: 0.4 };
             
-            draw_rectangle_relative(p1.x - 100.0, p1.y, 200.0, -100.0, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
-            draw_rectangle_relative(p1.x, p1.y, -100.0, p2.y - p1.y, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
+            draw_rectangle_relative(p1.x - 100.0, p1.y, 200.0, -100.0, color, data.player.camera.clone(), vh, vw, GAME_UI_Z - 10.0, &win, &mut com);
+            draw_rectangle_relative(p1.x, p1.y, -100.0, p2.y - p1.y, color, data.player.camera.clone(), vh, vw, GAME_UI_Z - 10.0, &win, &mut com);
             
-            draw_rectangle_relative(p2.x - 100.0, p2.y, 200.0, 100.0, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
-            draw_rectangle_relative(p2.x, p2.y, 100.0, p1.y - p2.y, color, data.player.camera.clone(), vh, vw, GAME_PLAYER_Z + 1.0, &win, &mut com);
+            draw_rectangle_relative(p2.x - 100.0, p2.y, 200.0, 100.0, color, data.player.camera.clone(), vh, vw, GAME_UI_Z - 10.0, &win, &mut com);
+            draw_rectangle_relative(p2.x, p2.y, 100.0, p1.y - p2.y, color, data.player.camera.clone(), vh, vw, GAME_UI_Z - 10.0, &win, &mut com);
           }
 
           // CAMERA MOVEMENT
@@ -1985,7 +2006,7 @@ fn main_thread(
         }
 
         if data.paused {
-          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, &mut audio_sinks, ESC_MENU_Z, &font, &mut win, &mut com, &input.m);
+          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, &mut audio_sinks, ESC_MENU_Z, &font, &mut win, &mut com, &input.m, mouse_pos);
           data.paused = paused;
           if quit {
             // if in menus
@@ -2476,6 +2497,7 @@ fn main_thread(
             data.settings.fullscreen = !data.settings.fullscreen;
             data.fullscreen_pressed = true;
             set_fullscreen(data.settings.fullscreen, &mut win);
+            //set_fullscreen_borderless(data.settings.fullscreen, &mut win);
           }
         }
         //if key == data.settings.keybinds.open_chat.0 || key == data.settings.keybinds.open_chat.1 {
@@ -2511,9 +2533,25 @@ fn sprite_clearer(mut commands: Commands, query: Query<Entity, With<DeleteAfterF
 fn setup(mut commands: Commands) {
   commands.init_resource::<GameData>();
   commands.init_resource::<Settings>();
-  commands.spawn(Camera2d);
+  commands.spawn(
+    (
+      Camera2d::default(),
+      bevy::camera::Camera {
+        viewport: Some(Viewport {
+          physical_position: UVec2 { x: 0, y: 0 },
+          physical_size: UVec2 { x: 1, y: 1 },
+          ..default()
+        }),
+        ..default()
+      },
+    )
+  );
 }
-
+fn update_viewport(mut camera: Single<&mut bevy::camera::Camera>, window: Single<&Window>){
+  if let Some(v) = camera.viewport.as_mut(){
+    v.physical_size=window.physical_size();
+  }
+}
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MenuScreen {
   /// Login menu. Used as starting menu screen. The u8 starts at 0.
@@ -2550,44 +2588,6 @@ pub enum AudioTrack {
   SoundEffectSelf,
   SoundEffectOther,
 }
-
-//fn load_background_tiles(map_size_x: u16, map_size_y: u16) -> Vec<BackGroundTile> {
-//  let mut tiles: Vec<BackGroundTile> = Vec::new();
-//  let bright_tiles = vec![GameObjectType::Grass1Bright,
-//                                               GameObjectType::Grass2Bright,
-//                                               GameObjectType::Grass3Bright,
-//                                               GameObjectType::Grass4Bright,
-//                                               GameObjectType::Grass5Bright,
-//                                               GameObjectType::Grass6Bright,
-//                                               GameObjectType::Grass7Bright, ];
-//  let dark_tiles = vec![GameObjectType::Grass1,
-//                                               GameObjectType::Grass2,
-//                                               GameObjectType::Grass3,
-//                                               GameObjectType::Grass4,
-//                                               GameObjectType::Grass5,
-//                                               GameObjectType::Grass6,
-//                                               GameObjectType::Grass7, ];
-//  let extra_offset_x: u16 = 9;
-//  let extra_offset_y: u16 = 5;
-//  for x in 0..map_size_x + (extra_offset_x*2) {
-//    for y in 0..map_size_y + (extra_offset_y*2) {
-//      let random_num_raw = crappy_random();
-//      let mut random_num_f = (random_num_raw as f64) / u32::MAX as f64;
-//      random_num_f *= 6.0;
-//      let random_num = random_num_f.round() as usize;
-//      let pos_x: i16 = x.try_into().unwrap();
-//      let pos_x: f32 = (pos_x - extra_offset_x as i16) as f32;
-//      let pos_y: i16 = y.try_into().unwrap();
-//      let pos_y: f32 = (pos_y - extra_offset_y as i16) as f32 + 0.5;
-//      if (x + y) % 2 == 1 {
-//        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: bright_tiles[random_num].clone() });
-//      } else {
-//        tiles.push(BackGroundTile { position: Vector2 { x: pos_x, y: pos_y }, object_type: dark_tiles[random_num].clone() });
-//      }
-//    }
-//  }
-//  return tiles;
-//}
 
 fn exit_catcher(mut exit_events: MessageReader<AppExit>, settings: Res<Settings>) {
   for exit_event in exit_events.read() {
