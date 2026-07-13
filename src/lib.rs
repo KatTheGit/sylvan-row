@@ -324,6 +324,7 @@ fn main_thread(
         data.username_input.buffer = data.settings.saved_username.clone();
         data.password_input.buffer = load_password(&data.settings.saved_username);
       }
+      data.recv_messages_buffer.push((String::from("System"), String::from("Chat messages may be logged."), ChatMessageType::Administrative))
     }
     if data.late_startup {
       if data.late_startup_timer.elapsed().as_secs_f32() > 1.5 {
@@ -1647,9 +1648,14 @@ fn main_thread(
           // cycle through friends
           // get a list of online friends (which we can chat to).
           let mut online_friends: Vec<String> = Vec::new();
+          // if in a match, add match chats
           if data.current_menu == MenuScreen::Main(2) {
             online_friends.push(String::from("tc"));
             online_friends.push(String::from("ac"));
+          }
+          // if in a party with people, add party chat.
+          if !data.lobby.is_empty() {
+            online_friends.push(String::from("gc"));
           }
           for friend in data.friend_list.clone() {
             if friend.1 == FriendShipStatus::Friends
@@ -1693,6 +1699,10 @@ fn main_thread(
           if displayed_selected_friend == "ac" {
             message_type = ChatMessageType::All;
             displayed_selected_friend = "All";
+          }
+          if displayed_selected_friend == "gc" {
+            message_type = ChatMessageType::Group;
+            displayed_selected_friend = "Party";
           }
           let color = match message_type {
             ChatMessageType::Administrative => YELLOW,

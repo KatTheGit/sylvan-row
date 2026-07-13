@@ -164,6 +164,7 @@ async fn main() {
                       }
                     }
                   }
+
                   Err(_) => {
                     println!("That's not a number! Enter the number of days to ban this user as your second argument.");
                   }
@@ -1350,6 +1351,7 @@ async fn main() {
                     let mut internal_error_occurred: bool = false;
                     let mut channel_invalid: bool = false;
 
+                    
                     // team chat and all chat
                     if peer_username == String::from("tc") || peer_username == String::from("ac") {
                       let mut message_type = ChatMessageType::All;
@@ -1410,6 +1412,42 @@ async fn main() {
                       }
                       continue;
                     }
+                    // party (group) chat
+                    if peer_username == String::from("gc") {
+                      let mut players_to_message = Vec::new();
+                      {
+                        let players = local_players.lock().unwrap();
+                        let own_index = from_user(&username, players.clone()).expect("oops");
+                        if players[own_index].queued_with.is_empty() {
+                          continue;
+                        }
+
+                        if players[own_index].is_party_leader {
+                          for player in players[own_index].queued_with.clone() {
+                            let index = from_user(&player, players.clone()).expect("oops");
+                            players_to_message.push(players[index].channel.clone());
+                          }
+                        }
+                        else {
+                          let leader_username = players[own_index].queued_with[0].clone();
+                          let leader_index = from_user(&leader_username, players.clone()).expect("oops");
+                          for player in players[leader_index].queued_with.clone() {
+                            let index = from_user(&player, players.clone()).expect("oops");
+                            players_to_message.push(players[index].channel.clone());
+                          }
+                        }
+                      }
+                      for player in players_to_message {
+                        match player.send(
+                          PlayerMessage::SendPacket(ServerToClientPacket { information: ServerToClient::ChatMessage(username.clone(), message.clone(), ChatMessageType::Group) })
+                        ).await {
+                          Ok(_) => {}
+                          Err(_) => {}
+                        };
+                      }
+                    }
+
+                    // private message
                     {
                       let database = local_database.lock().unwrap();
                       match database::get_friend_status(&database, &peer_username, &username) {
@@ -1730,6 +1768,7 @@ async fn main() {
                       let mut players = local_players.lock().unwrap();
                       let own_index = from_user(&username, players.clone()).expect("oops");
                       if !players[own_index].queued_with.is_empty() {
+                        println!("{:?}", players[own_index].queued_with);
                         // if is party leader
                         if players[own_index].is_party_leader {
 
@@ -1741,6 +1780,7 @@ async fn main() {
                               Ok(index) => {
                                 players[index].queued_with = Vec::new();
                                 players[index].is_party_leader = true;
+                                users_to_inform.push(players[index].channel.clone())
                               }
                               Err(err) => {
                                 warn!("{:?}", err);
