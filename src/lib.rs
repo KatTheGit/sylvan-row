@@ -58,10 +58,10 @@ pub fn main() {
         primary_window: Some(Window {
           title: "Sylvan Row".into(),
           name: Some("sylvan.row".into()),
-          //resolution: WindowResolution::new(720, 480),
+          resolution: bevy::window::WindowResolution::new(1280, 720),
           //#[cfg(target_os="android")]
-          mode: bevy::window::WindowMode::BorderlessFullscreen(MonitorSelection::Primary),
-          present_mode: bevy::window::PresentMode::Immediate, // vsync fucking sucks
+          mode: bevy::window::WindowMode::Windowed,
+          present_mode: bevy::window::PresentMode::Immediate, // vsync sucks
           ..default()
         }),
         ..default()
@@ -87,6 +87,8 @@ pub fn main() {
 #[derive(Resource)]
 pub struct GameData {
   pub startup: bool,
+  pub late_startup: bool,
+  pub late_startup_timer: Instant,
   pub current_menu: MenuScreen,
   pub tabs_login: Tabs,
   pub settings: Settings,
@@ -162,6 +164,8 @@ impl Default for GameData {
   fn default() -> Self {
     return GameData {
       startup: true,
+      late_startup: true,
+      late_startup_timer: Instant::now(),
       current_menu: MenuScreen::Login(0),
       tabs_login: Tabs::new(vec!["Login".to_string(), "Register".to_string()]),
       settings: Settings::load(),
@@ -320,7 +324,13 @@ fn main_thread(
         data.username_input.buffer = data.settings.saved_username.clone();
         data.password_input.buffer = load_password(&data.settings.saved_username);
       }
-      set_fullscreen(data.settings.fullscreen, &mut win);
+    }
+    if data.late_startup {
+      if data.late_startup_timer.elapsed().as_secs_f32() > 1.5 {
+        data.late_startup = false;
+        set_fullscreen(data.settings.fullscreen, &mut win);
+        set_vsync(data.settings.vsync, &mut win);
+      }
     }
 
     // synchronise settings with the exit thread
@@ -328,7 +338,13 @@ fn main_thread(
 
     // calculate UI scale
     let size_min = f32::min(vw, vh);
-    let uiscale = if size_min < 5.0 {2.5} else if size_min < 10.0 {5.0} else {10.0};
+    let mut uiscale = if size_min < 5.0 {2.5} else if size_min < 10.0 {5.0} else {10.0};
+    if data.settings.auto_ui_scale {
+      data.settings.ui_scale = uiscale;
+    }
+    else {
+      uiscale = data.settings.ui_scale as i32 as f32;
+    }
     let tl_anchor = Vector2 {x: 0.0, y: 0.0};
     let tr_anchor = Vector2 {x: 100.0*vw, y: 0.0};
     let bl_anchor = Vector2 {x: 0.0, y: 100.0*vh};
@@ -2039,9 +2055,9 @@ fn main_thread(
         let user_input_pos = tl_anchor + Vector2 {x: 20.0 * uiscale, y: 30.0 * uiscale};
         let password_input_pos = tl_anchor + Vector2 {x: 20.0 * uiscale, y: 40.0 * uiscale};
         draw_text(&font, "Username", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 27.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
-        tooltip(user_input_pos, input_size, "3-20 characters and no swears.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        tooltip(user_input_pos, input_size, "3-20 characters and no swears.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vh, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
-        tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vh, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         draw_text(&font, "Password", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 37.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
         
@@ -2056,7 +2072,7 @@ fn main_thread(
         if credentials_changed {
           data.settings.save();
         }
-        tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores your password in your OS keyring, like Safari.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
+        tooltip(credentials_checkbox_pos, Vector2 { x: credentials_checkbox_size, y: credentials_checkbox_size }, "Stores your password in your OS keyring, like Safari.", Vector2 { x: 40.0*uiscale, y: 13.0*uiscale }, uiscale, vh, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
 
         // offline mode
         let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 33.0 * uiscale,y: 11.0 * uiscale }, Vector2 { x: 28.0*uiscale, y: 6.0*uiscale }, "Offline play", 4.0*uiscale);

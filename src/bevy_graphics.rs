@@ -460,22 +460,39 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
 
     let mut settings_modified: bool = false;
 
-    // Gameplay
+    // GAMEPLAY
     if data.settings_tabs.selected_tab() == 0 {
+      // camera smoothing
       settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Camera smoothing", 4.0*uiscale, uiscale, &mut data.settings.camera_smoothing, z, font, window, commands, mouse_buttons);
+      // character names
       settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Display character names instead of usernames", 4.0*uiscale, uiscale, &mut data.settings.display_char_name_instead, z, font, window, commands, mouse_buttons);
     }
-    // Video
+    // VIDEO
     if data.settings_tabs.selected_tab() == 1 {
+
+      // uiscale
+      data.settings.ui_scale = data.settings.ui_scale as i32 as f32;
+      settings_modified |= slider(Vector2 { x: vw * 25.0, y: vh * 92.0 }, Vector2 { x: 45.0*vw, y: 5.0*vh }, "UI Scale", 4.0*vh, vh, &mut data.settings.ui_scale, 1.0, 20.0, font, z, window, commands, mouse_buttons);
+      settings_modified |= checkbox(Vector2 { x: vw * 85.0, y: vh * 92.0 }, 5.0 * vh, "Auto", 4.0*vh, uiscale, &mut data.settings.auto_ui_scale, z, font, window, commands, mouse_buttons);
+
+      // fullscreen
       let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Fullscreen", 4.0*uiscale, uiscale, &mut data.settings.fullscreen, z, font, window, commands, mouse_buttons);
       if fullscreen_changed {
         set_fullscreen(data.settings.fullscreen, window);
       }
       settings_modified |= fullscreen_changed;
 
+      // vsync
+      let vsync_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Vsync", 4.0*uiscale, uiscale, &mut data.settings.vsync, z, font, window, commands, mouse_buttons);
+      if vsync_changed {
+        set_vsync(data.settings.vsync, window);
+      }
+      settings_modified |= vsync_changed;
+
+      // gpu power preference
       let gpu_setting_pos = Vector2 { x: vw * 25.0, y: uiscale * 35.0 };
       settings_modified |= checkbox(gpu_setting_pos, 4.0 * uiscale, "Use high performance GPU", 4.0*uiscale, uiscale, &mut data.settings.use_high_performance_gpu, z, font, window, commands, mouse_buttons);
-      tooltip(gpu_setting_pos, Vector2 { x: 4.0 * uiscale, y: 4.0 * uiscale }, "Whether to use higher performance GPU. Toggle if you experience visual artefacts (i.e. when alt-tabbing). Requires game restart to take effect.", Vector2 { x: 70.0 * uiscale, y: 25.0 * uiscale }, vh, vw, font, mouse_pos, TOOLTIP_Z, window, commands);
+      tooltip(gpu_setting_pos, Vector2 { x: 4.0 * uiscale, y: 4.0 * uiscale }, "Whether to use higher performance GPU. Toggle if you experience visual artefacts (i.e. when alt-tabbing). Requires game restart to take effect.", Vector2 { x: 70.0 * uiscale, y: 25.0 * uiscale }, uiscale, vh, vw, font, mouse_pos, TOOLTIP_Z, window, commands);
     }
     // Audio
     if data.settings_tabs.selected_tab() == 2 {
@@ -587,6 +604,7 @@ impl Notification {
 // MARK: Settings
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Resource)]
+#[serde(default)]
 pub struct Settings {
   pub camera_smoothing: bool,
   /// If false, usernames are displayed.
@@ -602,6 +620,9 @@ pub struct Settings {
   pub keybinds: KeybindSettings,
   pub censor_profanity: bool,
   pub use_high_performance_gpu: bool,
+  pub ui_scale: f32,
+  pub auto_ui_scale: bool,
+  pub vsync: bool,
 }
 impl Settings {
   pub fn new() -> Settings{
@@ -618,6 +639,9 @@ impl Settings {
       keybinds: KeybindSettings::new(),
       censor_profanity: true,
       use_high_performance_gpu: true,
+      ui_scale: 10.0,
+      auto_ui_scale: true,
+      vsync: false,
     }
   }
   pub fn load() -> Settings {
@@ -633,13 +657,13 @@ impl Settings {
         let mut data = vec![];
         match file.read_to_end(&mut data) {
           Ok(_) => {
-            match bincode::deserialize::<Settings>(&data) {
+            match serde_json::from_slice::<Settings>(&data) {
               Ok(settings) => {
                 return settings
               },
               Err(_) => {
                 file.set_len(0).ok(); // clear
-                file.write_all(&bincode::serialize(&Settings::new()).expect("oops")).expect("oops");
+                file.write_all(&serde_json::to_vec(&Settings::new()).expect("oops")).expect("oops");
                 return Settings::new();
               }
             }
@@ -647,7 +671,7 @@ impl Settings {
           Err(_) => {
             println!("Couldn't read settings file.");
             file.set_len(0).ok();
-            match file.write_all(&bincode::serialize(&Settings::new()).expect("oops")) {
+            match file.write_all(&serde_json::to_vec(&Settings::new()).expect("oops")) {
               Ok(_) => {}
               Err(_) => {
                 return Settings::new();
@@ -668,7 +692,7 @@ impl Settings {
     let settings_file = File::create(settings_file_name);
     match settings_file {
       Ok(mut file) => {
-        file.write_all(&bincode::serialize::<Settings>(&self).expect("Serialization failure.")).expect("oops");
+        file.write_all(&serde_json::to_vec::<Settings>(&self).expect("Serialization failure.")).expect("oops");
       }
       Err(_) => { }
     }
@@ -1280,8 +1304,8 @@ impl TextInput {
 // MARK: Tooltip
 /// When the mouse hovers over the given rectangle with `position`
 /// and `size`, it will display the given text.
-pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vector2, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: f32, window: &Window, commands: &mut Commands) {
-  let font_size = 3.5 * vh;
+pub fn tooltip(position: Vector2, size: Vector2, text: &str, tooltip_size: Vector2, uiscale: f32, vh: f32, vw: f32, font: &Handle<Font>, mouse_pos: Vector2, z: f32, window: &Window, commands: &mut Commands) {
+  let font_size = 3.5 * uiscale;
   if mouse_pos.x < position.x + size.x
   && mouse_pos.x > position.x
   && mouse_pos.y < position.y + size.y
