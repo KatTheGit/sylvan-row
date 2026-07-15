@@ -38,6 +38,7 @@ use opaque_ke::{generic_array::GenericArray, ClientLogin, ClientLoginFinishParam
 use rand::rngs::OsRng;
 use ring::hkdf;
 use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus, get_friend_request_type}, filter::{ProfanityLevel, censor_profanity, contains_profanity, valid_password, valid_username}, gamedata::*, gameserver::game_server, mothership_common::{ChatMessageType, ClientToServer, ClientToServerPacket, GameMode, LobbyPlayerInfo, MatchRequestData, PlayerInfo, PlayerMessage, PlayerStatistics, RefusalReason, ServerToClient, ServerToClientPacket, TeamWinResult}};
+#[cfg(not(target_os="android"))]
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
 const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; //"13.38.240.14:25569";
@@ -272,7 +273,7 @@ struct InputParams<'w, 's> {
   m: Res<'w, ButtonInput<MouseButton>>,
   ki: MessageReader<'w, 's, KeyboardInput>,
   mw: MessageReader<'w, 's, MouseWheel>,
-  _t: Res<'w, Touches>,
+  t: Res<'w, Touches>,
   _gp_ax: MessageReader<'w, 's, GamepadAxisChangedEvent>,
   _gp_bt: MessageReader<'w, 's, GamepadButtonChangedEvent>,
 }
@@ -370,7 +371,7 @@ fn main_thread(
 
           clear_background(WHITE, &win, &mut com);
           data.main_tabs.update_size(tl_anchor + Vector2 { x: 5.0 * vw, y: 5.0 * uiscale}, Vector2 { x: 90.0*vw, y: 8.0*uiscale }, 6.0*uiscale);
-          data.main_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &input.m);
+          data.main_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &input.m, &input.t);
 
           // play
           if data.main_tabs.selected_tab() == 0 {
@@ -397,7 +398,7 @@ fn main_thread(
             if data.queued {
               draw_text(&font, "In queue...", br_anchor + Vector2 {x: - 30.0*uiscale, y: - 24.0*uiscale}, Vector2 { x: 100.0*uiscale, y: 100.0*uiscale }, BLACK, 5.0*uiscale, MENU_Z, Justify::Left, &win, &mut com);
             }
-            if play_button.was_pressed(&win, &input.m) {
+            if play_button.was_pressed(&win, &input.m, &input.t) {
               data.queued = !data.queued;
               if data.queued {
                 let mut selected_gamemodes: Vec<GameMode> = Vec::new();
@@ -453,7 +454,7 @@ fn main_thread(
             if lobby.len() > 1 {
               let mut leave_button = Button::new(lobby_position + Vector2 {x: 0.0, y: y_offset * (lobby.len() as f32) + inner_shrink}, Vector2 { x: lobby_size.x/2.0, y: lobby_size.y - inner_shrink }, "Leave", 5.0*vh);
               leave_button.draw(vh, ui_clickable, MENU_Z, &font, &win, &mut com);
-              if leave_button.was_pressed(&win, &input.m) {
+              if leave_button.was_pressed(&win, &input.m, &input.t) {
                 data.packet_queue.push(
                   ClientToServer::LobbyLeave,
                 );
@@ -468,7 +469,7 @@ fn main_thread(
           // heroes
           if data.main_tabs.selected_tab() == 1 {
             data.heroes_tabs.update_size(bl_anchor + Vector2 { x: 5.0 * vw, y: - 20.0 * uiscale}, Vector2 { x: 90.0*vw, y: 15.0*uiscale }, 5.0*uiscale);
-            data.heroes_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &input.m);
+            data.heroes_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &input.m, &input.t);
 
             let selected = data.heroes_tabs.selected_tab();
             let selected_character = CHARACTER_LIST[selected];
@@ -487,7 +488,7 @@ fn main_thread(
             // practice range
             let mut button = Button::new(tr_anchor + Vector2 { x: -30.0*uiscale, y: 50.0*uiscale }, Vector2 { x: 20.0*uiscale, y: 10.0*uiscale }, "Practice", 4.0*uiscale);
             button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if button.was_released(&win, &input.m) {
+            if button.was_released(&win, &input.m, &input.t) {
 
               // if we have no cipher key (offline mode)
               if data.cipher_key.is_empty() {
@@ -562,7 +563,7 @@ fn main_thread(
             // refresh button
             let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
             refresh_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if refresh_button.was_released(&win, &input.m) {
+            if refresh_button.was_released(&win, &input.m, &input.t) {
               data.packet_queue.push(
                 ClientToServer::PlayerDataRequest
               )
@@ -588,7 +589,7 @@ fn main_thread(
             // send friend request button
             let mut fr_button = Button::new(tl_anchor + Vector2 {x: 85.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 25.0 * uiscale, y: 6.0*uiscale}, "Add friend", 5.0*uiscale);
             fr_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if fr_button.was_released(&win, &input.m) {
+            if fr_button.was_released(&win, &input.m, &input.t) {
               let recipient = data.friend_request_input.buffer.clone();
               data.packet_queue.push(
                 ClientToServer::SendFriendRequest(recipient),
@@ -599,7 +600,7 @@ fn main_thread(
             // refresh button
             let mut refresh_button = Button::new(tl_anchor + Vector2 {x: 10.0 * uiscale, y: 20.0*uiscale}, Vector2 {x: 20.0 * uiscale, y: 7.0*uiscale}, "Refresh", 5.0*uiscale);
             refresh_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-            if refresh_button.was_released(&win, &input.m) {
+            if refresh_button.was_released(&win, &input.m, &input.t) {
               data.packet_queue.push(
                 ClientToServer::GetFriendList,
               )
@@ -631,7 +632,7 @@ fn main_thread(
                     status = "Accept friend?";
                     let mut accept_button = Button::new(Vector2 { x: 70.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Accept", 4.0*uiscale);
                     accept_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-                    if accept_button.was_pressed(&win, &input.m) {
+                    if accept_button.was_pressed(&win, &input.m, &input.t) {
                       // Accept the friend request by sending a friend request to this user, which the
                       // server processes as an accept.
                       data.packet_queue.push(
@@ -662,7 +663,7 @@ fn main_thread(
                       Vector2 { x: 90.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Join", 4.0*uiscale
                     );
                     accept_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-                    if accept_button.was_pressed(&win, &input.m) {
+                    if accept_button.was_pressed(&win, &input.m, &input.t) {
                       data.packet_queue.push(
                         ClientToServer::LobbyInviteAccept(String::from(peer_username)),
                       );
@@ -676,7 +677,7 @@ fn main_thread(
                         Vector2 { x: 90.0*uiscale, y: y_start + current_offset }, Vector2 { x: 15.0*uiscale, y: 6.0*uiscale }, "Invite", 4.0*uiscale
                       );
                       invite_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
-                      if invite_button.was_pressed(&win, &input.m) {
+                      if invite_button.was_pressed(&win, &input.m, &input.t) {
                         data.packet_queue.push(
                           ClientToServer::LobbyInvite(String::from(peer_username)),
                         );
@@ -856,6 +857,14 @@ fn main_thread(
             }
           }
           // MARK: | |  Game UI
+
+          // TEMPORARY DEBUG
+
+          let touches = touch_drags(&input.t);
+          for touch in touches {
+            draw_line(Vector2::from(touch.0), Vector2::from(touch.1), 1.0 * uiscale, RED, TOOLTIP_Z, &win, &mut com);
+          }
+
           let primary_cooldown: f32 = if data.player.last_shot_time < data.character_properties[&data.player.character].primary_cooldown {
             data.player.last_shot_time / data.character_properties[&data.player.character].primary_cooldown
           } else {
@@ -1051,7 +1060,7 @@ fn main_thread(
             };
             draw_text(&font, text, tm_anchor + Vector2 {x: -100.0 * uiscale, y: 50.0 * uiscale}, Vector2 {x: 200.0 * uiscale, y: 10.0 * uiscale}, color, 7.0 * uiscale, GAME_UI_Z, Justify::Center, &win, &mut com);
 
-            if leave_button.was_released(&win, &input.m) {
+            if leave_button.was_released(&win, &input.m, &input.t) {
               data.match_ended = false;
               data.current_menu = MenuScreen::Main(0);
             }
@@ -1239,6 +1248,14 @@ fn main_thread(
               if currently_dashing {
                 data.player.dashing = true;
               }
+            }
+          }
+
+
+          {
+            let touches = touch_drags(&input.t);
+            if touches.len() > 0 {
+              movement = Vector2 {x: touches[0].0.x - touches[0].1.x, y: touches[0].0.y - touches[0].1.y};
             }
           }
 
@@ -2032,7 +2049,7 @@ fn main_thread(
         }
 
         if data.paused {
-          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, &mut audio_sinks, ESC_MENU_Z, &font, &mut win, &mut com, &input.m, mouse_pos);
+          let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, &mut audio_sinks, ESC_MENU_Z, &font, &mut win, &mut com, &input.m, mouse_pos, &input.t);
           data.paused = paused;
           if quit {
             // if in menus
@@ -2054,7 +2071,7 @@ fn main_thread(
 
         // login / register tabs
         data.tabs_login.update_size(tl_anchor + Vector2 { x: 20.0 * uiscale, y: 20.0 * uiscale}, Vector2 { x: 40.0*uiscale, y: 6.0*uiscale }, 4.0*uiscale);
-        data.tabs_login.draw_and_process(uiscale, true, MENU_Z, &font, &win, &mut com, &input.m);
+        data.tabs_login.draw_and_process(uiscale, true, MENU_Z, &font, &win, &mut com, &input.m, &input.t);
         let logging_in = match data.tabs_login.selected_tab() {
           0 => {true}
           _ => {false}
@@ -2087,7 +2104,7 @@ fn main_thread(
         // offline mode
         let mut offline_mode_button = Button::new(br_anchor - Vector2 {x: 33.0 * uiscale,y: 11.0 * uiscale }, Vector2 { x: 28.0*uiscale, y: 6.0*uiscale }, "Offline play", 4.0*uiscale);
         offline_mode_button.draw(uiscale, true, MENU_Z, &font, &win, &mut com);
-        if offline_mode_button.was_released(&win, &input.m) {
+        if offline_mode_button.was_released(&win, &input.m, &input.t) {
           data.current_menu = MenuScreen::Main(0);
           data.server_ip = String::from("127.0.0.1:25569")
         }
@@ -2100,7 +2117,7 @@ fn main_thread(
         match login_step {
           // MARK: Login/Register 0
           0 => {
-            if confirm_button.was_released(&win, &input.m) |
+            if confirm_button.was_released(&win, &input.m, &input.t) |
             (get_keys_pressed(&input.k).contains(&KeyCode::Enter) && !data.username_input.selected) {
 
               // check credential validity.
@@ -2506,6 +2523,7 @@ fn main_thread(
       }
     }
     // extra input keys
+    #[cfg(not(target_os="android"))]
     if is_window_focused(&win) {
       let device_state: DeviceState = DeviceState::new();
       let keys: Vec<Keycode> = device_state.get_keys();

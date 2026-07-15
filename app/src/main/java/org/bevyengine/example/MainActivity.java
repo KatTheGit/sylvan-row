@@ -1,4 +1,4 @@
-package org.bevyengine.example;
+package kat.sylvanrow;
 
 import android.view.View;
 
@@ -6,7 +6,7 @@ import com.google.androidgamesdk.GameActivity;
 
 public class MainActivity extends GameActivity {
     static {
-        System.loadLibrary("bevy_mobile_example");
+        System.loadLibrary("sylvan_row");
     }
 
     @Override

@@ -93,9 +93,8 @@ The GDD is in `assets/README.md`.
   - [x] Capture the point
     - [x] Overtime
     - [x] End time
-  - [ ] Elimination
-    - [ ] Storm
-    - [ ] End time
+  - [x] Elimination
+    - [x] Storm
 
 ### Bugs
 

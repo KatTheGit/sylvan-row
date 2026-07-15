@@ -10,10 +10,10 @@ flamegraph.svg
 database
 server_setup
 server.log
-android/.idea
-android/.gradle
-android/local.properties
-android/app/.cxx
-android/app/build
-android/app/src/main/jniLibs/
+.idea
+.gradle
+local.properties
+app/.cxx
+app/build
+app/src/main/jniLibs/
 .vscode

@@ -79,7 +79,7 @@ impl Button {
     }
     return false;
   }
-  pub fn was_pressed(&self, window: &Window, mouse_keys: &Res<ButtonInput<MouseButton>>) -> bool {
+  pub fn was_pressed(&self, window: &Window, mouse_keys: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
     let mouse: Vector2 = get_mouse_pos(window);
     if mouse.x > self.position.x && mouse.x < (self.position.x + self.size.x) {
       if mouse.y > self.position.y && mouse.y < (self.position.y + self.size.y) {
@@ -88,13 +88,29 @@ impl Button {
         }
       }
     }
+    let touches = touch_pressed(touches);
+    for touch in touches {
+      if touch.x > self.position.x && touch.x < (self.position.x + self.size.x) {
+        if touch.y > self.position.y && touch.y < (self.position.y + self.size.y) {
+          return true & self.clickable;
+        }
+      }
+    }
     return false;
   }
-  pub fn was_released(&self, window: &Window, mouse_keys: &Res<ButtonInput<MouseButton>>) -> bool {
+  pub fn was_released(&self, window: &Window, mouse_keys: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
     let mouse: Vector2 = get_mouse_pos(window);
     if mouse.x > self.position.x && mouse.x < (self.position.x + self.size.x) {
       if mouse.y > self.position.y && mouse.y < (self.position.y + self.size.y) {
         if get_mouse_released(mouse_keys).contains(&MouseButton::Left) {
+          return true & self.clickable;
+        }
+      }
+    }
+    let touches = touch_released(touches);
+    for touch in touches {
+      if touch.x > self.position.x && touch.x < (self.position.x + self.size.x) {
+        if touch.y > self.position.y && touch.y < (self.position.y + self.size.y) {
           return true & self.clickable;
         }
       }
@@ -142,8 +158,8 @@ impl Tabs {
       self.selected[i] = i == index;
     }
   }
-  pub fn draw_and_process(&mut self, vh: f32, clickable: bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) {
-    fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool, clickable: bool, z: f32, window: &Window, commands: &mut Commands, font: &Handle<Font>, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+  pub fn draw_and_process(&mut self, vh: f32, clickable: bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) {
+    fn one_way_button(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, selected: bool, clickable: bool, z: f32, window: &Window, commands: &mut Commands, font: &Handle<Font>, mouse_buttons: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
       draw_rect(BLUE, position, size, z, window, commands);
       let inner_shrink: f32 = 1.0 * vh;
       draw_rect(SKY_BLUE, position + Vector2{x: inner_shrink, y:inner_shrink}, size - Vector2{x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
@@ -161,6 +177,14 @@ impl Tabs {
             //draw_text(&font, text, Vector2 {x: position.x + 1.0 *vh + 10.0, y: position.y}, size, font_size, z+2.0, window, commands);
             if get_mouse_released(mouse_buttons).contains(&MouseButton::Left) {
               return true;
+            }
+          }
+        }
+        let touches = touch_released(touches);
+        for touch in touches {
+          if touch.x > position.x && touch.x < (position.x + size.x) {
+            if touch.y > position.y && touch.y < (position.y + size.y) {
+              return true
             }
           }
         }
@@ -186,6 +210,7 @@ impl Tabs {
           commands,
           font,
           mouse_buttons,
+          touches,
         )
       );
     };
@@ -408,7 +433,7 @@ impl FloatingNumber {
 /// - sfx self
 /// - sfx other
 /// - music
-pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audio_sinks: &mut AudioParams, z: f32, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, mouse_pos: Vector2) -> (bool, bool) {
+pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audio_sinks: &mut AudioParams, z: f32, font: &Handle<Font>, window: &mut Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, mouse_pos: Vector2, touches: &Res<Touches>) -> (bool, bool) {
   let mut menu_paused = true;
   let mut wants_to_quit = false;
   let button_y_separation: f32 = 15.0 * uiscale;
@@ -433,7 +458,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     let settings_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation };
     let mut settings_button = Button::new(settings_button_position, button_size, "Options", button_font_size);
     settings_button.draw(uiscale, true, z, font, window, commands);
-    if settings_button.was_released(window, mouse_buttons) {
+    if settings_button.was_released(window, mouse_buttons, touches) {
       data.settings_open = true;
       data.settings_timer = Instant::now();
     }
@@ -442,7 +467,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     let quit_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset + button_y_separation * 2.0 };
     let mut quit_button = Button::new(quit_button_position, button_size, "Quit", button_font_size);
     quit_button.draw(uiscale, true, z, font, window, commands);
-    if quit_button.was_released(window, mouse_buttons) {
+    if quit_button.was_released(window, mouse_buttons, touches) {
       wants_to_quit = true;
       menu_paused = false;
       data.settings_open = false;
@@ -451,10 +476,10 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
   }
   if data.settings_open {
     data.settings_tabs.update_size(Vector2 { x: 10.0*vw, y: 15.0*uiscale }, Vector2 { x: 80.0*vw, y: 6.0*uiscale }, 5.0*uiscale);
-    data.settings_tabs.draw_and_process(uiscale, true, z, font, window, commands, mouse_buttons);
+    data.settings_tabs.draw_and_process(uiscale, true, z, font, window, commands, mouse_buttons, touches);
     let mut back_button = Button::new(Vector2 { x: vw * 50.0 - button_size.x/2.0, y: 3.0*uiscale }, Vector2 { x: 25.0 * uiscale, y: 9.0 * uiscale }, "Back", button_font_size);
     back_button.draw(uiscale, true, z, font, window, commands);
-    if back_button.was_released(window, mouse_buttons) {
+    if back_button.was_released(window, mouse_buttons, touches) {
       data.settings_open = false;
     }
 
@@ -520,14 +545,14 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
       {
         let base_y: f32 = 25.0 * uiscale;
         let size = 5.0 * uiscale;
-        was_edited |= keybind_edit_buttons("Walk UP",    &mut data.settings.keybinds.walk_up,    Vector2 { x: 10.0 * vw, y: base_y + size * 0.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Walk DOWN",  &mut data.settings.keybinds.walk_down,  Vector2 { x: 10.0 * vw, y: base_y + size * 1.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Walk LEFT",  &mut data.settings.keybinds.walk_left,  Vector2 { x: 10.0 * vw, y: base_y + size * 2.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Walk RIGHT", &mut data.settings.keybinds.walk_right, Vector2 { x: 10.0 * vw, y: base_y + size * 3.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Primary",    &mut data.settings.keybinds.primary,    Vector2 { x: 10.0 * vw, y: base_y + size * 4.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Secondary",  &mut data.settings.keybinds.secondary,  Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Dash",       &mut data.settings.keybinds.dash,       Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
-        was_edited |= keybind_edit_buttons("Fullscreen", &mut data.settings.keybinds.fullscreen, Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
+        was_edited |= keybind_edit_buttons("Walk UP",    &mut data.settings.keybinds.walk_up,    Vector2 { x: 10.0 * vw, y: base_y + size * 0.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Walk DOWN",  &mut data.settings.keybinds.walk_down,  Vector2 { x: 10.0 * vw, y: base_y + size * 1.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Walk LEFT",  &mut data.settings.keybinds.walk_left,  Vector2 { x: 10.0 * vw, y: base_y + size * 2.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Walk RIGHT", &mut data.settings.keybinds.walk_right, Vector2 { x: 10.0 * vw, y: base_y + size * 3.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Primary",    &mut data.settings.keybinds.primary,    Vector2 { x: 10.0 * vw, y: base_y + size * 4.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Secondary",  &mut data.settings.keybinds.secondary,  Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Dash",       &mut data.settings.keybinds.dash,       Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Fullscreen", &mut data.settings.keybinds.fullscreen, Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
         //was_edited |= keybind_edit_buttons("Open Chat",  &mut data.settings.keybinds.open_chat,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
         //was_edited |= keybind_edit_buttons("Cycle Friends (Chat)",  &mut data.settings.keybinds.cycle_friends,  Vector2 { x: 10.0 * vw, y: base_y + size * 9.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
       }
@@ -545,13 +570,13 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
 
       let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 60.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset settings", 4.0*uiscale);
       reset_button.draw(uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, z, font, window, commands);
-      if reset_button.was_released(window, mouse_buttons) {
+      if reset_button.was_released(window, mouse_buttons, touches) {
         data.settings = Settings::new();
         settings_modified = true;
       }
       let mut reset_keybinds_button = Button::new(Vector2 { x: 40.0*vw, y: 70.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset keybinds", 4.0*uiscale);
       reset_keybinds_button.draw(uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, z, font, window, commands);
-      if reset_keybinds_button.was_released(window, mouse_buttons) {
+      if reset_keybinds_button.was_released(window, mouse_buttons, touches) {
         data.settings.keybinds = KeybindSettings::new();
         settings_modified = true;
       }
@@ -756,7 +781,7 @@ impl KeybindSettings {
   }
 }
 #[cfg(not(target_os="android"))]
-pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8), position: Vector2, size: f32, vh: f32, clickable: bool, font: &Handle<Font>, z: f32, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8), position: Vector2, size: f32, vh: f32, clickable: bool, font: &Handle<Font>, z: f32, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
   let mut font_size = size * 0.8;
   draw_text(&font, keybind_name, Vector2 { x: position.x, y: position.y}, Vector2 { x: size*10.0, y: size }, BLACK, font_size, z, Justify::Left, window, commands);
   for i in 0..2 {
@@ -809,7 +834,7 @@ pub fn keybind_edit_buttons(keybind_name: &str, keybind: &mut (u16, u16, u8, u8)
     let x_offset = if i == 0 {50.0*vh} else {50.0*vh + x_size};
     let mut button = Button::new(position + Vector2 {x: x_offset, y: 0.0}, Vector2 { x: x_size, y: size }, &keycode_name, font_size);
     button.draw(vh, clickable, z, font, window, commands);
-    if button.was_released(window, mouse_buttons) {
+    if button.was_released(window, mouse_buttons, touches) {
       if i == 0 {
         keybind.0 = u16::MAX-1;
         keybind.2 = u8::MAX -1;
