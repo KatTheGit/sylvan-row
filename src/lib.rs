@@ -28,7 +28,7 @@ pub mod bevy_graphics;
 pub mod bevy_audio;
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime, UNIX_EPOCH}};
-use bevy::{camera::Viewport, color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, render::{RenderPlugin, settings::WgpuSettings}};
+use bevy::{camera::Viewport, color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel, touch}, prelude::*, render::{RenderPlugin, settings::WgpuSettings}, window::AppLifecycle};
 use bevy_immediate::*;
 use bevy_graphics::*;
 use bevy_audio::*;
@@ -41,7 +41,7 @@ use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus,
 #[cfg(not(target_os="android"))]
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
-const CURRENT_SERVER_IP: &str = "127.0.0.1:25569"; //"13.38.240.14:25569";
+const CURRENT_SERVER_IP: &str = "192.168.1.52:25569"; //"13.38.240.14:25569";
 
 #[bevy_main]
 pub fn main() {
@@ -53,6 +53,7 @@ pub fn main() {
     .add_systems(PreUpdate, sprite_clearer)
     .add_systems(PostUpdate, exit_catcher)
     .add_systems(Update, update_viewport)
+    .add_systems(Update, handle_lifetime)
     .add_systems(Update, main_thread)
     .add_plugins(
       DefaultPlugins.set(WindowPlugin {
@@ -129,6 +130,9 @@ pub struct GameData {
   pub chat_scroll: f32,
   pub selected_friend: usize,
   pub gamemode_rotation: Vec<(GameMode, bool)>,
+  pub font: Option<Handle<Font>>,
+  pub font_mono: Option<Handle<Font>>,
+  pub shift_osk: bool,
 
   pub server_ip: String,
   pub game_server_ip: String,
@@ -231,6 +235,9 @@ impl Default for GameData {
       chat_scroll: 0.0,
       selected_friend: 0,
       gamemode_rotation: Vec::new(),
+      font: None,
+      font_mono: None,
+      shift_osk: false,
 
       server_ip: String::from(CURRENT_SERVER_IP),
       game_server_ip: String::from("13.38.240.14"),
@@ -318,6 +325,7 @@ fn main_thread(
     let delta_time = time.delta().as_secs_f32();
     
     if data.startup {
+
       data.startup = false;
       data.game_object_animations = load_game_object_animations(asset_server.clone());
       data.character_animations = load_character_animations(asset_server.clone());
@@ -325,7 +333,11 @@ fn main_thread(
         data.username_input.buffer = data.settings.saved_username.clone();
         data.password_input.buffer = load_password(&data.settings.saved_username);
       }
-      data.recv_messages_buffer.push((String::from("System"), String::from("Chat messages may be logged."), ChatMessageType::Administrative))
+      data.recv_messages_buffer.push((String::from("System"), String::from("Chat messages may be logged."), ChatMessageType::Administrative));
+
+      data.font = Some(asset_server.load("fonts/Roboto-Black.ttf"));
+      data.font_mono = Some(asset_server.load("fonts/Roboto-Mono.ttf"));
+
     }
     if data.late_startup {
       if data.late_startup_timer.elapsed().as_secs_f32() > 1.5 {
@@ -335,12 +347,13 @@ fn main_thread(
       }
     }
 
+
     // synchronise settings with the exit thread
     *settings_sync = data.settings.clone();
 
     // calculate UI scale
     let size_min = f32::min(vw, vh);
-    let mut uiscale = if size_min < 5.0 {2.5} else if size_min < 10.0 {5.0} else {10.0};
+    let mut uiscale = if size_min < 4.0 {2.5} else if size_min < 10.0 {5.0} else {10.0};
     if data.settings.auto_ui_scale {
       data.settings.ui_scale = uiscale;
     }
@@ -352,11 +365,20 @@ fn main_thread(
     let bl_anchor = Vector2 {x: 0.0, y: 100.0*vh};
     let br_anchor = Vector2 {x: 100.0*vw, y: 100.0*vh};
 
-    let font: Handle<Font> = asset_server.load("fonts/Roboto-Black.ttf");
-    let mono_font: Handle<Font> = asset_server.load("fonts/Roboto-Mono.ttf");
+    let font = data.font.clone().expect("oops");
+    let font_mono = data.font_mono.clone().expect("oops");
+
     let mouse_pos = get_mouse_pos(&win);
 
     let ui_clickable = !(data.paused || data.chat_open);
+
+
+    // TEMPORARY DEBUG
+
+    let touches = touch_drags(&input.t);
+    for touch in touches {
+      draw_line(touch.0, touch.1, 1.0 * uiscale, RED, TOOLTIP_Z, &win, &mut com);
+    }
 
     let username = data.username.clone();
     match data.current_menu {
@@ -364,13 +386,20 @@ fn main_thread(
       MenuScreen::Main(mode) => {
         let character_descriptions = CharacterDescription::create_all_descriptions(data.character_properties.clone());
 
+        // pause menu button
+        let mut esc_button = Button::new(Vector2 { x: 93.0 * vw, y: 5.0 * uiscale }, Vector2 { x: 5.0 * vw, y: 5.0 * vw }, "=", 6.0 * uiscale);
+        esc_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
+        if esc_button.was_released(&win, &input.m, &input.t) {
+          data.paused = !data.paused;
+        }
+
         // menu
         if mode != 2 {
           // reset client match startup flag
           data.game_startup = true;
 
           clear_background(WHITE, &win, &mut com);
-          data.main_tabs.update_size(tl_anchor + Vector2 { x: 5.0 * vw, y: 5.0 * uiscale}, Vector2 { x: 90.0*vw, y: 8.0*uiscale }, 6.0*uiscale);
+          data.main_tabs.update_size(tl_anchor + Vector2 { x: 2.0 * vw, y: 5.0 * uiscale}, Vector2 { x: 89.0*vw, y: 8.0*uiscale }, 6.0*uiscale);
           data.main_tabs.draw_and_process(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com, &input.m, &input.t);
 
           // play
@@ -389,7 +418,7 @@ fn main_thread(
             let queued = data.queued.clone();
             for (gamemode, selected) in &mut data.gamemode_rotation {
               let mut selected_copy = selected.clone();
-              checkbox(checkbox_pos + Vector2 {x: 0.0, y: checkbox_y_current_step * checkbox_y_step}, 4.0*uiscale, &gamemode.get_data().description, 3.8*uiscale, uiscale, if queued {&mut selected_copy} else {selected}, MENU_Z, &font, &win, &mut com, &input.m);
+              checkbox(checkbox_pos + Vector2 {x: 0.0, y: checkbox_y_current_step * checkbox_y_step}, 4.0*uiscale, &gamemode.get_data().description, 3.8*uiscale, uiscale, if queued {&mut selected_copy} else {selected}, MENU_Z, &font, &win, &mut com, &input.m, &input.t);
               checkbox_y_current_step += 1.0;
             }
 
@@ -579,11 +608,12 @@ fn main_thread(
           if data.main_tabs.selected_tab() == 4 {
 
             // friend search bar
+            let mut shift_osk = data.shift_osk.clone();
             data.friend_request_input.text_input(
               Vector2 { x: 35.0 * uiscale, y: 20.0*uiscale },
               Vector2 { x: 50.0 * uiscale, y: 6.0*uiscale },
-              4.0*uiscale, 20, uiscale, &mono_font, MENU_Z,
-              &mut com, &win, &input.m, &mut input.ki
+              4.0*uiscale, 20, vh, vw, uiscale, &font_mono, MENU_Z,
+              &mut com, &win, &input.m, &mut input.ki, &input.t, &mut shift_osk
             );
             data.friend_request_input.buffer.truncate(20);
             // send friend request button
@@ -595,6 +625,7 @@ fn main_thread(
                 ClientToServer::SendFriendRequest(recipient),
               )
             }
+            data.shift_osk = shift_osk;
 
 
             // refresh button
@@ -707,12 +738,206 @@ fn main_thread(
 
           // game startup
           if data.game_startup {
+            
 
             // TEMPORARY
             let music_vol = (data.settings.master_volume * data.settings.music_volume) / (100.0 * 100.0);
             play_sound("audio/music/1.ogg".to_string(), &mut com, asset_server.clone(), music_vol, AudioTrack::Music);
             data.game_startup = false;
           }
+
+
+          // MARK: | game input
+          let position = data.player.position;
+          let mut movement = Vector2::new();
+          //let mut aim_direction = Vector2::new();
+          //data.player.dashing = false;
+          //data.player.shooting_primary = false;
+          //data.player.shooting_secondary = false;
+
+          // only register input if the window is active and the pause menu isn't open
+          let mut currently_shooting_primary = false;
+          let mut currently_shooting_secondary = false;
+          let mut currently_dashing = false;
+          if is_window_focused(&win) && ui_clickable {
+
+            #[cfg(not(target_os="android"))]
+            {
+              let device_state: DeviceState = DeviceState::new();
+              let keys: Vec<Keycode> = device_state.get_keys();
+              let mouse: Vec<MouseButton> = get_mouse_down(&input.m);
+              if !keys.is_empty() {
+                movement = Vector2::new();
+                //keyboard_mode = true; // since we used the keyboard
+              }
+              
+              // key binds
+              for key in keys {
+                let key = key as u16;
+                // move
+                if key == data.settings.keybinds.walk_up.0    || key == data.settings.keybinds.walk_up.1    { movement.y += -1.0 }
+                if key == data.settings.keybinds.walk_down.0  || key == data.settings.keybinds.walk_down.1  { movement.y +=  1.0 }
+                if key == data.settings.keybinds.walk_left.0  || key == data.settings.keybinds.walk_left.1  { movement.x += -1.0 }
+                if key == data.settings.keybinds.walk_right.0 || key == data.settings.keybinds.walk_right.1 { movement.x +=  1.0 }
+                // primary
+                if key == data.settings.keybinds.primary.0    || key == data.settings.keybinds.primary.1    { currently_shooting_primary = true; /*keyboard_mode = true*/ }
+                // secondary
+                if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
+                // dash
+                if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { currently_dashing = true; /*keyboard_mode = true*/ }
+              }
+              
+              // mouse button binds
+              for button in mouse {
+                let button = mb_to_num(button);
+                // move
+                if button == data.settings.keybinds.walk_up.2    || button == data.settings.keybinds.walk_up.3    { movement.y += -1.0 }
+                if button == data.settings.keybinds.walk_down.2  || button == data.settings.keybinds.walk_down.3  { movement.y +=  1.0 }
+                if button == data.settings.keybinds.walk_left.2  || button == data.settings.keybinds.walk_left.3  { movement.x += -1.0 }
+                if button == data.settings.keybinds.walk_right.2 || button == data.settings.keybinds.walk_right.3 { movement.x +=  1.0 }
+                // primary
+                if button == data.settings.keybinds.primary.2    || button == data.settings.keybinds.primary.3    { currently_shooting_primary = true; /*keyboard_mode = true*/ }
+                // secondary
+                if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
+                // dash
+                if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { currently_dashing = true; /*keyboard_mode = true*/ }
+              }
+            }
+          }
+
+          // mobile controls
+          //#[cfg(target_os="android")]
+          {
+            data.aim_direction = Vector2::new();
+            
+            let touches = touch_drags(&input.t);
+            for touch in touches {
+              // if left side
+              if touch.0.x < 50.0 * vw {
+                let vector = Vector2 {x: touch.1.x - touch.0.x, y: touch.1.y - touch.0.y} / (uiscale * 10.0);
+                println!("{:?}", vector);
+
+                if vector.magnitude() > 0.2 {
+                  movement = vector;
+                }
+              }
+              // if right side
+              else {
+                let vector = Vector2 {x: touch.1.x - touch.0.x, y: touch.1.y - touch.0.y} / (uiscale * 10.0);
+                if vector.magnitude() > 0.2 {
+                  currently_shooting_primary = true;
+                  data.aim_direction = vector.normalize();
+                }
+              }
+            }
+            
+
+          }
+
+          if currently_shooting_primary {
+            data.player.shooting_primary = true;
+          }
+          if currently_shooting_secondary {
+            data.player.shooting_secondary = true;
+          }
+          if currently_dashing {
+            data.player.dashing = true;
+          }
+
+          if movement.magnitude() > 1.0 {
+            // println!("normalizing");
+            movement = movement.normalize();
+          }
+
+          // lock movement at the start of the game
+          if (data.gamemode_info.time as f32) < MATCH_WAIT_TIME {
+            movement = Vector2::new();
+          }
+
+          let mut movement_raw: Vector2 = movement;
+
+          // the server tells us if we're dashing or not
+          if data.player.is_dashing {
+            // do the interpolate
+            let distance = data.player.interpol_next - data.player.interpol_prev;
+            let speed: Vector2;
+            if distance.magnitude() == 0.0 {
+              // this is only true on the first "frame".
+              // this measure helps reduce the percieved lag from the character standing still
+              // before it obtains its second interpolation position.
+              speed = data.player.movement_direction * (data.character_properties[&data.player.character].dash_speed / 2.0) * delta_time;
+            } else {
+              // this runs the rest of the time
+              let period = PACKET_INTERVAL;
+              speed = distance / period;
+            }
+            data.player.position += speed * delta_time;
+          }
+          else {
+            if data.player.dashing && !data.player.is_dashing && !data.player.is_dead && movement_raw.magnitude() != 0.0 {
+              if data.player.time_since_last_dash > data.character_properties[&data.player.character].dash_cooldown {
+                match data.player.character {
+                  Character::Temerity => {
+                  }
+                  _ => {
+                    data.player.is_dashing = true;
+                  }
+                }
+              }
+            }
+          
+            if data.player.is_dashing {
+              (data.player.position, data.player.dashed_distance, data.player.is_dashing) = dashing_logic(
+                data.player.is_dashing,
+                data.player.dashed_distance,
+                movement_raw,
+                delta_time,
+                data.character_properties[&data.player.character].dash_speed,
+                data.character_properties[&data.player.character].dash_distance,
+                data.game_objects.clone(),
+                data.player.position,
+              );
+            }
+          }
+
+          // Apply standard movement (non-dashing)
+          if !data.player.is_dashing {
+            let mut extra_speed: f32 = 0.0;
+            for buff in data.player.buffs.clone() {
+              if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
+                extra_speed += buff.value;
+              }
+              if buff.buff_type == BuffType::Impulse {
+                // yeet
+                let direction = buff.direction.normalize();
+                // time left serves as impulse decay
+                let time_left = buff.duration;
+                let strength = buff.value;
+                movement += direction * f32::powi(time_left, 1) * strength;
+              }
+            }
+  
+            let movement_speed: f32 = data.character_properties[&data.player.character].speed;
+
+            movement.x *= (movement_speed + extra_speed) * delta_time;
+            movement.y *= (movement_speed + extra_speed) * delta_time;
+            if data.player.is_dead == false {  
+              (movement_raw, movement) = object_aware_movement(data.player.position, movement_raw, movement, data.game_objects.clone());
+              data.player.position.x += movement.x;
+              data.player.position.y += movement.y;
+            } if data.player.is_dead {
+              data.player.camera.position.x += movement.x;
+              data.player.camera.position.y += movement.y;
+            }
+          }
+
+          // CAMERA ZOOM
+          if ui_clickable {
+            let scrollwheel = get_mouse_wheel(&mut input.mw);
+            data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 10.0 * delta_time).clamp(4.0, 16.0);
+          }
+
+
 
 
           // MARK: | Interpolation
@@ -858,13 +1083,6 @@ fn main_thread(
           }
           // MARK: | |  Game UI
 
-          // TEMPORARY DEBUG
-
-          let touches = touch_drags(&input.t);
-          for touch in touches {
-            draw_line(Vector2::from(touch.0), Vector2::from(touch.1), 1.0 * uiscale, RED, TOOLTIP_Z, &win, &mut com);
-          }
-
           let primary_cooldown: f32 = if data.player.last_shot_time < data.character_properties[&data.player.character].primary_cooldown {
             data.player.last_shot_time / data.character_properties[&data.player.character].primary_cooldown
           } else {
@@ -883,17 +1101,19 @@ fn main_thread(
             1.0
           };
           
-          draw_ability_icon(bl_anchor + Vector2 { x: 2.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, 1.0 , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 14.5 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, primary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 27.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, dash_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com, data.settings.clone());
-          draw_ability_icon(bl_anchor + Vector2 { x: 39.5 * uiscale,  y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, secondary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com, data.settings.clone());
+          //draw_ability_icon(bl_anchor + Vector2 { x: 2.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 0, false, 1.0 , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_4.png"), &win, &mut com, data.settings.clone());
+          //draw_ability_icon(bl_anchor + Vector2 { x: 14.5 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 1, data.player.shooting_primary, primary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_1.png"), &win, &mut com, data.settings.clone());
+          //draw_ability_icon(bl_anchor + Vector2 { x: 27.0 * uiscale, y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 3, data.player.dashing, dash_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_3.png"), &win, &mut com, data.settings.clone());
+          //draw_ability_icon(bl_anchor + Vector2 { x: 39.5 * uiscale,  y: -20.0 * uiscale }, Vector2 { x: 10.0 * uiscale, y: 10.0 * uiscale }, 2, data.player.shooting_secondary, secondary_cooldown , vh, vw, uiscale, &font, character_descriptions.clone(), data.player.character, GAME_UI_Z, &asset_server.load("ui/temp_ability_2.png"), &win, &mut com, data.settings.clone());
 
           // screen-space to world space conversion
           //                                          no idea what's up with "/vh" but it gotta be there
           let mouse_world_position = screen_to_world(mouse_pos/vh, data.player.camera.clone(), vh, vw);
-      
-          data.aim_direction = (mouse_world_position - data.player.position).normalize();
           
+          #[cfg(not(target_os="android"))]
+          {
+            data.aim_direction = (mouse_world_position - data.player.position).normalize();
+          }
           // draw player and aim laser
           let mut range = data.character_properties[&data.player.character].primary_range * data.player.camera.zoom;
           if data.player.character == Character::Temerity {
@@ -915,6 +1135,7 @@ fn main_thread(
 
           if !data.player.is_dead {
             let mut range_limited: f32 = Vector2::distance(data.player.position, mouse_world_position.clone()) * data.player.camera.zoom;
+
             if range_limited > range {
               range_limited = range;
             }
@@ -922,6 +1143,12 @@ fn main_thread(
             if range_limited < low_limit {
               range_limited = low_limit;
             }
+
+            #[cfg(target_os="android")]
+            {
+              range_limited = range;
+            }
+
             // full line
             draw_line(
               Vector2{
@@ -1184,173 +1411,6 @@ fn main_thread(
             }
           }
 
-          // MARK: | game input
-          let position = data.player.position;
-          let mut movement = Vector2::new();
-          //let mut aim_direction = Vector2::new();
-          //data.player.dashing = false;
-          //data.player.shooting_primary = false;
-          //data.player.shooting_secondary = false;
-
-          // only register input if the window is active and the pause menu isn't open
-          let mut currently_shooting_primary = false;
-          let mut currently_shooting_secondary = false;
-          let mut currently_dashing = false;
-          if is_window_focused(&win) && ui_clickable {
-
-            #[cfg(not(target_os="android"))]
-            {
-              let device_state: DeviceState = DeviceState::new();
-              let keys: Vec<Keycode> = device_state.get_keys();
-              let mouse: Vec<MouseButton> = get_mouse_down(&input.m);
-              if !keys.is_empty() {
-                movement = Vector2::new();
-                //keyboard_mode = true; // since we used the keyboard
-              }
-              
-              // key binds
-              for key in keys {
-                let key = key as u16;
-                // move
-                if key == data.settings.keybinds.walk_up.0    || key == data.settings.keybinds.walk_up.1    { movement.y += -1.0 }
-                if key == data.settings.keybinds.walk_down.0  || key == data.settings.keybinds.walk_down.1  { movement.y +=  1.0 }
-                if key == data.settings.keybinds.walk_left.0  || key == data.settings.keybinds.walk_left.1  { movement.x += -1.0 }
-                if key == data.settings.keybinds.walk_right.0 || key == data.settings.keybinds.walk_right.1 { movement.x +=  1.0 }
-                // primary
-                if key == data.settings.keybinds.primary.0    || key == data.settings.keybinds.primary.1    { currently_shooting_primary = true; /*keyboard_mode = true*/ }
-                // secondary
-                if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
-                // dash
-                if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { currently_dashing = true; /*keyboard_mode = true*/ }
-              }
-              
-              // mouse button binds
-              for button in mouse {
-                let button = mb_to_num(button);
-                // move
-                if button == data.settings.keybinds.walk_up.2    || button == data.settings.keybinds.walk_up.3    { movement.y += -1.0 }
-                if button == data.settings.keybinds.walk_down.2  || button == data.settings.keybinds.walk_down.3  { movement.y +=  1.0 }
-                if button == data.settings.keybinds.walk_left.2  || button == data.settings.keybinds.walk_left.3  { movement.x += -1.0 }
-                if button == data.settings.keybinds.walk_right.2 || button == data.settings.keybinds.walk_right.3 { movement.x +=  1.0 }
-                // primary
-                if button == data.settings.keybinds.primary.2    || button == data.settings.keybinds.primary.3    { currently_shooting_primary = true; /*keyboard_mode = true*/ }
-                // secondary
-                if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
-                // dash
-                if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { currently_dashing = true; /*keyboard_mode = true*/ }
-              }
-              if currently_shooting_primary {
-                data.player.shooting_primary = true;
-              }
-              if currently_shooting_secondary {
-                data.player.shooting_secondary = true;
-              }
-              if currently_dashing {
-                data.player.dashing = true;
-              }
-            }
-          }
-
-
-          {
-            let touches = touch_drags(&input.t);
-            if touches.len() > 0 {
-              movement = Vector2 {x: touches[0].0.x - touches[0].1.x, y: touches[0].0.y - touches[0].1.y};
-            }
-          }
-
-          if movement.magnitude() > 1.0 {
-            // println!("normalizing");
-            movement = movement.normalize();
-          }
-
-          // lock movement at the start of the game
-          if (data.gamemode_info.time as f32) < MATCH_WAIT_TIME {
-            movement = Vector2::new();
-          }
-
-          let mut movement_raw: Vector2 = movement;
-
-          // the server tells us if we're dashing or not
-          if data.player.is_dashing {
-            // do the interpolate
-            let distance = data.player.interpol_next - data.player.interpol_prev;
-            let speed: Vector2;
-            if distance.magnitude() == 0.0 {
-              // this is only true on the first "frame".
-              // this measure helps reduce the percieved lag from the character standing still
-              // before it obtains its second interpolation position.
-              speed = data.player.movement_direction * (data.character_properties[&data.player.character].dash_speed / 2.0) * delta_time;
-            } else {
-              // this runs the rest of the time
-              let period = PACKET_INTERVAL;
-              speed = distance / period;
-            }
-            data.player.position += speed * delta_time;
-          }
-          else {
-            if data.player.dashing && !data.player.is_dashing && !data.player.is_dead && movement_raw.magnitude() != 0.0 {
-              if data.player.time_since_last_dash > data.character_properties[&data.player.character].dash_cooldown {
-                match data.player.character {
-                  Character::Temerity => {
-                  }
-                  _ => {
-                    data.player.is_dashing = true;
-                  }
-                }
-              }
-            }
-          
-            if data.player.is_dashing {
-              (data.player.position, data.player.dashed_distance, data.player.is_dashing) = dashing_logic(
-                data.player.is_dashing,
-                data.player.dashed_distance,
-                movement_raw,
-                delta_time,
-                data.character_properties[&data.player.character].dash_speed,
-                data.character_properties[&data.player.character].dash_distance,
-                data.game_objects.clone(),
-                data.player.position,
-              );
-            }
-          }
-
-          // Apply standard movement (non-dashing)
-          if !data.player.is_dashing {
-            let mut extra_speed: f32 = 0.0;
-            for buff in data.player.buffs.clone() {
-              if vec![BuffType::Speed, BuffType::WiroSpeed].contains(&buff.buff_type) {
-                extra_speed += buff.value;
-              }
-              if buff.buff_type == BuffType::Impulse {
-                // yeet
-                let direction = buff.direction.normalize();
-                // time left serves as impulse decay
-                let time_left = buff.duration;
-                let strength = buff.value;
-                movement += direction * f32::powi(time_left, 1) * strength;
-              }
-            }
-  
-            let movement_speed: f32 = data.character_properties[&data.player.character].speed;
-
-            movement.x *= (movement_speed + extra_speed) * delta_time;
-            movement.y *= (movement_speed + extra_speed) * delta_time;
-            if data.player.is_dead == false {  
-              (movement_raw, movement) = object_aware_movement(data.player.position, movement_raw, movement, data.game_objects.clone());
-              data.player.position.x += movement.x;
-              data.player.position.y += movement.y;
-            } if data.player.is_dead {
-              data.player.camera.position.x += movement.x;
-              data.player.camera.position.y += movement.y;
-            }
-          }
-
-          // CAMERA ZOOM
-          if ui_clickable {
-            let scrollwheel = get_mouse_wheel(&mut input.mw);
-            data.player.camera.zoom = (data.player.camera.zoom + data.player.camera.zoom * scrollwheel.y * 10.0 * delta_time).clamp(4.0, 16.0);
-          }
 
           // MARK: | game net
           let mut buffer: [u8; 16384] = [0; 16384];
@@ -1659,9 +1719,10 @@ fn main_thread(
         if data.chat_open {
           let mut valid_msg = true;
           draw_rect(Srgba { red: 0.1, green: 0.1, blue: 0.1, alpha: 0.5 }, chatbox_pos, chatbox_size, CHAT_Z, &win, &mut com);
-          
-          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, uiscale, &mono_font, CHAT_Z+1.0, &mut com, &win, &input.m, &mut input.ki);
-          
+          let mut shift_osk = data.shift_osk.clone();
+          data.chat_input.text_input(chatbox_pos - Vector2 {x: 0.0, y: -chatbox_size.y + 5.0*uiscale}, Vector2 { x: chatbox_size.x, y: 5.0*uiscale }, 4.0*uiscale, 20, vh, vw, uiscale, &font_mono, CHAT_Z+1.0, &mut com, &win, &input.m, &mut input.ki, &input.t, &mut shift_osk);
+          data.shift_osk = shift_osk;
+
           // cycle through friends
           // get a list of online friends (which we can chat to).
           let mut online_friends: Vec<String> = Vec::new();
@@ -1822,7 +1883,7 @@ fn main_thread(
                 y: msg_y_bottom - (current_y_step - y - 1) as f32 * y_step + data.chat_scroll
               };
               if text_position.y <= msg_y_bottom && text_position.y > chatbox_pos.y {
-                draw_text(&mono_font, &line_text, text_position, Vector2 { x: 100.0*vh, y: 100.0*vh }, color, font_size, CHAT_Z+2.0, Justify::Left, &win, &mut com);
+                draw_text(&font_mono, &line_text, text_position, Vector2 { x: 100.0*vh, y: 100.0*vh }, color, font_size, CHAT_Z+2.0, Justify::Left, &win, &mut com);
               }
             }
 
@@ -2083,10 +2144,14 @@ fn main_thread(
         let password_input_pos = tl_anchor + Vector2 {x: 20.0 * uiscale, y: 40.0 * uiscale};
         draw_text(&font, "Username", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 27.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
         tooltip(user_input_pos, input_size, "3-20 characters and no swears.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vh, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
-        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
+        let mut shift_osk = data.shift_osk.clone();
+        data.username_input.text_input(user_input_pos, input_size, 4.0 * uiscale, 15, vh, vw, uiscale, &font_mono, MENU_Z, &mut com, &win, &input.m, &mut input.ki, &input.t, &mut shift_osk);
+        data.shift_osk = shift_osk;
         tooltip(password_input_pos, input_size, "8 characters minimum.", Vector2 { x: 30.0*uiscale, y: 8.0*uiscale }, uiscale, vh, vw, &font, mouse_pos, TOOLTIP_Z, &win, &mut com);
         draw_text(&font, "Password", tl_anchor + Vector2 {x: 20.0 * uiscale, y: 37.0 * uiscale}, input_size, BLACK, 3.0 * uiscale, MENU_Z, Justify::Left, &win, &mut com);
-        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, &mono_font, MENU_Z, &mut com, &win, &input.m, &mut input.ki);
+        let mut shift_osk = data.shift_osk.clone();
+        data.password_input.text_input(password_input_pos, input_size, 4.0 * uiscale, 15, vh, vw, uiscale, &font_mono, MENU_Z, &mut com, &win, &input.m, &mut input.ki, &input.t, &mut shift_osk);
+        data.shift_osk = shift_osk;
         
         // confirm button
         let mut confirm_button = Button::new(tl_anchor + Vector2 { x: 20.0*uiscale, y: 48.0*uiscale}, Vector2 { x: 20.0*uiscale, y: 8.0*uiscale }, if logging_in {"Login"} else {"Register"}, 4.0*uiscale);
@@ -2095,7 +2160,7 @@ fn main_thread(
         // remember me checkbox
         let credentials_checkbox_pos = tl_anchor + Vector2 {x: 45.0 * uiscale, y: 49.6 * uiscale};
         let credentials_checkbox_size = 5.0 * uiscale;
-        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0.0, &font, &win, &mut com, &input.m);
+        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0.0, &font, &win, &mut com, &input.m, &input.t);
         if credentials_changed {
           data.settings.save();
         }
@@ -2643,6 +2708,25 @@ fn exit_catcher(mut exit_events: MessageReader<AppExit>, settings: Res<Settings>
       }
       AppExit::Error(err) => {
         println!("App exited with an error:\n{:?}", err);
+      }
+    }
+  }
+}
+
+fn handle_lifetime(
+  mut lifecycle_events: MessageReader<AppLifecycle>,
+  music_controller: Single<&AudioSink>,
+) {
+  for event in lifecycle_events.read() {
+    match event {
+      AppLifecycle::Idle | AppLifecycle::WillSuspend | AppLifecycle::WillResume => {
+
+      }
+      AppLifecycle::Suspended => {
+        music_controller.pause();
+      }
+      AppLifecycle::Running => {
+        music_controller.play();
       }
     }
   }

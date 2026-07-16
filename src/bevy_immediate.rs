@@ -75,24 +75,24 @@ pub fn get_mouse_wheel(mouse_wheel: &mut MessageReader<MouseWheel>) -> Vector2 {
   return totall_scroll;
 }
 // MARK: Touch
-pub fn touch_drags(touches: &Res<Touches>) -> Vec<(Vec2, Vec2)> {
-  let mut drags: Vec<(Vec2, Vec2)> = Vec::new();
+pub fn touch_drags(touches: &Res<Touches>) -> Vec<(Vector2, Vector2)> {
+  let mut drags: Vec<(Vector2, Vector2)> = Vec::new();
   for finger in touches.iter() {
-    drags.push((finger.position(), finger.start_position()))
+    drags.push((Vector2::from(finger.start_position()), Vector2::from(finger.position())))
   }
   return drags;
 }
-pub fn touch_released(touches: &Res<Touches>) -> Vec<Vec2> {
-  let mut released: Vec<Vec2> = Vec::new();
+pub fn touch_released(touches: &Res<Touches>) -> Vec<Vector2> {
+  let mut released: Vec<Vector2> = Vec::new();
   for finger in touches.iter_just_released() {
-    released.push(finger.position());
+    released.push(Vector2::from(finger.position()));
   }
   return released;
 }
-pub fn touch_pressed(touches: &Res<Touches>) -> Vec<Vec2> {
-  let mut pressed: Vec<Vec2> = Vec::new();
+pub fn touch_pressed(touches: &Res<Touches>) -> Vec<Vector2> {
+  let mut pressed: Vec<Vector2> = Vec::new();
   for finger in touches.iter_just_pressed() {
-    pressed.push(finger.position());
+    pressed.push(Vector2::from(finger.position()));
   }
   return pressed;
 }

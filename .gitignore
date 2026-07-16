@@ -17,3 +17,4 @@ app/.cxx
 app/build
 app/src/main/jniLibs/
 .vscode
+perf.data

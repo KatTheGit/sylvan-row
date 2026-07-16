@@ -241,7 +241,7 @@ impl Tabs {
 /// 
 /// Reads a `selected` boolean and modifies it. If the value was changed this frame,
 /// returns `true`.
-pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
   draw_rect(BLUE, position, Vector2 { x: size, y: size }, z, window, commands);
   let inner_shrink: f32 = 0.2 * vh;
   draw_rect(BLUE, position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2 { x: size, y: size }- Vector2 { x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
@@ -262,12 +262,21 @@ pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f3
       }
     }
   }
+  for touch_release in touch_released(touches) {
+    if touch_release.x > position.x && touch_release.x < (position.x + size) {
+      if touch_release.y > position.y && touch_release.y < (position.y + size) {
+        draw_rect(Srgba { red: 0.05, green: 0.0, blue: 0.1, alpha: 0.2 }, position, Vector2 { x: size, y: size }, z, window, commands);
+        *selected = !*selected;
+        return true;
+      }
+    }
+  }
   return false;
 }
 /// slider.
 /// 
 /// Returns true if the value was modified.
-pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32, font: &Handle<Font>, z: f32, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> bool {
+pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: f32, value: &mut f32, value_min: f32, value_max: f32, font: &Handle<Font>, z: f32, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
   let shrink = 1.0*vh;
   draw_rect(BLUE, position, size, z, window, commands);
 
@@ -290,6 +299,20 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
     if mouse.y > position.y && mouse.y < (position.y + size.y) {
       if get_mouse_down(mouse_buttons).contains(&MouseButton::Left) {
         *value = (mouse.x - position.x) / size.x * (value_max - value_min) + value_min;
+        if *value > value_max {
+          *value = value_max
+        }
+        if *value < value_min {
+          *value = value_min
+        }
+        return true;
+      }
+    }
+  }
+  for touch in touch_drags(touches) {
+    if touch.0.x > (position.x - margin) && touch.0.x < (position.x + size.x + margin) {
+      if touch.0.y > position.y && touch.0.y < (position.y + size.y) {
+        *value = (touch.1.x - position.x) / size.x * (value_max - value_min) + value_min;
         if *value > value_max {
           *value = value_max
         }
@@ -449,7 +472,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     let resume_button_position: Vector2 = Vector2 { x: vw * 50.0 - button_size.x/2.0, y: button_y_offset };
     let mut resume_button = Button::new(resume_button_position, button_size, "Resume", button_font_size);
     resume_button.draw(uiscale, true, z, font, window, commands);
-    if resume_button.is_down(window, mouse_buttons) {
+    if resume_button.was_released(window, mouse_buttons, touches) {
       menu_paused = false;
       data.settings_open = false;
     }
@@ -488,27 +511,27 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     // GAMEPLAY
     if data.settings_tabs.selected_tab() == 0 {
       // camera smoothing
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Camera smoothing", 4.0*uiscale, uiscale, &mut data.settings.camera_smoothing, z, font, window, commands, mouse_buttons);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Camera smoothing", 4.0*uiscale, uiscale, &mut data.settings.camera_smoothing, z, font, window, commands, mouse_buttons, touches);
       // character names
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Display character names instead of usernames", 4.0*uiscale, uiscale, &mut data.settings.display_char_name_instead, z, font, window, commands, mouse_buttons);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Display character names instead of usernames", 4.0*uiscale, uiscale, &mut data.settings.display_char_name_instead, z, font, window, commands, mouse_buttons, touches);
     }
     // VIDEO
     if data.settings_tabs.selected_tab() == 1 {
 
       // uiscale
       data.settings.ui_scale = data.settings.ui_scale as i32 as f32;
-      settings_modified |= slider(Vector2 { x: vw * 25.0, y: vh * 92.0 }, Vector2 { x: 45.0*vw, y: 5.0*vh }, "UI Scale", 4.0*vh, vh, &mut data.settings.ui_scale, 1.0, 20.0, font, z, window, commands, mouse_buttons);
-      settings_modified |= checkbox(Vector2 { x: vw * 85.0, y: vh * 92.0 }, 5.0 * vh, "Auto", 4.0*vh, uiscale, &mut data.settings.auto_ui_scale, z, font, window, commands, mouse_buttons);
+      settings_modified |= slider(Vector2 { x: vw * 25.0, y: vh * 92.0 }, Vector2 { x: 45.0*vw, y: 5.0*vh }, "UI Scale", 4.0*vh, vh, &mut data.settings.ui_scale, 1.0, 20.0, font, z, window, commands, mouse_buttons, touches);
+      settings_modified |= checkbox(Vector2 { x: vw * 85.0, y: vh * 92.0 }, 5.0 * vh, "Auto", 4.0*vh, uiscale, &mut data.settings.auto_ui_scale, z, font, window, commands, mouse_buttons, touches);
 
       // fullscreen
-      let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Fullscreen", 4.0*uiscale, uiscale, &mut data.settings.fullscreen, z, font, window, commands, mouse_buttons);
+      let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Fullscreen", 4.0*uiscale, uiscale, &mut data.settings.fullscreen, z, font, window, commands, mouse_buttons, touches);
       if fullscreen_changed {
         set_fullscreen(data.settings.fullscreen, window);
       }
       settings_modified |= fullscreen_changed;
 
       // vsync
-      let vsync_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Vsync", 4.0*uiscale, uiscale, &mut data.settings.vsync, z, font, window, commands, mouse_buttons);
+      let vsync_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Vsync", 4.0*uiscale, uiscale, &mut data.settings.vsync, z, font, window, commands, mouse_buttons, touches);
       if vsync_changed {
         set_vsync(data.settings.vsync, window);
       }
@@ -516,15 +539,15 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
 
       // gpu power preference
       let gpu_setting_pos = Vector2 { x: vw * 25.0, y: uiscale * 35.0 };
-      settings_modified |= checkbox(gpu_setting_pos, 4.0 * uiscale, "Use high performance GPU", 4.0*uiscale, uiscale, &mut data.settings.use_high_performance_gpu, z, font, window, commands, mouse_buttons);
+      settings_modified |= checkbox(gpu_setting_pos, 4.0 * uiscale, "Use high performance GPU", 4.0*uiscale, uiscale, &mut data.settings.use_high_performance_gpu, z, font, window, commands, mouse_buttons, touches);
       tooltip(gpu_setting_pos, Vector2 { x: 4.0 * uiscale, y: 4.0 * uiscale }, "Whether to use higher performance GPU. Toggle if you experience visual artefacts (i.e. when alt-tabbing). Requires game restart to take effect.", Vector2 { x: 70.0 * uiscale, y: 25.0 * uiscale }, uiscale, vh, vw, font, mouse_pos, TOOLTIP_Z, window, commands);
     }
     // Audio
     if data.settings_tabs.selected_tab() == 2 {
-      settings_modified |= slider(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, Vector2 { x: 45.0*vw, y: 7.0*uiscale }, "Volume", 5.0*uiscale, uiscale, &mut data.settings.master_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
-      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 33.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "Music", 5.0*uiscale, uiscale, &mut data.settings.music_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
-      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (You)", 5.0*uiscale, uiscale, &mut data.settings.sfx_self_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
-      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 49.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (Others)", 5.0*uiscale, uiscale, &mut data.settings.sfx_other_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons);
+      settings_modified |= slider(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, Vector2 { x: 45.0*vw, y: 7.0*uiscale }, "Volume", 5.0*uiscale, uiscale, &mut data.settings.master_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons, touches);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 33.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "Music", 5.0*uiscale, uiscale, &mut data.settings.music_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons, touches);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 41.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (You)", 5.0*uiscale, uiscale, &mut data.settings.sfx_self_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons, touches);
+      settings_modified |= slider(Vector2 { x: vw * 30.0, y: uiscale * 49.0 }, Vector2 { x: 40.0*vw, y: 7.0*uiscale }, "SFX (Others)", 5.0*uiscale, uiscale, &mut data.settings.sfx_other_volume, 0.0, 100.0, font, z, window, commands, mouse_buttons, touches);
       if settings_modified {
         set_track_volume(audio_sinks, AudioTrack::Music, (data.settings.master_volume * data.settings.music_volume) / (100.0 * 100.0));
         set_track_volume(audio_sinks, AudioTrack::SoundEffectOther, (data.settings.master_volume * data.settings.sfx_other_volume) / (100.0 * 100.0));
@@ -565,7 +588,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     // Other
     if data.settings_tabs.selected_tab() == 4 {
 
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Censor profanity", 4.0*uiscale, uiscale, &mut data.settings.censor_profanity, z, font, window, commands, mouse_buttons);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Censor profanity", 4.0*uiscale, uiscale, &mut data.settings.censor_profanity, z, font, window, commands, mouse_buttons, touches);
 
 
       let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 60.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset settings", 4.0*uiscale);
@@ -1027,7 +1050,7 @@ pub fn mb_to_num(mouse_button: MouseButton) -> u8 {
 }
 
 // MARK: Chat
-
+/*
 pub fn chatbox(
   position:                  Vector2,
   size:                      Vector2,
@@ -1170,7 +1193,7 @@ pub fn chatbox(
     //};
     draw_text(&font, &format!("[TAB] Messaging: {}", displayed_selected_friend), position, size, BLACK, 3.0 * vh, z, Justify::Left, window, commands);
     // draw input textbox
-    chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, 15, vh, font, z, commands, window, mouse_buttons, key_events);
+    chat_input.text_input(position + Vector2 {x: 0.0, y: size.y - text_input_box_size.y}, text_input_box_size, 3.0*vh, 15, vh, font, z, commands, window, mouse_buttons, key_events, touches);
     
     // Send message if ENTER is pressed and buffer is not empty
     // and a friend can be messaged and input field selected.
@@ -1261,6 +1284,7 @@ pub fn chatbox(
     }
   }
 }
+*/
 
 #[derive(Clone, Debug)]
 // MARK: Text input
@@ -1274,22 +1298,59 @@ pub struct TextInput {
 impl TextInput {
 
   /// A text input field.
-  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, max_chars: u8, vh: f32, font: &Handle<Font>, z: f32, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, key_events: &mut MessageReader<KeyboardInput>) {
-    let margin: f32 = 1.0 * vh;
+  pub fn text_input(&mut self, position: Vector2, size: Vector2, font_size: f32, max_chars: u8, vh: f32, vw: f32, uiscale: f32, font: &Handle<Font>, z: f32, commands: &mut Commands, window: &Window, mouse_buttons: &Res<ButtonInput<MouseButton>>, key_events: &mut MessageReader<KeyboardInput>, touches: &Res<Touches>, shift_osk: &mut bool) {
+    let margin: f32 = 1.0 * uiscale;
     let mouse = get_mouse_pos(window);
     
-    if get_mouse_down(mouse_buttons).contains(&MouseButton::Left) {
+    // ANDROID
+    #[cfg(target_os = "android")]
+    {
+      let mut late_update_selected = self.selected;
+      for touch in touch_released(touches) {
+        let is_inside =
+        touch.x > position.x && touch.x < position.x + size.x &&
+        touch.y > position.y && touch.y < position.y + size.y;
+        println!("{:?}", is_inside);
+        late_update_selected = is_inside;
+      }
+      let mut something_was_typed = false;
+      if self.selected {
+        let previous_shift_val = shift_osk.clone();
+        let (typed, backspace) = on_screen_keyboard(uiscale, vh, vw, shift_osk, font, window, commands, touches, mouse_buttons);
+        if *shift_osk != previous_shift_val {
+          something_was_typed = true;
+        }
+        println!("{:?}, {:?}", typed, backspace);
+        if backspace {
+          self.buffer.pop();
+          something_was_typed = true;
+        }
+        else {
+          for char in typed.chars() {
+            self.buffer.push(char);
+            something_was_typed = true;
+          }
+        }
+      }
+      if something_was_typed {
+        println!("Something was typed");
+        late_update_selected = true;
+      }
+      self.selected = late_update_selected;
+    }
+    
+    if get_mouse_released(mouse_buttons).contains(&MouseButton::Left) {
       let is_inside =
       mouse.x > position.x && mouse.x < position.x + size.x &&
       mouse.y > position.y && mouse.y < position.y + size.y;
       self.selected = is_inside;
     }
-    
+
     let bg = if self.selected { DARK_GRAY } else { GRAY };
     draw_rect(bg, position, size, z, window, commands);
     
     if self.hideable {
-      checkbox(Vector2 { x: position.x + size.x + margin, y: position.y}, size.y, "show", font_size, vh, &mut self.show_password, z, font, window, commands, mouse_buttons);
+      checkbox(Vector2 { x: position.x + size.x + margin, y: position.y}, size.y, "show", font_size, uiscale, &mut self.show_password, z, font, window, commands, mouse_buttons, touches);
     }
     
     if self.selected {
@@ -1710,4 +1771,70 @@ fn get_keybind_name(settings: Settings, ability_index: usize) -> String {
     _ => "Unkown".to_string(),
   };
   return text;
+}
+
+pub fn on_screen_keyboard(uiscale: f32, vh: f32, vw: f32, shift_osk: &mut bool, font: &Handle<Font>, window: &Window, commands: &mut Commands, touches: &Res<Touches>, mouse_buttons: &Res<ButtonInput<MouseButton>>) -> (String, bool) {
+
+  let size: Vector2 = Vector2 { x: 100.0 * vw, y: 40.0*vh };
+  let position: Vector2 = Vector2 { x: 0.0 * vw, y: 60.0*vh };
+
+
+  let mut typed_stuff: String = String::new();
+  let mut backspace_pressed = false;
+  let keys: Vec<Vec<&str>> = vec![
+    vec!["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+    vec!["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+    vec!["a", "s", "d", "f", "g", "h", "j", "k", "l"     ],
+    vec!["z", "x", "c", "v", "b", "n", "m",              ], // + shift and backspace
+    // space
+  ];
+
+  let row_count = 10;
+  for (row_number, row_keys) in keys.iter().enumerate() {
+    let key_position_y = position.y + row_number as f32 * (size.y / (keys.len() + 1) as f32);
+    let mut row_offset = 0.0;
+    if row_number == 2 {
+      row_offset += (size.x / (row_count) as f32) * 0.5;
+    }
+    if row_number == 3 {
+      row_offset += (size.x / (row_count) as f32) * 1.5;
+
+      // draw shift and backspace keys
+      let shift_pos = Vector2 {x: position.x, y: key_position_y};
+      let mut shift = Button::new(shift_pos, Vector2 { x: (size.x / (row_count) as f32 * 1.5), y: (size.y / (keys.len() + 1) as f32) }, "^", size.y / (keys.len() + 1) as f32);
+      shift.draw(uiscale, true, TOOLTIP_Z, font, window, commands);
+      if shift.was_released(window, mouse_buttons, touches) {
+        *shift_osk = !*shift_osk;
+      }
+      let backspace_pos = Vector2 {x: position.x + (size.x / (row_count) as f32) * 8.5, y: key_position_y};
+      let mut backspace = Button::new(backspace_pos, Vector2 { x: (size.x / (row_count) as f32 * 1.5), y: (size.y / (keys.len() + 1) as f32) }, "<-", size.y / (keys.len() + 1) as f32);
+      backspace.draw(uiscale, true, TOOLTIP_Z, font, window, commands);
+      if backspace.was_released(window, mouse_buttons, touches) {
+        backspace_pressed = true;
+      }
+    }
+    // draw letter keys
+    for (key_number, character) in row_keys.iter().enumerate() {
+      let mut character = String::from(*character);
+      if *shift_osk {
+        character = character.to_uppercase();
+      }
+
+      let key_position_x = position.x + key_number as f32 * (size.x / (row_count) as f32) + row_offset;
+      let mut key = Button::new(Vector2 { x: key_position_x, y: key_position_y }, Vector2 { x: (size.x / (row_count) as f32), y: (size.y / (keys.len() + 1) as f32) }, &character, (size.y / (keys.len() + 1) as f32) * 0.8);
+      key.draw(uiscale, true, TOOLTIP_Z, font, window, commands);
+      if key.was_released(window, mouse_buttons, touches) {
+        typed_stuff.push_str(&character);
+      }
+    }
+    // spacebar
+  }
+  let spacebar_pos = Vector2 {x: position.x, y: position.y + 4.0 * (size.y / (keys.len() + 1) as f32)};
+  let mut spacebar = Button::new(spacebar_pos, Vector2 { x: size.x, y: (size.y / (keys.len() + 1) as f32) }, "space", size.y / (keys.len() + 1) as f32);
+  spacebar.draw(uiscale, true, TOOLTIP_Z, font, window, commands);
+  if spacebar.was_released(window, mouse_buttons, touches) {
+    typed_stuff.push_str(" ");
+  }
+
+  return (typed_stuff, backspace_pressed);
 }
