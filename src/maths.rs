@@ -511,6 +511,9 @@ pub fn apply_simple_bullet_logic_extra(
           if !pierceing_shot {
             game_objects[o_index].to_be_deleted = true;
           }
+          // Apply appropriate secondary charge
+          let owner_index = index_by_username(&owner_username, players.clone());
+          players[owner_index].add_charge(character_properties.secondary_hit_charge);
         }
         // Apply bullet healing, only if in the same team
         if players[p_index].team == player.team && healing > 0 {
@@ -521,9 +524,6 @@ pub fn apply_simple_bullet_logic_extra(
             game_objects[o_index].to_be_deleted = true;
           }
         }
-        // Apply appropriate secondary charge
-        let owner_index = index_by_username(&owner_username, players.clone());
-        players[owner_index].add_charge(character_properties.secondary_hit_charge);
       }
     }
   }

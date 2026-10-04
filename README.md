@@ -55,7 +55,7 @@ The GDD is in `assets/README.md`.
   - [x] gamemode
     - [x] capture point
     - [x] ui
-      - [ ] all players
+      - [x] all players
       - [x] game status
       - [ ] your player
   - [ ] characters
@@ -64,7 +64,6 @@ The GDD is in `assets/README.md`.
     - [ ] assassin
   - [ ] bevy
     - [x] re-add friend system
-    - [ ] fix android
   - [ ] ranked
   - [x] anticheat
   - [x] server throttling
@@ -72,29 +71,12 @@ The GDD is in `assets/README.md`.
   - [ ] new parser
   - [x] standardize Z layers
   - [ ] better ui
-  - [ ] status effects  
+  - [ ] status effects
     - [x] stacks
   - [x] floating dmg numbers
   - [ ] animations
   - [ ] sfx, voicelines
-
-## Todo 2
-
-- [x] Fix anticheat
-- [x] Username filter
-- [ ] Ranked system (?)
-- [ ] Find fix for android
-- [ ] Art
-  - [ ] Sprites
-  - [ ] Maps
-  - [ ] Audio
-  - [ ] UI
-- [ ] Complete the gamemodes
-  - [x] Capture the point
-    - [x] Overtime
-    - [x] End time
-  - [x] Elimination
-    - [x] Storm
+  - [x] Better practice range
 
 ### Bugs
 

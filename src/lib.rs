@@ -28,7 +28,7 @@ pub mod bevy_graphics;
 pub mod bevy_audio;
 
 use std::{collections::HashMap, io::{ErrorKind, Read, Write}, net::{TcpStream, UdpSocket}, time::{Duration, Instant, SystemTime, UNIX_EPOCH}};
-use bevy::{camera::Viewport, color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel, touch}, prelude::*, render::{RenderPlugin, settings::WgpuSettings}, window::AppLifecycle};
+use bevy::{camera::Viewport, color::palettes::css::*, input::{gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent}, keyboard::KeyboardInput, mouse::MouseWheel, touch}, prelude::*, render::{RenderPlugin, settings::WgpuSettings}, window::{AppLifecycle, CursorOptions}};
 use bevy_immediate::*;
 use bevy_graphics::*;
 use bevy_audio::*;
@@ -310,6 +310,7 @@ fn main_thread(
   mut exit: MessageWriter<AppExit>,
   mut settings_sync: ResMut<Settings>,
   mut audio_sinks: AudioParams,
+  mut cursor_options: Single<&mut CursorOptions>,
   //_gp_ax: MessageReader<GamepadAxisChangedEvent>,
   //_gp_bt: MessageReader<GamepadButtonChangedEvent>,
   //mut music_sinks: Query<&mut AudioSink, With<MusicChannel>>,
@@ -391,6 +392,15 @@ fn main_thread(
         esc_button.draw(uiscale, ui_clickable, MENU_Z, &font, &win, &mut com);
         if esc_button.was_released(&win, &input.m, &input.t) {
           data.paused = !data.paused;
+          // if not in main menu (in-game)
+          if mode != 0 {
+            if data.paused {
+              hide_mouse_cursor(false, &mut cursor_options);
+            }
+            else {
+              hide_mouse_cursor(true, &mut cursor_options);
+            }
+          }
         }
 
         // menu
@@ -505,7 +515,7 @@ fn main_thread(
             for i in 0..4 {
               let texture = asset_server.load(format!("ui/temp_ability_{}.png", i+1));
               let size = Vector2 { x: 10.0*uiscale, y: 10.0*uiscale };
-              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, vh, vw, uiscale, &font, character_descriptions.clone(), selected_character, MENU_Z+1.0, &texture, &win, &mut com, data.settings.clone());
+              draw_ability_icon(tl_anchor + Vector2 { x: 10.0*uiscale + (size.x + 4.0*uiscale) * i as f32, y: 67.5*uiscale }, size, i, false, 1.0, true, vh, vw, uiscale, &font, character_descriptions.clone(), selected_character, MENU_Z+1.0, &texture, &win, &mut com, data.settings.clone());
             }
             let profile_texture = asset_server.load(format!("characters/{}/textures/mini-profile.png", selected_character.name().to_lowercase() ));
             let profile_texture = Texture {
@@ -570,6 +580,8 @@ fn main_thread(
                   data.game_socket = Some(socket);
                   // set game screen.
                   data.current_menu = MenuScreen::Main(2);
+                  hide_mouse_cursor(true, &mut cursor_options);
+
                 }
                 Err(err) => {
                   data.current_menu = MenuScreen::Main(0);
@@ -759,6 +771,8 @@ fn main_thread(
           let mut currently_shooting_primary = false;
           let mut currently_shooting_secondary = false;
           let mut currently_dashing = false;
+
+          let mut show_player_list = false;
           if is_window_focused(&win) && ui_clickable {
 
             #[cfg(not(target_os="android"))]
@@ -785,6 +799,7 @@ fn main_thread(
                 if key == data.settings.keybinds.secondary.0  || key == data.settings.keybinds.secondary.1  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
                 // dash
                 if key == data.settings.keybinds.dash.0       || key == data.settings.keybinds.dash.1       { currently_dashing = true; /*keyboard_mode = true*/ }
+                if key == data.settings.keybinds.player_list.0 || key == data.settings.keybinds.player_list.1 { show_player_list = true; /*keyboard_mode = true*/ }
               }
               
               // mouse button binds
@@ -801,12 +816,13 @@ fn main_thread(
                 if button == data.settings.keybinds.secondary.2  || button == data.settings.keybinds.secondary.3  { currently_shooting_secondary = true; /*keyboard_mode = true*/ }
                 // dash
                 if button == data.settings.keybinds.dash.2       || button == data.settings.keybinds.dash.3       { currently_dashing = true; /*keyboard_mode = true*/ }
+                if button == data.settings.keybinds.player_list.2 || button == data.settings.keybinds.player_list.3 { show_player_list = true; /*keyboard_mode = true*/ }
               }
             }
           }
 
           // mobile controls
-          //#[cfg(target_os="android")]
+          #[cfg(target_os="android")]
           {
             data.aim_direction = Vector2::new();
             
@@ -988,6 +1004,8 @@ fn main_thread(
             if data.game_objects[game_object_index].object_type == GameObjectType::WiroShield {
               // if it's ours...
               if data.game_objects[game_object_index].get_bullet_data().owner_username == username {
+                println!("Found wiro's shield");
+                println!("{:?}", data.aim_direction);
                 let position: Vector2 = Vector2 {
                   x: data.player.position.x + data.aim_direction.normalize().x * 1.0,
                   y: data.player.position.y + data.aim_direction.normalize().y * 1.0,
@@ -1078,10 +1096,71 @@ fn main_thread(
               //  );
               //}
               let z_layer = layer + game_object.position.y;
+              if game_object.object_type == GameObjectType::WiroShield {
+                println!("{:?}", game_object);
+              }
               draw_image_relative_ex(&texture, game_object.position.x - size.x/2.0, game_object.position.y - size.y/2.0, size.x, size.y, rotation, vh, vw, data.player.camera.clone(), z_layer, &win, &mut com);
             }
           }
           // MARK: | |  Game UI
+
+          //crosshair
+          if !data.paused {
+            let cursor_texture = Texture {
+              image: asset_server.load("ui/cursor.png"),
+              size: Vec2 { x: 200.0, y: 200.0 }
+            };
+            let size = Vector2 { x: 5.0 * vh, y: 5.0 * vh };
+            draw_sprite(&cursor_texture, mouse_pos - size/2.0, size, 1000.0, &win, &mut com);
+          }
+
+          //player list
+          if show_player_list{
+            let box_size: Vector2 = Vector2 { x: 90.0 * uiscale, y: 70.0 * uiscale };
+            let box_pos: Vector2 = tl_anchor + (Vector2 {x: 100.0 * vw, y: 100.0 * vh} - box_size)/2.0;
+            let padding = 3.0 * uiscale;
+            let blue_anchor = box_pos + Vector2 {x: padding, y: padding};
+            let red_anchor = box_pos + Vector2 {x: padding + box_size.x / 2.0, y: padding};
+            let mut red_list_current_index: f32 = 0.0;
+            let mut blue_list_current_index: f32 = 0.0;
+            let y_spacing = 10.0 * uiscale;
+            draw_rect(Srgba { red: 0.0, green: 0.0, blue: 0.0, alpha: 0.8 }, box_pos, box_size, GAME_UI_Z + 10.0, &win, &mut com);
+
+            let mut players = data.players.clone();
+            players.push(data.player.clone());
+            for player in players {
+              // our team
+              let mut color = WHITE;
+              let mut position = Vector2 {x: 0.0, y: 0.0};
+              if player.team == data.player.team {
+                position.y = blue_anchor.y + blue_list_current_index * y_spacing;
+                position.x = blue_anchor.x;
+
+                color = BLUE;
+                blue_list_current_index += 1.0;
+              }
+              // enemy team
+              else {
+                position.y = red_anchor.y + red_list_current_index * y_spacing;
+                position.x = red_anchor.x;
+                color = RED;
+                red_list_current_index += 1.0;
+              }
+              if player.username == data.player.username {
+                color = GREEN;
+              }
+              // draw player info
+              let username_font_size = (5.5 - 0.27 * player.username.len() as f32) * uiscale;
+              println!("{:?}", player.username);
+              draw_text(&font_mono, &player.username, position + Vector2{x: 0.0, y: (5.0 - username_font_size/uiscale) * uiscale}, Vector2 { x: 20.0 * uiscale, y: 5.0 * uiscale }, color, username_font_size, GAME_UI_Z+11.0, Justify::Left, &win, &mut com);
+              draw_text(&font_mono, &format!("as {}", player.character.name()), position + Vector2{x: 0.0, y: 5.0 * uiscale}, Vector2 { x: 20.0 * uiscale, y: 5.0 * uiscale }, WHITE, 2.5 * uiscale, GAME_UI_Z+11.0, Justify::Left, &win, &mut com);
+
+              for ability_index in 0..4 {
+                let texture = asset_server.load(format!("ui/temp_ability_{}.png", ability_index+1));
+                draw_ability_icon(position + Vector2{x: 19.0 * uiscale + ability_index as f32 * 5.5 * uiscale, y: 2.5 * uiscale}, Vector2{x: 5.0 * uiscale, y: 5.0 * uiscale}, ability_index, false, 1.0, false, vh, vw, uiscale, &font, character_descriptions.clone(), player.character, GAME_UI_Z + 11.0, &texture, &win, &mut com, data.settings.clone());
+              }
+            }
+          }
 
           let primary_cooldown: f32 = if data.player.last_shot_time < data.character_properties[&data.player.character].primary_cooldown {
             data.player.last_shot_time / data.character_properties[&data.player.character].primary_cooldown
@@ -1290,6 +1369,8 @@ fn main_thread(
             if leave_button.was_released(&win, &input.m, &input.t) {
               data.match_ended = false;
               data.current_menu = MenuScreen::Main(0);
+              hide_mouse_cursor(false, &mut cursor_options);
+              
             }
           }
 
@@ -1369,7 +1450,7 @@ fn main_thread(
                     true => GREEN,
                     false => ORANGE,
                   };
-                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.5, color, data.player.camera.clone(), vh, vw, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
+                  draw_line_relative(player.position.x, player.position.y, player_2.position.x, player_2.position.y, 0.05, color, data.player.camera.clone(), vh, vw, GAME_OBJ_BG_Z - 1.0, &win, &mut com);
                 }
               }
             }
@@ -1972,6 +2053,7 @@ fn main_thread(
                   data.game_socket = Some(socket);
                   // set game screen.
                   data.current_menu = MenuScreen::Main(2);
+                  hide_mouse_cursor(true, &mut cursor_options);
                 }
                 Err(err) => {
                   data.current_menu = MenuScreen::Main(0);
@@ -2099,6 +2181,12 @@ fn main_thread(
             data.paused = !data.paused;
             if data.paused == false {
               data.settings_open = false;
+              if mode != 0 {  
+                hide_mouse_cursor(true, &mut cursor_options);
+              }
+            }
+            if data.paused {
+              hide_mouse_cursor(false, &mut cursor_options);
             }
           }
         }
@@ -2112,6 +2200,9 @@ fn main_thread(
         if data.paused {
           let (paused, quit) = draw_pause_menu(uiscale, vh, vw, &mut data, &mut audio_sinks, ESC_MENU_Z, &font, &mut win, &mut com, &input.m, mouse_pos, &input.t);
           data.paused = paused;
+          if mode != 0 && !data.paused {
+            hide_mouse_cursor(true, &mut cursor_options);
+          }
           if quit {
             // if in menus
             if mode != 2 {
@@ -2120,6 +2211,8 @@ fn main_thread(
             // if in-game
             else {
               data.current_menu = MenuScreen::Main(0);
+              hide_mouse_cursor(false, &mut cursor_options);
+
               stop_sounds_in_track(&mut audio_sinks, AudioTrack::Music, &mut com);
             }
           }
@@ -2679,6 +2772,11 @@ pub struct OpakeData {
   pub timeout: Instant,
   pub client_registration_start_result: Option<ClientRegistrationStartResult<DefaultCipherSuite>>,
   pub client_login_start_result: Option<ClientLoginStartResult<DefaultCipherSuite>>,
+}
+
+pub enum CursorVariant {
+  Crosshair,
+  Normal,
 }
 
 pub const CHARACTER_LIST: [Character; 7]  = [

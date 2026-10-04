@@ -57,6 +57,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
         passive_timer: Instant::now(),
         packet_times: Vec::new(),
         last_damage_time: Instant::now(),
+        dummy_settings: None,
       }
     );
   }
@@ -350,7 +351,6 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
                       // reset the cooldown of PRIMARY.
                       player.last_shot_time -= Duration::from_secs_f32(characters[&Character::Koldo].primary_cooldown)
                     }
-                    Character::Dummy => {}
                   }
                 }
               }
@@ -494,8 +494,8 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
 
           // Send a return packet.
           // (vscode) MARK: Network Return
-          // not to the dummy though.
-          if player.character == Character::Dummy {
+          // not to the dummies though.
+          if let Some(settings) = player.dummy_settings {
             player_found = true;
             break;
           }
@@ -693,41 +693,32 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
 
     // summon dummies
     if gamemode == GameMode::Practice {
-      players.push(
-        ServerPlayer {
-          username: String::from("Enemy Dummy"),
-          cipher_key: Vec::new(),
-          last_nonce: 0,
-          ip: String::from("hello"),
-          port: 12,
-          team: Team::Red,
-          character: Character::Dummy,
-          health: 100,
-          position: Vector2 { x: 10.0, y: 10.0 },
-          shooting: true,
-          last_dash_time: Instant::now(),
-          last_shot_time: Instant::now(),
-          shooting_secondary: false,
-          secondary_cast_time: Instant::now(),
-          secondary_charge: 0,
-          aim_direction: Vector2 { x: -1.0, y: 0.0 },
-          move_direction: Vector2::new(),
-          had_illegal_position: false,
-          is_dashing: false,
-          dash_direction: Vector2::new(),
-          dashed_distance: 0.0,
-          previous_positions: vec![],
-          is_dead: false,
-          death_timer_start: Instant::now(),
-          stacks: 0,
-          buffs: Vec::new(),
-          last_packet_time: Instant::now(),
-          events: Vec::new(),
-          passive_timer: Instant::now(),
-          packet_times: Vec::new(),
-          last_damage_time: Instant::now(),
+
+      let mut spawnpoint_positions: Vec<Vector2> = Vec::new();
+      for object in load_map_from_file(map.get_fg(), &mut 67).0 {
+        if object.object_type == GameObjectType::RedSpawn {
+          spawnpoint_positions.push(object.position);
         }
-      );
+      }
+      let mut bot_1 = ServerPlayer::new(String::from("Cynewynn Bot"), Vec::new(), String::new(), 0, Team::Blue, Character::Cynewynn);
+      bot_1.dummy_settings = Some(DummySettings { });
+      bot_1.position = spawnpoint_positions[3];
+      let mut bot_2 = ServerPlayer::new(String::from("Hernani Bot"), Vec::new(), String::new(), 0, Team::Red, Character::Hernani);
+      bot_2.dummy_settings = Some(DummySettings { });
+      bot_2.position = spawnpoint_positions[1];
+      bot_2.shooting = true;
+      bot_2.aim_direction = Vector2 { x: 0.0, y: 1.0 };
+      let mut bot_3 = ServerPlayer::new(String::from("Raphaelle Bot"), Vec::new(), String::new(), 0, Team::Blue, Character::Raphaelle);
+      bot_3.dummy_settings = Some(DummySettings { });
+      bot_3.position = spawnpoint_positions[2];
+      let mut bot_4 = ServerPlayer::new(String::from("Wiro Bot"), Vec::new(), String::new(), 0, Team::Red, Character::Wiro);
+      bot_4.dummy_settings = Some(DummySettings { });
+      bot_4.position = spawnpoint_positions[0];
+
+      players.push(bot_1);
+      players.push(bot_2);
+      players.push(bot_3);
+      players.push(bot_4);
     }
   }
 
@@ -787,10 +778,16 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
         // prior to the end of the waiting period, inhibit player movement and actions
         else {
           for p_index in 0..players.len() {
-            // lock positions (anticheat measure)
-            players[p_index].position = match players[p_index].team {
-              Team::Blue => blue_spawn,
-              Team::Red => red_spawn,
+            // don't do this to dummies
+            if let Some(_) = players[p_index].dummy_settings {
+
+            }
+            else {
+              // lock positions (anticheat measure)
+              players[p_index].position = match players[p_index].team {
+                Team::Blue => blue_spawn,
+                Team::Red => red_spawn,
+              }
             };
           }
         }
@@ -807,10 +804,15 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           players[p_index].stacks = 0;
           players[p_index].health = 100;
           players[p_index].previous_positions = Vec::new();
-          players[p_index].position = match players[p_index].team {
-            Team::Blue => blue_spawn,
-            Team::Red => red_spawn,
-          };
+          if let Some(_) = players[p_index].dummy_settings {
+
+          }
+          else {
+            players[p_index].position = match players[p_index].team {
+              Team::Blue => blue_spawn,
+              Team::Red => red_spawn,
+            };
+          }
         }
         game_start_time = Instant::now();
       }
@@ -1125,18 +1127,23 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
         // if the player is dead, don't worry about the following code.
         continue;
       }
-      if players[p_index].last_packet_time.elapsed().as_secs_f32() > 5.0
-      && players[p_index].character != Character::Dummy {
-        let player_team_copy = players[p_index].team.clone();
-        players.remove(p_index);
-        if players.is_empty() {
-          println!("returning winning team after no players left.");
-          return MatchEndResult {
-            winning_team: player_team_copy.to_result(),
-            game_id: 69, // don't worry about this value, the main server handles it.
-          };
+      if players[p_index].last_packet_time.elapsed().as_secs_f32() > 5.0 {
+        // if the player is a dummy, ignore this check.
+        if let Some(_) = players[p_index].dummy_settings {
+
+        } else {
+
+          let player_team_copy = players[p_index].team.clone();
+          players.remove(p_index);
+          if players.is_empty() {
+            println!("returning winning team after no players left.");
+            return MatchEndResult {
+              winning_team: player_team_copy.to_result(),
+              game_id: 69, // don't worry about this value, the main server handles it.
+            };
+          }
+          break;
         }
-        break;
       }
 
       // (vscode) MARK: Passives & Other
@@ -1436,26 +1443,6 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             add_event_all(GameEvent::AttackFired(GameObjectType::TemerityRocket, players[p_index].username.clone()), &mut players);
             shot_successful = true;
           }
-          Character::Dummy => {
-            game_objects.push(GameObject {
-              object_type: GameObjectType::HernaniBullet,
-              position: players[p_index].position,
-              to_be_deleted: false,
-              id: game_object_id_counter.increment(),
-              extra_data: ObjectData::BulletData(
-                BulletData {
-                  direction: players[p_index].aim_direction,
-                  hitpoints: 0,
-                  owner_username: players[p_index].username.clone(),
-                  lifetime: character.primary_range / character.primary_shot_speed,
-                  hit_players: Vec::new(),
-                  traveled_distance: 0.0,
-                }
-              ),
-            });
-            add_event_all(GameEvent::AttackFired(GameObjectType::HernaniBullet, players[p_index].username.clone()), &mut players);
-            shot_successful = true;
-          }
           Character::Koldo => {
             let object_type: GameObjectType;
             // first cast of the ulti
@@ -1747,7 +1734,6 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             players[p_index].stacks = 2;
             secondary_used_successfully = true;
           }
-          Character::Dummy => {}
         }
         if secondary_used_successfully {
           players[p_index].secondary_charge -= character.secondary_charge_use;
@@ -1910,7 +1896,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           let owner_index = index_by_username(&owner_username, players.clone());
           let target_position: Vector2 = players[owner_index].position;
           let object_position: Vector2 = game_objects[o_index].position;
-          let speed = characters[&players[owner_index].character].primary_shot_speed;
+          let speed = characters[&Character::Fedya].primary_shot_speed;
           let distance = Vector2::difference(object_position, target_position);
           let direction: Vector2 = distance.normalize();
           // update position
@@ -1920,8 +1906,8 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           if distance.magnitude() < 1.0 /* arbitrary value */ {
             game_objects[o_index].to_be_deleted = true;
           }
-          let hit_radius = characters[&players[owner_index].character].primary_hit_radius;
-          let damage = characters[&players[owner_index].character].primary_damage_2;
+          let hit_radius = characters[&Character::Fedya].primary_hit_radius;
+          let damage = characters[&Character::Fedya].primary_damage_2;
           for p_index in 0..players.len() {
             let player_position = players[p_index].position;
             // if we hit a player
@@ -1931,6 +1917,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             && players[p_index].team != players[owner_index].team {
               // damage them
               players[p_index].damage(damage, characters.clone());
+              players[owner_index].add_charge(characters[&Character::Fedya].secondary_hit_charge);
               add_event_all(GameEvent::AttackHit(GameObjectType::FedyaProjectileGroundRecalled, players[owner_index].username.clone(), players[p_index].username.clone(), damage), &mut players);
               // and check if they were already hit by a projectile.
               let mut was_already_hit: bool = false;

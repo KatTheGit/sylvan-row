@@ -1,4 +1,4 @@
-use bevy::{input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, text::{FontSmoothing, LineBreak, TextBounds}};
+use bevy::{input::{keyboard::KeyboardInput, mouse::MouseWheel}, prelude::*, text::{FontSmoothing, LineBreak, TextBounds}, window::CursorOptions};
 use crate::maths::Vector2;
 
 // MARK: Keys
@@ -73,6 +73,9 @@ pub fn get_mouse_wheel(mouse_wheel: &mut MessageReader<MouseWheel>) -> Vector2 {
     totall_scroll += Vector2 {x: event.x, y: event.y};
   }
   return totall_scroll;
+}
+pub fn hide_mouse_cursor(hide: bool, cursor_options: &mut CursorOptions) {
+  cursor_options.visible = !hide;
 }
 // MARK: Touch
 pub fn touch_drags(touches: &Res<Touches>) -> Vec<(Vector2, Vector2)> {

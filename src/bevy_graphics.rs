@@ -335,7 +335,7 @@ pub fn slider(position: Vector2, size: Vector2, text: &str, font_size: f32, vh: 
 ///   - 4: passive
 /// - squished: whether to slightly shrink the icon to show the ability was used
 /// - progress: cooldown / charge, 0.0-1.0
-pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, vh: f32, vw: f32, uiscale: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: f32, texture: &Handle<Image>, window: &Window, commands: &mut Commands, settings: Settings) -> () {
+pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize, squished: bool, progress: f32, show_text: bool, vh: f32, vw: f32, uiscale: f32, font: &Handle<Font>, character_descriptions: HashMap<Character, CharacterDescription>, character: Character, z: f32, texture: &Handle<Image>, window: &Window, commands: &mut Commands, settings: Settings) -> () {
   let squish_offset = match squished {
     true => 1.0 * uiscale,
     false => 0.0
@@ -384,7 +384,9 @@ pub fn draw_ability_icon(position: Vector2, size: Vector2, ability_index: usize,
     ),
     _ => "Unkown",
   };
-  draw_text(&font, text, Vector2 { x: position.x - size.x * 0.5, y: position.y + size.y * 1.05}, Vector2 { x: size.x*2.0, y: size.y }, BLACK, size.x * 0.25, z, Justify::Center, window, commands);
+  if show_text {
+    draw_text(&font, text, Vector2 { x: position.x - size.x * 0.5, y: position.y + size.y * 1.05}, Vector2 { x: size.x*2.0, y: size.y }, BLACK, size.x * 0.25, z, Justify::Center, window, commands);
+  }
   //let ability = match ability_index {
   //  1 => character_descriptions[&character].primary.clone(),
   //  2 => character_descriptions[&character].secondary.clone(),
@@ -568,14 +570,15 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
       {
         let base_y: f32 = 25.0 * uiscale;
         let size = 5.0 * uiscale;
-        was_edited |= keybind_edit_buttons("Walk UP",    &mut data.settings.keybinds.walk_up,    Vector2 { x: 10.0 * vw, y: base_y + size * 0.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
-        was_edited |= keybind_edit_buttons("Walk DOWN",  &mut data.settings.keybinds.walk_down,  Vector2 { x: 10.0 * vw, y: base_y + size * 1.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
-        was_edited |= keybind_edit_buttons("Walk LEFT",  &mut data.settings.keybinds.walk_left,  Vector2 { x: 10.0 * vw, y: base_y + size * 2.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
-        was_edited |= keybind_edit_buttons("Walk RIGHT", &mut data.settings.keybinds.walk_right, Vector2 { x: 10.0 * vw, y: base_y + size * 3.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
-        was_edited |= keybind_edit_buttons("Primary",    &mut data.settings.keybinds.primary,    Vector2 { x: 10.0 * vw, y: base_y + size * 4.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
-        was_edited |= keybind_edit_buttons("Secondary",  &mut data.settings.keybinds.secondary,  Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
-        was_edited |= keybind_edit_buttons("Dash",       &mut data.settings.keybinds.dash,       Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
-        was_edited |= keybind_edit_buttons("Fullscreen", &mut data.settings.keybinds.fullscreen, Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Walk UP",     &mut data.settings.keybinds.walk_up,     Vector2 { x: 10.0 * vw, y: base_y + size * 0.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Walk DOWN",   &mut data.settings.keybinds.walk_down,   Vector2 { x: 10.0 * vw, y: base_y + size * 1.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Walk LEFT",   &mut data.settings.keybinds.walk_left,   Vector2 { x: 10.0 * vw, y: base_y + size * 2.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Walk RIGHT",  &mut data.settings.keybinds.walk_right,  Vector2 { x: 10.0 * vw, y: base_y + size * 3.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Primary",     &mut data.settings.keybinds.primary,     Vector2 { x: 10.0 * vw, y: base_y + size * 4.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Secondary",   &mut data.settings.keybinds.secondary,   Vector2 { x: 10.0 * vw, y: base_y + size * 5.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Dash",        &mut data.settings.keybinds.dash,        Vector2 { x: 10.0 * vw, y: base_y + size * 6.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Fullscreen",  &mut data.settings.keybinds.fullscreen,  Vector2 { x: 10.0 * vw, y: base_y + size * 7.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
+        was_edited |= keybind_edit_buttons("Player list", &mut data.settings.keybinds.player_list, Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons, touches);
         //was_edited |= keybind_edit_buttons("Open Chat",  &mut data.settings.keybinds.open_chat,  Vector2 { x: 10.0 * vw, y: base_y + size * 8.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
         //was_edited |= keybind_edit_buttons("Cycle Friends (Chat)",  &mut data.settings.keybinds.cycle_friends,  Vector2 { x: 10.0 * vw, y: base_y + size * 9.0 }, size, uiscale, data.settings_timer.elapsed().as_secs_f32() > 0.2, font, z, window, commands, mouse_buttons);
       }
@@ -768,6 +771,7 @@ pub struct KeybindSettings {
   pub open_chat:     (u16, u16, u8, u8),
   pub fullscreen:    (u16, u16, u8, u8),
   pub cycle_friends: (u16, u16, u8, u8),
+  pub player_list:   (u16, u16, u8, u8),
 }
 impl KeybindSettings {
   pub fn new() -> KeybindSettings {
@@ -784,6 +788,7 @@ impl KeybindSettings {
         open_chat:     (device_query::Keycode::Enter as u16, u16::MAX, 255, 255),
         fullscreen:    (device_query::Keycode::F11 as u16, u16::MAX, 255, 255),
         cycle_friends: (device_query::Keycode::Tab as u16, u16::MAX, 255, 255),
+        player_list:   (device_query::Keycode::Tab as u16, device_query::Keycode::RShift as u16, 255, 255),
       }
     }
     #[cfg(target_os="android")]
@@ -799,6 +804,7 @@ impl KeybindSettings {
         open_chat:     (0 as u16, u16::MAX, 255, 255),
         fullscreen:    (0 as u16, u16::MAX, 255, 255),
         cycle_friends: (0 as u16, u16::MAX, 255, 255),
+        player_list:   (0 as u16, u16::MAX, 255, 255),
       }
     }
   }
@@ -1630,7 +1636,6 @@ pub fn load_character_textures(asset_server: AssetServer) -> HashMap<Character, 
     (Character::Hernani,   asset_server.load("characters/hernani/textures/main.png")),
     (Character::Fedya,     asset_server.load("characters/dummy/textures/template1.png")),
     (Character::Wiro,      asset_server.load("characters/dummy/textures/template2.png")),
-    (Character::Dummy,     asset_server.load("characters/dummy/textures/template.png")),
     (Character::Temerity,  asset_server.load("characters/dummy/textures/template3.png")),
     (Character::Koldo,     asset_server.load("characters/koldo/textures/template4.png")),
   ]);
@@ -1724,11 +1729,6 @@ pub fn load_character_animations(asset_server: AssetServer) -> HashMap<Character
     (Character::Wiro, vec![
       AnimationState::new(vec![
         asset_server.load("characters/dummy/textures/template2.png"),
-      ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
-    ]),
-    (Character::Dummy, vec![
-      AnimationState::new(vec![
-        asset_server.load("characters/dummy/textures/template.png"),
       ], Vec2 { x: 800.0, y: 1200.0 }, 1.0, 0)
     ]),
     (Character::Temerity, vec![

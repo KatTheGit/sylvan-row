@@ -452,6 +452,16 @@ pub fn get_random_port() -> u16 {
   return port;
 }
 
+#[derive(Debug, Clone)]
+pub struct DummySettings {
+
+}
+impl DummySettings {
+  pub fn new() -> DummySettings {
+    return DummySettings { }
+  }
+}
+
 /// Information held by server about players.
 /// 
 /// This struct can be as hefty as we want, it doesn't get sent over network.
@@ -496,8 +506,47 @@ pub struct ServerPlayer {
   pub last_packet_time:     Instant,
   pub packet_times:         Vec<f32>,
   pub last_damage_time:     Instant,
+  pub dummy_settings:       Option<DummySettings>,
 }
 impl ServerPlayer {
+
+  pub fn new(username: String, cipher_key: Vec<u8>, ip:String, port: u16, team: Team, character: Character) -> ServerPlayer {
+    return ServerPlayer {
+      username,
+      cipher_key,
+      last_nonce: 0,
+      ip,
+      port,
+      team,
+      character,
+      health: 100,
+      position: Vector2 { x: 10.0, y: 10.0 },
+      shooting: false,
+      last_dash_time: Instant::now(),
+      last_shot_time: Instant::now(),
+      shooting_secondary: false,
+      secondary_cast_time: Instant::now(),
+      secondary_charge: 0,
+      aim_direction: Vector2 { x: -1.0, y: 0.0 },
+      move_direction: Vector2::new(),
+      had_illegal_position: false,
+      is_dashing: false,
+      dash_direction: Vector2::new(),
+      dashed_distance: 0.0,
+      previous_positions: vec![],
+      is_dead: false,
+      death_timer_start: Instant::now(),
+      stacks: 0,
+      buffs: Vec::new(),
+      last_packet_time: Instant::now(),
+      events: Vec::new(),
+      passive_timer: Instant::now(),
+      packet_times: Vec::new(),
+      last_damage_time: Instant::now(),
+      dummy_settings: None,
+    }
+  }
+
   pub fn damage(&mut self, mut dmg: u8, characters: HashMap<Character, CharacterProperties>) -> () {
     if self.is_dead {
       return;
@@ -559,13 +608,21 @@ impl ServerPlayer {
     // mark when they died so we know when to respawn them
     self.death_timer_start = Instant::now();
     // send them to their respective spawn
-    if self.team == Team::Blue {
-      self.position = blue_spawn;
-      // println!("Sending {} to blue spawn", self.ip);
-    } 
+
+    // don't do anything for dummies
+    if let Some(_) = self.dummy_settings {
+
+    }
     else {
-      self.position = red_spawn;
-      // println!("Sending {} to red team spawn", self.ip);
+
+      if self.team == Team::Blue {
+        self.position = blue_spawn;
+        // println!("Sending {} to blue spawn", self.ip);
+      } 
+      else {
+        self.position = red_spawn;
+        // println!("Sending {} to red team spawn", self.ip);
+      }
     }
   }
 }
@@ -635,7 +692,6 @@ impl GameModeInfo {
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Character {
   Cynewynn,
-  Dummy,
   Fedya,
   Hernani,
   Koldo,
@@ -647,7 +703,6 @@ impl Character {
   pub fn name(self) -> String {
     return match self {
       Character::Cynewynn => String::from("Cynewynn"),
-      Character::Dummy => String::from("Dummy"),
       Character::Fedya => String::from("Fedya"),
       Character::Hernani => String::from("Hernani"),
       Character::Koldo => String::from("Koldo"),
@@ -713,7 +768,6 @@ pub struct CharacterProperties {
 
 pub fn load_characters() -> HashMap<Character, CharacterProperties> {
   let characters: HashMap<Character, CharacterProperties> = HashMap::from([
-    (Character::Dummy, CharacterProperties::from_pkl(include_str!("../assets/characters/dummy/properties.pkl"))),
     (Character::Hernani, CharacterProperties::from_pkl(include_str!("../assets/characters/hernani/properties.pkl"))),
     (Character::Raphaelle, CharacterProperties::from_pkl(include_str!("../assets/characters/raphaelle/properties.pkl"))),
     (Character::Cynewynn, CharacterProperties::from_pkl(include_str!("../assets/characters/cynewynn/properties.pkl"))),
@@ -1165,7 +1219,7 @@ impl CharacterDescription {
       (Character::Fedya, {
         CharacterDescription {
           primary:   AbilityDescription {
-            description: String::from("Throws a knife which can bounce off walls, that deals {0} damage and stays on the ground."),
+            description: String::from("Throws a knife that bounces off walls, deals {0} damage and falls to the ground."),
             values: vec![character_properties[&Character::Fedya].primary_damage as f32],
             cooldown: character_properties[&Character::Fedya].primary_cooldown
           },
@@ -1233,14 +1287,6 @@ impl CharacterDescription {
           },
         }
       }),
-      (Character::Dummy, {
-        CharacterDescription {
-          primary:   AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
-          secondary: AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
-          dash:      AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
-          passive:   AbilityDescription { description: String::from("dummy."), values: vec![], cooldown: 0.0 },
-        }
-      }),
     ]);
     return character_descriptions;
   }
@@ -1291,7 +1337,7 @@ impl Map {
       Map::Control2 => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
       Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_elim_foreground.csv")},
       Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_elim_foreground.csv")},
-      Map::PracticeRange => {include_str!("../assets/maps/tiledtestmap_foreground.csv")},
+      Map::PracticeRange => {include_str!("../assets/maps/practice_range_foreground.csv")},
     }
   }
   pub fn get_bg(&self) -> &str {
@@ -1300,7 +1346,7 @@ impl Map {
       Map::Control2 => {include_str!("../assets/maps/tiledtestmap_background.csv")},
       Map::Elimination1 => {include_str!("../assets/maps/tiledtestmap_elim_background.csv")},
       Map::Elimination2 => {include_str!("../assets/maps/tiledtestmap_elim_background.csv")},
-      Map::PracticeRange => {include_str!("../assets/maps/tiledtestmap_background.csv")},
+      Map::PracticeRange => {include_str!("../assets/maps/practice_range_background.csv")},
     }
   }
 }
