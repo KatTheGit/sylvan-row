@@ -1412,12 +1412,12 @@ fn main_thread(
           // MARK: | | Draw Players
           if !data.player.is_dead {
             let z_layer = GAME_Z + data.player.position.y;
-            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), z_layer, &mut com, &win);
+            data.player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), z_layer, &mut com, &win, asset_server.clone());
           }
           for player in data.players.clone() {
             let z_layer = GAME_Z + player.position.y;
             if !player.is_dead {
-              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), z_layer, &mut com, &win);
+              player.draw(vh, vw, uiscale, data.player.camera.clone(), &font, data.settings.clone(), data.character_properties.clone(), z_layer, &mut com, &win, asset_server.clone());
             }
           }
 

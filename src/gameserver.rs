@@ -711,7 +711,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
       let mut bot_3 = ServerPlayer::new(String::from("Raphaelle Bot"), Vec::new(), String::new(), 0, Team::Blue, Character::Raphaelle);
       bot_3.dummy_settings = Some(DummySettings { });
       bot_3.position = spawnpoint_positions[2];
-      let mut bot_4 = ServerPlayer::new(String::from("Wiro Bot"), Vec::new(), String::new(), 0, Team::Red, Character::Wiro);
+      let mut bot_4 = ServerPlayer::new(String::from("Wiro Bot"), Vec::new(), String::new(), 0, Team::Blue, Character::Wiro);
       bot_4.dummy_settings = Some(DummySettings { });
       bot_4.position = spawnpoint_positions[0];
 
@@ -1840,7 +1840,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
           }
         }
 
-        // RAPHAELLE secondary
+        // RAPHAELLE secondary (healing aura)
         GameObjectType::RaphaelleAura => {
           // game_objects[o_index].position = players[game_objects[o_index].owner_index].position;
           // every second apply heal
@@ -1848,7 +1848,7 @@ pub fn game_server(port: u16, player_info: Vec<PlayerInfo>, gamemode: GameMode, 
             // if on same team
             if players[p_index].team == players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].team {
               // if within range
-              if Vector2::distance(game_objects[o_index].position, players[index_by_username(&game_objects[o_index].get_bullet_data().owner_username,players.clone())].position)
+              if Vector2::distance(game_objects[o_index].position, players[p_index].position)
               < (characters[&Character::Raphaelle].secondary_range) {
                 // heal up
                 if tick {

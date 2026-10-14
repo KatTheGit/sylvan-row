@@ -124,9 +124,7 @@ impl ClientPlayer {
       current_animation: AnimationState::new(vec![], Vec2::ZERO, 1.0, 0),
     }
   }
-  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, settings: Settings, characters: HashMap<Character, CharacterProperties>, z: f32, commands: &mut Commands, window: &Window) {
-    // TODO: animations
-    
+  pub fn draw(&self, vh: f32, vw: f32, uiscale: f32, camera: Camera, font: &Handle<Font>, settings: Settings, characters: HashMap<Character, CharacterProperties>, z: f32, commands: &mut Commands, window: &Window, asset_server: AssetServer) {
 
     // PLAYER
 
@@ -187,6 +185,33 @@ impl ClientPlayer {
         draw_line(pos, pos + Vector2 {x: 0.0, y: 3.0*uiscale}, 0.5*uiscale, BROWN, z+4.0, window, commands);
       }
     }
+
+    // draw status effects
+    let initial_pos = screen_healthbar_pos + Vector2{x: healthbar_x_size + 1.0 * uiscale, y: 2.0 * uiscale};
+    
+    // sort buffs
+    let sorted_buffs = Buff::sort(self.buffs.clone());
+
+    // draw buffs
+    let mut current_index = 0.0;
+    for buff in sorted_buffs {
+      let texture: Texture = Texture {
+        image: asset_server.load(
+          match buff.buff_type {
+            BuffType::FireRate => "ui/AS_icon.png",
+            BuffType::RaphaelleFireRate  => "ui/AS_icon.png",
+            BuffType::Speed  => if buff.value < 0.0 {"ui/SLW_icon.png"} else {"ui/SPD_icon.png"},
+            BuffType::Impulse => continue,
+            BuffType::WiroSpeed => "ui/SPD_icon.png",
+          }
+        ),
+        size: Vec2 { x: 200.0, y: 200.0 },
+      };
+      draw_sprite(&texture, initial_pos + Vector2{x: 6.0 * uiscale * current_index,y: 0.0}, Vector2 {x: 5.0* uiscale, y: 5.0 * uiscale}, z, window, commands);
+      current_index += 1.0;
+    }
+
+
 
     // draw stacks. character dependent
 
@@ -1094,6 +1119,25 @@ pub struct Buff {
   /// Direction
   pub direction: Vector2,
 }
+impl Buff {
+  pub fn sort(unsorted_buffs: Vec<Buff>) -> Vec<Buff> {
+    let mut sorted: Vec<Buff> = Vec::new();
+    for buff in unsorted_buffs {
+      if sorted.is_empty() {
+        sorted.push(buff.clone());
+        continue;
+      }
+      for (index, sorted_buff) in sorted.clone().iter().enumerate() {
+        if sorted_buff.buff_type.buff_weight() > buff.buff_type.buff_weight() {
+          sorted.insert(index, buff.clone());
+          break;
+        }
+        sorted.push(buff.clone());
+      }
+    }
+    return sorted;
+  }
+}
 /// Every possible type of buff or nerf
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
 pub enum BuffType {
@@ -1105,6 +1149,17 @@ pub enum BuffType {
   /// 
   /// Use negative value for slow.
   Speed,
+}
+impl BuffType {
+  pub fn buff_weight(&self) -> usize {
+    return match self {
+      BuffType::FireRate => 0,
+      BuffType::RaphaelleFireRate => 1,
+      BuffType::Speed => 2,
+      BuffType::WiroSpeed => 3,
+      BuffType::Impulse => 4,
+    }
+  }
 }
 #[derive(Debug, Clone)]
 pub struct CharacterDescription {

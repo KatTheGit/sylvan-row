@@ -71,12 +71,18 @@ The GDD is in `assets/README.md`.
   - [ ] new parser
   - [x] standardize Z layers
   - [ ] better ui
-  - [ ] status effects
+  - [x] status effect
+    - [x] Attack speed +
+    - [x] Speed +
+    - [x] Speed -
     - [x] stacks
   - [x] floating dmg numbers
   - [ ] animations
   - [ ] sfx, voicelines
   - [x] Better practice range
+  - [ ] Main healthbar UI
+    - [ ] Abilities
+    - [ ] Detailed status effects
 
 ### Bugs
 
