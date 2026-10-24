@@ -195,6 +195,10 @@ async fn main() {
               }
             }
           }
+          "listall" => {
+            let database = commandline_database.lock().unwrap();
+            let _ = database::get_all(&database);
+          }
           _ => {
             println!("Unrecognised command.");
           }

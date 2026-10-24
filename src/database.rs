@@ -11,6 +11,24 @@ const USER_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("User Data
 /// The u8 stores the FriendShipStatus enum.
 const FRIENDS_TABLE: TableDefinition<&str, u8> = TableDefinition::new("Friendship Data"); // friendship is magic
 
+pub fn get_all(database: &Database) ->  Result<(), Error> {
+  let read_txn = database.begin_read()?;
+  let table = read_txn.open_table(USER_TABLE)?;
+  if let Ok(iterated_table) = table.iter() {
+    for entry in iterated_table {
+      if let Ok(entry) = entry {
+        let value_0 = entry.0.value();
+        let value_1 = serde_json::from_slice::<PlayerData>(entry.1.value());
+        if let Ok(playerdata) = value_1 {
+          println!("{:?} | wins: {:?} ban: {:?}", value_0, playerdata.wins, playerdata.ban);
+        }
+      }
+    }
+  }
+  
+  return Ok(());
+}
+
 /// Returns the PlayerData for the given username in the given database.
 pub fn get_player(database: &Database, username: &str) -> Result<PlayerData, Error> {
   let read_txn = database.begin_read()?;

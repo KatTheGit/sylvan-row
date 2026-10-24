@@ -241,7 +241,7 @@ impl Tabs {
 /// 
 /// Reads a `selected` boolean and modifies it. If the value was changed this frame,
 /// returns `true`.
-pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool, z: f32, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
+pub fn checkbox(position: Vector2, size: f32, text: &str, font_size: f32, vh: f32, selected: &mut bool, z: f32, clickable: bool, font: &Handle<Font>, window: &Window, commands: &mut Commands, mouse_buttons: &Res<ButtonInput<MouseButton>>, touches: &Res<Touches>) -> bool {
   draw_rect(BLUE, position, Vector2 { x: size, y: size }, z, window, commands);
   let inner_shrink: f32 = 0.2 * vh;
   draw_rect(BLUE, position + Vector2{x: inner_shrink,y: inner_shrink}, Vector2 { x: size, y: size }- Vector2 { x: inner_shrink*2.0, y: inner_shrink*2.0}, z, window, commands);
@@ -513,9 +513,9 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     // GAMEPLAY
     if data.settings_tabs.selected_tab() == 0 {
       // camera smoothing
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Camera smoothing", 4.0*uiscale, uiscale, &mut data.settings.camera_smoothing, z, font, window, commands, mouse_buttons, touches);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Camera smoothing", 4.0*uiscale, uiscale, &mut data.settings.camera_smoothing, z, true, font, window, commands, mouse_buttons, touches);
       // character names
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Display character names instead of usernames", 4.0*uiscale, uiscale, &mut data.settings.display_char_name_instead, z, font, window, commands, mouse_buttons, touches);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Display character names instead of usernames", 4.0*uiscale, uiscale, &mut data.settings.display_char_name_instead, z, true, font, window, commands, mouse_buttons, touches);
     }
     // VIDEO
     if data.settings_tabs.selected_tab() == 1 {
@@ -523,17 +523,17 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
       // uiscale
       data.settings.ui_scale = data.settings.ui_scale as i32 as f32;
       settings_modified |= slider(Vector2 { x: vw * 25.0, y: vh * 92.0 }, Vector2 { x: 45.0*vw, y: 5.0*vh }, "UI Scale", 4.0*vh, vh, &mut data.settings.ui_scale, 1.0, 20.0, font, z, window, commands, mouse_buttons, touches);
-      settings_modified |= checkbox(Vector2 { x: vw * 85.0, y: vh * 92.0 }, 5.0 * vh, "Auto", 4.0*vh, uiscale, &mut data.settings.auto_ui_scale, z, font, window, commands, mouse_buttons, touches);
+      settings_modified |= checkbox(Vector2 { x: vw * 85.0, y: vh * 92.0 }, 5.0 * vh, "Auto", 4.0*vh, uiscale, &mut data.settings.auto_ui_scale, z, true, font, window, commands, mouse_buttons, touches);
 
       // fullscreen
-      let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Fullscreen", 4.0*uiscale, uiscale, &mut data.settings.fullscreen, z, font, window, commands, mouse_buttons, touches);
+      let fullscreen_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Fullscreen", 4.0*uiscale, uiscale, &mut data.settings.fullscreen, z, true, font, window, commands, mouse_buttons, touches);
       if fullscreen_changed {
         set_fullscreen(data.settings.fullscreen, window);
       }
       settings_modified |= fullscreen_changed;
 
       // vsync
-      let vsync_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Vsync", 4.0*uiscale, uiscale, &mut data.settings.vsync, z, font, window, commands, mouse_buttons, touches);
+      let vsync_changed= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 30.0 }, 4.0 * uiscale, "Vsync", 4.0*uiscale, uiscale, &mut data.settings.vsync, z, true, font, window, commands, mouse_buttons, touches);
       if vsync_changed {
         set_vsync(data.settings.vsync, window);
       }
@@ -541,7 +541,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
 
       // gpu power preference
       let gpu_setting_pos = Vector2 { x: vw * 25.0, y: uiscale * 35.0 };
-      settings_modified |= checkbox(gpu_setting_pos, 4.0 * uiscale, "Use high performance GPU", 4.0*uiscale, uiscale, &mut data.settings.use_high_performance_gpu, z, font, window, commands, mouse_buttons, touches);
+      settings_modified |= checkbox(gpu_setting_pos, 4.0 * uiscale, "Use high performance GPU", 4.0*uiscale, uiscale, &mut data.settings.use_high_performance_gpu, z, true, font, window, commands, mouse_buttons, touches);
       tooltip(gpu_setting_pos, Vector2 { x: 4.0 * uiscale, y: 4.0 * uiscale }, "Whether to use higher performance GPU. Toggle if you experience visual artefacts (i.e. when alt-tabbing). Requires game restart to take effect.", Vector2 { x: 70.0 * uiscale, y: 25.0 * uiscale }, uiscale, vh, vw, font, mouse_pos, TOOLTIP_Z, window, commands);
     }
     // Audio
@@ -591,7 +591,7 @@ pub fn draw_pause_menu(uiscale: f32, vh: f32, vw: f32, data: &mut GameData, audi
     // Other
     if data.settings_tabs.selected_tab() == 4 {
 
-      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Censor profanity", 4.0*uiscale, uiscale, &mut data.settings.censor_profanity, z, font, window, commands, mouse_buttons, touches);
+      settings_modified |= checkbox(Vector2 { x: vw * 25.0, y: uiscale * 25.0 }, 4.0 * uiscale, "Censor profanity", 4.0*uiscale, uiscale, &mut data.settings.censor_profanity, z, true, font, window, commands, mouse_buttons, touches);
 
 
       let mut reset_button = Button::new(Vector2 { x: 40.0*vw, y: 60.0*uiscale }, Vector2 { x: 20.0*vw, y: 7.0*uiscale }, "Reset settings", 4.0*uiscale);
@@ -1356,7 +1356,7 @@ impl TextInput {
     draw_rect(bg, position, size, z, window, commands);
     
     if self.hideable {
-      checkbox(Vector2 { x: position.x + size.x + margin, y: position.y}, size.y, "show", font_size, uiscale, &mut self.show_password, z, font, window, commands, mouse_buttons, touches);
+      checkbox(Vector2 { x: position.x + size.x + margin, y: position.y}, size.y, "show", font_size, uiscale, &mut self.show_password, z, true, font, window, commands, mouse_buttons, touches);
     }
     
     if self.selected {

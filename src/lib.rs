@@ -41,7 +41,7 @@ use crate::{bevy_graphics::Button, const_params::*, database::{FriendShipStatus,
 #[cfg(not(target_os="android"))]
 use device_query::{DeviceQuery, DeviceState, Keycode};
 
-const CURRENT_SERVER_IP: &str = "192.168.1.52:25569"; //"13.38.240.14:25569";
+const CURRENT_SERVER_IP: &str = "127.0.0.1:25569";// "192.168.1.52:25569"; //"13.38.240.14:25569";
 
 #[bevy_main]
 pub fn main() {
@@ -133,6 +133,7 @@ pub struct GameData {
   pub font: Option<Handle<Font>>,
   pub font_mono: Option<Handle<Font>>,
   pub shift_osk: bool,
+  pub loading: bool,
 
   pub server_ip: String,
   pub game_server_ip: String,
@@ -238,6 +239,7 @@ impl Default for GameData {
       font: None,
       font_mono: None,
       shift_osk: false,
+      loading: false,
 
       server_ip: String::from(CURRENT_SERVER_IP),
       game_server_ip: String::from("13.38.240.14"),
@@ -371,7 +373,7 @@ fn main_thread(
 
     let mouse_pos = get_mouse_pos(&win);
 
-    let ui_clickable = !(data.paused || data.chat_open);
+    let ui_clickable = !(data.paused || data.chat_open || data.loading);
 
 
     // TEMPORARY DEBUG
@@ -428,7 +430,7 @@ fn main_thread(
             let queued = data.queued.clone();
             for (gamemode, selected) in &mut data.gamemode_rotation {
               let mut selected_copy = selected.clone();
-              checkbox(checkbox_pos + Vector2 {x: 0.0, y: checkbox_y_current_step * checkbox_y_step}, 4.0*uiscale, &gamemode.get_data().description, 3.8*uiscale, uiscale, if queued {&mut selected_copy} else {selected}, MENU_Z, &font, &win, &mut com, &input.m, &input.t);
+              checkbox(checkbox_pos + Vector2 {x: 0.0, y: checkbox_y_current_step * checkbox_y_step}, 4.0*uiscale, &gamemode.get_data().description, 3.8*uiscale, uiscale, if queued {&mut selected_copy} else {selected}, MENU_Z, ui_clickable, &font, &win, &mut com, &input.m, &input.t);
               checkbox_y_current_step += 1.0;
             }
 
@@ -750,7 +752,8 @@ fn main_thread(
 
           // game startup
           if data.game_startup {
-            
+            // TURBO TEMPORARY
+            data.loading = false;
 
             // TEMPORARY
             let music_vol = (data.settings.master_volume * data.settings.music_volume) / (100.0 * 100.0);
@@ -1789,6 +1792,12 @@ fn main_thread(
           }
         }
 
+        // MARK: draw loading
+        if data.loading {
+          clear_background(WHITE, &win, &mut com);
+          draw_text(&font, "LOADING", Vector2 { x: 50.0 * vw, y: 50.0 * vh }, Vector2 { x: 100.0 * uiscale, y: 10.0 * uiscale }, BLACK, 8.0 * uiscale, TOOLTIP_Z, Justify::Center, &win, &mut com);
+        }
+
         // MARK: draw chat
 
         if data.paused {
@@ -2039,6 +2048,7 @@ fn main_thread(
               (data.background_tiles, _, _) = load_map_from_file(info.map.get_bg(), &mut 0);
               data.current_gamemode = info.gamemode;
               data.current_map = info.map;
+              data.loading = true;
               //let full_ip = get_ip();
               //let ip = full_ip.split(":").collect::<Vec<&str>>()[0];
               //let game_server_ip = format!("{}:{}", ip, info.port);
@@ -2253,7 +2263,7 @@ fn main_thread(
         // remember me checkbox
         let credentials_checkbox_pos = tl_anchor + Vector2 {x: 45.0 * uiscale, y: 49.6 * uiscale};
         let credentials_checkbox_size = 5.0 * uiscale;
-        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0.0, &font, &win, &mut com, &input.m, &input.t);
+        let credentials_changed = checkbox(credentials_checkbox_pos, credentials_checkbox_size, "Remember me", 4.0*uiscale, vh, &mut data.settings.store_credentials, 0.0, true, &font, &win, &mut com, &input.m, &input.t);
         if credentials_changed {
           data.settings.save();
         }

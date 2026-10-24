@@ -49,7 +49,12 @@ The GDD is in `assets/README.md`.
 ## To do
 
 - [ ] programming
+  - [ ] Loading screen
+    - [ ] as soon as asignment packet 
+    - [ ] until a few moments into in-game
   - [ ] Pre-game screen
+    - [ ] until countdown
+    - [ ] All connected packet?
     - [x] infrastructure
   - [x] Post-game screen
   - [x] gamemode
@@ -62,7 +67,7 @@ The GDD is in `assets/README.md`.
     - [ ] sága
       - [ ] design kit
     - [ ] assassin
-  - [ ] bevy
+  - [x] bevy
     - [x] re-add friend system
   - [ ] ranked
   - [x] anticheat
