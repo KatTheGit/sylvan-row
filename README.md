@@ -88,6 +88,7 @@ The GDD is in `assets/README.md`.
   - [ ] Main healthbar UI
     - [ ] Abilities
     - [ ] Detailed status effects
+  - [ ] Tutorial
 
 ### Bugs
 
@@ -109,4 +110,4 @@ This was previously owned by OrnitOnGithub, my previous account, as mentioned in
 - Inspiration
   - Assault Android Cactus
   - Battlerite
-  - League of Legends
+  - League of Legendsq1

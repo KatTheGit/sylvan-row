@@ -451,6 +451,7 @@ pub struct ServerPacket {
   pub events: Vec<GameEvent>,
 }
 
+// this is very dumb. we should be asking the OS for a free port.
 pub fn get_random_port() -> u16 {
   // Find a random free port and use it
   let min_port: u16 = 30000;
